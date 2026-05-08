@@ -52,7 +52,7 @@ CI verifies formatting with `dotnet format Terminal.Gui.Text.slnx --verify-no-ch
 
 Two NuGet packages with a strict dependency direction:
 
-- **`src/Terminal.Gui.Text`** — UI-framework-independent document model. Namespace `Terminal.Gui.Text`. **Must not reference Terminal.Gui.** Holds the rope-backed `TextDocument`, `TextAnchor`, `UndoStack`, `FoldingManager`, `SearchStrategy`, `Indentation`, `Highlighting`. Most of this is lifted from AvaloniaEdit (see fork policy below).
+- **`src/Terminal.Gui.Text`** — UI-framework-independent document model. Namespace `Terminal.Gui.Text` and subnamespaces. **Must not reference Terminal.Gui.** Holds the rope-backed `TextDocument`, `DocumentLine`, `TextAnchor`, `UndoStack`, `ITextSource`, `TextSegment`, the `Rope`, and supporting utility types. Lifted from AvaloniaEdit (see fork policy below) — `Document/` and `Utils/` are landed; `Folding/`, `Search/`, `Indentation/`, `Highlighting/` are follow-up phases per `specs/00-plan.md`.
 - **`src/Terminal.Gui.Editor`** — the `Editor : View` and cell-grid rendering pipeline. Namespace `Terminal.Gui.Views` (matches Terminal.Gui convention, deliberately not `Terminal.Gui.Editor`). References `Terminal.Gui` (version pinned via `$(TerminalGuiVersion)` in `Directory.Build.props`) and `Terminal.Gui.Text`.
 - **`examples/ted`** — standalone TG demo app exercising `Editor`. Not packed; not a NuGet artifact. Has a File menu, the `Editor` View, and a status bar; grows with the View. Run via `dotnet run --project examples/ted`.
 
@@ -70,7 +70,7 @@ See `specs/00-plan.md` §6 for the full pipeline and `Editor` public API sketch.
 
 ## AvaloniaEdit fork policy
 
-Code lifted from AvaloniaEdit lives under `third_party/AvaloniaEdit/` (not yet present) and is mirrored into the relevant `Terminal.Gui.Text/` subfolders (`Document/`, `Folding/`, `Search/`, `Indentation/`, `Highlighting/`, `Utils/`).
+Code is lifted from AvaloniaEdit into the relevant `src/Terminal.Gui.Text/` subfolders (`Document/`, `Utils/` so far; `Folding/`, `Search/`, `Indentation/`, `Highlighting/` to follow). The pinned upstream commit and per-file modification log live in `third_party/AvaloniaEdit/UPSTREAM.md` (with the upstream MIT `LICENSE` alongside).
 
 For lifted files:
 
