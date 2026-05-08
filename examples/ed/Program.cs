@@ -3,9 +3,23 @@
 // Will become an interactive Editor scenario as the View ships
 // (specs/00-plan.md phases 2–5; MVP demo surface in §12).
 
+using Terminal.Gui.App;
+using Terminal.Gui.ViewBase;
 using Terminal.Gui.Views;
 
 _ = typeof (AssemblyMarker);
 
-Console.WriteLine ("ed: Terminal.Gui.Editor demo (pre-alpha stub)");
-Console.WriteLine ("See specs/00-plan.md for the planned demo surface.");
+using IApplication app = Application.Create ();
+
+app.Init ();
+
+Window win = new ()
+{
+    Title = "Editor Demo",
+    X = 0,
+    Y = 0,
+    Width = Dim.Fill (),
+    Height = Dim.Fill ()
+};
+
+app.Run (win);
