@@ -31,11 +31,11 @@ public partial class Editor
                 continue;
             }
 
-            string visible = text [viewport.X..];
+            string visible = text[viewport.X..];
 
             if (visible.Length > viewport.Width)
             {
-                visible = visible [..viewport.Width];
+                visible = visible[..viewport.Width];
             }
 
             AddStr (0, row, visible);
@@ -50,7 +50,7 @@ public partial class Editor
     {
         if (!HasFocus)
         {
-            Cursor = default;
+            Cursor = new ();
 
             return;
         }
@@ -63,7 +63,7 @@ public partial class Editor
 
         if (row < 0 || row >= viewport.Height || col < 0 || col >= viewport.Width)
         {
-            Cursor = default;
+            Cursor = new ();
 
             return;
         }

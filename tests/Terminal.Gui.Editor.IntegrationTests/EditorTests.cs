@@ -178,10 +178,10 @@ public class EditorTests
     public async Task LongDocument_Scrolls_To_Keep_Caret_Visible ()
     {
         // 50 lines, viewport is 24 rows. Moving caret to line 40 should scroll.
-        string[] lines = new string [50];
+        string[] lines = new string[50];
         for (int i = 0; i < 50; i++)
         {
-            lines [i] = $"line-{i:00}";
+            lines[i] = $"line-{i:00}";
         }
 
         await using AppFixture<EditorTestHost> fx = new (() => new (string.Join ("\n", lines)));
@@ -191,7 +191,7 @@ public class EditorTests
         int offset = 0;
         for (int i = 0; i < 40; i++)
         {
-            offset += lines [i].Length + 1;
+            offset += lines[i].Length + 1;
         }
         fx.Top.Editor.CaretOffset = offset;
         fx.Render ();

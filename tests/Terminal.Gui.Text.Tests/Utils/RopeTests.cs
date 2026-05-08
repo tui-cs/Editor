@@ -19,7 +19,6 @@
 
 using System.IO;
 using System.Text;
-using Terminal.Gui.Text.Utils;
 using Xunit;
 
 
