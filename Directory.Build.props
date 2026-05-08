@@ -11,6 +11,9 @@
     <Authors>gui-cs</Authors>
     <Company>gui-cs</Company>
     <Copyright>Copyright (c) gui-cs and contributors</Copyright>
+
+    <!-- Base version for both NuGet packages. Release workflow overrides via -p:Version=<tag>. -->
+    <Version>0.1.0-alpha</Version>
     <PackageProjectUrl>https://github.com/gui-cs/Text</PackageProjectUrl>
     <RepositoryUrl>https://github.com/gui-cs/Text</RepositoryUrl>
     <RepositoryType>git</RepositoryType>

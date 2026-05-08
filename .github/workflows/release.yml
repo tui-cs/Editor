@@ -1,0 +1,137 @@
+name: Release
+
+# Publishes Terminal.Gui.Text and Terminal.Gui.Editor to NuGet.
+#
+# Triggers:
+#   1. Push of a `v*` tag (canonical release path, e.g. v0.1.0-alpha.1)
+#   2. workflow_dispatch (manual run with explicit version)
+#
+# Both packages share a single <Version> declared in Directory.Build.props.
+# The tag/input value overrides that base via `-p:Version=...`.
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Package version (e.g. 0.1.0-alpha.1). Overrides Directory.Build.props.'
+        required: true
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  resolve-version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+    steps:
+      - name: Compute version
+        id: v
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+          else
+            # Tag form: v0.1.0-alpha.1 → 0.1.0-alpha.1
+            VERSION="${GITHUB_REF_NAME#v}"
+          fi
+          if [ -z "$VERSION" ]; then
+            echo "::error::Could not resolve version."
+            exit 1
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "## Release" >> "$GITHUB_STEP_SUMMARY"
+          echo "- version: \`$VERSION\`" >> "$GITHUB_STEP_SUMMARY"
+
+  build-and-test:
+    needs: resolve-version
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    env:
+      VERSION: ${{ needs.resolve-version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+          dotnet-quality: 'preview'
+
+      - name: Restore
+        run: dotnet restore Terminal.Gui.Text.slnx
+
+      - name: Build
+        run: dotnet build Terminal.Gui.Text.slnx --no-restore -c Release -p:Version=${{ env.VERSION }}
+
+      - name: Terminal.Gui.Text.Tests
+        run: dotnet run --project tests/Terminal.Gui.Text.Tests --no-build -c Release
+
+      - name: Terminal.Gui.Editor.Tests
+        run: dotnet run --project tests/Terminal.Gui.Editor.Tests --no-build -c Release
+
+      - name: Terminal.Gui.Editor.IntegrationTests
+        run: dotnet run --project tests/Terminal.Gui.Editor.IntegrationTests --no-build -c Release
+
+  pack-and-publish:
+    needs: [resolve-version, build-and-test]
+    runs-on: ubuntu-latest
+    env:
+      VERSION: ${{ needs.resolve-version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+          dotnet-quality: 'preview'
+
+      - name: Pack Terminal.Gui.Text
+        run: dotnet pack src/Terminal.Gui.Text -c Release -p:Version=${{ env.VERSION }} -o packages/
+
+      - name: Pack Terminal.Gui.Editor
+        run: dotnet pack src/Terminal.Gui.Editor -c Release -p:Version=${{ env.VERSION }} -o packages/
+
+      - name: Upload packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: nuget-packages
+          path: packages/*.nupkg
+          retention-days: 30
+
+      - name: Push to NuGet
+        run: >
+          dotnet nuget push packages/*.nupkg
+          --api-key ${{ secrets.NUGET_API_KEY }}
+          --source https://api.nuget.org/v3/index.json
+          --skip-duplicate
+
+  notify-failure:
+    needs: [resolve-version, build-and-test, pack-and-publish]
+    if: failure()
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    env:
+      VERSION: ${{ needs.resolve-version.outputs.version }}
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.create ({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `Release v${process.env.VERSION} failed`,
+              body: `The release workflow for \`${process.env.VERSION}\` failed.\n\nSee [workflow run](${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}) for details.`,
+              labels: ['release-failure']
+            });
