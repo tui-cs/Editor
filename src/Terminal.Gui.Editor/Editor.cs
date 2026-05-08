@@ -13,7 +13,7 @@ namespace Terminal.Gui.Views;
 public partial class Editor : View
 {
     private int _caretOffset;
-    private TextDocument _document = null!;
+    private TextDocument? _document;
 
     /// <summary>
     ///     Sticky column for vertical caret moves. Tracks the column the user *intends* to be in,
@@ -26,11 +26,11 @@ public partial class Editor : View
     public Editor ()
     {
         CanFocus = true;
-        Document = new("Hello world");
+        Document = new ("Hello world");
     }
 
     /// <summary>The backing <see cref="TextDocument" />. Setting this rewires change handlers and clamps the caret.</summary>
-    public TextDocument Document
+    public TextDocument? Document
     {
         get => _document;
         set
@@ -42,7 +42,10 @@ public partial class Editor : View
                 return;
             }
 
-            _document.Changed -= OnDocumentChanged;
+            if (_document is not null)
+            {
+                _document.Changed -= OnDocumentChanged;
+            }
 
             _document = value;
             _document.Changed += OnDocumentChanged;
@@ -72,7 +75,7 @@ public partial class Editor : View
 
     private void SetCaretOffset (int value, bool resetVirtualColumn)
     {
-        var clamped = Math.Clamp (value, 0, _document.TextLength);
+        var clamped = Math.Clamp (value, 0, _document?.TextLength ?? 0);
 
         if (clamped == _caretOffset && !resetVirtualColumn)
         {
@@ -123,15 +126,12 @@ public partial class Editor : View
 
     private void UpdateContentSize ()
     {
-        var maxWidth = 0;
-
-        foreach (DocumentLine line in _document.Lines)
+        if (_document == null)
         {
-            if (line.Length > maxWidth)
-            {
-                maxWidth = line.Length;
-            }
+            return;
         }
+
+        var maxWidth = _document.Lines.Select (line => line.Length).Prepend (0).Max ();
 
         // +1 column lets the caret sit just past the end-of-line.
         SetContentSize (new(maxWidth + 1, _document.LineCount));
@@ -139,14 +139,14 @@ public partial class Editor : View
 
     private int GetCaretColumn ()
     {
-        DocumentLine line = _document.GetLineByOffset (_caretOffset);
+        DocumentLine? line = _document?.GetLineByOffset (_caretOffset);
 
-        return _caretOffset - line.Offset;
+        return _caretOffset - (line?.Offset ?? 0);
     }
 
     private int GetCaretLineIndex ()
     {
-        return _document.GetLineByOffset (_caretOffset).LineNumber - 1;
+        return _document?.GetLineByOffset (_caretOffset).LineNumber - 1 ?? 0;
     }
 
     private void EnsureCaretVisible ()

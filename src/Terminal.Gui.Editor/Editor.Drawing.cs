@@ -10,6 +10,10 @@ public partial class Editor
     /// <inheritdoc />
     protected override bool OnDrawingContent (DrawContext? context)
     {
+        if (_document is null)
+        {
+            return false;
+        }
         Rectangle viewport = Viewport;
 
         for (var row = 0; row < viewport.Height; row++)

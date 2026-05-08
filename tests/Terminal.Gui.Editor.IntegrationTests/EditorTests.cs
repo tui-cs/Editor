@@ -34,7 +34,7 @@ public class EditorTests
         fx.Injector.InjectKey (Key.I, Direct);
 
         // Bare letter keys produce lowercase; Shift would uppercase.
-        Assert.Equal ("hi", fx.Top.Editor.Document.Text);
+        Assert.Equal ("hi", fx.Top.Editor.Document?.Text);
         Assert.Equal (2, fx.Top.Editor.CaretOffset);
     }
 
@@ -104,7 +104,7 @@ public class EditorTests
 
         fx.Injector.InjectKey (Key.Backspace, Direct);
 
-        Assert.Equal ("ab", fx.Top.Editor.Document.Text);
+        Assert.Equal ("ab", fx.Top.Editor.Document?.Text);
         Assert.Equal (2, fx.Top.Editor.CaretOffset);
     }
 
@@ -117,7 +117,7 @@ public class EditorTests
 
         fx.Injector.InjectKey (Key.Delete, Direct);
 
-        Assert.Equal ("ac", fx.Top.Editor.Document.Text);
+        Assert.Equal ("ac", fx.Top.Editor.Document?.Text);
         Assert.Equal (1, fx.Top.Editor.CaretOffset);
     }
 
@@ -130,9 +130,9 @@ public class EditorTests
 
         fx.Injector.InjectKey (Key.Enter, Direct);
 
-        Assert.Equal ("a\nb", fx.Top.Editor.Document.Text);
+        Assert.Equal ("a\nb", fx.Top.Editor.Document?.Text);
         Assert.Equal (2, fx.Top.Editor.CaretOffset);
-        Assert.Equal (2, fx.Top.Editor.Document.LineCount);
+        Assert.Equal (2, fx.Top.Editor.Document?.LineCount);
     }
 
     [Fact]
@@ -140,13 +140,13 @@ public class EditorTests
     {
         await using AppFixture<EditorTestHost> fx = new(() => new("abc"));
         fx.Top.Editor.SetFocus ();
-        fx.Top.Editor.Document.Insert (3, "DEF");
+        fx.Top.Editor.Document?.Insert (3, "DEF");
 
-        Assert.Equal ("abcDEF", fx.Top.Editor.Document.Text);
+        Assert.Equal ("abcDEF", fx.Top.Editor.Document?.Text);
 
         fx.Injector.InjectKey (Key.Z.WithCtrl, Direct);
 
-        Assert.Equal ("abc", fx.Top.Editor.Document.Text);
+        Assert.Equal ("abc", fx.Top.Editor.Document?.Text);
     }
 
     [Fact]
@@ -154,14 +154,14 @@ public class EditorTests
     {
         await using AppFixture<EditorTestHost> fx = new(() => new("abc"));
         fx.Top.Editor.SetFocus ();
-        fx.Top.Editor.Document.Insert (3, "DEF");
+        fx.Top.Editor.Document?.Insert (3, "DEF");
         fx.Injector.InjectKey (Key.Z.WithCtrl, Direct);
 
-        Assert.Equal ("abc", fx.Top.Editor.Document.Text);
+        Assert.Equal ("abc", fx.Top.Editor.Document?.Text);
 
         fx.Injector.InjectKey (Key.Y.WithCtrl, Direct);
 
-        Assert.Equal ("abcDEF", fx.Top.Editor.Document.Text);
+        Assert.Equal ("abcDEF", fx.Top.Editor.Document?.Text);
     }
 
     [Fact]

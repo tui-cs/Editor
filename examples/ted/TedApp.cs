@@ -96,12 +96,12 @@ public sealed class TedApp : Window
 
     private void Redo ()
     {
-        Editor.Document.UndoStack.Redo ();
+        Editor.Document?.UndoStack.Redo ();
     }
 
     private void Undo ()
     {
-        Editor.Document.UndoStack.Undo ();
+        Editor.Document?.UndoStack.Undo ();
     }
 
     private void New ()

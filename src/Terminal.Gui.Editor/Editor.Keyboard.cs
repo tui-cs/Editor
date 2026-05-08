@@ -66,23 +66,23 @@ public partial class Editor
 
         if (key == Key.End.WithCtrl)
         {
-            CaretOffset = _document.TextLength;
+            CaretOffset = _document?.TextLength ?? 0;
 
             return true;
         }
 
         if (key == Key.Home)
         {
-            DocumentLine line = _document.GetLineByOffset (_caretOffset);
-            CaretOffset = line.Offset;
+            DocumentLine? line = _document?.GetLineByOffset (_caretOffset);
+            CaretOffset = line?.Offset ?? 0;
 
             return true;
         }
 
         if (key == Key.End)
         {
-            DocumentLine line = _document.GetLineByOffset (_caretOffset);
-            CaretOffset = line.Offset + line.Length;
+            DocumentLine? line = _document?.GetLineByOffset (_caretOffset);
+            CaretOffset = (line?.Offset ?? 0) + (line?.Length ?? 0);
 
             return true;
         }
@@ -106,6 +106,11 @@ public partial class Editor
 
     private void MoveCaretVertically (int delta)
     {
+        if (_document is null)
+        {
+            return;
+        }
+
         var targetLine = Math.Clamp (GetCaretLineIndex () + delta, 0, _document.LineCount - 1);
         DocumentLine line = _document.GetLineByNumber (targetLine + 1);
         var targetCol = Math.Min (_virtualCaretColumn, line.Length);
@@ -118,6 +123,11 @@ public partial class Editor
 
     private bool HandleHistory (Key key)
     {
+        if (_document is null)
+        {
+            return false;
+        }
+
         if (key == Key.Z.WithCtrl)
         {
             if (_document.UndoStack.CanUndo)
@@ -143,6 +153,11 @@ public partial class Editor
 
     private bool HandleEditing (Key key)
     {
+        if (_document is null)
+        {
+            return false;
+        }
+
         if (key == Key.Backspace)
         {
             if (_caretOffset > 0)
