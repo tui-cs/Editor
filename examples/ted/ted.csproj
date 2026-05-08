@@ -2,8 +2,8 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <RootNamespace>Ed</RootNamespace>
-    <AssemblyName>ed</AssemblyName>
+    <RootNamespace>Ted</RootNamespace>
+    <AssemblyName>ted</AssemblyName>
     <IsPackable>false</IsPackable>
   </PropertyGroup>
 

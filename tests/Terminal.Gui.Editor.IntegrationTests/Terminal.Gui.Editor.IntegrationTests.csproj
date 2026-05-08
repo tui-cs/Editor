@@ -12,7 +12,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Terminal.Gui.Editor\Terminal.Gui.Editor.csproj" />
-    <ProjectReference Include="..\..\examples\ed\ed.csproj" />
+    <ProjectReference Include="..\..\examples\ted\ted.csproj" />
   </ItemGroup>
 
 </Project>

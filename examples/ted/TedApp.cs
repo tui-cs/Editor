@@ -4,19 +4,19 @@ using Terminal.Gui.Input;
 using Terminal.Gui.ViewBase;
 using Terminal.Gui.Views;
 
-namespace Ed;
+namespace Ted;
 
 /// <summary>
-///     Top-level <see cref="Window"/> for the <c>ed</c> demo. MenuBar at top,
+///     Top-level <see cref="Window"/> for the <c>ted</c> demo. MenuBar at top,
 ///     <see cref="Editor"/> in the middle, StatusBar at the bottom. Single-file —
 ///     no tabs (compare to Terminal.Gui's Notepad scenario).
 /// </summary>
-public sealed class EdApp : Window
+public sealed class TedApp : Window
 {
-    /// <summary>Initializes a new <see cref="EdApp"/>.</summary>
-    public EdApp ()
+    /// <summary>Initializes a new <see cref="TedApp"/>.</summary>
+    public TedApp ()
     {
-        Title = "ed — Terminal.Gui.Editor demo";
+        Title = "ted — Terminal.Gui.Editor demo";
         BorderStyle = LineStyle.None;
 
         MenuBar menu = new ();

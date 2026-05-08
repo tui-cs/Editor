@@ -5,20 +5,20 @@ using Terminal.Gui.App;
 using Terminal.Gui.Tracing;
 using ILogger = Microsoft.Extensions.Logging.ILogger;
 
-namespace Ed;
+namespace Ted;
 
 /// <summary>
-///     Process-wide hosting concerns for the <c>ed</c> demo: Serilog → MEL → Terminal.Gui's
+///     Process-wide hosting concerns for the <c>ted</c> demo: Serilog → MEL → Terminal.Gui's
 ///     <see cref="Logging.Logger"/>, plus <see cref="Trace.EnabledCategories"/>.
 ///     Extracted from <c>Program.cs</c> so tests can call it and assert side effects.
 /// </summary>
 public static class Hosting
 {
-    /// <summary>Default trace categories for ed. Useful enough to debug menu/key/mouse flow without flooding the log.</summary>
+    /// <summary>Default trace categories for ted. Useful enough to debug menu/key/mouse flow without flooding the log.</summary>
     public const TraceCategory DefaultTraceCategories = TraceCategory.Command | TraceCategory.Keyboard | TraceCategory.Mouse;
 
     /// <summary>Default log file path. Daily rolling.</summary>
-    public const string DefaultLogPath = "logs/ed.log";
+    public const string DefaultLogPath = "logs/ted.log";
 
     /// <summary>
     ///     Configures Serilog → Microsoft.Extensions.Logging → <see cref="Logging.Logger"/>. Returns the
@@ -35,7 +35,7 @@ public static class Hosting
                      .CreateLogger ();
 
         ILoggerFactory factory = LoggerFactory.Create (b => b.AddSerilog (dispose: true).SetMinimumLevel (LogLevel.Trace));
-        ILogger logger = factory.CreateLogger ("ed");
+        ILogger logger = factory.CreateLogger ("ted");
         Logging.Logger = logger;
 
         return logger;

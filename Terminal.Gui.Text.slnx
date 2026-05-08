@@ -4,5 +4,5 @@
   <Project Path="tests/Terminal.Gui.Text.Tests/Terminal.Gui.Text.Tests.csproj" />
   <Project Path="tests/Terminal.Gui.Editor.Tests/Terminal.Gui.Editor.Tests.csproj" />
   <Project Path="tests/Terminal.Gui.Editor.IntegrationTests/Terminal.Gui.Editor.IntegrationTests.csproj" />
-  <Project Path="examples/ed/ed.csproj" />
+  <Project Path="examples/ted/ted.csproj" />
 </Solution>
