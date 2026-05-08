@@ -55,6 +55,12 @@ public sealed class AppFixture<TRunnable> : IAsyncDisposable
     /// <summary>Synchronous input injection entry point.</summary>
     public IInputInjector Injector => App.GetInputInjector ();
 
+    /// <summary>
+    ///     Forces a full layout and draw cycle. Call after input injection so subsequent
+    ///     <see cref="DriverAssert"/> calls see the post-input rendered state.
+    /// </summary>
+    public void Render () { App.LayoutAndDraw (forceRedraw: true); }
+
     /// <inheritdoc />
     public ValueTask DisposeAsync ()
     {

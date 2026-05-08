@@ -4,7 +4,7 @@ using Terminal.Gui.ViewBase;
 namespace Terminal.Gui.Views;
 
 /// <summary>
-///     Single-line text editor View. 
+///     POC Editor control. 
 /// </summary>
 public class Editor : View
 {
