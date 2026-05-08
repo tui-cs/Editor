@@ -20,8 +20,8 @@ public sealed class TedApp : Window
         Title = "ted — Terminal.Gui.Editor demo";
         BorderStyle = LineStyle.None;
 
-        MenuBar menu = new();
-        
+        MenuBar menu = new ();
+
         StatusBar statusBar =
             new ([
                 new Shortcut (Application.GetDefaultKey (Command.Quit), "Quit", Quit),
@@ -55,7 +55,7 @@ public sealed class TedApp : Window
                 [new MenuItem ("_About", "Show About dialog", Action)])
         );
 
-        Editor = new()
+        Editor = new ()
         {
             Y = Pos.Bottom (menu),
             Width = Dim.Fill (),
@@ -91,12 +91,12 @@ public sealed class TedApp : Window
 
     private void Redo ()
     {
-        Editor.Document.UndoStack.Redo();
+        Editor.Document.UndoStack.Redo ();
     }
 
     private void Undo ()
     {
-        Editor.Document.UndoStack.Undo();
+        Editor.Document.UndoStack.Undo ();
     }
 
     private void New ()

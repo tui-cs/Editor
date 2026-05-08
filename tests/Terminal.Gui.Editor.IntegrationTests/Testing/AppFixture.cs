@@ -37,7 +37,10 @@ public sealed class AppFixture<TRunnable> : IAsyncDisposable
 
         App = Application.Create ();
         App.Init (DriverRegistry.Names.ANSI);
-        App.Screen = new (0, 0, width, height);
+
+        // Resize via the driver — same path TG's UnitTestsParallelizable use. Setting `App.Screen`
+        // directly hangs on Windows CI runners that lack a real console.
+        App.Driver!.SetScreenSize (width, height);
 
         Top = factory ()!;
         _session = App.Begin (Top) ?? throw new InvalidOperationException ("Application.Begin returned null — session was cancelled.");
