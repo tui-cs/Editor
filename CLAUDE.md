@@ -54,6 +54,7 @@ Two NuGet packages with a strict dependency direction:
 
 - **`src/Terminal.Gui.Text`** — UI-framework-independent document model. Namespace `Terminal.Gui.Text`. **Must not reference Terminal.Gui.** Holds the rope-backed `TextDocument`, `TextAnchor`, `UndoStack`, `FoldingManager`, `SearchStrategy`, `Indentation`, `Highlighting`. Most of this is lifted from AvaloniaEdit (see fork policy below).
 - **`src/Terminal.Gui.Editor`** — the `Editor : View` and cell-grid rendering pipeline. Namespace `Terminal.Gui.Views` (matches Terminal.Gui convention, deliberately not `Terminal.Gui.Editor`). References `Terminal.Gui` (version pinned via `$(TerminalGuiVersion)` in `Directory.Build.props`) and `Terminal.Gui.Text`.
+- **`examples/ed`** — standalone TG demo app exercising `Editor`. Not packed; not a NuGet artifact. Currently a stub that prints version info; grows with the View. Run via `dotnet run --project examples/ed`.
 
 The boundary matters: anything that takes a dependency on `Terminal.Gui` types belongs in `Terminal.Gui.Editor`, never in `Terminal.Gui.Text`.
 

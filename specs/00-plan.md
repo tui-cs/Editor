@@ -65,7 +65,7 @@
   Terminal.Gui.Editor.IntegrationTests/
 
 /examples/
-  EditorDemo/                     # standalone TG app exercising Editor
+  ed/                             # standalone TG app exercising Editor
   EditorBenchmarks/
 
 /third_party/
@@ -242,7 +242,7 @@ TG-native via `PopoverMenu`. `IEditorCompletionProvider` returns ranked items fo
 | 2 | `VisualLineBuilder`, `WordWrapStrategy`, `Editor.Drawing.cs` rendering plain text | 1.5 weeks |
 | 3 | Caret, selection (anchor-backed), keyboard/mouse, undo/redo, clipboard | 1.5 weeks |
 | 4 | Lift `Folding/`, `Search/`, `Indentation/`; wire transformers + background renderers | 1 week |
-| 5 | Multi-caret, `LineNumberMargin`, `EditorDemo` scenario, tests at coverage parity | 1 week |
+| 5 | Multi-caret, `LineNumberMargin`, `examples/ed` scenario, tests at coverage parity | 1 week |
 | **MVP** | Editor at TextView feature parity + folding + multi-caret + multi-line search | **~6 weeks** |
 | 6 | Lift `Highlighting/` (xshd) | 1.5 weeks |
 | 7 | Port `AvaloniaEdit.TextMate` (TextMate grammars + tmTheme) | 1.5 weeks |
@@ -294,7 +294,7 @@ Track in `specs/05-decisions.md`. Initial open list:
 
 - `dotnet build` clean on all three platforms.
 - Both test projects pass; coverage targets met.
-- `EditorDemo` runs and exercises: typing, selection, multi-caret, undo/redo, find/replace, folding, word wrap toggle, line numbers, mouse, large-file load (10 MB file < 200 ms initial render).
+- `examples/ed` runs and exercises: typing, selection, multi-caret, undo/redo, find/replace, folding, word wrap toggle, line numbers, mouse, large-file load (10 MB file < 200 ms initial render).
 - One published `Terminal.Gui.Editor` consumer-facing scenario in Terminal.Gui's UICatalog (added via PR to that repo).
 - `specs/` reflects final decisions; `05-decisions.md` has each open question resolved with rationale.
 - README documents MIT licensing, AvaloniaEdit attribution, supported targets, install, minimal usage example.
