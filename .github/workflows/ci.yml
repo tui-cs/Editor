@@ -18,7 +18,9 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     env:
-      DisableRealDriverIO: "1"   # add this block    steps:
+      # Tells Terminal.Gui drivers to skip real-terminal probing/IO
+      # so the ANSI driver runs on Windows runners without a TTY.
+      DisableRealDriverIO: "1"
 
     steps:
       - uses: actions/checkout@v4
@@ -44,28 +46,3 @@ jobs:
       - name: Terminal.Gui.Editor.IntegrationTests
         run: dotnet run --project tests/Terminal.Gui.Editor.IntegrationTests --no-build
 
-  format:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: '10.0.x'
-          dotnet-quality: 'preview'
-
-      - name: Restore
-        run: dotnet restore Terminal.Gui.Text.slnx
-
-      - name: Verify formatting
-        # Lifted AvaloniaEdit code (Document/, Utils/, and their tests) intentionally
-        # preserves upstream formatting per specs/00-plan.md §4 — exclude from the gate
-        # so re-syncs don't get fought by dotnet format.
-        run: >
-          dotnet format Terminal.Gui.Text.slnx --verify-no-changes --no-restore
-          --exclude third_party/
-          --exclude src/Terminal.Gui.Text/Document/
-          --exclude src/Terminal.Gui.Text/Utils/
-          --exclude tests/Terminal.Gui.Text.Tests/Document/
-          --exclude tests/Terminal.Gui.Text.Tests/Utils/

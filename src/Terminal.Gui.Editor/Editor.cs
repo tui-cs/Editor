@@ -26,6 +26,7 @@ public partial class Editor : View
     public Editor ()
     {
         CanFocus = true;
+        CreateCommandsAndBindings ();
         Document = new ("Hello world");
     }
 
@@ -147,6 +148,22 @@ public partial class Editor : View
     private int GetCaretLineIndex ()
     {
         return _document?.GetLineByOffset (_caretOffset).LineNumber - 1 ?? 0;
+    }
+
+    /// <summary>
+    ///     Moves the caret <paramref name="delta"/> lines, preserving the sticky virtual column when
+    ///     traversing shorter lines (i.e. snap back to the original column on the next long-enough line).
+    /// </summary>
+    private void MoveCaretVertically (int delta)
+    {
+        int targetLine = Math.Clamp (GetCaretLineIndex () + delta, 0, _document!.LineCount - 1);
+        DocumentLine line = _document!.GetLineByNumber (targetLine + 1);
+        int targetCol = Math.Min (_virtualCaretColumn, line.Length);
+
+        // Preserve the sticky column across vertical moves — SetCaretOffset would otherwise reset it.
+        int sticky = _virtualCaretColumn;
+        SetCaretOffset (line.Offset + targetCol, resetVirtualColumn: false);
+        _virtualCaretColumn = sticky;
     }
 
     private void EnsureCaretVisible ()
