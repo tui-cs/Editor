@@ -41,7 +41,7 @@ public class HostingTests
         {
             Hosting.EnableTracing ();
 
-            Assert.Equal (Hosting.DefaultTraceCategories, Trace.EnabledCategories);
+            Assert.Equal (Hosting.DEFAULT_TRACE_CATEGORIES, Trace.EnabledCategories);
             Assert.NotEqual (TraceCategory.None, Trace.EnabledCategories);
         }
         finally
