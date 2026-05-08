@@ -28,17 +28,30 @@ public sealed class TedApp : Window
 
         MenuBar menu = new ();
 
-        DropDownList<ThemeName> themeDropDown = new ()
+        ThemeDropDown = new ()
         {
             Value = ThemeName.DarkPlus,
             ReadOnly = true,
             CanFocus = false
         };
 
-        themeDropDown.ValueChanged += (_, e) =>
+        ThemeDropDown.ValueChanged += (_, e) =>
                                       {
                                           if (e.Value is not { } themeName)
                                           {
+                                              return;
+                                          }
+
+                                          if (Editor.SyntaxHighlighter is TextMateSyntaxHighlighter highlighter)
+                                          {
+                                              if (highlighter.ThemeName == themeName)
+                                              {
+                                                  return;
+                                              }
+
+                                              highlighter.SetTheme (themeName);
+                                              Editor.SetNeedsDraw ();
+
                                               return;
                                           }
 
@@ -49,7 +62,7 @@ public sealed class TedApp : Window
             new ([
                 new Shortcut (KeyFor (Command.Quit), "Quit", Quit),
                 new Shortcut (Key.Empty, "Themes", null) { MouseHighlightStates = MouseState.None },
-                new Shortcut { Title = "Themes", CommandView = themeDropDown },
+                new Shortcut { Title = "Themes", CommandView = ThemeDropDown },
                 new Shortcut (Key.Empty, "x, y", null, "Loc") { MouseHighlightStates = MouseState.None },
                 new Shortcut (Key.Empty, "<filename>", Open) { MouseHighlightStates = MouseState.None }
             ])
@@ -89,6 +102,9 @@ public sealed class TedApp : Window
 
     /// <summary>The editor View at the centre of the app. Exposed for tests and future commands.</summary>
     public Editor Editor { get; }
+
+    /// <summary>The syntax-highlighting theme selector shown in the status bar.</summary>
+    public DropDownList<ThemeName> ThemeDropDown { get; }
 
     /// <summary>
     ///     Resolves the key shortcut for <paramref name="command" /> by asking the <see cref="Editor" />'s

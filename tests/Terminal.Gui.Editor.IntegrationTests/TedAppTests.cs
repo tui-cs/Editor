@@ -6,7 +6,6 @@ using Terminal.Gui.Drawing;
 using Terminal.Gui.Editor.IntegrationTests.Testing;
 using Terminal.Gui.Input;
 using Terminal.Gui.Testing;
-using Terminal.Gui.Views;
 using TextMateSharp.Grammars;
 using Xunit;
 
@@ -47,16 +46,7 @@ public class TedAppTests
     {
         await using AppFixture<TedApp> fx = new (() => new TedApp ());
 
-        DropDownList<ThemeName> themeDropDown = fx.Top.SubViews
-                                                     .OfType<StatusBar> ()
-                                                     .Single ()
-                                                     .SubViews
-                                                     .OfType<Shortcut> ()
-                                                     .Select (shortcut => shortcut.CommandView)
-                                                     .OfType<DropDownList<ThemeName>> ()
-                                                     .Single ();
-
-        themeDropDown.Value = ThemeName.LightPlus;
+        fx.Top.ThemeDropDown.Value = ThemeName.LightPlus;
 
         TextMateSyntaxHighlighter highlighter = Assert.IsType<TextMateSyntaxHighlighter> (fx.Top.Editor.SyntaxHighlighter);
         Assert.Equal (ThemeName.LightPlus, highlighter.ThemeName);
