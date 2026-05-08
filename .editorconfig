@@ -61,3 +61,18 @@ csharp_style_var_elsewhere = false:suggestion
 csharp_prefer_braces = true:warning
 dotnet_style_require_accessibility_modifiers = for_non_interface_members:suggestion
 csharp_preferred_modifier_order = public, private, protected, internal, file, new, static, abstract, virtual, sealed, readonly, override, extern, unsafe, volatile, async, required:warning
+
+# ReSharper-specific space rules — `dotnet format` reads the csharp_space_* keys above, but
+# ReSharper has additional knobs that don't have csharp_* equivalents. These keep ReSharper's
+# code-cleanup output aligned with our house style (notably: `new ()` with the space before
+# the parens, not `new()`).
+resharper_space_before_new_parentheses = true
+resharper_space_before_method_call_parentheses = true
+resharper_space_before_method_parentheses = true
+resharper_space_before_empty_method_call_parentheses = true
+resharper_space_before_empty_method_parentheses = true
+resharper_space_before_typeof_parentheses = true
+resharper_space_before_default_parentheses = true
+resharper_space_before_checked_parentheses = true
+resharper_space_before_sizeof_parentheses = true
+resharper_space_before_nameof_parentheses = true
