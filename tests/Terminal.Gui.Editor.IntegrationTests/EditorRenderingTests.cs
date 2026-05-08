@@ -36,7 +36,7 @@ public class EditorRenderingTests
         // would pass spuriously.
         Assert.NotEqual (normal, editable);
 
-        Cell cell = fx.Driver.Contents! [0, 0];
+        Cell cell = fx.Driver.Contents![0, 0];
         Assert.Equal ("H", cell.Grapheme);
         Assert.Equal (normal, cell.Attribute);
     }
@@ -54,7 +54,7 @@ public class EditorRenderingTests
 
         Attribute active = fx.Top.Editor.GetAttributeForRole (VisualRole.Active);
 
-        Cell cellSelected = fx.Driver.Contents! [0, 0];
+        Cell cellSelected = fx.Driver.Contents![0, 0];
         Assert.Equal ("H", cellSelected.Grapheme);
         Assert.Equal (active, cellSelected.Attribute);
     }
@@ -75,7 +75,7 @@ public class EditorRenderingTests
         Assert.NotEqual (normal, editable);
 
         // Cells past the selection (column index >= 2) should be Normal, not Editable.
-        Cell tail = fx.Driver.Contents! [0, 2];
+        Cell tail = fx.Driver.Contents![0, 2];
         Assert.Equal ("l", tail.Grapheme);
         Assert.Equal (normal, tail.Attribute);
     }
@@ -90,9 +90,9 @@ public class EditorRenderingTests
         fx.Render ();
 
         TextMateSyntaxHighlighter highlighter = new (ThemeName.DarkPlus);
-        Attribute expected = highlighter.Highlight (text, "csharp") [0].Attribute!.Value;
+        Attribute expected = highlighter.Highlight (text, "csharp")[0].Attribute!.Value;
 
-        Cell cell = fx.Driver.Contents! [0, 0];
+        Cell cell = fx.Driver.Contents![0, 0];
         Assert.Equal ("p", cell.Grapheme);
         Assert.Equal (expected, cell.Attribute);
         Assert.NotEqual (fx.Top.Editor.GetAttributeForRole (VisualRole.Normal), cell.Attribute);
@@ -110,7 +110,7 @@ public class EditorRenderingTests
         fx.Render ();
 
         Attribute active = fx.Top.Editor.GetAttributeForRole (VisualRole.Active);
-        Cell cell = fx.Driver.Contents! [0, 0];
+        Cell cell = fx.Driver.Contents![0, 0];
         Assert.Equal ("p", cell.Grapheme);
         Assert.Equal (active, cell.Attribute);
     }
