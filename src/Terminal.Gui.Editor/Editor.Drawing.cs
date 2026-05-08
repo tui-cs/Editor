@@ -1,7 +1,5 @@
 using System.Drawing;
-using Terminal.Gui.Drawing;
 using Terminal.Gui.Drivers;
-using Terminal.Gui.Input;
 using Terminal.Gui.Text.Document;
 using Terminal.Gui.ViewBase;
 
@@ -14,9 +12,9 @@ public partial class Editor
     {
         Rectangle viewport = Viewport;
 
-        for (int row = 0; row < viewport.Height; row++)
+        for (var row = 0; row < viewport.Height; row++)
         {
-            int lineIndex = viewport.Y + row;
+            var lineIndex = viewport.Y + row;
 
             if (lineIndex < 0 || lineIndex >= _document.LineCount)
             {
@@ -24,14 +22,14 @@ public partial class Editor
             }
 
             DocumentLine line = _document.GetLineByNumber (lineIndex + 1);
-            string text = _document.GetText (line);
+            var text = _document.GetText (line);
 
             if (viewport.X >= text.Length)
             {
                 continue;
             }
 
-            string visible = text[viewport.X..];
+            var visible = text[viewport.X..];
 
             if (visible.Length > viewport.Width)
             {
@@ -50,25 +48,25 @@ public partial class Editor
     {
         if (!HasFocus)
         {
-            Cursor = new ();
+            Cursor = new();
 
             return;
         }
 
         Rectangle viewport = Viewport;
-        int caretLine = GetCaretLineIndex ();
-        int caretCol = GetCaretColumn ();
-        int row = caretLine - viewport.Y;
-        int col = caretCol - viewport.X;
+        var caretLine = GetCaretLineIndex ();
+        var caretCol = GetCaretColumn ();
+        var row = caretLine - viewport.Y;
+        var col = caretCol - viewport.X;
 
         if (row < 0 || row >= viewport.Height || col < 0 || col >= viewport.Width)
         {
-            Cursor = new ();
+            Cursor = new();
 
             return;
         }
 
         Point screen = ViewportToScreen (new Point (col, row));
-        Cursor = new () { Position = screen, Style = CursorStyle.BlinkingBar };
+        Cursor = new() { Position = screen, Style = CursorStyle.BlinkingBar };
     }
 }

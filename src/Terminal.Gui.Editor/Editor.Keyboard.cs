@@ -1,7 +1,6 @@
 using System.Text;
 using Terminal.Gui.Input;
 using Terminal.Gui.Text.Document;
-using Terminal.Gui.ViewBase;
 
 namespace Terminal.Gui.Views;
 
@@ -107,13 +106,13 @@ public partial class Editor
 
     private void MoveCaretVertically (int delta)
     {
-        int targetLine = Math.Clamp (GetCaretLineIndex () + delta, 0, _document.LineCount - 1);
+        var targetLine = Math.Clamp (GetCaretLineIndex () + delta, 0, _document.LineCount - 1);
         DocumentLine line = _document.GetLineByNumber (targetLine + 1);
-        int targetCol = Math.Min (_virtualCaretColumn, line.Length);
+        var targetCol = Math.Min (_virtualCaretColumn, line.Length);
 
         // Preserve the sticky column across vertical moves — SetCaretOffset would otherwise reset it.
-        int sticky = _virtualCaretColumn;
-        SetCaretOffset (line.Offset + targetCol, resetVirtualColumn: false);
+        var sticky = _virtualCaretColumn;
+        SetCaretOffset (line.Offset + targetCol, false);
         _virtualCaretColumn = sticky;
     }
 
@@ -176,13 +175,14 @@ public partial class Editor
             return false;
         }
 
-        if (key.AsRune is { } rune && rune != default && !Rune.IsControl (rune))
+        switch (key.AsRune)
         {
-            _document.Insert (_caretOffset, rune.ToString ());
+            case { } rune when rune != default && !Rune.IsControl (rune):
+                _document.Insert (_caretOffset, rune.ToString ());
 
-            return true;
+                return true;
+            default:
+                return false;
         }
-
-        return false;
     }
 }

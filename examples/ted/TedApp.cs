@@ -20,10 +20,10 @@ public sealed class TedApp : Window
         Title = "ted — Terminal.Gui.Editor demo";
         BorderStyle = LineStyle.None;
 
-        MenuBar menu = new ();
+        MenuBar menu = new();
 
         StatusBar statusBar =
-            new ([
+            new([
                 new Shortcut (Application.GetDefaultKey (Command.Quit), "Quit", Quit),
                 // TODO: Add a themes dropdown shortcut
                 new Shortcut (Key.Empty, "x, y", null, "Loc") { MouseHighlightStates = MouseState.None },
@@ -35,27 +35,32 @@ public sealed class TedApp : Window
 
         menu.Add (new MenuBarItem (Strings.menuFile,
             [
-                new MenuItem { Command = Command.New, Action = New, Key = Application.GetDefaultKey(Command.New)},
-                new MenuItem { Command = Command.Open, Action = Open, Key = Application.GetDefaultKey(Command.Open)},
-                new MenuItem { Command = Command.Save, Action = Save, Key = Application.GetDefaultKey(Command.Save)},
-                new MenuItem { Command = Command.SaveAs, Action = SaveAs, Key = Application.GetDefaultKey(Command.SaveAs)},
-                new MenuItem { Command = Command.Quit, Action = Quit, Key = Application.GetDefaultKey(Command.Quit)}
+                new MenuItem { Command = Command.New, Action = New, Key = Application.GetDefaultKey (Command.New) },
+                new MenuItem { Command = Command.Open, Action = Open, Key = Application.GetDefaultKey (Command.Open) },
+                new MenuItem { Command = Command.Save, Action = Save, Key = Application.GetDefaultKey (Command.Save) },
+                new MenuItem
+                    { Command = Command.SaveAs, Action = SaveAs, Key = Application.GetDefaultKey (Command.SaveAs) },
+                new MenuItem { Command = Command.Quit, Action = Quit, Key = Application.GetDefaultKey (Command.Quit) }
             ]),
             new MenuBarItem (Strings.menuEdit,
             [
-                new MenuItem { Command = Command.Undo, Action = Undo, Key = Application.GetDefaultKey(Command.Undo)},
-                new MenuItem { Command = Command.Redo, Action = Redo, Key = Application.GetDefaultKey(Command.Redo)},
+                new MenuItem { Command = Command.Undo, Action = Undo, Key = Application.GetDefaultKey (Command.Undo) },
+                new MenuItem { Command = Command.Redo, Action = Redo, Key = Application.GetDefaultKey (Command.Redo) },
                 new Line (),
-                new MenuItem { Command = Command.Cut, Action = Cut, Key = Application.GetDefaultKey(Command.Cut)},
-                new MenuItem { Command = Command.Copy, Action = Copy, Key = Application.GetDefaultKey(Command.Copy)},
-                new MenuItem { Command = Command.Paste, Action = Paste, Key = Application.GetDefaultKey(Command.Paste)},
-                new MenuItem { Command = Command.SelectAll, Action = SelectAll, Key = Application.GetDefaultKey(Command.SelectAll)}
+                new MenuItem { Command = Command.Cut, Action = Cut, Key = Application.GetDefaultKey (Command.Cut) },
+                new MenuItem { Command = Command.Copy, Action = Copy, Key = Application.GetDefaultKey (Command.Copy) },
+                new MenuItem
+                    { Command = Command.Paste, Action = Paste, Key = Application.GetDefaultKey (Command.Paste) },
+                new MenuItem
+                {
+                    Command = Command.SelectAll, Action = SelectAll, Key = Application.GetDefaultKey (Command.SelectAll)
+                }
             ]),
             new MenuBarItem (Strings.menuHelp,
                 [new MenuItem ("_About", "Show About dialog", Action)])
         );
 
-        Editor = new ()
+        Editor = new()
         {
             Y = Pos.Bottom (menu),
             Width = Dim.Fill (),

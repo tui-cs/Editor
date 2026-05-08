@@ -18,7 +18,7 @@ public class HostingTests
     [Fact]
     public void ConfigureLogging_SetsLoggingLogger ()
     {
-        ILogger? before = Logging.Logger;
+        ILogger before = Logging.Logger;
 
         try
         {

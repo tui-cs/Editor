@@ -5,15 +5,15 @@ using Terminal.Gui.ViewBase;
 namespace Terminal.Gui.Views;
 
 /// <summary>
-///     Single-document text editor View backed by <see cref="TextDocument"/>. Renders multi-line
+///     Single-document text editor View backed by <see cref="TextDocument" />. Renders multi-line
 ///     text from a rope-backed document, tracks a caret offset, dispatches keyboard input to
 ///     navigate / edit, and scrolls content when it exceeds the viewport. Pre-MVP — selection,
 ///     folding, syntax highlighting still pending per <c>specs/00-plan.md</c>.
 /// </summary>
 public partial class Editor : View
 {
-    private TextDocument _document = null!;
     private int _caretOffset;
+    private TextDocument _document = null!;
 
     /// <summary>
     ///     Sticky column for vertical caret moves. Tracks the column the user *intends* to be in,
@@ -22,14 +22,14 @@ public partial class Editor : View
     /// </summary>
     private int _virtualCaretColumn;
 
-    /// <summary>Initializes a new <see cref="Editor"/> with a placeholder document containing "Hello world".</summary>
+    /// <summary>Initializes a new <see cref="Editor" /> with a placeholder document containing "Hello world".</summary>
     public Editor ()
     {
         CanFocus = true;
-        Document = new ("Hello world");
+        Document = new("Hello world");
     }
 
-    /// <summary>The backing <see cref="TextDocument"/>. Setting this rewires change handlers and clamps the caret.</summary>
+    /// <summary>The backing <see cref="TextDocument" />. Setting this rewires change handlers and clamps the caret.</summary>
     public TextDocument Document
     {
         get => _document;
@@ -42,10 +42,7 @@ public partial class Editor : View
                 return;
             }
 
-            if (_document is not null)
-            {
-                _document.Changed -= OnDocumentChanged;
-            }
+            _document.Changed -= OnDocumentChanged;
 
             _document = value;
             _document.Changed += OnDocumentChanged;
@@ -59,30 +56,30 @@ public partial class Editor : View
 
     /// <summary>
     ///     Current caret offset. Clamped to <c>[0, Document.TextLength]</c>. Setting this scrolls the
-    ///     viewport to keep the caret visible and raises <see cref="CaretChanged"/>.
+    ///     viewport to keep the caret visible and raises <see cref="CaretChanged" />.
     /// </summary>
     public int CaretOffset
     {
         get => _caretOffset;
-        set => SetCaretOffset (value, resetVirtualColumn: true);
+        set => SetCaretOffset (value, true);
     }
 
-    /// <summary>Raised whenever <see cref="Document"/> raises its own <c>Changed</c> event.</summary>
+    /// <summary>Raised whenever <see cref="Document" /> raises its own <c>Changed</c> event.</summary>
     public event EventHandler<DocumentChangeEventArgs>? DocumentChanged;
 
-    /// <summary>Raised whenever <see cref="CaretOffset"/> changes.</summary>
+    /// <summary>Raised whenever <see cref="CaretOffset" /> changes.</summary>
     public event EventHandler? CaretChanged;
 
     private void SetCaretOffset (int value, bool resetVirtualColumn)
     {
-        int clamped = Math.Clamp (value, 0, _document.TextLength);
+        var clamped = Math.Clamp (value, 0, _document.TextLength);
 
-        if (clamped == _caretOffset && resetVirtualColumn == false)
+        if (clamped == _caretOffset && !resetVirtualColumn)
         {
             return;
         }
 
-        bool changed = clamped != _caretOffset;
+        var changed = clamped != _caretOffset;
         _caretOffset = clamped;
 
         if (resetVirtualColumn)
@@ -126,7 +123,7 @@ public partial class Editor : View
 
     private void UpdateContentSize ()
     {
-        int maxWidth = 0;
+        var maxWidth = 0;
 
         foreach (DocumentLine line in _document.Lines)
         {
@@ -137,7 +134,7 @@ public partial class Editor : View
         }
 
         // +1 column lets the caret sit just past the end-of-line.
-        SetContentSize (new (maxWidth + 1, _document.LineCount));
+        SetContentSize (new(maxWidth + 1, _document.LineCount));
     }
 
     private int GetCaretColumn ()
@@ -147,7 +144,10 @@ public partial class Editor : View
         return _caretOffset - line.Offset;
     }
 
-    private int GetCaretLineIndex () => _document.GetLineByOffset (_caretOffset).LineNumber - 1;
+    private int GetCaretLineIndex ()
+    {
+        return _document.GetLineByOffset (_caretOffset).LineNumber - 1;
+    }
 
     private void EnsureCaretVisible ()
     {
@@ -158,10 +158,10 @@ public partial class Editor : View
             return;
         }
 
-        int caretLine = GetCaretLineIndex ();
-        int caretCol = GetCaretColumn ();
-        int newY = viewport.Y;
-        int newX = viewport.X;
+        var caretLine = GetCaretLineIndex ();
+        var caretCol = GetCaretColumn ();
+        var newY = viewport.Y;
+        var newX = viewport.X;
 
         if (caretLine < newY)
         {
@@ -183,7 +183,7 @@ public partial class Editor : View
 
         if (newX != viewport.X || newY != viewport.Y)
         {
-            Viewport = new (newX, newY, viewport.Width, viewport.Height);
+            Viewport = viewport with { X = newX, Y = newY };
         }
     }
 }

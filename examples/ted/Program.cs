@@ -15,6 +15,6 @@ using IApplication app = Application.Create ();
 
 app.Init ();
 
-using TedApp ted = new ();
+using TedApp ted = new();
 
 app.Run (ted);

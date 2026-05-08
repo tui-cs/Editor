@@ -43,7 +43,7 @@ public sealed class AppFixture<TRunnable> : IAsyncDisposable
         // directly hangs on Windows CI runners that lack a real console.
         App.Driver!.SetScreenSize (width, height);
 
-        Top = factory ()!;
+        Top = factory ();
         _session = App.Begin (Top) ??
                    throw new InvalidOperationException ("Application.Begin returned null — session was cancelled.");
     }

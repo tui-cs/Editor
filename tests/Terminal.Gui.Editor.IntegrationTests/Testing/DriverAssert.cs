@@ -21,7 +21,7 @@ public static class DriverAssert
         ArgumentNullException.ThrowIfNull (driver);
         ArgumentNullException.ThrowIfNull (expected);
 
-        var actual = driver.ToString () ?? string.Empty;
+        var actual = driver.ToString ();
 
         if (actual.Contains (expected, StringComparison.Ordinal))
         {
@@ -37,7 +37,7 @@ public static class DriverAssert
         ArgumentNullException.ThrowIfNull (driver);
         ArgumentNullException.ThrowIfNull (text);
 
-        var actual = driver.ToString () ?? string.Empty;
+        var actual = driver.ToString ();
 
         if (!actual.Contains (text, StringComparison.Ordinal))
         {
