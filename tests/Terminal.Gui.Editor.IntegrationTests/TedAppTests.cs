@@ -1,4 +1,5 @@
 // Claude - claude-opus-4-7
+
 using System.Drawing;
 using Ted;
 using Terminal.Gui.Editor.IntegrationTests.Testing;
@@ -9,8 +10,8 @@ using Xunit;
 namespace Terminal.Gui.Editor.IntegrationTests;
 
 /// <summary>
-///     End-to-end tests that boot the <see cref="TedApp"/> demo on the ANSI driver and assert against
-///     <see cref="Terminal.Gui.Drivers.IDriver.Contents"/> after synthetic keyboard / mouse input.
+///     End-to-end tests that boot the <see cref="TedApp" /> demo on the ANSI driver and assert against
+///     <see cref="Terminal.Gui.Drivers.IDriver.Contents" /> after synthetic keyboard / mouse input.
 /// </summary>
 public class TedAppTests
 {
@@ -56,8 +57,14 @@ public class TedAppTests
         DateTime baseTime = new (2025, 1, 1, 12, 0, 0);
         Point clickPos = new (2, 0); // somewhere on the "File" header at row 0
 
-        fx.Injector.InjectMouse (new () { ScreenPosition = clickPos, Flags = MouseFlags.LeftButtonPressed, Timestamp = baseTime }, options);
-        fx.Injector.InjectMouse (new () { ScreenPosition = clickPos, Flags = MouseFlags.LeftButtonReleased, Timestamp = baseTime.AddMilliseconds (50) }, options);
+        fx.Injector.InjectMouse (
+            new () { ScreenPosition = clickPos, Flags = MouseFlags.LeftButtonPressed, Timestamp = baseTime }, options);
+        fx.Injector.InjectMouse (
+            new ()
+            {
+                ScreenPosition = clickPos, Flags = MouseFlags.LeftButtonReleased,
+                Timestamp = baseTime.AddMilliseconds (50)
+            }, options);
         fx.Render ();
 
         DriverAssert.ContentsContains (fx.Driver, "Open...");

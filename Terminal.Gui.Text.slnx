@@ -1,8 +1,21 @@
 <Solution>
-  <Project Path="src/Terminal.Gui.Text/Terminal.Gui.Text.csproj" />
-  <Project Path="src/Terminal.Gui.Editor/Terminal.Gui.Editor.csproj" />
-  <Project Path="tests/Terminal.Gui.Text.Tests/Terminal.Gui.Text.Tests.csproj" />
-  <Project Path="tests/Terminal.Gui.Editor.Tests/Terminal.Gui.Editor.Tests.csproj" />
-  <Project Path="tests/Terminal.Gui.Editor.IntegrationTests/Terminal.Gui.Editor.IntegrationTests.csproj" />
+  <Folder Name="/Docs/">
+    <File Path="CLAUDE.md" />
+    <File Path="LICENSE" />
+    <File Path="README.md" />
+  </Folder>
+  <Folder Name="/Settings/">
+    <File Path=".editorconfig" />
+    <File Path=".gitattributes" />
+    <File Path=".github/workflows/ci.yml" />
+    <File Path=".github/workflows/release.yml" />
+    <File Path=".gitignore" />
+    <File Path="Directory.Build.props" />
+  </Folder>
   <Project Path="examples/ted/ted.csproj" />
+  <Project Path="src/Terminal.Gui.Editor/Terminal.Gui.Editor.csproj" />
+  <Project Path="src/Terminal.Gui.Text/Terminal.Gui.Text.csproj" />
+  <Project Path="tests/Terminal.Gui.Editor.IntegrationTests/Terminal.Gui.Editor.IntegrationTests.csproj" />
+  <Project Path="tests/Terminal.Gui.Editor.Tests/Terminal.Gui.Editor.Tests.csproj" />
+  <Project Path="tests/Terminal.Gui.Text.Tests/Terminal.Gui.Text.Tests.csproj" />
 </Solution>

@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project status
 
-Pre-alpha bootstrap. Most of the architecture described in `specs/00-plan.md` does not yet exist in code — only project scaffolding, smoke tests, and CI. When adding code, follow the plan; do not invent alternative architectures without updating the spec.
+Pre-alpha. The document layer (rope-backed `TextDocument` and supporting types from AvaloniaEdit) is landed and tested. `Editor : View` consumes it and supports keyboard-driven editing (caret nav, insert, delete, backspace, Enter, undo/redo) plus scrolling. Still pending per `specs/00-plan.md`: selection, multi-caret, folding, search, indentation strategies, syntax highlighting, the `VisualLineBuilder` / transformer / background-renderer pipeline. When adding code, follow the plan; don't invent alternative architectures without updating the spec.
 
 ## Branch workflow
 
@@ -53,20 +53,18 @@ CI verifies formatting with `dotnet format Terminal.Gui.Text.slnx --verify-no-ch
 Two NuGet packages with a strict dependency direction:
 
 - **`src/Terminal.Gui.Text`** — UI-framework-independent document model. Namespace `Terminal.Gui.Text` and subnamespaces. **Must not reference Terminal.Gui.** Holds the rope-backed `TextDocument`, `DocumentLine`, `TextAnchor`, `UndoStack`, `ITextSource`, `TextSegment`, the `Rope`, and supporting utility types. Lifted from AvaloniaEdit (see fork policy below) — `Document/` and `Utils/` are landed; `Folding/`, `Search/`, `Indentation/`, `Highlighting/` are follow-up phases per `specs/00-plan.md`.
-- **`src/Terminal.Gui.Editor`** — the `Editor : View` and cell-grid rendering pipeline. Namespace `Terminal.Gui.Views` (matches Terminal.Gui convention, deliberately not `Terminal.Gui.Editor`). References `Terminal.Gui` (version pinned via `$(TerminalGuiVersion)` in `Directory.Build.props`) and `Terminal.Gui.Text`.
+- **`src/Terminal.Gui.Editor`** — the `Editor : View` and cell-grid rendering pipeline. Namespace `Terminal.Gui.Views` (matches Terminal.Gui convention, deliberately not `Terminal.Gui.Editor`). References `Terminal.Gui` (version pinned via `$(TerminalGuiVersion)` in `Directory.Build.props`) and `Terminal.Gui.Text`. Split into partials: `Editor.cs` (core: `Document`, `CaretOffset`, edit-tracking arithmetic, content-size + scroll), `Editor.Drawing.cs` (`OnDrawingContent` + cursor positioning), `Editor.Keyboard.cs` (`OnKeyDown` switch — navigation / editing / undo+redo). No selection / folding / highlighting / multi-caret yet.
 - **`examples/ted`** — standalone TG demo app exercising `Editor`. Not packed; not a NuGet artifact. Has a File menu, the `Editor` View, and a status bar; grows with the View. Run via `dotnet run --project examples/ted`.
 
 The boundary matters: anything that takes a dependency on `Terminal.Gui` types belongs in `Terminal.Gui.Editor`, never in `Terminal.Gui.Text`.
 
 ### Rendering pipeline
 
-`DocumentLine` → `VisualLineBuilder` → `CellVisualLine` (one or more `CellVisualLineElement`s) → drawn by `Editor.OnDrawingContent`. `IVisualLineTransformer`s mutate element `Attribute`s (highlighting, folding markers); `IBackgroundRenderer`s paint cell rectangles (selection, current line, search hits). All measurement is in **cells**, not pixels — use grapheme clusters and `string.GetColumns()`. AvaloniaEdit's `TextRunProperties` (typeface, brushes, font size) collapses to a single `Terminal.Gui.Attribute`.
+**Current** (pre-MVP): `Editor.OnDrawingContent` walks visible `DocumentLine`s directly via `Document.GetLineByNumber`, slices each line by the horizontal `Viewport.X`, and `AddStr`s. Caret math is integer offset → `(line, col)` via `Document.GetLineByOffset`; sticky virtual column preserves the user's intended col across vertical moves through short lines.
 
-Visual lines are cached and selectively invalidated from the `Document.Changed` offset+length range. Don't rebuild everything on every edit.
+**Planned** (per `specs/00-plan.md` §6): `DocumentLine` → `VisualLineBuilder` → `CellVisualLine` (one or more `CellVisualLineElement`s). `IVisualLineTransformer`s mutate element `Attribute`s (highlighting, folding markers); `IBackgroundRenderer`s paint cell rectangles (selection, current line, search hits). All measurement is in **cells**, not pixels — use grapheme clusters and `string.GetColumns()`. AvaloniaEdit's `TextRunProperties` (typeface, brushes, font size) collapses to a single `Terminal.Gui.Attribute`. Visual lines cached + selectively invalidated from the `Document.Changed` offset+length range. Caret eventually becomes a `TextAnchor` (`AnchorMovementType.AfterInsertion`); selection a `TextSegment` of two anchors; multi-caret runs commands inside a single `Document.OpenUpdateScope ()` so undo collapses to one step.
 
-Caret is a `TextAnchor` (`AnchorMovementType.AfterInsertion`); selection is a `TextSegment` of two anchors. Multi-caret runs commands inside a single `Document.OpenUpdateScope ()` so undo collapses to one step.
-
-See `specs/00-plan.md` §6 for the full pipeline and `Editor` public API sketch.
+See `specs/00-plan.md` §6 for the planned pipeline and full `Editor` public API sketch.
 
 ## AvaloniaEdit fork policy
 

@@ -1,4 +1,5 @@
 // Claude - claude-opus-4-7
+
 using Terminal.Gui.App;
 using Terminal.Gui.Drivers;
 using Terminal.Gui.Testing;
@@ -6,10 +7,10 @@ using Terminal.Gui.Testing;
 namespace Terminal.Gui.Editor.IntegrationTests.Testing;
 
 /// <summary>
-///     Generic test fixture that boots an <see cref="IApplication"/> on the ANSI driver, instantiates a
-///     <typeparamref name="TRunnable"/> via the supplied factory, and starts a non-blocking session via
-///     <see cref="IApplication.Begin"/>. Tests then drive the app synchronously via <see cref="Injector"/>
-///     and assert against <see cref="Driver"/>.
+///     Generic test fixture that boots an <see cref="IApplication" /> on the ANSI driver, instantiates a
+///     <typeparamref name="TRunnable" /> via the supplied factory, and starts a non-blocking session via
+///     <see cref="IApplication.Begin" />. Tests then drive the app synchronously via <see cref="Injector" />
+///     and assert against <see cref="Driver" />.
 /// </summary>
 /// <remarks>
 ///     Modeled loosely on Terminal.Gui's <c>AppTestHelper</c> but slimmer and only what the gui-cs/Text
@@ -27,7 +28,7 @@ public sealed class AppFixture<TRunnable> : IAsyncDisposable
 
     private readonly SessionToken? _session;
 
-    /// <summary>Boots the app and begins <paramref name="factory"/>'s runnable.</summary>
+    /// <summary>Boots the app and begins <paramref name="factory" />'s runnable.</summary>
     /// <param name="factory">Factory for the runnable under test.</param>
     /// <param name="width">Test viewport width in cells.</param>
     /// <param name="height">Test viewport height in cells.</param>
@@ -37,10 +38,14 @@ public sealed class AppFixture<TRunnable> : IAsyncDisposable
 
         App = Application.Create ();
         App.Init (DriverRegistry.Names.ANSI);
-        App.Screen = new (0, 0, width, height);
 
-        Top = factory ()!;
-        _session = App.Begin (Top) ?? throw new InvalidOperationException ("Application.Begin returned null — session was cancelled.");
+        // Resize via the driver — same path TG's UnitTestsParallelizable use. Setting `App.Screen`
+        // directly hangs on Windows CI runners that lack a real console.
+        App.Driver!.SetScreenSize (width, height);
+
+        Top = factory ();
+        _session = App.Begin (Top) ??
+                   throw new InvalidOperationException ("Application.Begin returned null — session was cancelled.");
     }
 
     /// <summary>The application instance under test.</summary>
@@ -54,12 +59,6 @@ public sealed class AppFixture<TRunnable> : IAsyncDisposable
 
     /// <summary>Synchronous input injection entry point.</summary>
     public IInputInjector Injector => App.GetInputInjector ();
-
-    /// <summary>
-    ///     Forces a full layout and draw cycle. Call after input injection so subsequent
-    ///     <see cref="DriverAssert"/> calls see the post-input rendered state.
-    /// </summary>
-    public void Render () { App.LayoutAndDraw (forceRedraw: true); }
 
     /// <inheritdoc />
     public ValueTask DisposeAsync ()
@@ -78,4 +77,10 @@ public sealed class AppFixture<TRunnable> : IAsyncDisposable
 
         return ValueTask.CompletedTask;
     }
+
+    /// <summary>
+    ///     Forces a full layout and draw cycle. Call after input injection so subsequent
+    ///     <see cref="DriverAssert" /> calls see the post-input rendered state.
+    /// </summary>
+    public void Render () { App.LayoutAndDraw (true); }
 }
