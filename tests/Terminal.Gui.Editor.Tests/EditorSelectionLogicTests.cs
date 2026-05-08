@@ -1,0 +1,102 @@
+// Claude - claude-opus-4-7
+using Terminal.Gui.Text.Document;
+using Terminal.Gui.Views;
+using Xunit;
+
+namespace Terminal.Gui.Editor.Tests;
+
+/// <summary>
+///     Selection state logic — anchor + caret arithmetic, ClearSelection, ReplaceSelection, SelectAll.
+///     No <c>Application.Init</c> needed; covered separately by integration tests for keyboard wiring.
+/// </summary>
+public class EditorSelectionLogicTests
+{
+    [Fact]
+    public void Default_NoSelection ()
+    {
+        Views.Editor editor = new ();
+
+        Assert.False (editor.HasSelection);
+        Assert.Null (editor.Selection);
+        Assert.Equal (0, editor.SelectionLength);
+    }
+
+    [Fact]
+    public void SelectAll_Selects_Whole_Document ()
+    {
+        Views.Editor editor = new () { Document = new TextDocument ("alpha\nbeta") };
+
+        editor.SelectAll ();
+
+        Assert.True (editor.HasSelection);
+        Assert.Equal (0, editor.SelectionStart);
+        Assert.Equal (editor.Document.TextLength, editor.SelectionEnd);
+        Assert.Equal (editor.Document.TextLength, editor.CaretOffset);
+    }
+
+    [Fact]
+    public void ClearSelection_Removes_Selection ()
+    {
+        Views.Editor editor = new () { Document = new TextDocument ("abc") };
+        editor.SelectAll ();
+
+        editor.ClearSelection ();
+
+        Assert.False (editor.HasSelection);
+    }
+
+    [Fact]
+    public void ReplaceSelection_With_Empty_Removes_Range ()
+    {
+        Views.Editor editor = new () { Document = new TextDocument ("hello world") };
+        editor.SelectAll ();
+
+        editor.ReplaceSelection (string.Empty);
+
+        Assert.Equal (string.Empty, editor.Document.Text);
+        Assert.False (editor.HasSelection);
+    }
+
+    [Fact]
+    public void ReplaceSelection_With_Text_Substitutes ()
+    {
+        Views.Editor editor = new () { Document = new TextDocument ("hello world") };
+        editor.SelectAll ();
+
+        editor.ReplaceSelection ("hi");
+
+        Assert.Equal ("hi", editor.Document.Text);
+        Assert.False (editor.HasSelection);
+        Assert.Equal (2, editor.CaretOffset);
+    }
+
+    [Fact]
+    public void Selection_TextSegment_Reflects_Range ()
+    {
+        Views.Editor editor = new () { Document = new TextDocument ("hello") };
+        editor.SelectAll ();
+
+        TextSegment? sel = editor.Selection;
+
+        Assert.NotNull (sel);
+        Assert.Equal (0, sel!.StartOffset);
+        Assert.Equal (5, sel.Length);
+    }
+
+    [Fact]
+    public void SelectionChanged_Fires_On_SelectAll_And_Clear ()
+    {
+        Views.Editor editor = new () { Document = new TextDocument ("abc") };
+        int fires = 0;
+        editor.SelectionChanged += (_, _) => fires++;
+
+        editor.SelectAll ();
+        Assert.Equal (1, fires);
+
+        editor.ClearSelection ();
+        Assert.Equal (2, fires);
+
+        editor.ClearSelection ();
+        Assert.Equal (2, fires); // no-op when already cleared
+    }
+}

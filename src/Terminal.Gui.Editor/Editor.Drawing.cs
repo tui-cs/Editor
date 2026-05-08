@@ -1,5 +1,7 @@
 using System.Drawing;
+using Terminal.Gui.Drawing;
 using Terminal.Gui.Drivers;
+using Terminal.Gui.Input;
 using Terminal.Gui.Text.Document;
 using Terminal.Gui.ViewBase;
 
@@ -12,13 +14,20 @@ public partial class Editor
     {
         if (_document is null)
         {
-            return false;
+            return true;
         }
-        Rectangle viewport = Viewport;
 
-        for (var row = 0; row < viewport.Height; row++)
+        Rectangle viewport = Viewport;
+        Drawing.Attribute normal = GetAttributeForRole (VisualRole.Editable);
+        Drawing.Attribute selected = GetAttributeForRole (VisualRole.Active);
+
+        bool hasSelection = HasSelection;
+        int selStart = hasSelection ? SelectionStart : 0;
+        int selEnd = hasSelection ? SelectionEnd : 0;
+
+        for (int row = 0; row < viewport.Height; row++)
         {
-            var lineIndex = viewport.Y + row;
+            int lineIndex = viewport.Y + row;
 
             if (lineIndex < 0 || lineIndex >= _document.LineCount)
             {
@@ -26,23 +35,54 @@ public partial class Editor
             }
 
             DocumentLine line = _document.GetLineByNumber (lineIndex + 1);
-            var text = _document.GetText (line);
+            string text = _document.GetText (line);
 
             if (viewport.X >= text.Length)
             {
                 continue;
             }
 
-            var visible = text[viewport.X..];
+            int visibleStart = viewport.X;
+            int visibleEnd = Math.Min (text.Length, viewport.X + viewport.Width);
 
-            if (visible.Length > viewport.Width)
+            if (!hasSelection || selEnd <= line.Offset + visibleStart || selStart >= line.Offset + visibleEnd)
             {
-                visible = visible[..viewport.Width];
+                // Whole visible segment is outside the selection.
+                SetAttribute (normal);
+                AddStr (0, row, text[visibleStart..visibleEnd]);
+
+                continue;
             }
 
-            AddStr (0, row, visible);
+            // Selection overlaps this line's visible window. Split into up to three runs.
+            int lineSelStart = Math.Max (0, selStart - line.Offset);
+            int lineSelEnd = Math.Min (text.Length, selEnd - line.Offset);
+            int runStart = visibleStart;
+
+            if (runStart < lineSelStart)
+            {
+                int runEnd = Math.Min (lineSelStart, visibleEnd);
+                SetAttribute (normal);
+                AddStr (runStart - visibleStart, row, text[runStart..runEnd]);
+                runStart = runEnd;
+            }
+
+            if (runStart < lineSelEnd)
+            {
+                int runEnd = Math.Min (lineSelEnd, visibleEnd);
+                SetAttribute (selected);
+                AddStr (runStart - visibleStart, row, text[runStart..runEnd]);
+                runStart = runEnd;
+            }
+
+            if (runStart < visibleEnd)
+            {
+                SetAttribute (normal);
+                AddStr (runStart - visibleStart, row, text[runStart..visibleEnd]);
+            }
         }
 
+        SetAttribute (normal);
         UpdateCursor ();
 
         return true;
@@ -50,7 +90,7 @@ public partial class Editor
 
     private void UpdateCursor ()
     {
-        if (!HasFocus)
+        if (!HasFocus || _document is null)
         {
             Cursor = new ();
 
@@ -58,10 +98,10 @@ public partial class Editor
         }
 
         Rectangle viewport = Viewport;
-        var caretLine = GetCaretLineIndex ();
-        var caretCol = GetCaretColumn ();
-        var row = caretLine - viewport.Y;
-        var col = caretCol - viewport.X;
+        int caretLine = GetCaretLineIndex ();
+        int caretCol = GetCaretColumn ();
+        int row = caretLine - viewport.Y;
+        int col = caretCol - viewport.X;
 
         if (row < 0 || row >= viewport.Height || col < 0 || col >= viewport.Width)
         {
