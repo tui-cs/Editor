@@ -55,4 +55,13 @@ jobs:
         run: dotnet restore Terminal.Gui.Text.slnx
 
       - name: Verify formatting
-        run: dotnet format Terminal.Gui.Text.slnx --verify-no-changes --no-restore --exclude third_party/
+        # Lifted AvaloniaEdit code (Document/, Utils/, and their tests) intentionally
+        # preserves upstream formatting per specs/00-plan.md §4 — exclude from the gate
+        # so re-syncs don't get fought by dotnet format.
+        run: >
+          dotnet format Terminal.Gui.Text.slnx --verify-no-changes --no-restore
+          --exclude third_party/
+          --exclude src/Terminal.Gui.Text/Document/
+          --exclude src/Terminal.Gui.Text/Utils/
+          --exclude tests/Terminal.Gui.Text.Tests/Document/
+          --exclude tests/Terminal.Gui.Text.Tests/Utils/
