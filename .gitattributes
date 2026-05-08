@@ -1,0 +1,28 @@
+# Auto-detect text files; normalize line endings on commit
+* text=auto eol=lf
+
+# Force LF for source and config
+*.cs        text eol=lf
+*.csproj    text eol=lf
+*.props     text eol=lf
+*.targets   text eol=lf
+*.slnx      text eol=lf
+*.sln       text eol=lf
+*.json      text eol=lf
+*.yml       text eol=lf
+*.yaml      text eol=lf
+*.md        text eol=lf
+*.sh        text eol=lf
+
+# Force CRLF for Windows-only scripts
+*.cmd       text eol=crlf
+*.bat       text eol=crlf
+*.ps1       text eol=crlf
+
+# Binary
+*.png       binary
+*.jpg       binary
+*.gif       binary
+*.ico       binary
+*.snk       binary
+*.pdf       binary

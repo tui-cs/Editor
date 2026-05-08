@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>Terminal.Gui.Views</RootNamespace>
+    <AssemblyName>Terminal.Gui.Editor</AssemblyName>
+
+    <PackageId>Terminal.Gui.Editor</PackageId>
+    <Description>Editor View for Terminal.Gui — multi-caret, folding, search, optional TextMate highlighting; built on Terminal.Gui.Text.</Description>
+    <PackageTags>terminal-gui;tui;editor;text-editor;folding;multi-caret</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Terminal.Gui.Text\Terminal.Gui.Text.csproj" />
+    <PackageReference Include="Terminal.Gui" Version="$(TerminalGuiVersion)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\..\README.md" Pack="true" PackagePath="\" />
+    <None Include="..\..\LICENSE" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+</Project>

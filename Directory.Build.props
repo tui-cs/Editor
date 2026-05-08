@@ -1,0 +1,23 @@
+<Project>
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+
+    <Authors>gui-cs</Authors>
+    <Company>gui-cs</Company>
+    <Copyright>Copyright (c) gui-cs and contributors</Copyright>
+    <PackageProjectUrl>https://github.com/gui-cs/Text</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/gui-cs/Text</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageLicenseFile>LICENSE</PackageLicenseFile>
+
+    <!-- Pinned Terminal.Gui version. CI / release workflows can override via -p:TerminalGuiVersion=<x>. -->
+    <TerminalGuiVersion Condition="'$(TerminalGuiVersion)' == ''">2.0.2-develop.37</TerminalGuiVersion>
+  </PropertyGroup>
+
+</Project>

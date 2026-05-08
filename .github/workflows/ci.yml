@@ -1,0 +1,58 @@
+name: CI
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+          dotnet-quality: 'preview'
+
+      - name: Restore
+        run: dotnet restore Terminal.Gui.Text.slnx
+
+      - name: Build
+        run: dotnet build Terminal.Gui.Text.slnx --no-restore
+
+      - name: Terminal.Gui.Text.Tests
+        run: dotnet run --project tests/Terminal.Gui.Text.Tests --no-build
+
+      - name: Terminal.Gui.Editor.Tests
+        run: dotnet run --project tests/Terminal.Gui.Editor.Tests --no-build
+
+      - name: Terminal.Gui.Editor.IntegrationTests
+        run: dotnet run --project tests/Terminal.Gui.Editor.IntegrationTests --no-build
+
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+          dotnet-quality: 'preview'
+
+      - name: Restore
+        run: dotnet restore Terminal.Gui.Text.slnx
+
+      - name: Verify formatting
+        run: dotnet format Terminal.Gui.Text.slnx --verify-no-changes --no-restore --exclude third_party/

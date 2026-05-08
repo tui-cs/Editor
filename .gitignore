@@ -1,0 +1,59 @@
+# Build artifacts
+[Bb]in/
+[Oo]bj/
+[Rr]elease/
+[Dd]ebug/
+[Xx]64/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+artifacts/
+bld/
+[Ll]og/
+[Ll]ogs/
+
+# .NET
+project.lock.json
+project.fragment.lock.json
+*.binlog
+
+# NuGet
+*.nupkg
+*.snupkg
+
+# Visual Studio / IDE
+.vs/
+*.user
+*.suo
+*.userprefs
+*.userosscache
+*.sln.docstates
+_ReSharper.**
+*.[Rr]e[Ss]harper
+*.DotSettings.user
+.vscode/*
+!.vscode/launch.json
+!.vscode/tasks.json
+.idea/
+*.[Cc]ache
+!?*.[Cc]ache/
+
+# Test results & coverage
+[Tt]est[Rr]esult*/
+[Bb]uild[Ll]og.*
+TestResult.xml
+nunit-*.xml
+coverage*.xml
+coverage*.json
+coverage*.info
+CodeCoverage/
+
+# OS
+.DS_Store
+Thumbs.db
+~$*
+*~
+
+# Env / secrets
+.env
+.env.*
+!.env.example
