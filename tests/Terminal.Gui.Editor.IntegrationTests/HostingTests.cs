@@ -1,6 +1,7 @@
 // Claude - claude-opus-4-7
+
+using Microsoft.Extensions.Logging;
 using Ted;
-using Terminal.Gui;
 using Terminal.Gui.App;
 using Terminal.Gui.Tracing;
 using Xunit;
@@ -8,8 +9,8 @@ using Xunit;
 namespace Terminal.Gui.Editor.IntegrationTests;
 
 /// <summary>
-///     Tests that ted's <see cref="Hosting"/> static helpers actually wire up <see cref="Logging.Logger"/>
-///     and <see cref="Trace.EnabledCategories"/>. These prove the wiring exists; downstream Serilog tests
+///     Tests that ted's <see cref="Hosting" /> static helpers actually wire up <see cref="Logging.Logger" />
+///     and <see cref="Trace.EnabledCategories" />. These prove the wiring exists; downstream Serilog tests
 ///     belong elsewhere.
 /// </summary>
 public class HostingTests
@@ -17,11 +18,12 @@ public class HostingTests
     [Fact]
     public void ConfigureLogging_SetsLoggingLogger ()
     {
-        Microsoft.Extensions.Logging.ILogger? before = Logging.Logger;
+        ILogger? before = Logging.Logger;
 
         try
         {
-            Microsoft.Extensions.Logging.ILogger logger = Hosting.ConfigureLogging (logPath: Path.Combine (Path.GetTempPath (), $"ted-test-{Guid.NewGuid ():N}.log"));
+            ILogger logger =
+                Hosting.ConfigureLogging (Path.Combine (Path.GetTempPath (), $"ted-test-{Guid.NewGuid ():N}.log"));
 
             Assert.NotNull (logger);
             Assert.Same (logger, Logging.Logger);
