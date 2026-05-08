@@ -15,10 +15,10 @@ namespace Ted;
 public static class Hosting
 {
     /// <summary>Default trace categories for ted. Useful enough to debug menu/key/mouse flow without flooding the log.</summary>
-    public const TraceCategory DEFAULT_TRACE_CATEGORIES = TraceCategory.Command | TraceCategory.Keyboard | TraceCategory.Mouse;
+    public const TraceCategory DefaultTraceCategories = TraceCategory.Command | TraceCategory.Keyboard | TraceCategory.Mouse;
 
     /// <summary>Default log file path. Daily rolling.</summary>
-    public const string DEFAULT_LOG_PATH = "logs/ted.log";
+    public const string DefaultLogPath = "logs/ted.log";
 
     /// <summary>
     ///     Configures Serilog → Microsoft.Extensions.Logging → <see cref="Logging.Logger"/>. Returns the
@@ -29,7 +29,7 @@ public static class Hosting
         Log.Logger = new LoggerConfiguration ()
                      .MinimumLevel.Verbose ()
                      .Enrich.FromLogContext ()
-                     .WriteTo.File (logPath ?? DEFAULT_LOG_PATH,
+                     .WriteTo.File (logPath ?? DefaultLogPath,
                                     rollingInterval: RollingInterval.Day,
                                     outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff} [{Level:u3}] {Message:lj}{NewLine}{Exception}")
                      .CreateLogger ();
@@ -41,6 +41,6 @@ public static class Hosting
         return logger;
     }
 
-    /// <summary>Sets <see cref="Trace.EnabledCategories"/>. Defaults to <see cref="DEFAULT_TRACE_CATEGORIES"/>.</summary>
-    public static void EnableTracing (TraceCategory categories = DEFAULT_TRACE_CATEGORIES) { Trace.EnabledCategories = categories; }
+    /// <summary>Sets <see cref="Trace.EnabledCategories"/>. Defaults to <see cref="DefaultTraceCategories"/>.</summary>
+    public static void EnableTracing (TraceCategory categories = DefaultTraceCategories) { Trace.EnabledCategories = categories; }
 }

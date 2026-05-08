@@ -20,10 +20,10 @@ public sealed class AppFixture<TRunnable> : IAsyncDisposable
     where TRunnable : class, IRunnable
 {
     /// <summary>Default test viewport size — wide enough for menus and status bars.</summary>
-    public const int DEFAULT_WIDTH = 80;
+    public const int DefaultWidth = 80;
 
     /// <summary>Default test viewport size — tall enough for a menu, content rows, and a status bar.</summary>
-    public const int DEFAULT_HEIGHT = 24;
+    public const int DefaultHeight = 24;
 
     private readonly SessionToken? _session;
 
@@ -31,7 +31,7 @@ public sealed class AppFixture<TRunnable> : IAsyncDisposable
     /// <param name="factory">Factory for the runnable under test.</param>
     /// <param name="width">Test viewport width in cells.</param>
     /// <param name="height">Test viewport height in cells.</param>
-    public AppFixture (Func<TRunnable> factory, int width = DEFAULT_WIDTH, int height = DEFAULT_HEIGHT)
+    public AppFixture (Func<TRunnable> factory, int width = DefaultWidth, int height = DefaultHeight)
     {
         ArgumentNullException.ThrowIfNull (factory);
 
