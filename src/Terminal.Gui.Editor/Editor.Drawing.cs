@@ -18,7 +18,7 @@ public partial class Editor
         }
 
         Rectangle viewport = Viewport;
-        Drawing.Attribute normal = GetAttributeForRole (VisualRole.Editable);
+        Drawing.Attribute normal = GetAttributeForRole (VisualRole.Normal);
         Drawing.Attribute selected = GetAttributeForRole (VisualRole.Active);
 
         bool hasSelection = HasSelection;
