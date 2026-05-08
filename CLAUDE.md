@@ -12,7 +12,16 @@ Active development happens on **`develop`**. `main` is the release/stable branch
 
 - Work on `develop`. During pre-alpha, direct commits and pushes to `develop` are allowed — no PRs required for routine work.
 - Do not push directly to `main`. Promotion from `develop` to `main` is a deliberate release step.
-- Releases are tag-driven: pushing a `v*` tag (e.g. `v0.1.0-alpha.1`) triggers `.github/workflows/release.yml`, which builds + tests cross-platform, then packs and pushes both NuGet packages. The base `<Version>` lives in `Directory.Build.props` and is overridden per-release via `-p:Version=<tag>`.
+- Two paths trigger `.github/workflows/release.yml`, which builds + tests cross-platform, then packs and pushes both NuGet packages:
+  - **Push a `v*` tag** (e.g. `v2.1.0`) — canonical stable release; version = tag minus leading `v`.
+  - **Push to `develop`** — rolling pre-release; version = `<Version>` from `Directory.Build.props` + `.${github.run_number}`. With base `2.1.1-develop`, the first run publishes `2.1.1-develop.1`, etc.
+  - `workflow_dispatch` is also available with a verbatim version input.
+
+## Versioning
+
+`Directory.Build.props` holds a single `<Version>` shared by both packages. Track Terminal.Gui's version stream — when the latest stable Terminal.Gui is `X.Y.Z`, our develop base is the next-patch pre-release (e.g. TG 2.1.0 → our base `2.1.1-develop`). Bump the base when TG ships a new stable, not on every commit. The `.${run_number}` suffix is the per-build counter, applied automatically by the workflow.
+
+`<TerminalGuiVersion>` (also in `Directory.Build.props`) pins the Terminal.Gui dependency. Bump it when the project is ready to consume a new TG release; CI/release workflows can override via `-p:TerminalGuiVersion=<x>` if needed.
 
 ## Build and test
 

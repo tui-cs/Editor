@@ -3,19 +3,24 @@ name: Release
 # Publishes Terminal.Gui.Text and Terminal.Gui.Editor to NuGet.
 #
 # Triggers:
-#   1. Push of a `v*` tag (canonical release path, e.g. v0.1.0-alpha.1)
-#   2. workflow_dispatch (manual run with explicit version)
+#   1. Push of a `v*` tag (canonical release path, e.g. v2.1.0)
+#      → Version = tag with leading `v` stripped.
+#   2. Push to `develop` (rolling pre-release smoke test)
+#      → Version = <Version> from Directory.Build.props + ".<github.run_number>"
+#         e.g. 2.1.1-develop.7
+#   3. workflow_dispatch (manual run with explicit version)
 #
 # Both packages share a single <Version> declared in Directory.Build.props.
-# The tag/input value overrides that base via `-p:Version=...`.
+# The computed value overrides that base via `-p:Version=...`.
 
 on:
   push:
     tags: ['v*']
+    branches: [develop]
   workflow_dispatch:
     inputs:
       version:
-        description: 'Package version (e.g. 0.1.0-alpha.1). Overrides Directory.Build.props.'
+        description: 'Package version (e.g. 2.1.0 or 2.1.1-develop.42). Overrides Directory.Build.props.'
         required: true
 
 permissions:
@@ -31,15 +36,28 @@ jobs:
     outputs:
       version: ${{ steps.v.outputs.version }}
     steps:
+      - uses: actions/checkout@v4
+
       - name: Compute version
         id: v
         shell: bash
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             VERSION="${{ github.event.inputs.version }}"
-          else
-            # Tag form: v0.1.0-alpha.1 → 0.1.0-alpha.1
+          elif [ "${{ github.ref_type }}" = "tag" ]; then
+            # Tag form: v2.1.0 → 2.1.0
             VERSION="${GITHUB_REF_NAME#v}"
+          elif [ "${{ github.ref }}" = "refs/heads/develop" ]; then
+            # Read base from Directory.Build.props (e.g. "2.1.1-develop"), append run number.
+            BASE=$(sed -n 's|.*<Version>\(.*\)</Version>.*|\1|p' Directory.Build.props | head -1)
+            if [ -z "$BASE" ]; then
+              echo "::error::Could not read <Version> from Directory.Build.props."
+              exit 1
+            fi
+            VERSION="${BASE}.${GITHUB_RUN_NUMBER}"
+          else
+            echo "::error::Unsupported trigger: event=${{ github.event_name }} ref=${{ github.ref }}"
+            exit 1
           fi
           if [ -z "$VERSION" ]; then
             echo "::error::Could not resolve version."
@@ -48,6 +66,7 @@ jobs:
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "## Release" >> "$GITHUB_STEP_SUMMARY"
           echo "- version: \`$VERSION\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- trigger: \`${{ github.event_name }}\` (\`${{ github.ref }}\`)" >> "$GITHUB_STEP_SUMMARY"
 
   build-and-test:
     needs: resolve-version

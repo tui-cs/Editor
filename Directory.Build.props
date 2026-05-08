@@ -12,15 +12,22 @@
     <Company>gui-cs</Company>
     <Copyright>Copyright (c) gui-cs and contributors</Copyright>
 
-    <!-- Base version for both NuGet packages. Release workflow overrides via -p:Version=<tag>. -->
-    <Version>0.1.0-alpha</Version>
+    <!--
+      Base version for both NuGet packages. Tracks Terminal.Gui's stream:
+      when latest TG stable is X.Y.Z, our develop base is X.(Y+1).0-develop or X.Y.(Z+1)-develop.
+      Release workflow overrides via -p:Version=<computed>:
+        - tag push v1.2.3        → 1.2.3
+        - develop branch push    → 2.1.1-develop.<github.run_number>
+        - workflow_dispatch      → input.version (verbatim)
+    -->
+    <Version>2.1.1-develop</Version>
     <PackageProjectUrl>https://github.com/gui-cs/Text</PackageProjectUrl>
     <RepositoryUrl>https://github.com/gui-cs/Text</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
 
     <!-- Pinned Terminal.Gui version. CI / release workflows can override via -p:TerminalGuiVersion=<x>. -->
-    <TerminalGuiVersion Condition="'$(TerminalGuiVersion)' == ''">2.0.2-develop.37</TerminalGuiVersion>
+    <TerminalGuiVersion Condition="'$(TerminalGuiVersion)' == ''">2.1.0</TerminalGuiVersion>
   </PropertyGroup>
 
 </Project>
