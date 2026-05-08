@@ -21,7 +21,14 @@ public partial class Editor
 
         if (key.AsRune is { } rune && rune != default && !Rune.IsControl (rune))
         {
-            _document!.Insert (_caretOffset, rune.ToString ());
+            if (HasSelection)
+            {
+                ReplaceSelection (rune.ToString ());
+            }
+            else
+            {
+                _document!.Insert (_caretOffset, rune.ToString ());
+            }
 
             return true;
         }

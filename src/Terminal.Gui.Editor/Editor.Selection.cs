@@ -1,0 +1,138 @@
+using Terminal.Gui.Text.Document;
+using Terminal.Gui.ViewBase;
+
+namespace Terminal.Gui.Views;
+
+/// <summary>
+///     Selection state and operations. Internal model is anchor + caret: <c>_selectionAnchor</c> is
+///     where Shift was first held; the <c>CaretOffset</c> is the live end. Selection is the segment
+///     between the two; when they coincide (or the anchor is null), there is no selection.
+/// </summary>
+public partial class Editor
+{
+    private int? _selectionAnchor;
+
+    /// <summary>True when there is a non-empty selection.</summary>
+    public bool HasSelection => _selectionAnchor is { } a && a != _caretOffset;
+
+    /// <summary>Start offset of the selection (inclusive). Equals <see cref="CaretOffset"/> when no selection.</summary>
+    public int SelectionStart => HasSelection ? Math.Min (_selectionAnchor!.Value, _caretOffset) : _caretOffset;
+
+    /// <summary>End offset of the selection (exclusive). Equals <see cref="CaretOffset"/> when no selection.</summary>
+    public int SelectionEnd => HasSelection ? Math.Max (_selectionAnchor!.Value, _caretOffset) : _caretOffset;
+
+    /// <summary>Length of the selection in characters; 0 when no selection.</summary>
+    public int SelectionLength => SelectionEnd - SelectionStart;
+
+    /// <summary>The selection as a <see cref="TextSegment"/>, or <see langword="null"/> if no selection.</summary>
+    public TextSegment? Selection
+    {
+        get
+        {
+            if (!HasSelection)
+            {
+                return null;
+            }
+
+            return new TextSegment { StartOffset = SelectionStart, Length = SelectionLength };
+        }
+    }
+
+    /// <summary>Raised whenever the selection range changes (created, extended, cleared).</summary>
+    public event EventHandler? SelectionChanged;
+
+    /// <summary>Clears the selection without moving the caret.</summary>
+    public void ClearSelection ()
+    {
+        if (_selectionAnchor is null)
+        {
+            return;
+        }
+
+        _selectionAnchor = null;
+        SelectionChanged?.Invoke (this, EventArgs.Empty);
+        SetNeedsDraw ();
+    }
+
+    /// <summary>Selects the entire document. Caret moves to <c>TextLength</c>.</summary>
+    public void SelectAll ()
+    {
+        _selectionAnchor = 0;
+        CaretOffset = _document!.TextLength;
+        SelectionChanged?.Invoke (this, EventArgs.Empty);
+        SetNeedsDraw ();
+    }
+
+    /// <summary>
+    ///     Replaces the current selection with <paramref name="replacement"/>. If there is no selection, this is a no-op.
+    ///     The caret lands at <c>SelectionStart + replacement.Length</c> via the document's edit-tracking arithmetic.
+    /// </summary>
+    public void ReplaceSelection (string replacement)
+    {
+        if (!HasSelection)
+        {
+            return;
+        }
+
+        int start = SelectionStart;
+        int len = SelectionLength;
+
+        _selectionAnchor = null;
+        _document!.Replace (start, len, replacement);
+        SelectionChanged?.Invoke (this, EventArgs.Empty);
+    }
+
+    /// <summary>
+    ///     Begins (if needed) or extends the selection by setting the anchor to the current caret and then moving the
+    ///     caret <paramref name="delta"/> characters horizontally.
+    /// </summary>
+    private void ExtendCaretBy (int delta) => ExtendCaretTo (_caretOffset + delta);
+
+    private void ExtendCaretVertically (int delta)
+    {
+        EnsureSelectionAnchor ();
+        MoveCaretVertically (delta);
+        SelectionChanged?.Invoke (this, EventArgs.Empty);
+        SetNeedsDraw ();
+    }
+
+    private void ExtendCaretTo (int newCaret)
+    {
+        EnsureSelectionAnchor ();
+        CaretOffset = newCaret;
+        SelectionChanged?.Invoke (this, EventArgs.Empty);
+        SetNeedsDraw ();
+    }
+
+    private void EnsureSelectionAnchor ()
+    {
+        _selectionAnchor ??= _caretOffset;
+    }
+
+    /// <summary>
+    ///     Movement helper that respects an existing selection: plain (non-extending) cursor keys clear the selection
+    ///     and snap to the appropriate end; otherwise the caret moves by <paramref name="delta"/>.
+    /// </summary>
+    private void MoveCaretByCollapsingSelection (int delta)
+    {
+        if (HasSelection)
+        {
+            int target = delta < 0 ? SelectionStart : SelectionEnd;
+            ClearSelection ();
+            CaretOffset = target;
+
+            return;
+        }
+
+        CaretOffset = _caretOffset + delta;
+    }
+
+    /// <summary>
+    ///     Vertical movement helper: clears any selection then runs the standard line-up/line-down with sticky-column.
+    /// </summary>
+    private void MoveCaretVerticallyCollapsingSelection (int delta)
+    {
+        ClearSelection ();
+        MoveCaretVertically (delta);
+    }
+}
