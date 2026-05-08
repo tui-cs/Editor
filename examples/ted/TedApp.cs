@@ -123,7 +123,7 @@ public sealed class TedApp : Window
             return SaveFileAs ();
         }
 
-        WriteAllText (CurrentFilePath, Editor.Document?.Text ?? string.Empty);
+        WriteAllText (CurrentFilePath, GetEditorText ());
 
         return true;
     }
@@ -139,7 +139,7 @@ public sealed class TedApp : Window
         }
 
         CurrentFilePath = filePath;
-        WriteAllText (filePath, Editor.Document?.Text ?? string.Empty);
+        WriteAllText (filePath, GetEditorText ());
         UpdateFileNameShortcut ();
 
         return true;
@@ -212,6 +212,16 @@ public sealed class TedApp : Window
         CurrentFilePath = filePath;
         UpdateFileNameShortcut ();
         Editor.SetNeedsDraw ();
+    }
+
+    private string GetEditorText ()
+    {
+        if (Editor.Document is null)
+        {
+            throw new InvalidOperationException ("ted cannot save because the editor has no document.");
+        }
+
+        return Editor.Document.Text;
     }
 
     private void UpdateFileNameShortcut ()
