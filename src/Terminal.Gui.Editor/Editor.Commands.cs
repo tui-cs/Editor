@@ -8,9 +8,10 @@ public partial class Editor
 {
     /// <summary>
     ///     Editor-specific default key bindings layered on top of <see cref="View.DefaultKeyBindings"/>.
-    ///     The base layer already maps cursor / Home / End / PageUp / PageDown to the corresponding
-    ///     movement <see cref="Command"/>s; this dictionary covers what's specific to a text editor
-    ///     (Ctrl+Home/End for whole-document navigation, Enter for newline, Backspace/Delete, undo/redo).
+    ///     The base layer already maps cursor / Home / End / PageUp / PageDown (and their Shift variants)
+    ///     to the corresponding movement and *Extend <see cref="Command"/>s, plus Ctrl+A → SelectAll;
+    ///     this dictionary covers what's editor-specific (Enter, Backspace/Delete, Ctrl+Z / Ctrl+Y, the
+    ///     Ctrl+Home/End whole-document binds).
     /// </summary>
     /// <remarks>
     ///     Process-wide static. Do not mutate from parallel tests — see Terminal.Gui's same convention
@@ -34,52 +35,55 @@ public partial class Editor
         KeyBindings.Remove (Key.Enter);
         KeyBindings.Remove (Key.Space);
 
-
-        // Movement
-        AddCommand (Command.Left, () => MoveCaretBy (-1));
-        AddCommand (Command.Right, () => MoveCaretBy (1));
-        AddCommand (Command.Up, () => MoveCaretVerticallyCommand (-1));
-        AddCommand (Command.Down, () => MoveCaretVerticallyCommand (1));
+        // Plain movement (collapses any existing selection)
+        AddCommand (Command.Left, () => MoveCaretByCollapsing (-1));
+        AddCommand (Command.Right, () => MoveCaretByCollapsing (1));
+        AddCommand (Command.Up, () => MoveCaretVerticallyCollapsing (-1));
+        AddCommand (Command.Down, () => MoveCaretVerticallyCollapsing (1));
         AddCommand (Command.LeftStart, MoveCaretToLineStart);
         AddCommand (Command.RightEnd, MoveCaretToLineEnd);
         AddCommand (Command.Start, () => SetCaretAndReturnTrue (0));
         AddCommand (Command.End, () => SetCaretAndReturnTrue (_document!.TextLength));
-        AddCommand (Command.PageUp, () => MoveCaretVerticallyCommand (-Math.Max (1, Viewport.Height)));
-        AddCommand (Command.PageDown, () => MoveCaretVerticallyCommand (Math.Max (1, Viewport.Height)));
+        AddCommand (Command.PageUp, () => MoveCaretVerticallyCollapsing (-Math.Max (1, Viewport.Height)));
+        AddCommand (Command.PageDown, () => MoveCaretVerticallyCollapsing (Math.Max (1, Viewport.Height)));
 
-        // Editing
-        AddCommand (Command.NewLine, () =>
+        // Selection-extending movement
+        AddCommand (Command.LeftExtend, () => ExtendCommand (() => ExtendCaretBy (-1)));
+        AddCommand (Command.RightExtend, () => ExtendCommand (() => ExtendCaretBy (1)));
+        AddCommand (Command.UpExtend, () => ExtendCommand (() => ExtendCaretVertically (-1)));
+        AddCommand (Command.DownExtend, () => ExtendCommand (() => ExtendCaretVertically (1)));
+        AddCommand (Command.LeftStartExtend, () => ExtendCommand (() => ExtendCaretTo (_document!.GetLineByOffset (_caretOffset).Offset)));
+
+        AddCommand (Command.RightEndExtend, () => ExtendCommand (() =>
         {
-            _document!.Insert (_caretOffset, "\n");
+            DocumentLine line = _document!.GetLineByOffset (_caretOffset);
+            ExtendCaretTo (line.Offset + line.Length);
+        }));
+
+        AddCommand (Command.StartExtend, () => ExtendCommand (() => ExtendCaretTo (0)));
+        AddCommand (Command.EndExtend, () => ExtendCommand (() => ExtendCaretTo (_document!.TextLength)));
+        AddCommand (Command.PageUpExtend, () => ExtendCommand (() => ExtendCaretVertically (-Math.Max (1, Viewport.Height))));
+        AddCommand (Command.PageDownExtend, () => ExtendCommand (() => ExtendCaretVertically (Math.Max (1, Viewport.Height))));
+
+        // Selection ops
+        AddCommand (Command.SelectAll, () =>
+        {
+            SelectAll ();
 
             return true;
         });
 
-        AddCommand (Command.DeleteCharLeft, () =>
-        {
-            if (_caretOffset > 0)
-            {
-                _document!.Remove (_caretOffset - 1, 1);
-            }
-
-            return true;
-        });
-
-        AddCommand (Command.DeleteCharRight, () =>
-        {
-            if (_caretOffset < _document!.TextLength)
-            {
-                _document!.Remove (_caretOffset, 1);
-            }
-
-            return true;
-        });
+        // Editing — selection-aware
+        AddCommand (Command.NewLine, () => InsertOrReplace ("\n"));
+        AddCommand (Command.DeleteCharLeft, DeleteLeft);
+        AddCommand (Command.DeleteCharRight, DeleteRight);
 
         // History
         AddCommand (Command.Undo, () =>
         {
             if (_document!.UndoStack.CanUndo)
             {
+                ClearSelection ();
                 _document!.UndoStack.Undo ();
             }
 
@@ -90,6 +94,7 @@ public partial class Editor
         {
             if (_document!.UndoStack.CanRedo)
             {
+                ClearSelection ();
                 _document!.UndoStack.Redo ();
             }
 
@@ -99,23 +104,72 @@ public partial class Editor
         ApplyKeyBindings (View.DefaultKeyBindings, DefaultKeyBindings);
     }
 
+    private bool? ExtendCommand (Action extend)
+    {
+        extend ();
+
+        return true;
+    }
+
+    private bool? MoveCaretByCollapsing (int delta)
+    {
+        MoveCaretByCollapsingSelection (delta);
+
+        return true;
+    }
+
+    private bool? MoveCaretVerticallyCollapsing (int delta)
+    {
+        MoveCaretVerticallyCollapsingSelection (delta);
+
+        return true;
+    }
+
+    private bool? InsertOrReplace (string text)
+    {
+        if (HasSelection)
+        {
+            ReplaceSelection (text);
+        }
+        else
+        {
+            _document!.Insert (_caretOffset, text);
+        }
+
+        return true;
+    }
+
+    private bool? DeleteLeft ()
+    {
+        if (HasSelection)
+        {
+            ReplaceSelection (string.Empty);
+        }
+        else if (_caretOffset > 0)
+        {
+            _document!.Remove (_caretOffset - 1, 1);
+        }
+
+        return true;
+    }
+
+    private bool? DeleteRight ()
+    {
+        if (HasSelection)
+        {
+            ReplaceSelection (string.Empty);
+        }
+        else if (_caretOffset < _document!.TextLength)
+        {
+            _document!.Remove (_caretOffset, 1);
+        }
+
+        return true;
+    }
+
     private bool? SetCaretAndReturnTrue (int offset)
     {
         CaretOffset = offset;
-
-        return true;
-    }
-
-    private bool? MoveCaretBy (int delta)
-    {
-        CaretOffset = _caretOffset + delta;
-
-        return true;
-    }
-
-    private bool? MoveCaretVerticallyCommand (int delta)
-    {
-        MoveCaretVertically (delta);
 
         return true;
     }
