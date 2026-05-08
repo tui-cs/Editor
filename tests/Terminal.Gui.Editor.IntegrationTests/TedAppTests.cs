@@ -2,9 +2,12 @@
 
 using System.Drawing;
 using Ted;
+using Terminal.Gui.Drawing;
 using Terminal.Gui.Editor.IntegrationTests.Testing;
 using Terminal.Gui.Input;
 using Terminal.Gui.Testing;
+using Terminal.Gui.Views;
+using TextMateSharp.Grammars;
 using Xunit;
 
 namespace Terminal.Gui.Editor.IntegrationTests;
@@ -29,6 +32,34 @@ public class TedAppTests
         await using AppFixture<TedApp> fx = new (() => new TedApp ());
 
         DriverAssert.ContentsContains (fx.Driver, "File");
+    }
+
+    [Fact]
+    public async Task Renders_Themes_StatusBar_Item ()
+    {
+        await using AppFixture<TedApp> fx = new (() => new TedApp ());
+
+        DriverAssert.ContentsContains (fx.Driver, "Themes");
+    }
+
+    [Fact]
+    public async Task Theme_StatusBar_DropDown_Changes_Editor_Syntax_Theme ()
+    {
+        await using AppFixture<TedApp> fx = new (() => new TedApp ());
+
+        DropDownList<ThemeName> themeDropDown = fx.Top.SubViews
+                                                     .OfType<StatusBar> ()
+                                                     .Single ()
+                                                     .SubViews
+                                                     .OfType<Shortcut> ()
+                                                     .Select (shortcut => shortcut.CommandView)
+                                                     .OfType<DropDownList<ThemeName>> ()
+                                                     .Single ();
+
+        themeDropDown.Value = ThemeName.LightPlus;
+
+        TextMateSyntaxHighlighter highlighter = Assert.IsType<TextMateSyntaxHighlighter> (fx.Top.Editor.SyntaxHighlighter);
+        Assert.Equal (ThemeName.LightPlus, highlighter.ThemeName);
     }
 
     [Fact]
