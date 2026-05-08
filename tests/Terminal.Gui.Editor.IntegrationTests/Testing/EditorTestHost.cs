@@ -17,9 +17,9 @@ public sealed class EditorTestHost : Window
     public EditorTestHost (string initialText = "")
     {
         BorderStyle = LineStyle.None;
-        Editor = new()
+        Editor = new ()
         {
-            Document = new(initialText),
+            Document = new (initialText),
             X = 0,
             Y = 0,
             Width = Dim.Fill (),

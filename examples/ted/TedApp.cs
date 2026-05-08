@@ -20,10 +20,10 @@ public sealed class TedApp : Window
         Title = "ted — Terminal.Gui.Editor demo";
         BorderStyle = LineStyle.None;
 
-        MenuBar menu = new();
+        MenuBar menu = new ();
 
         StatusBar statusBar =
-            new([
+            new ([
                 new Shortcut (Application.GetDefaultKey (Command.Quit), "Quit", Quit),
                 // TODO: Add a themes dropdown shortcut
                 new Shortcut (Key.Empty, "x, y", null, "Loc") { MouseHighlightStates = MouseState.None },
@@ -60,7 +60,7 @@ public sealed class TedApp : Window
                 [new MenuItem ("_About", "Show About dialog", Action)])
         );
 
-        Editor = new()
+        Editor = new ()
         {
             Y = Pos.Bottom (menu),
             Width = Dim.Fill (),

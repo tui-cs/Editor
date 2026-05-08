@@ -134,7 +134,7 @@ public partial class Editor : View
         var maxWidth = _document.Lines.Select (line => line.Length).Prepend (0).Max ();
 
         // +1 column lets the caret sit just past the end-of-line.
-        SetContentSize (new(maxWidth + 1, _document.LineCount));
+        SetContentSize (new (maxWidth + 1, _document.LineCount));
     }
 
     private int GetCaretColumn ()

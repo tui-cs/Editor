@@ -14,12 +14,12 @@ namespace Terminal.Gui.Editor.IntegrationTests;
 /// </summary>
 public class EditorTests
 {
-    private static readonly InputInjectionOptions Direct = new() { Mode = InputInjectionMode.Direct };
+    private static readonly InputInjectionOptions Direct = new () { Mode = InputInjectionMode.Direct };
 
     [Fact]
     public async Task Renders_InitialDocumentText ()
     {
-        await using AppFixture<EditorTestHost> fx = new(() => new("Hello world"));
+        await using AppFixture<EditorTestHost> fx = new (() => new ("Hello world"));
 
         DriverAssert.ContentsContains (fx.Driver, "Hello world");
     }
@@ -27,7 +27,7 @@ public class EditorTests
     [Fact]
     public async Task Typing_ASCII_Inserts_Characters ()
     {
-        await using AppFixture<EditorTestHost> fx = new(() => new());
+        await using AppFixture<EditorTestHost> fx = new (() => new ());
         fx.Top.Editor.SetFocus ();
 
         fx.Injector.InjectKey (Key.H, Direct);
@@ -41,7 +41,7 @@ public class EditorTests
     [Fact]
     public async Task CursorLeft_Right_MovesCaret ()
     {
-        await using AppFixture<EditorTestHost> fx = new(() => new("abc"));
+        await using AppFixture<EditorTestHost> fx = new (() => new ("abc"));
         fx.Top.Editor.SetFocus ();
         fx.Top.Editor.CaretOffset = 3;
 
@@ -63,7 +63,7 @@ public class EditorTests
     [Fact]
     public async Task CursorUp_Down_PreservesVirtualColumn_AcrossShortLines ()
     {
-        await using AppFixture<EditorTestHost> fx = new(() => new("longer line\nshort\nanother long line"));
+        await using AppFixture<EditorTestHost> fx = new (() => new ("longer line\nshort\nanother long line"));
         fx.Top.Editor.SetFocus ();
         fx.Top.Editor.CaretOffset = 8; // column 8 of "longer line"
 
@@ -84,7 +84,7 @@ public class EditorTests
     [Fact]
     public async Task Home_End_Move_WithinLine ()
     {
-        await using AppFixture<EditorTestHost> fx = new(() => new("first\nsecond"));
+        await using AppFixture<EditorTestHost> fx = new (() => new ("first\nsecond"));
         fx.Top.Editor.SetFocus ();
         fx.Top.Editor.CaretOffset = "first\n".Length + 2; // line 2, col 2
 
@@ -98,7 +98,7 @@ public class EditorTests
     [Fact]
     public async Task Backspace_Removes_CharBefore_Caret ()
     {
-        await using AppFixture<EditorTestHost> fx = new(() => new("abc"));
+        await using AppFixture<EditorTestHost> fx = new (() => new ("abc"));
         fx.Top.Editor.SetFocus ();
         fx.Top.Editor.CaretOffset = 3;
 
@@ -111,7 +111,7 @@ public class EditorTests
     [Fact]
     public async Task Delete_Removes_CharAt_Caret ()
     {
-        await using AppFixture<EditorTestHost> fx = new(() => new("abc"));
+        await using AppFixture<EditorTestHost> fx = new (() => new ("abc"));
         fx.Top.Editor.SetFocus ();
         fx.Top.Editor.CaretOffset = 1;
 
@@ -124,7 +124,7 @@ public class EditorTests
     [Fact]
     public async Task Enter_Inserts_Newline ()
     {
-        await using AppFixture<EditorTestHost> fx = new(() => new("ab"));
+        await using AppFixture<EditorTestHost> fx = new (() => new ("ab"));
         fx.Top.Editor.SetFocus ();
         fx.Top.Editor.CaretOffset = 1;
 
@@ -138,7 +138,7 @@ public class EditorTests
     [Fact]
     public async Task CtrlZ_Undoes_LastEdit ()
     {
-        await using AppFixture<EditorTestHost> fx = new(() => new("abc"));
+        await using AppFixture<EditorTestHost> fx = new (() => new ("abc"));
         fx.Top.Editor.SetFocus ();
         fx.Top.Editor.Document?.Insert (3, "DEF");
 
@@ -152,7 +152,7 @@ public class EditorTests
     [Fact]
     public async Task CtrlY_Redoes_LastUndo ()
     {
-        await using AppFixture<EditorTestHost> fx = new(() => new("abc"));
+        await using AppFixture<EditorTestHost> fx = new (() => new ("abc"));
         fx.Top.Editor.SetFocus ();
         fx.Top.Editor.Document?.Insert (3, "DEF");
         fx.Injector.InjectKey (Key.Z.WithCtrl, Direct);
@@ -167,7 +167,7 @@ public class EditorTests
     [Fact]
     public async Task MultiLine_Document_Renders_AllLines ()
     {
-        await using AppFixture<EditorTestHost> fx = new(() => new("alpha\nbeta\ngamma"));
+        await using AppFixture<EditorTestHost> fx = new (() => new ("alpha\nbeta\ngamma"));
         fx.Render ();
 
         DriverAssert.ContentsContains (fx.Driver, "alpha");
@@ -185,7 +185,7 @@ public class EditorTests
             lines[i] = $"line-{i:00}";
         }
 
-        await using AppFixture<EditorTestHost> fx = new(() => new(string.Join ("\n", lines)));
+        await using AppFixture<EditorTestHost> fx = new (() => new (string.Join ("\n", lines)));
         fx.Top.Editor.SetFocus ();
 
         // Place caret on line index 40 (0-based).

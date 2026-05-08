@@ -9,6 +9,6 @@ public class SmokeTests
     [Fact]
     public void AssemblyLoads ()
     {
-        Assert.NotNull (typeof(Views.Editor).Assembly);
+        Assert.NotNull (typeof (Views.Editor).Assembly);
     }
 }

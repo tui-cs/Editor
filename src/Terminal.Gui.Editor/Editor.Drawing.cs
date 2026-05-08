@@ -52,7 +52,7 @@ public partial class Editor
     {
         if (!HasFocus)
         {
-            Cursor = new();
+            Cursor = new ();
 
             return;
         }
@@ -65,12 +65,12 @@ public partial class Editor
 
         if (row < 0 || row >= viewport.Height || col < 0 || col >= viewport.Width)
         {
-            Cursor = new();
+            Cursor = new ();
 
             return;
         }
 
         Point screen = ViewportToScreen (new Point (col, row));
-        Cursor = new() { Position = screen, Style = CursorStyle.BlinkingBar };
+        Cursor = new () { Position = screen, Style = CursorStyle.BlinkingBar };
     }
 }
