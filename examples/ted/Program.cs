@@ -4,9 +4,12 @@
 
 using Ted;
 using Terminal.Gui.App;
+using Terminal.Gui.Configuration;
 
 Hosting.ConfigureLogging ();
 Hosting.EnableTracing ();
+
+ConfigurationManager.Enable (ConfigLocations.All);
 
 using IApplication app = Application.Create ();
 
