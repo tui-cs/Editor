@@ -10,7 +10,12 @@ public partial class Editor
     /// <inheritdoc />
     protected override bool OnMouseEvent (Mouse mouse)
     {
-        if (_document is null || mouse.Position is not { } pos)
+        if (_document is null)
+        {
+            return false;
+        }
+
+        if (mouse.Position is not { } pos)
         {
             return false;
         }
@@ -86,7 +91,7 @@ public partial class Editor
         int lineIndex = Math.Clamp (Viewport.Y + viewPos.Y, 0, _document.LineCount - 1);
         DocumentLine line = _document.GetLineByNumber (lineIndex + 1);
         int col = Math.Max (0, Viewport.X + viewPos.X);
-        int colInLine = Math.Min (col, line.Length);
+        int colInLine = GetLogicalColumnFromVisualColumn (line, col);
 
         return line.Offset + colInLine;
     }

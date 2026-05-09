@@ -114,4 +114,40 @@ public class EditorRenderingTests
         Assert.Equal ("p", cell.Grapheme);
         Assert.Equal (active, cell.Attribute);
     }
+
+    [Fact]
+    public async Task Tabs_Render_As_Spaces_Using_Default_TabWidth ()
+    {
+        await using AppFixture<EditorTestHost> fx = new (() => new ("a\tb"));
+        fx.Render ();
+
+        Assert.Equal ("a", fx.Driver.Contents![0, 0].Grapheme);
+        Assert.Equal (" ", fx.Driver.Contents![0, 1].Grapheme);
+        Assert.Equal (" ", fx.Driver.Contents![0, 2].Grapheme);
+        Assert.Equal (" ", fx.Driver.Contents![0, 3].Grapheme);
+        Assert.Equal ("b", fx.Driver.Contents![0, 4].Grapheme);
+    }
+
+    [Fact]
+    public async Task Tabs_Render_As_Spaces_Using_Configured_TabWidth ()
+    {
+        await using AppFixture<EditorTestHost> fx = new (() => new ("a\tb"));
+        fx.Top.Editor.TabWidth = 2;
+        fx.Render ();
+
+        Assert.Equal ("a", fx.Driver.Contents![0, 0].Grapheme);
+        Assert.Equal (" ", fx.Driver.Contents![0, 1].Grapheme);
+        Assert.Equal ("b", fx.Driver.Contents![0, 2].Grapheme);
+    }
+
+    [Fact]
+    public async Task Cursor_Position_After_Tab_Uses_Expanded_Tab_Columns ()
+    {
+        await using AppFixture<EditorTestHost> fx = new (() => new ("a\tb"));
+        fx.Top.Editor.SetFocus ();
+        fx.Top.Editor.CaretOffset = 2;
+        fx.Render ();
+
+        Assert.Equal (new (4, 0), fx.Top.Editor.Cursor.Position);
+    }
 }

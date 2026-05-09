@@ -82,6 +82,25 @@ public class EditorTests
     }
 
     [Fact]
+    public async Task CursorUp_Down_PreservesVirtualColumn_Across_Tab_Line ()
+    {
+        await using AppFixture<EditorTestHost> fx = new (() => new ("abcde\n\t\nabcde"));
+        fx.Top.Editor.SetFocus ();
+        fx.Top.Editor.CaretOffset = 3;
+
+        fx.Injector.InjectKey (Key.CursorDown, Direct);
+
+        int afterFirstDown = fx.Top.Editor.CaretOffset;
+        Assert.Equal ("abcde\n\t".Length, afterFirstDown);
+
+        fx.Injector.InjectKey (Key.CursorDown, Direct);
+
+        int afterSecondDown = fx.Top.Editor.CaretOffset;
+        int line3Start = "abcde\n\t\n".Length;
+        Assert.Equal (line3Start + 3, afterSecondDown);
+    }
+
+    [Fact]
     public async Task Home_End_Move_WithinLine ()
     {
         await using AppFixture<EditorTestHost> fx = new (() => new ("first\nsecond"));
@@ -200,5 +219,31 @@ public class EditorTests
 
         DriverAssert.ContentsContains (fx.Driver, "line-40");
         DriverAssert.ContentsDoesNotContain (fx.Driver, "line-00"); // scrolled out
+    }
+
+    [Fact]
+    public async Task MouseWheel_Scrolls_LongDocument ()
+    {
+        string[] lines = new string[50];
+        for (int i = 0; i < 50; i++)
+        {
+            lines[i] = $"line-{i:00}";
+        }
+
+        await using AppFixture<EditorTestHost> fx = new (() => new (string.Join ("\n", lines)), height: 6);
+        fx.Render ();
+        DriverAssert.ContentsContains (fx.Driver, "line-00");
+
+        fx.Injector.InjectMouse (new () { ScreenPosition = new (1, 1), Flags = MouseFlags.WheeledDown }, Direct);
+        fx.Render ();
+
+        Assert.True (fx.Top.Editor.Viewport.Y > 0);
+        DriverAssert.ContentsDoesNotContain (fx.Driver, "line-00");
+
+        fx.Injector.InjectMouse (new () { ScreenPosition = new (1, 1), Flags = MouseFlags.WheeledUp }, Direct);
+        fx.Render ();
+
+        Assert.Equal (0, fx.Top.Editor.Viewport.Y);
+        DriverAssert.ContentsContains (fx.Driver, "line-00");
     }
 }
