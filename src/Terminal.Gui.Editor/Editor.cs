@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Drawing;
 using Terminal.Gui.Drawing;
 using Terminal.Gui.Text.Document;
@@ -72,7 +73,26 @@ public partial class Editor : View
         set => SetCaretOffset (value, true);
     }
 
-    /// <summary>Optional syntax highlighter used when drawing document text.</summary>
+    /// <summary>
+    ///     Optional syntax highlighter used when drawing document text.
+    /// </summary>
+    /// <remarks>
+    ///     <para>
+    ///         <b>Stopgap.</b> This property reuses Terminal.Gui's
+    ///         <see cref="ISyntaxHighlighter" /> from <c>Terminal.Gui.Drawing.Markdown</c>, which is
+    ///         shaped for Markdown rendering — not for an editor's per-line / per-visual-line
+    ///         highlighting pipeline. It will be removed when <c>specs/00-plan.md</c> Phase 6 lifts
+    ///         AvaloniaEdit's <c>Highlighting/</c> folder and the editor switches to a
+    ///         <c>HighlightingColorizer : IVisualLineTransformer</c> running over the
+    ///         <see cref="DocumentLine" /> → visual-line pipeline tracked by issue #28.
+    ///     </para>
+    ///     <para>
+    ///         External code should not take a hard dependency on this contract.
+    ///     </para>
+    /// </remarks>
+    [Obsolete (
+        "Stopgap reusing Terminal.Gui's Markdown ISyntaxHighlighter; will be replaced by HighlightingColorizer when specs/00-plan.md Phase 6 lifts AvaloniaEdit's Highlighting/ folder. See issue #28 for the visual-line pipeline that replaces this. Tracked by issue #32.")]
+    [EditorBrowsable (EditorBrowsableState.Never)]
     public ISyntaxHighlighter? SyntaxHighlighter
     {
         get => _syntaxHighlighter;
@@ -90,6 +110,13 @@ public partial class Editor : View
     }
 
     /// <summary>The language identifier passed to <see cref="SyntaxHighlighter" />. Defaults to C#.</summary>
+    /// <remarks>
+    ///     Obsolete for the same reason as <see cref="SyntaxHighlighter" /> — this is part of the
+    ///     temporary Markdown-shaped surface that Phase 6 will replace. See issue #28 / #32.
+    /// </remarks>
+    [Obsolete (
+        "Stopgap reusing Terminal.Gui's Markdown ISyntaxHighlighter; will be replaced by HighlightingColorizer when specs/00-plan.md Phase 6 lifts AvaloniaEdit's Highlighting/ folder. See issue #28 for the visual-line pipeline that replaces this. Tracked by issue #32.")]
+    [EditorBrowsable (EditorBrowsableState.Never)]
     public string SyntaxLanguage
     {
         get => _syntaxLanguage;

@@ -170,7 +170,11 @@ public class TedAppTests
 
         fx.Top.ThemeDropDown.Value = ThemeName.LightPlus;
 
+        // CS0618: Editor.SyntaxHighlighter is the [Obsolete] stopgap surface (issue #32);
+        // ted's theme drop-down is its UI, so this test must read it.
+#pragma warning disable CS0618 // Type or member is obsolete
         TextMateSyntaxHighlighter highlighter = Assert.IsType<TextMateSyntaxHighlighter> (fx.Top.Editor.SyntaxHighlighter);
+#pragma warning restore CS0618 // Type or member is obsolete
         Assert.Equal (ThemeName.LightPlus, highlighter.ThemeName);
     }
 

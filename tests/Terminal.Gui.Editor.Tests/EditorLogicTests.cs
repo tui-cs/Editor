@@ -147,10 +147,15 @@ public class EditorLogicTests
     // AvaloniaEdit Highlighting/ pipeline (HighlightingColorizer : IVisualLineTransformer,
     // tracked by issue #28). Mark the property [Obsolete] so external code knows not to
     // take a hard dependency on the temporary contract. See issue #32.
+    //
+    // The CS0618 suppressions here exist so the compiler doesn't fight the test's purpose,
+    // which is to *verify* the obsoletion is wired up.
     [Fact]
     public void SyntaxHighlighter_Is_Obsolete ()
     {
+#pragma warning disable CS0618 // Type or member is obsolete
         PropertyInfo prop = typeof (Views.Editor).GetProperty (nameof (Views.Editor.SyntaxHighlighter))!;
+#pragma warning restore CS0618 // Type or member is obsolete
         ObsoleteAttribute? attr = prop.GetCustomAttribute<ObsoleteAttribute> ();
 
         Assert.NotNull (attr);
@@ -160,7 +165,9 @@ public class EditorLogicTests
     [Fact]
     public void SyntaxLanguage_Is_Obsolete ()
     {
+#pragma warning disable CS0618 // Type or member is obsolete
         PropertyInfo prop = typeof (Views.Editor).GetProperty (nameof (Views.Editor.SyntaxLanguage))!;
+#pragma warning restore CS0618 // Type or member is obsolete
         ObsoleteAttribute? attr = prop.GetCustomAttribute<ObsoleteAttribute> ();
 
         Assert.NotNull (attr);
