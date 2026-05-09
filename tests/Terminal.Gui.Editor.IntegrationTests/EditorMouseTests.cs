@@ -164,6 +164,30 @@ public class EditorMouseTests
         Assert.Equal (2, fx.Top.Editor.CaretOffset);
     }
 
+    [Fact]
+    public async Task ShiftClick_At_Current_Caret_Does_Not_Fire_SelectionChanged ()
+    {
+        await using AppFixture<EditorTestHost> fx = new (() => new ("hello world"));
+        fx.Top.Editor.SetFocus ();
+        fx.Top.Editor.CaretOffset = 5;
+        int fires = 0;
+        fx.Top.Editor.SelectionChanged += (_, _) => fires++;
+
+        // Shift+click at the same column as the existing caret — neither caret nor selection
+        // range actually changes, so SelectionChanged must not fire.
+        fx.Injector.InjectMouse (
+            new ()
+            {
+                ScreenPosition = new (5, 0),
+                Flags = MouseFlags.LeftButtonPressed | MouseFlags.Shift,
+                Timestamp = BaseTime
+            },
+            Direct);
+
+        Assert.Equal (0, fires);
+        Assert.False (fx.Top.Editor.HasSelection);
+    }
+
     private static void InjectClick (AppFixture<EditorTestHost> fx, Point pos)
     {
         fx.Injector.InjectMouse (

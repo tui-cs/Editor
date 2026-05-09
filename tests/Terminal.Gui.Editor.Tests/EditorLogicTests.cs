@@ -59,15 +59,15 @@ public class EditorLogicTests
 
         Assert.Same (replacement, editor.Document);
 
-        // Mutating the original after the swap should NOT raise DocumentChanged on the editor.
-        var fired = false;
-        editor.DocumentChanged += (_, _) => fired = true;
-        original?.Insert (0, "x");
-        Assert.False (fired);
+        // Mutating the original after the swap should NOT move the editor's caret — the editor
+        // must have unsubscribed from the original document's Changed event.
+        editor.CaretOffset = 0;
+        original?.Insert (0, "xxx");
+        Assert.Equal (0, editor.CaretOffset);
 
-        // Mutating the replacement does raise it.
+        // Mutating the replacement still drives the editor's caret arithmetic.
         replacement.Insert (0, "y");
-        Assert.True (fired);
+        Assert.Equal (1, editor.CaretOffset);
     }
 
     [Fact]
@@ -79,6 +79,49 @@ public class EditorLogicTests
         editor.Document.Insert (0, ">>>");
 
         Assert.Equal (8, editor.CaretOffset);
+    }
+
+    [Fact]
+    public void CaretChanged_Fires_When_Document_Insertion_Shifts_Caret ()
+    {
+        Views.Editor editor = new () { Document = new TextDocument ("hello world") };
+        editor.CaretOffset = 5;
+        int fires = 0;
+        editor.CaretChanged += (_, _) => fires++;
+
+        editor.Document.Insert (0, ">>>");
+
+        Assert.Equal (8, editor.CaretOffset);
+        Assert.Equal (1, fires);
+    }
+
+    [Fact]
+    public void CaretChanged_Does_Not_Fire_When_Document_Insertion_Leaves_Caret_Alone ()
+    {
+        Views.Editor editor = new () { Document = new TextDocument ("hello") };
+        editor.CaretOffset = 2;
+        int fires = 0;
+        editor.CaretChanged += (_, _) => fires++;
+
+        // Insert strictly after the caret — caret offset should not change.
+        editor.Document.Insert (4, "X");
+
+        Assert.Equal (2, editor.CaretOffset);
+        Assert.Equal (0, fires);
+    }
+
+    [Fact]
+    public void CaretChanged_Fires_When_Document_Removal_Snaps_Caret ()
+    {
+        Views.Editor editor = new () { Document = new TextDocument ("hello world") };
+        editor.CaretOffset = 4;
+        int fires = 0;
+        editor.CaretChanged += (_, _) => fires++;
+
+        editor.Document.Remove (2, 5); // straddles caret → snaps to 2
+
+        Assert.Equal (2, editor.CaretOffset);
+        Assert.Equal (1, fires);
     }
 
     [Fact]
@@ -127,6 +170,26 @@ public class EditorLogicTests
         editor.CaretOffset = 2;
 
         Assert.Equal (2, editor.Viewport.X);
+    }
+
+    [Fact]
+    public void Dispose_Unsubscribes_From_Document_Changed ()
+    {
+        TextDocument doc = new ("hello");
+        Views.Editor editor = new () { Document = doc };
+        editor.CaretOffset = 3;
+
+        int caretFires = 0;
+        editor.CaretChanged += (_, _) => caretFires++;
+
+        editor.Dispose ();
+
+        // After dispose, mutating the still-reachable document must not affect the disposed editor's state.
+        int caretBefore = editor.CaretOffset;
+        doc.Insert (0, ">>>");
+
+        Assert.Equal (caretBefore, editor.CaretOffset);
+        Assert.Equal (0, caretFires);
     }
 
     [Fact]

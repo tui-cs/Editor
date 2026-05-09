@@ -49,17 +49,19 @@ public partial class Editor
             return;
         }
 
+        (int start, int end) before = SelectionTuple ();
         _selectionAnchor = null;
-        SelectionChanged?.Invoke (this, EventArgs.Empty);
+        RaiseSelectionChangedIfMoved (before);
         SetNeedsDraw ();
     }
 
     /// <summary>Selects the entire document. Caret moves to <c>TextLength</c>.</summary>
     public void SelectAll ()
     {
+        (int start, int end) before = SelectionTuple ();
         _selectionAnchor = 0;
         CaretOffset = _document!.TextLength;
-        SelectionChanged?.Invoke (this, EventArgs.Empty);
+        RaiseSelectionChangedIfMoved (before);
         SetNeedsDraw ();
     }
 
@@ -77,9 +79,10 @@ public partial class Editor
         int start = SelectionStart;
         int len = SelectionLength;
 
+        (int start, int end) before = SelectionTuple ();
         _selectionAnchor = null;
         _document!.Replace (start, len, replacement);
-        SelectionChanged?.Invoke (this, EventArgs.Empty);
+        RaiseSelectionChangedIfMoved (before);
     }
 
     /// <summary>
@@ -90,23 +93,52 @@ public partial class Editor
 
     private void ExtendCaretVertically (int delta)
     {
-        EnsureSelectionAnchor ();
+        (int start, int end) before = SelectionTupleWithEnsuredAnchor ();
         MoveCaretVertically (delta);
-        SelectionChanged?.Invoke (this, EventArgs.Empty);
+        RaiseSelectionChangedIfMoved (before);
         SetNeedsDraw ();
     }
 
     private void ExtendCaretTo (int newCaret)
     {
-        EnsureSelectionAnchor ();
+        (int start, int end) before = SelectionTupleWithEnsuredAnchor ();
         CaretOffset = newCaret;
-        SelectionChanged?.Invoke (this, EventArgs.Empty);
+        RaiseSelectionChangedIfMoved (before);
         SetNeedsDraw ();
     }
 
     private void EnsureSelectionAnchor ()
     {
         _selectionAnchor ??= _caretOffset;
+    }
+
+    /// <summary>
+    ///     Returns the current effective selection range as a (start, end) tuple. Callers compare a
+    ///     before-snapshot to the post-mutation tuple via <see cref="RaiseSelectionChangedIfMoved"/> to
+    ///     suppress no-op <see cref="SelectionChanged"/> firings.
+    /// </summary>
+    private (int start, int end) SelectionTuple () => (SelectionStart, SelectionEnd);
+
+    /// <summary>
+    ///     Snapshot variant that primes the selection anchor first — used by extend-style operations
+    ///     where setting the anchor is part of the operation but should not by itself count as a
+    ///     selection-range change.
+    /// </summary>
+    private (int start, int end) SelectionTupleWithEnsuredAnchor ()
+    {
+        EnsureSelectionAnchor ();
+
+        return SelectionTuple ();
+    }
+
+    private void RaiseSelectionChangedIfMoved ((int start, int end) before)
+    {
+        if (before == SelectionTuple ())
+        {
+            return;
+        }
+
+        SelectionChanged?.Invoke (this, EventArgs.Empty);
     }
 
     /// <summary>
