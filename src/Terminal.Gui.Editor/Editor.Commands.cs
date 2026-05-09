@@ -244,6 +244,8 @@ public partial class Editor
         }
 
         var pos = line.Offset;
+        // Track the last complete indentation unit that ends at (or before) the caret so Backspace
+        // removes one logical indent step instead of a single space.
         ISegment previousSegment = new SimpleSegment (line.Offset, 0);
 
         while (pos < _caretOffset)

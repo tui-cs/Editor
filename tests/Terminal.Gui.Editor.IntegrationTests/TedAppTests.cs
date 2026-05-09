@@ -98,7 +98,7 @@ public class TedAppTests
     [Fact]
     public void SaveFile_RoundTrip_Preserves_Tab_Characters ()
     {
-        string filePath = Path.Combine (Path.GetTempPath (), $"ted-tabs-{Guid.NewGuid ():N}.txt");
+        string filePath = Path.Combine (Path.GetTempPath (), $"ted-tabs-{Guid.NewGuid ()}.txt");
         File.WriteAllText (filePath, "a\tb");
 
         try

@@ -91,8 +91,8 @@ public partial class Editor
             return "\t";
         }
 
-        var visualColumn = GetCaretColumn ();
-        var remainder = visualColumn % IndentationSize;
+        var caretVisualColumn = GetCaretColumn ();
+        var remainder = caretVisualColumn % IndentationSize;
         var count = remainder == 0 ? IndentationSize : IndentationSize - remainder;
 
         return new (' ', count);
@@ -127,7 +127,7 @@ public partial class Editor
 
         for (var index = lineOffsets.Count - 1; index >= 0; index--)
         {
-            _document.Insert (lineOffsets [index], indentation);
+            _document.Insert (lineOffsets[index], indentation);
         }
 
         _selectionAnchor = AdjustOffsetForInsertions (originalAnchor, lineOffsets, indentation.Length);
@@ -154,7 +154,7 @@ public partial class Editor
 
         for (var index = removals.Count - 1; index >= 0; index--)
         {
-            (int offset, int length) removal = removals [index];
+            (int offset, int length) removal = removals[index];
             _document.Remove (removal.offset, removal.length);
         }
 
@@ -227,6 +227,8 @@ public partial class Editor
 
         DocumentLine endLine = _document.GetLineByOffset (end);
 
+        // If the selection ends exactly at the next line's start offset, keep that empty boundary
+        // out of the indent/unindent range by treating the previous line as the selection end.
         return end == endLine.Offset ? end - 1 : end;
     }
 

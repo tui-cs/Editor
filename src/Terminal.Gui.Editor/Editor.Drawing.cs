@@ -175,6 +175,8 @@ public partial class Editor
                 }
                 else
                 {
+                    // A grapheme cluster is an atomic render unit; if horizontal clipping lands
+                    // inside it, pad the visible span with spaces instead of drawing a broken glyph.
                     AddStr (drawStart - visibleStart, row, new (' ', drawEnd - drawStart));
                 }
             }
