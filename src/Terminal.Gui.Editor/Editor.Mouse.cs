@@ -10,7 +10,12 @@ public partial class Editor
     /// <inheritdoc />
     protected override bool OnMouseEvent (Mouse mouse)
     {
-        if (_document is null || mouse.Position is not { } pos)
+        if (_document is null)
+        {
+            return false;
+        }
+
+        if (mouse.Position is not { } pos)
         {
             return false;
         }
