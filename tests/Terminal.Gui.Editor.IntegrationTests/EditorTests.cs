@@ -82,6 +82,81 @@ public class EditorTests
     }
 
     [Fact]
+    public async Task CursorUp_Down_PreservesVirtualColumn_Across_Tab_Line ()
+    {
+        await using AppFixture<EditorTestHost> fx = new (() => new ("abcde\n\t\nabcde"));
+        fx.Top.Editor.SetFocus ();
+        fx.Top.Editor.CaretOffset = 3;
+
+        fx.Injector.InjectKey (Key.CursorDown, Direct);
+
+        int afterFirstDown = fx.Top.Editor.CaretOffset;
+        Assert.Equal ("abcde\n\t".Length, afterFirstDown);
+
+        fx.Injector.InjectKey (Key.CursorDown, Direct);
+
+        int afterSecondDown = fx.Top.Editor.CaretOffset;
+        int line3Start = "abcde\n\t\n".Length;
+        Assert.Equal (line3Start + 3, afterSecondDown);
+    }
+
+    [Fact]
+    public async Task CursorDown_PreservesVirtualColumn_AcrossThreeIntermediateShortLines ()
+    {
+        // Regression guard for MoveCaretVertically's sticky-column path: the virtual column
+        // must survive THREE consecutive snaps (short, empty, short) before snapping back on
+        // the long line at the bottom.
+        const string LongTop = "0123456789ABCDEF"; // 16 chars
+        const string Short1 = "abc";
+        const string Empty = "";
+        const string Short2 = "xy";
+        const string LongBottom = "0123456789ABCDEF";
+
+        string text = string.Join ("\n", LongTop, Short1, Empty, Short2, LongBottom);
+
+        await using AppFixture<EditorTestHost> fx = new (() => new (text));
+        fx.Top.Editor.SetFocus ();
+        fx.Top.Editor.CaretOffset = 12; // column 12 on the top long line
+
+        fx.Injector.InjectKey (Key.CursorDown, Direct);
+        int afterDown1 = fx.Top.Editor.CaretOffset;
+        Assert.Equal ((LongTop + "\n" + Short1).Length, afterDown1); // snaps to end of "abc"
+
+        fx.Injector.InjectKey (Key.CursorDown, Direct);
+        int afterDown2 = fx.Top.Editor.CaretOffset;
+        Assert.Equal ((LongTop + "\n" + Short1 + "\n").Length, afterDown2); // empty line, col 0
+
+        fx.Injector.InjectKey (Key.CursorDown, Direct);
+        int afterDown3 = fx.Top.Editor.CaretOffset;
+        Assert.Equal ((LongTop + "\n" + Short1 + "\n" + Empty + "\n" + Short2).Length, afterDown3); // end of "xy"
+
+        fx.Injector.InjectKey (Key.CursorDown, Direct);
+        int afterDown4 = fx.Top.Editor.CaretOffset;
+        int longBottomStart = (LongTop + "\n" + Short1 + "\n" + Empty + "\n" + Short2 + "\n").Length;
+        Assert.Equal (longBottomStart + 12, afterDown4); // sticky col 12 restored on the long line
+    }
+
+    [Fact]
+    public async Task Typing_NUL_Does_Not_Insert ()
+    {
+        // Regression guard: U+0000 must be filtered out of OnKeyDownNotHandled — Rune.IsControl
+        // covers it, so the explicit `rune != default` guard in Editor.Keyboard.cs is redundant.
+        // This test locks in the behavior so removing the redundant check can't silently start
+        // inserting NUL into the document.
+        await using AppFixture<EditorTestHost> fx = new (() => new ("abc"));
+        fx.Top.Editor.SetFocus ();
+        fx.Top.Editor.CaretOffset = 3;
+
+        // Construct a Key whose AsRune is U+0000 (the default Rune). Inject through the
+        // editor's normal key path; the document must remain unchanged.
+        Key nul = new ((char)0);
+        fx.Top.Editor.NewKeyDownEvent (nul);
+
+        Assert.Equal ("abc", fx.Top.Editor.Document?.Text);
+        Assert.Equal (3, fx.Top.Editor.CaretOffset);
+    }
+
+    [Fact]
     public async Task Home_End_Move_WithinLine ()
     {
         await using AppFixture<EditorTestHost> fx = new (() => new ("first\nsecond"));
@@ -200,5 +275,31 @@ public class EditorTests
 
         DriverAssert.ContentsContains (fx.Driver, "line-40");
         DriverAssert.ContentsDoesNotContain (fx.Driver, "line-00"); // scrolled out
+    }
+
+    [Fact]
+    public async Task MouseWheel_Scrolls_LongDocument ()
+    {
+        string[] lines = new string[50];
+        for (int i = 0; i < 50; i++)
+        {
+            lines[i] = $"line-{i:00}";
+        }
+
+        await using AppFixture<EditorTestHost> fx = new (() => new (string.Join ("\n", lines)), height: 6);
+        fx.Render ();
+        DriverAssert.ContentsContains (fx.Driver, "line-00");
+
+        fx.Injector.InjectMouse (new () { ScreenPosition = new (1, 1), Flags = MouseFlags.WheeledDown }, Direct);
+        fx.Render ();
+
+        Assert.True (fx.Top.Editor.Viewport.Y > 0);
+        DriverAssert.ContentsDoesNotContain (fx.Driver, "line-00");
+
+        fx.Injector.InjectMouse (new () { ScreenPosition = new (1, 1), Flags = MouseFlags.WheeledUp }, Direct);
+        fx.Render ();
+
+        Assert.Equal (0, fx.Top.Editor.Viewport.Y);
+        DriverAssert.ContentsContains (fx.Driver, "line-00");
     }
 }

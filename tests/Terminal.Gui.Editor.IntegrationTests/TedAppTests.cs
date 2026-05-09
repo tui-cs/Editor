@@ -45,7 +45,7 @@ public class TedAppTests
         Assert.False (app.OpenFile ());
 
         Assert.Null (app.CurrentFilePath);
-        Assert.Equal ("Hello world", app.Editor.Document!.Text);
+        Assert.Equal (string.Empty, app.Editor.Document!.Text);
     }
 
     [Fact]
@@ -132,19 +132,19 @@ public class TedAppTests
     }
 
     [Fact]
-    public async Task Renders_HelloWorld_InEditorArea ()
-    {
-        await using AppFixture<TedApp> fx = new (() => new TedApp ());
-
-        DriverAssert.ContentsContains (fx.Driver, "Hello world");
-    }
-
-    [Fact]
     public async Task Renders_FileMenu_Header ()
     {
         await using AppFixture<TedApp> fx = new (() => new TedApp ());
 
         DriverAssert.ContentsContains (fx.Driver, "File");
+    }
+
+    [Fact]
+    public async Task Renders_OptionsMenu_Header ()
+    {
+        await using AppFixture<TedApp> fx = new (() => new TedApp ());
+
+        DriverAssert.ContentsContains (fx.Driver, "Options");
     }
 
     [Fact]
@@ -156,14 +156,36 @@ public class TedAppTests
     }
 
     [Fact]
+    public async Task Renders_Tab_StatusBar_Item ()
+    {
+        await using AppFixture<TedApp> fx = new (() => new TedApp ());
+
+        DriverAssert.ContentsContains (fx.Driver, "Tab");
+    }
+
+    [Fact]
     public async Task Theme_StatusBar_DropDown_Changes_Editor_Syntax_Theme ()
     {
         await using AppFixture<TedApp> fx = new (() => new TedApp ());
 
         fx.Top.ThemeDropDown.Value = ThemeName.LightPlus;
 
+        // CS0618: Editor.SyntaxHighlighter is the [Obsolete] stopgap surface (issue #32);
+        // ted's theme drop-down is its UI, so this test must read it.
+#pragma warning disable CS0618 // Type or member is obsolete
         TextMateSyntaxHighlighter highlighter = Assert.IsType<TextMateSyntaxHighlighter> (fx.Top.Editor.SyntaxHighlighter);
+#pragma warning restore CS0618 // Type or member is obsolete
         Assert.Equal (ThemeName.LightPlus, highlighter.ThemeName);
+    }
+
+    [Fact]
+    public async Task TabWidth_StatusBar_NumericUpDown_Changes_Editor_TabWidth ()
+    {
+        await using AppFixture<TedApp> fx = new (() => new TedApp ());
+
+        fx.Top.TabWidthUpDown.Value = 8;
+
+        Assert.Equal (8, fx.Top.Editor.TabWidth);
     }
 
     [Fact]
@@ -179,6 +201,36 @@ public class TedAppTests
         fx.Render ();
 
         DriverAssert.ContentsContains (fx.Driver, "Open...");
+    }
+
+    [Fact]
+    public async Task OptionsMenu_TogglesLineNumbers_ViaKeyboard ()
+    {
+        await using AppFixture<TedApp> fx = new (() => new TedApp ());
+
+        Assert.False (fx.Top.Editor.ShowLineNumbers);
+
+        InputInjectionOptions options = new () { Mode = InputInjectionMode.Direct };
+        fx.Injector.InjectKey (Key.O.WithAlt, options);
+        fx.Render ();
+
+        DriverAssert.ContentsContains (fx.Driver, "Line Numbers");
+        DriverAssert.ContentsContains (fx.Driver, "☐ Line Numbers");
+
+        fx.Injector.InjectKey (Key.Enter, options);
+        fx.Render ();
+
+        Assert.True (fx.Top.Editor.ShowLineNumbers);
+
+        fx.Injector.InjectKey (Key.O.WithAlt, options);
+        fx.Render ();
+
+        DriverAssert.ContentsContains (fx.Driver, "☒ Line Numbers");
+
+        fx.Injector.InjectKey (Key.Enter, options);
+        fx.Render ();
+
+        Assert.False (fx.Top.Editor.ShowLineNumbers);
     }
 
     [Fact]

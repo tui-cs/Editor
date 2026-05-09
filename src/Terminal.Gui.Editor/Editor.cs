@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Drawing;
 using Terminal.Gui.Drawing;
 using Terminal.Gui.Text.Document;
@@ -15,8 +16,10 @@ public partial class Editor : View
 {
     private int _caretOffset;
     private TextDocument? _document;
+    private bool _showLineNumbers;
     private ISyntaxHighlighter? _syntaxHighlighter;
     private string _syntaxLanguage = "csharp";
+    private int _tabWidth = 4;
 
     /// <summary>
     ///     Sticky column for vertical caret moves. Tracks the column the user *intends* to be in,
@@ -25,12 +28,12 @@ public partial class Editor : View
     /// </summary>
     private int _virtualCaretColumn;
 
-    /// <summary>Initializes a new <see cref="Editor" /> with a placeholder document containing "Hello world".</summary>
+    /// <summary>Initializes a new <see cref="Editor" /> with an empty <see cref="TextDocument" />.</summary>
     public Editor ()
     {
         CanFocus = true;
         CreateCommandsAndBindings ();
-        Document = new ("Hello world");
+        Document = new ();
     }
 
     /// <summary>The backing <see cref="TextDocument" />. Setting this rewires change handlers and clamps the caret.</summary>
@@ -57,6 +60,7 @@ public partial class Editor : View
             _caretOffset = Math.Clamp (_caretOffset, 0, _document.TextLength);
             _virtualCaretColumn = GetCaretColumn ();
             UpdateContentSize ();
+            UpdateLineNumberPadding ();
             SetNeedsDraw ();
         }
     }
@@ -71,7 +75,45 @@ public partial class Editor : View
         set => SetCaretOffset (value, true);
     }
 
+    /// <summary>
+    ///     Gets or sets whether one-based line numbers are rendered in the editor's left padding.
+    /// </summary>
+    public bool ShowLineNumbers
+    {
+        get => _showLineNumbers;
+        set
+        {
+            if (_showLineNumbers == value)
+            {
+                return;
+            }
+
+            _showLineNumbers = value;
+            UpdateLineNumberPadding ();
+            SetNeedsDraw ();
+        }
+    }
+
     /// <summary>Optional syntax highlighter used when drawing document text.</summary>
+    ///     Optional syntax highlighter used when drawing document text.
+    /// </summary>
+    /// <remarks>
+    ///     <para>
+    ///         <b>Stopgap.</b> This property reuses Terminal.Gui's
+    ///         <see cref="ISyntaxHighlighter" /> from <c>Terminal.Gui.Drawing.Markdown</c>, which is
+    ///         shaped for Markdown rendering — not for an editor's per-line / per-visual-line
+    ///         highlighting pipeline. It will be removed when <c>specs/00-plan.md</c> Phase 6 lifts
+    ///         AvaloniaEdit's <c>Highlighting/</c> folder and the editor switches to a
+    ///         <c>HighlightingColorizer : IVisualLineTransformer</c> running over the
+    ///         <see cref="DocumentLine" /> → visual-line pipeline tracked by issue #28.
+    ///     </para>
+    ///     <para>
+    ///         External code should not take a hard dependency on this contract.
+    ///     </para>
+    /// </remarks>
+    [Obsolete (
+        "Stopgap reusing Terminal.Gui's Markdown ISyntaxHighlighter; will be replaced by HighlightingColorizer when specs/00-plan.md Phase 6 lifts AvaloniaEdit's Highlighting/ folder. See issue #28 for the visual-line pipeline that replaces this. Tracked by issue #32.")]
+    [EditorBrowsable (EditorBrowsableState.Never)]
     public ISyntaxHighlighter? SyntaxHighlighter
     {
         get => _syntaxHighlighter;
@@ -89,6 +131,13 @@ public partial class Editor : View
     }
 
     /// <summary>The language identifier passed to <see cref="SyntaxHighlighter" />. Defaults to C#.</summary>
+    /// <remarks>
+    ///     Obsolete for the same reason as <see cref="SyntaxHighlighter" /> — this is part of the
+    ///     temporary Markdown-shaped surface that Phase 6 will replace. See issue #28 / #32.
+    /// </remarks>
+    [Obsolete (
+        "Stopgap reusing Terminal.Gui's Markdown ISyntaxHighlighter; will be replaced by HighlightingColorizer when specs/00-plan.md Phase 6 lifts AvaloniaEdit's Highlighting/ folder. See issue #28 for the visual-line pipeline that replaces this. Tracked by issue #32.")]
+    [EditorBrowsable (EditorBrowsableState.Never)]
     public string SyntaxLanguage
     {
         get => _syntaxLanguage;
@@ -107,8 +156,26 @@ public partial class Editor : View
         }
     }
 
-    /// <summary>Raised whenever <see cref="Document" /> raises its own <c>Changed</c> event.</summary>
-    public event EventHandler<DocumentChangeEventArgs>? DocumentChanged;
+    /// <summary>Visual tab-stop width in cells. Defaults to 4.</summary>
+    public int TabWidth
+    {
+        get => _tabWidth;
+        set
+        {
+            ArgumentOutOfRangeException.ThrowIfLessThan (value, 1);
+
+            if (_tabWidth == value)
+            {
+                return;
+            }
+
+            _tabWidth = value;
+            _virtualCaretColumn = GetCaretColumn ();
+            UpdateContentSize ();
+            EnsureCaretVisible ();
+            SetNeedsDraw ();
+        }
+    }
 
     /// <summary>Raised whenever <see cref="CaretOffset" /> changes.</summary>
     public event EventHandler? CaretChanged;
@@ -139,29 +206,47 @@ public partial class Editor : View
         }
     }
 
+    /// <inheritdoc />
+    protected override void Dispose (bool disposing)
+    {
+        if (disposing && _document is not null)
+        {
+            // Without this the document keeps the editor alive via the Changed subscription whenever
+            // external code retains the TextDocument (test fixtures, future shared docs across panes,
+            // etc.). The Document setter unsubscribes on swap; this covers View-teardown.
+            _document.Changed -= OnDocumentChanged;
+        }
+
+        base.Dispose (disposing);
+    }
+
     private void OnDocumentChanged (object? sender, DocumentChangeEventArgs e)
     {
-        // AnchorMovementType.AfterInsertion semantics: an insert at the caret moves the caret past
-        // the inserted text; an insert strictly after the caret leaves it alone; a removal that
-        // straddles the caret snaps it to the removal start.
+        // Content-size has to refresh first so EnsureCaretVisible inside SetCaretOffset clamps the
+        // viewport against the new line count.
+        UpdateContentSize ();
+
+        // Manual stand-in for TextAnchor.AfterInsertion until specs/00-plan.md §6 lands. The math:
+        // an insert at-or-before the caret pushes it forward by InsertionLength; an insert strictly
+        // after the caret leaves it alone; a removal that straddles the caret snaps it to the
+        // removal start; a removal entirely before the caret slides it back by RemovalLength.
         if (_caretOffset >= e.Offset)
         {
-            if (_caretOffset < e.Offset + e.RemovalLength)
-            {
-                _caretOffset = e.Offset;
-            }
-            else
-            {
-                _caretOffset = _caretOffset - e.RemovalLength + e.InsertionLength;
-            }
+            int target = _caretOffset < e.Offset + e.RemovalLength
+                             ? e.Offset
+                             : _caretOffset - e.RemovalLength + e.InsertionLength;
 
-            _virtualCaretColumn = GetCaretColumn ();
+            // Route through SetCaretOffset so CaretChanged fires when the caret actually moves.
+            // SetCaretOffset also handles EnsureCaretVisible + SetNeedsDraw.
+            SetCaretOffset (target, true);
+
+            return;
         }
 
         UpdateContentSize ();
+        UpdateLineNumberPadding ();
         EnsureCaretVisible ();
         SetNeedsDraw ();
-        DocumentChanged?.Invoke (this, e);
     }
 
     private void UpdateContentSize ()
@@ -171,17 +256,44 @@ public partial class Editor : View
             return;
         }
 
-        var maxWidth = _document.Lines.Select (line => line.Length).Prepend (0).Max ();
+        var maxWidth = _document.Lines.Select (line => GetVisualColumnFromLogicalColumn (line, line.Length)).Prepend (0).Max ();
 
         // +1 column lets the caret sit just past the end-of-line.
         SetContentSize (new (maxWidth + 1, _document.LineCount));
+    }
+
+    private void UpdateLineNumberPadding ()
+    {
+        Thickness thickness = Padding.Thickness;
+        int left = _showLineNumbers && _document is not null ? GetLineNumberPaddingWidth () : 0;
+
+        if (thickness.Left == left)
+        {
+            return;
+        }
+
+        Padding.Thickness = new (left, thickness.Top, thickness.Right, thickness.Bottom);
+    }
+
+    private int GetLineNumberPaddingWidth ()
+    {
+        int lineCount = Math.Max (1, _document?.LineCount ?? 1);
+
+        return lineCount.ToString ().Length + 1;
     }
 
     private int GetCaretColumn ()
     {
         DocumentLine? line = _document?.GetLineByOffset (_caretOffset);
 
-        return _caretOffset - (line?.Offset ?? 0);
+        if (line is null)
+        {
+            return 0;
+        }
+
+        int logicalColumn = _caretOffset - line.Offset;
+
+        return GetVisualColumnFromLogicalColumn (line, logicalColumn);
     }
 
     private int GetCaretLineIndex ()
@@ -197,12 +309,66 @@ public partial class Editor : View
     {
         int targetLine = Math.Clamp (GetCaretLineIndex () + delta, 0, _document!.LineCount - 1);
         DocumentLine line = _document!.GetLineByNumber (targetLine + 1);
-        int targetCol = Math.Min (_virtualCaretColumn, line.Length);
+        int targetCol = GetLogicalColumnFromVisualColumn (line, _virtualCaretColumn);
 
-        // Preserve the sticky column across vertical moves — SetCaretOffset would otherwise reset it.
-        int sticky = _virtualCaretColumn;
+        // resetVirtualColumn: false keeps the sticky column intact across vertical moves.
         SetCaretOffset (line.Offset + targetCol, resetVirtualColumn: false);
-        _virtualCaretColumn = sticky;
+    }
+
+    private int GetVisualColumnFromLogicalColumn (DocumentLine line, int logicalColumn)
+    {
+        string text = _document!.GetText (line);
+        int clampedLogical = Math.Clamp (logicalColumn, 0, text.Length);
+        int visualColumn = 0;
+
+        for (int i = 0; i < clampedLogical; i++)
+        {
+            visualColumn += GetVisualWidthForCharacter (text[i], visualColumn, TabWidth);
+        }
+
+        return visualColumn;
+    }
+
+    private int GetLogicalColumnFromVisualColumn (DocumentLine line, int visualColumn)
+    {
+        string text = _document!.GetText (line);
+        int clampedVisual = Math.Max (0, visualColumn);
+        int currentVisual = 0;
+
+        for (int logical = 0; logical < text.Length; logical++)
+        {
+            int width = GetVisualWidthForCharacter (text[logical], currentVisual, TabWidth);
+            int nextVisual = currentVisual + width;
+
+            if (nextVisual >= clampedVisual)
+            {
+                if (text[logical] == '\t' && clampedVisual > currentVisual)
+                {
+                    // Clicking or moving inside the visual span produced by '\t' snaps the caret
+                    // after the tab character because there is no representable position "inside"
+                    // a single tab code point.
+                    return logical + 1;
+                }
+
+                return clampedVisual >= nextVisual ? logical + 1 : logical;
+            }
+
+            currentVisual = nextVisual;
+        }
+
+        return text.Length;
+    }
+
+    private static int GetVisualWidthForCharacter (char c, int visualColumn, int tabWidth)
+    {
+        if (c != '\t')
+        {
+            return 1;
+        }
+
+        int remainder = visualColumn % tabWidth;
+
+        return remainder == 0 ? tabWidth : tabWidth - remainder;
     }
 
     private void EnsureCaretVisible ()

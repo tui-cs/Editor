@@ -20,7 +20,13 @@ public partial class Editor
         Rectangle viewport = Viewport;
         Drawing.Attribute normal = GetAttributeForRole (VisualRole.Normal);
         Drawing.Attribute selected = GetAttributeForRole (VisualRole.Active);
+
+        // The CS0618 here is the API's purpose: SyntaxHighlighter is [Obsolete] to warn
+        // external callers that this is a stopgap (issue #32). The editor itself still has to
+        // honor the property until Phase 6 lifts AvaloniaEdit's Highlighting/ pipeline (#28).
+#pragma warning disable CS0618 // Type or member is obsolete
         ISyntaxHighlighter? syntaxHighlighter = SyntaxHighlighter;
+#pragma warning restore CS0618 // Type or member is obsolete
 
         bool hasSelection = HasSelection;
         int selStart = hasSelection ? SelectionStart : 0;
@@ -39,17 +45,13 @@ public partial class Editor
 
             DocumentLine line = _document.GetLineByNumber (lineIndex + 1);
             string text = _document.GetText (line);
+#pragma warning disable CS0618 // Type or member is obsolete — see note at top of OnDrawingContent.
             IReadOnlyList<StyledSegment>? segments = syntaxHighlighter?.Highlight (text, SyntaxLanguage);
-
-            if (viewport.X >= text.Length)
-            {
-                continue;
-            }
-
+#pragma warning restore CS0618 // Type or member is obsolete
             int visibleStart = viewport.X;
-            int visibleEnd = Math.Min (text.Length, viewport.X + viewport.Width);
+            int visibleEnd = viewport.X + viewport.Width;
 
-            DrawLineRuns (
+            DrawLineContent (
                 row,
                 text,
                 visibleStart,
@@ -81,11 +83,13 @@ public partial class Editor
         for (int lineIndex = 0; lineIndex < firstVisibleLineIndex && lineIndex < _document.LineCount; lineIndex++)
         {
             DocumentLine line = _document.GetLineByNumber (lineIndex + 1);
+#pragma warning disable CS0618 // Type or member is obsolete — see note in OnDrawingContent.
             syntaxHighlighter.Highlight (_document.GetText (line), SyntaxLanguage);
+#pragma warning restore CS0618 // Type or member is obsolete
         }
     }
 
-    private void DrawLineRuns (
+    private void DrawLineContent (
         int row,
         string text,
         int visibleStart,
@@ -98,116 +102,58 @@ public partial class Editor
         int selStart,
         int selEnd)
     {
-        if (segments is null)
+        int visualColumn = 0;
+        int segmentIndex = 0;
+        int segmentEnd = segments is { Count: > 0 } ? segments[0].Text.Length : int.MaxValue;
+
+        for (int i = 0; i < text.Length; i++)
         {
-            DrawRun (
-                row,
-                visibleStart,
-                visibleStart,
-                visibleEnd,
-                text[visibleStart..visibleEnd],
-                normal,
-                selected,
-                lineOffset,
-                hasSelection,
-                selStart,
-                selEnd);
-
-            return;
-        }
-
-        int segmentStart = 0;
-
-        foreach (StyledSegment segment in segments)
-        {
-            int segmentEnd = segmentStart + segment.Text.Length;
-
-            if (segmentEnd <= visibleStart)
+            while (segments is not null && i >= segmentEnd && segmentIndex + 1 < segments.Count)
             {
-                segmentStart = segmentEnd;
+                segmentIndex++;
+                segmentEnd += segments[segmentIndex].Text.Length;
+            }
+
+            Drawing.Attribute attribute = segments is null
+                ? normal
+                : segments[segmentIndex].Attribute ?? normal;
+
+            if (hasSelection && lineOffset + i >= selStart && lineOffset + i < selEnd)
+            {
+                attribute = selected;
+            }
+
+            char c = text[i];
+            int width = GetVisualWidthForCharacter (c, visualColumn, TabWidth);
+            int charVisualStart = visualColumn;
+            int charVisualEnd = visualColumn + width;
+
+            if (charVisualEnd <= visibleStart)
+            {
+                visualColumn = charVisualEnd;
 
                 continue;
             }
 
-            if (segmentStart >= visibleEnd)
+            if (charVisualStart >= visibleEnd)
             {
                 break;
             }
 
-            int runStart = Math.Max (segmentStart, visibleStart);
-            int runEnd = Math.Min (segmentEnd, visibleEnd);
-            Drawing.Attribute attribute = segment.Attribute ?? normal;
+            int drawStart = Math.Max (charVisualStart, visibleStart);
+            int drawEnd = Math.Min (charVisualEnd, visibleEnd);
 
-            DrawRun (
-                row,
-                visibleStart,
-                runStart,
-                runEnd,
-                segment.Text[(runStart - segmentStart)..(runEnd - segmentStart)],
-                attribute,
-                selected,
-                lineOffset,
-                hasSelection,
-                selStart,
-                selEnd);
-            segmentStart = segmentEnd;
+            if (drawEnd > drawStart)
+            {
+                SetAttribute (attribute);
+                AddStr (
+                    drawStart - visibleStart,
+                    row,
+                    c == '\t' ? new (' ', drawEnd - drawStart) : c.ToString ());
+            }
+
+            visualColumn = charVisualEnd;
         }
-    }
-
-    private void DrawRun (
-        int row,
-        int visibleStart,
-        int runStart,
-        int runEnd,
-        string text,
-        Drawing.Attribute attribute,
-        Drawing.Attribute selected,
-        int lineOffset,
-        bool hasSelection,
-        int selStart,
-        int selEnd)
-    {
-        if (!hasSelection || selEnd <= lineOffset + runStart || selStart >= lineOffset + runEnd)
-        {
-            SetAttribute (attribute);
-            AddStr (runStart - visibleStart, row, text);
-
-            return;
-        }
-
-        int lineSelStart = Math.Max (runStart, selStart - lineOffset);
-        int lineSelEnd = Math.Min (runEnd, selEnd - lineOffset);
-        int current = runStart;
-
-        if (current < lineSelStart)
-        {
-            DrawRunPart (row, visibleStart, runStart, current, lineSelStart, text, attribute);
-            current = lineSelStart;
-        }
-
-        if (current < lineSelEnd)
-        {
-            DrawRunPart (row, visibleStart, runStart, current, lineSelEnd, text, selected);
-            current = lineSelEnd;
-        }
-
-        if (current < runEnd)
-        {
-            DrawRunPart (row, visibleStart, runStart, current, runEnd, text, attribute);
-        }
-    }
-
-    private void DrawRunPart (
-        int row,
-        int visibleStart,
-        int runStart,
-        int partStart,
-        int partEnd,
-        string text,
-        Drawing.Attribute attribute)
-    {
-        SetAttribute (attribute);
-        AddStr (partStart - visibleStart, row, text[(partStart - runStart)..(partEnd - runStart)]);
     }
 
     private void UpdateCursor ()
@@ -234,5 +180,61 @@ public partial class Editor
 
         Point screen = ViewportToScreen (new Point (col, row));
         Cursor = new () { Position = screen, Style = CursorStyle.BlinkingBar };
+    }
+
+    /// <inheritdoc />
+    protected override void OnDrawComplete (DrawContext? context)
+    {
+        base.OnDrawComplete (context);
+
+        if (App?.Driver is { } driver)
+        {
+            DrawLineNumbers (driver);
+        }
+    }
+
+    private void DrawLineNumbers (IDriver driver)
+    {
+        if (!_showLineNumbers || _document is null)
+        {
+            return;
+        }
+
+        int width = Padding.Thickness.Left;
+
+        if (width <= 0)
+        {
+            return;
+        }
+
+        Rectangle viewport = Viewport;
+        Rectangle screen = ViewportToScreen ();
+        Region? clip = GetClip ();
+        Drawing.Attribute previous = driver.SetAttribute (GetAttributeForRole (VisualRole.Normal));
+
+        SetClipToScreen ();
+
+        try
+        {
+            for (int row = 0; row < viewport.Height; row++)
+            {
+                int lineIndex = viewport.Y + row;
+                string text = lineIndex < _document.LineCount
+                                  ? (lineIndex + 1).ToString ().PadLeft (width - 1).PadRight (width)
+                                  : new string (' ', width);
+
+                driver.Move (screen.X - width, screen.Y + row);
+                driver.AddStr (text);
+            }
+        }
+        finally
+        {
+            if (clip is not null)
+            {
+                SetClip (clip);
+            }
+
+            driver.SetAttribute (previous);
+        }
     }
 }

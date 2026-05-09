@@ -10,7 +10,12 @@ public partial class Editor
     /// <inheritdoc />
     protected override bool OnMouseEvent (Mouse mouse)
     {
-        if (_document is null || mouse.Position is not { } pos)
+        if (_document is null)
+        {
+            return false;
+        }
+
+        if (mouse.Position is not { } pos)
         {
             return false;
         }
@@ -22,10 +27,9 @@ public partial class Editor
         if (mouse.Flags.FastHasFlags (MouseFlags.LeftButtonPressed | MouseFlags.PositionReport))
         {
             int offset = MousePositionToOffset (pos);
-            EnsureSelectionAnchor ();
-            CaretOffset = offset;
-            SelectionChanged?.Invoke (this, EventArgs.Empty);
-            SetNeedsDraw ();
+
+            // Route through the selection helper so SelectionChanged fires only on real changes.
+            ExtendCaretTo (offset);
 
             return true;
         }
@@ -42,10 +46,7 @@ public partial class Editor
 
             if (shift)
             {
-                EnsureSelectionAnchor ();
-                CaretOffset = offset;
-                SelectionChanged?.Invoke (this, EventArgs.Empty);
-                SetNeedsDraw ();
+                ExtendCaretTo (offset);
             }
             else
             {
@@ -86,7 +87,7 @@ public partial class Editor
         int lineIndex = Math.Clamp (Viewport.Y + viewPos.Y, 0, _document.LineCount - 1);
         DocumentLine line = _document.GetLineByNumber (lineIndex + 1);
         int col = Math.Max (0, Viewport.X + viewPos.X);
-        int colInLine = Math.Min (col, line.Length);
+        int colInLine = GetLogicalColumnFromVisualColumn (line, col);
 
         return line.Offset + colInLine;
     }

@@ -1,4 +1,5 @@
 // Claude - claude-opus-4-7
+using Terminal.Gui.Input;
 using Terminal.Gui.Text.Document;
 using Terminal.Gui.Views;
 using Xunit;
@@ -98,5 +99,48 @@ public class EditorSelectionLogicTests
 
         editor.ClearSelection ();
         Assert.Equal (2, fires); // no-op when already cleared
+    }
+
+    [Fact]
+    public void SelectionChanged_Does_Not_Fire_For_SelectAll_On_Empty_Document ()
+    {
+        Views.Editor editor = new () { Document = new TextDocument (string.Empty) };
+        int fires = 0;
+        editor.SelectionChanged += (_, _) => fires++;
+
+        editor.SelectAll ();
+
+        Assert.False (editor.HasSelection);
+        Assert.Equal (0, fires);
+    }
+
+    [Fact]
+    public void SelectionChanged_Does_Not_Fire_When_ExtendCaret_Is_NoOp ()
+    {
+        Views.Editor editor = new () { Document = new TextDocument ("abc") };
+        editor.CaretOffset = 3; // already at end
+        int fires = 0;
+        editor.SelectionChanged += (_, _) => fires++;
+
+        // Extend right by one character but caret can't move — must not raise SelectionChanged.
+        editor.InvokeCommand (Command.RightExtend);
+
+        Assert.Equal (0, fires);
+        Assert.False (editor.HasSelection);
+    }
+
+    [Fact]
+    public void SelectionChanged_Does_Not_Fire_When_ExtendCaretVertically_Is_NoOp ()
+    {
+        Views.Editor editor = new () { Document = new TextDocument ("abc") };
+        editor.CaretOffset = 0;
+        int fires = 0;
+        editor.SelectionChanged += (_, _) => fires++;
+
+        // Single-line doc, so extending up has nowhere to go.
+        editor.InvokeCommand (Command.UpExtend);
+
+        Assert.Equal (0, fires);
+        Assert.False (editor.HasSelection);
     }
 }

@@ -46,6 +46,10 @@ public partial class Editor
         AddCommand (Command.End, () => SetCaretAndReturnTrue (_document!.TextLength));
         AddCommand (Command.PageUp, () => MoveCaretVerticallyCollapsing (-Math.Max (1, Viewport.Height)));
         AddCommand (Command.PageDown, () => MoveCaretVerticallyCollapsing (Math.Max (1, Viewport.Height)));
+        AddCommand (Command.ScrollUp, () => ScrollVerticalCommand (-1));
+        AddCommand (Command.ScrollDown, () => ScrollVerticalCommand (1));
+        AddCommand (Command.ScrollLeft, () => ScrollHorizontalCommand (-1));
+        AddCommand (Command.ScrollRight, () => ScrollHorizontalCommand (1));
 
         // Selection-extending movement
         AddCommand (Command.LeftExtend, () => ExtendCommand (() => ExtendCaretBy (-1)));
@@ -102,6 +106,11 @@ public partial class Editor
         });
 
         ApplyKeyBindings (View.DefaultKeyBindings, DefaultKeyBindings);
+
+        MouseBindings.Add (MouseFlags.WheeledUp, Command.ScrollUp);
+        MouseBindings.Add (MouseFlags.WheeledDown, Command.ScrollDown);
+        MouseBindings.Add (MouseFlags.WheeledLeft, Command.ScrollLeft);
+        MouseBindings.Add (MouseFlags.WheeledRight, Command.ScrollRight);
     }
 
     private bool? ExtendCommand (Action extend)
@@ -121,6 +130,30 @@ public partial class Editor
     private bool? MoveCaretVerticallyCollapsing (int delta)
     {
         MoveCaretVerticallyCollapsingSelection (delta);
+
+        return true;
+    }
+
+    private bool? ScrollVerticalCommand (int delta)
+    {
+        if (_document is null || ScrollVertical (delta) != true)
+        {
+            return false;
+        }
+
+        SetNeedsDraw ();
+
+        return true;
+    }
+
+    private bool? ScrollHorizontalCommand (int delta)
+    {
+        if (_document is null || ScrollHorizontal (delta) != true)
+        {
+            return false;
+        }
+
+        SetNeedsDraw ();
 
         return true;
     }
