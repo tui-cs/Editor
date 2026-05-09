@@ -153,6 +153,17 @@ public class EditorMouseTests
         Assert.Equal (8, fx.Top.Editor.CaretOffset);
     }
 
+    [Fact]
+    public async Task LeftClick_Inside_TabExpansion_Snaps_After_Tab_Character ()
+    {
+        await using AppFixture<EditorTestHost> fx = new (() => new ("a\tb"));
+        fx.Top.Editor.SetFocus ();
+
+        InjectClick (fx, new (3, 0));
+
+        Assert.Equal (2, fx.Top.Editor.CaretOffset);
+    }
+
     private static void InjectClick (AppFixture<EditorTestHost> fx, Point pos)
     {
         fx.Injector.InjectMouse (
