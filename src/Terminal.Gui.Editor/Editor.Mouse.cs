@@ -10,7 +10,17 @@ public partial class Editor
     /// <inheritdoc />
     protected override bool OnMouseEvent (Mouse mouse)
     {
-        if (_document is null || mouse.Position is not { } pos)
+        if (_document is null)
+        {
+            return false;
+        }
+
+        if (mouse.IsWheel)
+        {
+            return ScrollMouseWheel (mouse.Flags);
+        }
+
+        if (mouse.Position is not { } pos)
         {
             return false;
         }
@@ -70,6 +80,25 @@ public partial class Editor
         }
 
         return false;
+    }
+
+    private bool ScrollMouseWheel (MouseFlags flags)
+    {
+        bool? scrolled = flags switch
+        {
+            _ when flags.HasFlag (MouseFlags.WheeledUp) => ScrollVertical (-1),
+            _ when flags.HasFlag (MouseFlags.WheeledDown) => ScrollVertical (1),
+            _ when flags.HasFlag (MouseFlags.WheeledLeft) => ScrollHorizontal (-1),
+            _ when flags.HasFlag (MouseFlags.WheeledRight) => ScrollHorizontal (1),
+            _ => false
+        };
+
+        if (scrolled == true)
+        {
+            SetNeedsDraw ();
+        }
+
+        return scrolled == true;
     }
 
     /// <summary>

@@ -1,5 +1,6 @@
 // Claude - claude-opus-4-7
 
+using System.Drawing;
 using Terminal.Gui.Editor.IntegrationTests.Testing;
 using Terminal.Gui.Input;
 using Terminal.Gui.Testing;
@@ -200,5 +201,31 @@ public class EditorTests
 
         DriverAssert.ContentsContains (fx.Driver, "line-40");
         DriverAssert.ContentsDoesNotContain (fx.Driver, "line-00"); // scrolled out
+    }
+
+    [Fact]
+    public async Task MouseWheel_Scrolls_LongDocument ()
+    {
+        var lines = new string[50];
+        for (var i = 0; i < 50; i++)
+        {
+            lines[i] = $"line-{i:00}";
+        }
+
+        await using AppFixture<EditorTestHost> fx = new (() => new (string.Join ("\n", lines)), height: 6);
+        fx.Render ();
+        DriverAssert.ContentsContains (fx.Driver, "line-00");
+
+        fx.Injector.InjectMouse (new () { ScreenPosition = new Point (1, 1), Flags = MouseFlags.WheeledDown }, Direct);
+        fx.Render ();
+
+        Assert.True (fx.Top.Editor.Viewport.Y > 0);
+        DriverAssert.ContentsDoesNotContain (fx.Driver, "line-00");
+
+        fx.Injector.InjectMouse (new () { ScreenPosition = new Point (1, 1), Flags = MouseFlags.WheeledUp }, Direct);
+        fx.Render ();
+
+        Assert.Equal (0, fx.Top.Editor.Viewport.Y);
+        DriverAssert.ContentsContains (fx.Driver, "line-00");
     }
 }
