@@ -12,7 +12,7 @@ All scripts are bash, target macOS (the Mac mini host), and are idempotent — r
 # Day -1, on the Mac mini, ONCE per host:
 ./scripts/setup-host.sh
 
-# Day -1, ONCE per agent (creates /work/{claude,codex,copilot} clones):
+# Day -1, ONCE per agent (creates $HOME/s/Terminal.Gui.Text/{claude,codex,copilot} clones):
 ./scripts/setup-agent-clone.sh claude
 ./scripts/setup-agent-clone.sh codex
 ./scripts/setup-agent-clone.sh copilot

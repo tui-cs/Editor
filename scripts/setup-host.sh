@@ -45,7 +45,8 @@ if ! command -v brew >/dev/null 2>&1; then
 fi
 
 echo "==> System packages"
-brew install gh git tmux jq pwsh node
+brew install gh git tmux jq node
+brew install --cask powershell
 
 echo "==> .NET 10 SDK (preview channel)"
 # The Homebrew cask tracks GA. For net10 preview we use the install-script.
@@ -76,9 +77,8 @@ if ! command -v codex >/dev/null 2>&1; then
   npm install -g @openai/codex
 fi
 
-echo "==> /work/ directory (where agent clones land)"
-sudo mkdir -p /work
-sudo chown "$USER" /work
+echo "==> $HOME/s/Terminal.Gui.Text/ directory (where agent clones land)"
+mkdir -p "$HOME/s/Terminal.Gui.Text"
 
 echo
 echo "Host setup complete. Versions:"

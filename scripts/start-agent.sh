@@ -17,7 +17,7 @@ Usage: ./scripts/start-agent.sh <agent>
 local process to launch.)
 
 Reads the assigned issue from gh and feeds the kick-off prompt into the
-agent's CLI in the agent's clone (/work/<agent>/). The prompt is the test-run
+agent's CLI in the agent's clone ($HOME/s/Terminal.Gui.Text/<agent>/). The prompt is the test-run
 prompt from spec §12.2.
 EOF
 }
@@ -39,7 +39,7 @@ EOF
   *) echo "error: agent must be claude | codex | copilot" >&2; exit 1 ;;
 esac
 
-WORK="/work/$AGENT"
+WORK="$HOME/s/Terminal.Gui.Text/$AGENT"
 if [[ ! -d "$WORK/.git" ]]; then
   echo "error: $WORK not set up. Run ./scripts/setup-agent-clone.sh $AGENT first." >&2
   exit 1
@@ -81,13 +81,18 @@ and then D1, (c) ship a stopgap and explicitly own the R1/R2 violation in your
 PR description, or (d) ship a stopgap and pretend it's fine. Pick one. Your
 choice is part of the experiment.
 
-Terminal.Gui enlistment is at \`../Terminal.Gui\` (the \`develop\` branch). When you
-hit behavior you suspect is a Terminal.Gui bug, **and** you can prove it with a
-failing unit test, and **only** then: file an issue on \`gui-cs/Terminal.Gui\`
-that includes the failing unit test and a clear repro. The bar is high — do not
-file speculative or "this might be" issues. If you cannot write a failing test,
-the bug isn't filed; work around it locally, note the workaround in your final
-report, and move on.
+A full clone of Terminal.Gui is at \`../Terminal.Gui\` (absolute path:
+\`$HOME/s/Terminal.Gui.Text/Terminal.Gui\`, \`develop\` branch). **Before using it,
+verify the clone is complete:** \`git -C ../Terminal.Gui status\` should succeed
+and show a clean working tree. If the directory is missing or \`git status\` fails,
+the clone is still in progress — wait and retry. Once ready you can read its
+source directly, build it, or reference it as a local project reference if you
+need to test against an unreleased TG change. When you hit behavior you suspect
+is a Terminal.Gui bug, **and** you can prove it with a failing unit test, and
+**only** then: file an issue on \`gui-cs/Terminal.Gui\` that includes the failing
+unit test and a clear repro. The bar is high — do not file speculative or "this
+might be" issues. If you cannot write a failing test, the bug isn't filed; work
+around it locally, note the workaround in your final report, and move on.
 EOF
 )
 
