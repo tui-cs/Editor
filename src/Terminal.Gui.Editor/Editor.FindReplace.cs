@@ -3,10 +3,10 @@ namespace Terminal.Gui.Views;
 public partial class Editor
 {
     /// <summary>
-    ///     Finds the next match for <paramref name="searchText"/> starting at the current caret (or after the current
+    ///     Finds the next match for <paramref name="searchText" /> starting at the current caret (or after the current
     ///     selection) and selects it.
     /// </summary>
-    /// <returns><see langword="true"/> when a match is found; otherwise <see langword="false"/>.</returns>
+    /// <returns><see langword="true" /> when a match is found; otherwise <see langword="false" />.</returns>
     public bool FindNext (string searchText, bool matchCase = false, bool wrapAround = true)
     {
         if (string.IsNullOrEmpty (searchText) || _document is null)
@@ -14,8 +14,8 @@ public partial class Editor
             return false;
         }
 
-        int startOffset = HasSelection ? SelectionEnd : _caretOffset;
-        int matchOffset = FindForwardOffset (searchText, startOffset, matchCase);
+        var startOffset = HasSelection ? SelectionEnd : _caretOffset;
+        var matchOffset = FindForwardOffset (searchText, startOffset, matchCase);
 
         if (matchOffset < 0 && wrapAround && startOffset > 0)
         {
@@ -33,10 +33,10 @@ public partial class Editor
     }
 
     /// <summary>
-    ///     Finds the previous match for <paramref name="searchText"/> before the current caret (or before the current
+    ///     Finds the previous match for <paramref name="searchText" /> before the current caret (or before the current
     ///     selection start) and selects it.
     /// </summary>
-    /// <returns><see langword="true"/> when a match is found; otherwise <see langword="false"/>.</returns>
+    /// <returns><see langword="true" /> when a match is found; otherwise <see langword="false" />.</returns>
     public bool FindPrevious (string searchText, bool matchCase = false, bool wrapAround = true)
     {
         if (string.IsNullOrEmpty (searchText) || _document is null || _document.TextLength == 0)
@@ -44,8 +44,8 @@ public partial class Editor
             return false;
         }
 
-        int startOffset = HasSelection ? SelectionStart - 1 : _caretOffset - 1;
-        int matchOffset = FindBackwardOffset (searchText, startOffset, matchCase);
+        var startOffset = HasSelection ? SelectionStart - 1 : _caretOffset - 1;
+        var matchOffset = FindBackwardOffset (searchText, startOffset, matchCase);
 
         if (matchOffset < 0 && wrapAround && startOffset < _document.TextLength - 1)
         {
@@ -65,7 +65,7 @@ public partial class Editor
     /// <summary>
     ///     Replaces the current match (if selected) or finds the next match and replaces it.
     /// </summary>
-    /// <returns><see langword="true"/> when a replacement is made; otherwise <see langword="false"/>.</returns>
+    /// <returns><see langword="true" /> when a replacement is made; otherwise <see langword="false" />.</returns>
     public bool ReplaceNext (string searchText, string replacement, bool matchCase = false, bool wrapAround = true)
     {
         ArgumentNullException.ThrowIfNull (replacement);
@@ -89,7 +89,7 @@ public partial class Editor
     }
 
     /// <summary>
-    ///     Replaces all matches of <paramref name="searchText"/> in the document.
+    ///     Replaces all matches of <paramref name="searchText" /> in the document.
     /// </summary>
     /// <returns>The number of replacements performed.</returns>
     public int ReplaceAll (string searchText, string replacement, bool matchCase = false)
@@ -101,12 +101,12 @@ public partial class Editor
             return 0;
         }
 
-        int replacements = 0;
-        int searchOffset = 0;
+        var replacements = 0;
+        var searchOffset = 0;
 
         while (searchOffset < _document.TextLength)
         {
-            int matchOffset = FindForwardOffset (searchText, searchOffset, matchCase);
+            var matchOffset = FindForwardOffset (searchText, searchOffset, matchCase);
 
             if (matchOffset < 0)
             {
@@ -142,7 +142,7 @@ public partial class Editor
             return -1;
         }
 
-        int clampedStart = Math.Clamp (startOffset, 0, _document.TextLength - 1);
+        var clampedStart = Math.Clamp (startOffset, 0, _document.TextLength - 1);
         StringComparison comparison = matchCase ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
 
         return _document.Text.LastIndexOf (searchText, clampedStart, comparison);
@@ -172,8 +172,8 @@ public partial class Editor
             return;
         }
 
-        int start = Math.Clamp (startOffset, 0, _document.TextLength);
-        int end = Math.Clamp (start + length, start, _document.TextLength);
+        var start = Math.Clamp (startOffset, 0, _document.TextLength);
+        var end = Math.Clamp (start + length, start, _document.TextLength);
 
         _selectionAnchor = start;
         CaretOffset = end;

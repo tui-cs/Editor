@@ -124,7 +124,9 @@ public sealed class TedApp : Window
             ]),
             new MenuBarItem (Strings.menuEdit,
             [
-                new MenuItem { Command = Command.Undo, Action = Undo, Key = KeyFor (Command.Undo) },
+                new MenuItem ("_Find...", "Find text in the current document", Find),
+                new MenuItem ("_Replace...", "Find and replace text in the current document", Replace),
+                new Line (), new MenuItem { Command = Command.Undo, Action = Undo, Key = KeyFor (Command.Undo) },
                 new MenuItem { Command = Command.Redo, Action = Redo, Key = KeyFor (Command.Redo) },
                 new Line (),
                 new MenuItem { Command = Command.Cut, Action = Cut, Key = KeyFor (Command.Cut) },
@@ -247,9 +249,9 @@ public sealed class TedApp : Window
 
     private void Action () { }
 
-    private void Find () { ShowFindReplaceDialog (selectReplaceTab: false); }
+    private void Find () { ShowFindReplaceDialog (false); }
 
-    private void Replace () { ShowFindReplaceDialog (selectReplaceTab: true); }
+    private void Replace () { ShowFindReplaceDialog (true); }
 
     private void SelectAll () { }
 
@@ -265,12 +267,10 @@ public sealed class TedApp : Window
 
     private string? ShowDefaultOpenDialog ()
     {
-        using OpenDialog dialog = new ()
-        {
-            AllowsMultipleSelection = false,
-            MustExist = true,
-            OpenMode = OpenMode.File
-        };
+        using OpenDialog dialog = new ();
+        dialog.AllowsMultipleSelection = false;
+        dialog.MustExist = true;
+        dialog.OpenMode = OpenMode.File;
 
         if (App is null)
         {
@@ -284,11 +284,9 @@ public sealed class TedApp : Window
 
     private string? ShowDefaultSaveDialog ()
     {
-        using SaveDialog dialog = new ()
-        {
-            AllowsMultipleSelection = false,
-            OpenMode = OpenMode.File
-        };
+        using SaveDialog dialog = new ();
+        dialog.AllowsMultipleSelection = false;
+        dialog.OpenMode = OpenMode.File;
 
         if (App is null)
         {

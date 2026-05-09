@@ -1,5 +1,5 @@
-using Terminal.Gui.Views;
 using Terminal.Gui.ViewBase;
+using Terminal.Gui.Views;
 
 namespace Ted;
 
@@ -17,12 +17,12 @@ internal sealed class FindReplaceDialog : Dialog
         Width = Dim.Percent (70);
         Height = Dim.Percent (50);
 
-        string initialSearchText = string.Empty;
+        var initialSearchText = string.Empty;
 
-        if (editor.HasSelection && editor.Document is { } document)
+        if (editor is { HasSelection: true, Document: { } document })
         {
-            int start = Math.Clamp (editor.SelectionStart, 0, document.TextLength);
-            int end = Math.Clamp (editor.SelectionEnd, start, document.TextLength);
+            var start = Math.Clamp (editor.SelectionStart, 0, document.TextLength);
+            var end = Math.Clamp (editor.SelectionEnd, start, document.TextLength);
             initialSearchText = document.Text.Substring (start, end - start);
         }
 
@@ -61,7 +61,7 @@ internal sealed class FindReplaceDialog : Dialog
             _findTextField,
             findNextButton);
 
-        findNextButton.Accepting += (_, _) => editor.FindNext (_findTextField.Text ?? string.Empty);
+        findNextButton.Accepting += (_, _) => editor.FindNext (_findTextField.Text);
 
         return tab;
     }
@@ -80,13 +80,13 @@ internal sealed class FindReplaceDialog : Dialog
         Button replaceButton = new () { X = Pos.Right (findNextButton) + 1, Y = 5, Text = "_Replace" };
         Button replaceAllButton = new () { X = Pos.Right (replaceButton) + 1, Y = 5, Text = "Replace _All" };
 
-        findNextButton.Accepting += (_, _) => editor.FindNext (_replaceFindTextField.Text ?? string.Empty);
+        findNextButton.Accepting += (_, _) => editor.FindNext (_replaceFindTextField.Text);
         replaceButton.Accepting += (_, _) => editor.ReplaceNext (
-            _replaceFindTextField.Text ?? string.Empty,
-            _replaceWithTextField.Text ?? string.Empty);
+            _replaceFindTextField.Text,
+            _replaceWithTextField.Text);
         replaceAllButton.Accepting += (_, _) => editor.ReplaceAll (
-            _replaceFindTextField.Text ?? string.Empty,
-            _replaceWithTextField.Text ?? string.Empty);
+            _replaceFindTextField.Text,
+            _replaceWithTextField.Text);
 
         tab.Add (findNextButton, replaceButton, replaceAllButton);
 
