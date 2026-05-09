@@ -103,9 +103,9 @@ public class EditorRenderingTests
     [Fact]
     public async Task LineNumbers_Follow_Vertical_Scroll ()
     {
-        var lines = new string[50];
+        string[] lines = new string[50];
 
-        for (var i = 0; i < lines.Length; i++)
+        for (int i = 0; i < lines.Length; i++)
         {
             lines[i] = $"line-{i:00}";
         }
@@ -120,7 +120,7 @@ public class EditorRenderingTests
 
         int offset = 0;
 
-        for (var i = 0; i < 40; i++)
+        for (int i = 0; i < 40; i++)
         {
             offset += lines[i].Length + 1;
         }

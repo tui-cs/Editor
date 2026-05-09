@@ -118,12 +118,16 @@ public partial class Editor
     protected override void OnDrawComplete (DrawContext? context)
     {
         base.OnDrawComplete (context);
-        DrawLineNumbers ();
+
+        if (App?.Driver is { } driver)
+        {
+            DrawLineNumbers (driver);
+        }
     }
 
-    private void DrawLineNumbers ()
+    private void DrawLineNumbers (IDriver driver)
     {
-        if (!_showLineNumbers || _document is null || App?.Driver is not { } driver)
+        if (!_showLineNumbers || _document is null)
         {
             return;
         }
@@ -148,7 +152,7 @@ public partial class Editor
             {
                 int lineIndex = viewport.Y + row;
                 string text = lineIndex < _document.LineCount
-                                  ? (lineIndex + 1).ToString ().PadLeft (width - 1) + " "
+                                  ? (lineIndex + 1).ToString ().PadLeft (width - 1).PadRight (width)
                                   : new string (' ', width);
 
                 driver.Move (screen.X - width, screen.Y + row);
