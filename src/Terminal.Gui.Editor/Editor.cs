@@ -26,12 +26,12 @@ public partial class Editor : View
     /// </summary>
     private int _virtualCaretColumn;
 
-    /// <summary>Initializes a new <see cref="Editor" /> with a placeholder document containing "Hello world".</summary>
+    /// <summary>Initializes a new <see cref="Editor" /> with an empty <see cref="TextDocument" />.</summary>
     public Editor ()
     {
         CanFocus = true;
         CreateCommandsAndBindings ();
-        Document = new ("Hello world");
+        Document = new ();
     }
 
     /// <summary>The backing <see cref="TextDocument" />. Setting this rewires change handlers and clamps the caret.</summary>
