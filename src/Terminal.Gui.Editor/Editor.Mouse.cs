@@ -1,7 +1,6 @@
 using System.Drawing;
 using Terminal.Gui.Input;
 using Terminal.Gui.Text.Document;
-using Terminal.Gui.ViewBase;
 
 namespace Terminal.Gui.Views;
 
@@ -20,13 +19,13 @@ public partial class Editor
             return false;
         }
 
-        bool shift = mouse.Flags.HasFlag (MouseFlags.Shift);
+        var shift = mouse.Flags.HasFlag (MouseFlags.Shift);
 
         // Drag: left button held while position changes — extend selection from the press point.
         // Tested first because PositionReport+LeftButtonPressed also satisfies the plain-press check.
         if (mouse.Flags.FastHasFlags (MouseFlags.LeftButtonPressed | MouseFlags.PositionReport))
         {
-            int offset = MousePositionToOffset (pos);
+            var offset = MousePositionToOffset (pos);
 
             // Route through the selection helper so SelectionChanged fires only on real changes.
             ExtendCaretTo (offset);
@@ -42,7 +41,7 @@ public partial class Editor
                 SetFocus ();
             }
 
-            int offset = MousePositionToOffset (pos);
+            var offset = MousePositionToOffset (pos);
 
             if (shift)
             {
@@ -74,7 +73,7 @@ public partial class Editor
     }
 
     /// <summary>
-    ///     Converts a viewport-relative <see cref="Point"/> into a clamped document offset. Mouse events
+    ///     Converts a viewport-relative <see cref="Point" /> into a clamped document offset. Mouse events
     ///     past the end of a line snap to that line's end; clicks below the last line snap to the last line.
     /// </summary>
     private int MousePositionToOffset (Point viewPos)
@@ -84,10 +83,10 @@ public partial class Editor
             return 0;
         }
 
-        int lineIndex = Math.Clamp (Viewport.Y + viewPos.Y, 0, _document.LineCount - 1);
+        var lineIndex = Math.Clamp (Viewport.Y + viewPos.Y, 0, _document.LineCount - 1);
         DocumentLine line = _document.GetLineByNumber (lineIndex + 1);
-        int col = Math.Max (0, Viewport.X + viewPos.X);
-        int colInLine = GetLogicalColumnFromVisualColumn (line, col);
+        var col = Math.Max (0, Viewport.X + viewPos.X);
+        var colInLine = GetLogicalColumnFromVisualColumn (line, col);
 
         return line.Offset + colInLine;
     }

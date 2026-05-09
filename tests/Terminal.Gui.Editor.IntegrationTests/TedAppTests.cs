@@ -297,4 +297,20 @@ public class TedAppTests
 
         DriverAssert.ContentsContains (fx.Driver, "Open...");
     }
+
+    [Fact]
+    public async Task EditMenu_OpensViaKeyboard_AltE_Contains_Find_And_Replace ()
+    {
+        await using AppFixture<TedApp> fx = new (() => new TedApp ());
+
+        DriverAssert.ContentsDoesNotContain (fx.Driver, "Find...");
+        DriverAssert.ContentsDoesNotContain (fx.Driver, "Replace...");
+
+        InputInjectionOptions options = new () { Mode = InputInjectionMode.Direct };
+        fx.Injector.InjectKey (Key.E.WithAlt, options);
+        fx.Render ();
+
+        DriverAssert.ContentsContains (fx.Driver, "Find...");
+        DriverAssert.ContentsContains (fx.Driver, "Replace...");
+    }
 }

@@ -23,8 +23,6 @@ public partial class Editor : View
     private bool _showLineNumbers;
     private bool _showTabs;
     private ISyntaxHighlighter? _syntaxHighlighter;
-    private string _syntaxLanguage = "csharp";
-    private int _indentationSize = 4;
 
     /// <summary>
     ///     Sticky column for vertical caret moves. Tracks the column the user *intends* to be in,
@@ -99,7 +97,8 @@ public partial class Editor : View
         }
     }
 
-    /// <summary>Optional syntax highlighter used when drawing document text.</summary>
+    /// <summary>
+    ///     Optional syntax highlighter used when drawing document text.
     ///     Optional syntax highlighter used when drawing document text.
     /// </summary>
     /// <remarks>
@@ -145,42 +144,42 @@ public partial class Editor : View
     [EditorBrowsable (EditorBrowsableState.Never)]
     public string SyntaxLanguage
     {
-        get => _syntaxLanguage;
+        get;
         set
         {
             ArgumentNullException.ThrowIfNull (value);
 
-            if (_syntaxLanguage == value)
+            if (field == value)
             {
                 return;
             }
 
-            _syntaxLanguage = value;
+            field = value;
             _syntaxHighlighter?.ResetState ();
             SetNeedsDraw ();
         }
-    }
+    } = "csharp";
 
     /// <summary>Indentation and tab-stop width in cells. Defaults to 4.</summary>
     public int IndentationSize
     {
-        get => _indentationSize;
+        get;
         set
         {
             ArgumentOutOfRangeException.ThrowIfLessThan (value, 1);
 
-            if (_indentationSize == value)
+            if (field == value)
             {
                 return;
             }
 
-            _indentationSize = value;
+            field = value;
             _virtualCaretColumn = GetCaretColumn ();
             UpdateContentSize ();
             EnsureCaretVisible ();
             SetNeedsDraw ();
         }
-    }
+    } = 4;
 
     /// <summary>Whether pressing Tab inserts spaces instead of a tab character.</summary>
     public bool ConvertTabsToSpaces
@@ -271,9 +270,9 @@ public partial class Editor : View
         // removal start; a removal entirely before the caret slides it back by RemovalLength.
         if (_caretOffset >= e.Offset)
         {
-            int target = _caretOffset < e.Offset + e.RemovalLength
-                             ? e.Offset
-                             : _caretOffset - e.RemovalLength + e.InsertionLength;
+            var target = _caretOffset < e.Offset + e.RemovalLength
+                ? e.Offset
+                : _caretOffset - e.RemovalLength + e.InsertionLength;
 
             // Route through SetCaretOffset so CaretChanged fires when the caret actually moves.
             // SetCaretOffset also handles EnsureCaretVisible + SetNeedsDraw.
@@ -295,7 +294,8 @@ public partial class Editor : View
             return;
         }
 
-        var maxWidth = _document.Lines.Select (line => GetVisualColumnFromLogicalColumn (line, line.Length)).Prepend (0).Max ();
+        var maxWidth = _document.Lines.Select (line => GetVisualColumnFromLogicalColumn (line, line.Length)).Prepend (0)
+            .Max ();
 
         // +1 column lets the caret sit just past the end-of-line.
         SetContentSize (new (maxWidth + 1, _document.LineCount));
@@ -304,7 +304,7 @@ public partial class Editor : View
     private void UpdateLineNumberPadding ()
     {
         Thickness thickness = Padding.Thickness;
-        int left = _showLineNumbers && _document is not null ? GetLineNumberPaddingWidth () : 0;
+        var left = _showLineNumbers && _document is not null ? GetLineNumberPaddingWidth () : 0;
 
         if (thickness.Left == left)
         {
@@ -316,7 +316,7 @@ public partial class Editor : View
 
     private int GetLineNumberPaddingWidth ()
     {
-        int lineCount = Math.Max (1, _document?.LineCount ?? 1);
+        var lineCount = Math.Max (1, _document?.LineCount ?? 1);
 
         return lineCount.ToString ().Length + 1;
     }
@@ -330,7 +330,7 @@ public partial class Editor : View
             return 0;
         }
 
-        int logicalColumn = _caretOffset - line.Offset;
+        var logicalColumn = _caretOffset - line.Offset;
 
         return GetVisualColumnFromLogicalColumn (line, logicalColumn);
     }
@@ -341,25 +341,25 @@ public partial class Editor : View
     }
 
     /// <summary>
-    ///     Moves the caret <paramref name="delta"/> lines, preserving the sticky virtual column when
+    ///     Moves the caret <paramref name="delta" /> lines, preserving the sticky virtual column when
     ///     traversing shorter lines (i.e. snap back to the original column on the next long-enough line).
     /// </summary>
     private void MoveCaretVertically (int delta)
     {
-        int targetLine = Math.Clamp (GetCaretLineIndex () + delta, 0, _document!.LineCount - 1);
+        var targetLine = Math.Clamp (GetCaretLineIndex () + delta, 0, _document!.LineCount - 1);
         DocumentLine line = _document!.GetLineByNumber (targetLine + 1);
-        int targetCol = GetLogicalColumnFromVisualColumn (line, _virtualCaretColumn);
+        var targetCol = GetLogicalColumnFromVisualColumn (line, _virtualCaretColumn);
 
         // resetVirtualColumn: false keeps the sticky column intact across vertical moves.
-        SetCaretOffset (line.Offset + targetCol, resetVirtualColumn: false);
+        SetCaretOffset (line.Offset + targetCol, false);
     }
 
     // TODO(VisualLineBuilder): delete this interim helper when specs/00-plan.md §6 provides VisualLine.GetVisualColumn.
     private int GetVisualColumnFromLogicalColumn (DocumentLine line, int logicalColumn)
     {
-        string text = _document!.GetText (line);
-        int clampedLogical = Math.Clamp (logicalColumn, 0, text.Length);
-        int visualColumn = 0;
+        var text = _document!.GetText (line);
+        var clampedLogical = Math.Clamp (logicalColumn, 0, text.Length);
+        var visualColumn = 0;
 
         foreach ((int index, string grapheme) in EnumerateGraphemes (text))
         {
@@ -377,9 +377,9 @@ public partial class Editor : View
     // TODO(VisualLineBuilder): delete this interim helper when specs/00-plan.md §6 provides VisualLine.GetRelativeOffset.
     private int GetLogicalColumnFromVisualColumn (DocumentLine line, int visualColumn)
     {
-        string text = _document!.GetText (line);
-        int clampedVisual = Math.Max (0, visualColumn);
-        int currentVisual = 0;
+        var text = _document!.GetText (line);
+        var clampedVisual = Math.Max (0, visualColumn);
+        var currentVisual = 0;
 
         foreach ((int logical, string grapheme) in EnumerateGraphemes (text))
         {

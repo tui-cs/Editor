@@ -1,5 +1,4 @@
 using Terminal.Gui.Text.Document;
-using Terminal.Gui.ViewBase;
 
 namespace Terminal.Gui.Views;
 
@@ -15,28 +14,17 @@ public partial class Editor
     /// <summary>True when there is a non-empty selection.</summary>
     public bool HasSelection => _selectionAnchor is { } a && a != _caretOffset;
 
-    /// <summary>Start offset of the selection (inclusive). Equals <see cref="CaretOffset"/> when no selection.</summary>
+    /// <summary>Start offset of the selection (inclusive). Equals <see cref="CaretOffset" /> when no selection.</summary>
     public int SelectionStart => HasSelection ? Math.Min (_selectionAnchor!.Value, _caretOffset) : _caretOffset;
 
-    /// <summary>End offset of the selection (exclusive). Equals <see cref="CaretOffset"/> when no selection.</summary>
+    /// <summary>End offset of the selection (exclusive). Equals <see cref="CaretOffset" /> when no selection.</summary>
     public int SelectionEnd => HasSelection ? Math.Max (_selectionAnchor!.Value, _caretOffset) : _caretOffset;
 
     /// <summary>Length of the selection in characters; 0 when no selection.</summary>
     public int SelectionLength => SelectionEnd - SelectionStart;
 
-    /// <summary>The selection as a <see cref="TextSegment"/>, or <see langword="null"/> if no selection.</summary>
-    public TextSegment? Selection
-    {
-        get
-        {
-            if (!HasSelection)
-            {
-                return null;
-            }
-
-            return new TextSegment { StartOffset = SelectionStart, Length = SelectionLength };
-        }
-    }
+    /// <summary>The selection as a <see cref="TextSegment" />, or <see langword="null" /> if no selection.</summary>
+    public TextSegment? Selection => !HasSelection ? null : new TextSegment { StartOffset = SelectionStart, Length = SelectionLength };
 
     /// <summary>Raised whenever the selection range changes (created, extended, cleared).</summary>
     public event EventHandler? SelectionChanged;
@@ -66,7 +54,7 @@ public partial class Editor
     }
 
     /// <summary>
-    ///     Replaces the current selection with <paramref name="replacement"/>. If there is no selection, this is a no-op.
+    ///     Replaces the current selection with <paramref name="replacement" />. If there is no selection, this is a no-op.
     ///     The caret lands at <c>SelectionStart + replacement.Length</c> via the document's edit-tracking arithmetic.
     /// </summary>
     public void ReplaceSelection (string replacement)
@@ -76,8 +64,8 @@ public partial class Editor
             return;
         }
 
-        int start = SelectionStart;
-        int len = SelectionLength;
+        var start = SelectionStart;
+        var len = SelectionLength;
 
         (int start, int end) before = SelectionTuple ();
         _selectionAnchor = null;
@@ -87,9 +75,12 @@ public partial class Editor
 
     /// <summary>
     ///     Begins (if needed) or extends the selection by setting the anchor to the current caret and then moving the
-    ///     caret <paramref name="delta"/> characters horizontally.
+    ///     caret <paramref name="delta" /> characters horizontally.
     /// </summary>
-    private void ExtendCaretBy (int delta) => ExtendCaretTo (_caretOffset + delta);
+    private void ExtendCaretBy (int delta)
+    {
+        ExtendCaretTo (_caretOffset + delta);
+    }
 
     private void ExtendCaretVertically (int delta)
     {
@@ -114,10 +105,13 @@ public partial class Editor
 
     /// <summary>
     ///     Returns the current effective selection range as a (start, end) tuple. Callers compare a
-    ///     before-snapshot to the post-mutation tuple via <see cref="RaiseSelectionChangedIfMoved"/> to
-    ///     suppress no-op <see cref="SelectionChanged"/> firings.
+    ///     before-snapshot to the post-mutation tuple via <see cref="RaiseSelectionChangedIfMoved" /> to
+    ///     suppress no-op <see cref="SelectionChanged" /> firings.
     /// </summary>
-    private (int start, int end) SelectionTuple () => (SelectionStart, SelectionEnd);
+    private (int start, int end) SelectionTuple ()
+    {
+        return (SelectionStart, SelectionEnd);
+    }
 
     /// <summary>
     ///     Snapshot variant that primes the selection anchor first — used by extend-style operations
@@ -143,13 +137,13 @@ public partial class Editor
 
     /// <summary>
     ///     Movement helper that respects an existing selection: plain (non-extending) cursor keys clear the selection
-    ///     and snap to the appropriate end; otherwise the caret moves by <paramref name="delta"/>.
+    ///     and snap to the appropriate end; otherwise the caret moves by <paramref name="delta" />.
     /// </summary>
     private void MoveCaretByCollapsingSelection (int delta)
     {
         if (HasSelection)
         {
-            int target = delta < 0 ? SelectionStart : SelectionEnd;
+            var target = delta < 0 ? SelectionStart : SelectionEnd;
             ClearSelection ();
             CaretOffset = target;
 

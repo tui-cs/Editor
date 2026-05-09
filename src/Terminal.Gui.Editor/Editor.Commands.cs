@@ -7,15 +7,15 @@ namespace Terminal.Gui.Views;
 public partial class Editor
 {
     /// <summary>
-    ///     Editor-specific default key bindings layered on top of <see cref="View.DefaultKeyBindings"/>.
+    ///     Editor-specific default key bindings layered on top of <see cref="View.DefaultKeyBindings" />.
     ///     The base layer already maps cursor / Home / End / PageUp / PageDown (and their Shift variants)
-    ///     to the corresponding movement and *Extend <see cref="Command"/>s, plus Ctrl+A → SelectAll;
+    ///     to the corresponding movement and *Extend <see cref="Command" />s, plus Ctrl+A → SelectAll;
     ///     this dictionary covers what's editor-specific (Enter, Backspace/Delete, Ctrl+Z / Ctrl+Y, the
     ///     Ctrl+Home/End whole-document binds).
     /// </summary>
     /// <remarks>
     ///     Process-wide static. Do not mutate from parallel tests — see Terminal.Gui's same convention
-    ///     on <see cref="Terminal.Gui.Views.TextField.DefaultKeyBindings"/>.
+    ///     on <see cref="Terminal.Gui.Views.TextField.DefaultKeyBindings" />.
     /// </remarks>
     public new static Dictionary<Command, PlatformKeyBinding>? DefaultKeyBindings { get; set; } = new ()
     {
@@ -56,7 +56,8 @@ public partial class Editor
         AddCommand (Command.RightExtend, () => ExtendCommand (() => ExtendCaretBy (1)));
         AddCommand (Command.UpExtend, () => ExtendCommand (() => ExtendCaretVertically (-1)));
         AddCommand (Command.DownExtend, () => ExtendCommand (() => ExtendCaretVertically (1)));
-        AddCommand (Command.LeftStartExtend, () => ExtendCommand (() => ExtendCaretTo (_document!.GetLineByOffset (_caretOffset).Offset)));
+        AddCommand (Command.LeftStartExtend,
+            () => ExtendCommand (() => ExtendCaretTo (_document!.GetLineByOffset (_caretOffset).Offset)));
 
         AddCommand (Command.RightEndExtend, () => ExtendCommand (() =>
         {
@@ -66,8 +67,10 @@ public partial class Editor
 
         AddCommand (Command.StartExtend, () => ExtendCommand (() => ExtendCaretTo (0)));
         AddCommand (Command.EndExtend, () => ExtendCommand (() => ExtendCaretTo (_document!.TextLength)));
-        AddCommand (Command.PageUpExtend, () => ExtendCommand (() => ExtendCaretVertically (-Math.Max (1, Viewport.Height))));
-        AddCommand (Command.PageDownExtend, () => ExtendCommand (() => ExtendCaretVertically (Math.Max (1, Viewport.Height))));
+        AddCommand (Command.PageUpExtend,
+            () => ExtendCommand (() => ExtendCaretVertically (-Math.Max (1, Viewport.Height))));
+        AddCommand (Command.PageDownExtend,
+            () => ExtendCommand (() => ExtendCaretVertically (Math.Max (1, Viewport.Height))));
 
         // Selection ops
         AddCommand (Command.SelectAll, () =>
