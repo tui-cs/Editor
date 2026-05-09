@@ -32,6 +32,12 @@ D1 explicitly depends on B1, and shipping another draw-loop tab shortcut would r
 
 `dotnet tool restore` succeeded. `dotnet jb cleanupcode Terminal.Gui.Text.slnx --profile="Full Cleanup"` failed because the JetBrains CLI did not recognize the solution cleanup profile from this `.slnx` checkout. Running without the profile against the `.slnx` reported no cleanup items. I ran cleanup against the touched projects directly, which used JetBrains' built-in reformat profile.
 
+PR CI result: macOS and Windows passed. Ubuntu failed in the existing ReSharper cleanupcode step because
+`dotnet jb cleanupcode Terminal.Gui.Text.slnx --profile="Built-in: Full Cleanup" --no-build --exclude="third_party/**/*"`
+returned exit code 3 with `No items were found to cleanup.` I confirmed the current `develop` CI fails the same way
+on run `25613103283`, so I decided I cannot make CI green from this PR without changing `.github/workflows/ci.yml`
+or the repository-wide cleanup setup, both of which are outside the allowed edit set for this task.
+
 ## Total tokens spent
 
 Exact token usage is not exposed inside this Codex session. My best estimate from the transcript size is roughly 120k-160k tokens.
