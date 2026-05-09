@@ -179,7 +179,7 @@ public sealed class TedApp : Window
     public Func<string?> ShowSaveDialog { get; set; }
 
     /// <summary>Dialog hook used by <see cref="QuitFile" />. Tests can replace it to avoid interactive UI.</summary>
-    public Func<SaveChangesChoice?> ShowSaveChangesDialog { get; set; }
+    public Func<SaveChangesChoice> ShowSaveChangesDialog { get; set; }
 
     /// <summary>File read hook used by <see cref="OpenFile" />. Tests can replace it with an in-memory fake.</summary>
     public Func<string, string> ReadAllText { get; set; } = File.ReadAllText;
@@ -307,7 +307,7 @@ public sealed class TedApp : Window
         return dialog.FileName;
     }
 
-    private SaveChangesChoice? ShowDefaultSaveChangesDialog ()
+    private SaveChangesChoice ShowDefaultSaveChangesDialog ()
     {
         if (App is null)
         {
