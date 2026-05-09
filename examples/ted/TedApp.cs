@@ -46,24 +46,6 @@ public sealed class TedApp : Window
             Text = "_Line Numbers",
             Value = Editor.ShowLineNumbers ? CheckState.Checked : CheckState.UnChecked
         };
-        CheckBox convertTabsToSpacesCheckBox = new ()
-        {
-            AllowCheckStateNone = false,
-            CanFocus = false,
-            Text = "_Convert Tabs To Spaces",
-            Value = Editor.ConvertTabsToSpaces ? CheckState.Checked : CheckState.UnChecked
-        };
-        ShowTabsCheckBox = new ()
-        {
-            AllowCheckStateNone = false,
-            CanFocus = false,
-            Text = "↹",
-            Value = Editor.ShowTabs ? CheckState.Checked : CheckState.UnChecked
-        };
-        ShowTabsCheckBox.ValueChanged += (_, _) =>
-        {
-            Editor.ShowTabs = ShowTabsCheckBox.Value == CheckState.Checked;
-        };
 
         ThemeDropDown = new ()
         {
@@ -99,20 +81,20 @@ public sealed class TedApp : Window
 #pragma warning restore CS0618 // Type or member is obsolete
         };
 
-        IndentationSizeUpDown = new NumericUpDown<int>
+        TabWidthUpDown = new NumericUpDown<int>
         {
-            Value = Editor.IndentationSize,
+            Value = Editor.TabWidth,
             Increment = 1
         };
 
-        IndentationSizeUpDown.ValueChanged += (_, e) =>
+        TabWidthUpDown.ValueChanged += (_, e) =>
         {
-            if (Editor.IndentationSize == e.NewValue)
+            if (Editor.TabWidth == e.NewValue)
             {
                 return;
             }
 
-            Editor.IndentationSize = e.NewValue;
+            Editor.TabWidth = e.NewValue;
         };
 
         StatusBar statusBar =
@@ -120,13 +102,8 @@ public sealed class TedApp : Window
                 new Shortcut (KeyFor (Command.Quit), "Quit", Quit),
                 new Shortcut (Key.Empty, "Themes", null) { MouseHighlightStates = MouseState.None },
                 new Shortcut { Title = "Themes", CommandView = ThemeDropDown },
-                new Shortcut
-                {
-                    Text = "Indent Size",
-                    CommandView = IndentationSizeUpDown,
-                    MouseHighlightStates = MouseState.None
-                },
-                new Shortcut { CommandView = ShowTabsCheckBox },
+                new Shortcut (Key.Empty, "Tab", null) { MouseHighlightStates = MouseState.None },
+                new Shortcut { Title = "Tab", CommandView = TabWidthUpDown },
                 new Shortcut (Key.Empty, "x, y", null, "Loc") { MouseHighlightStates = MouseState.None },
                 _fileNameShortcut = new Shortcut (Key.Empty, "<untitled>", Open)
                 {
@@ -168,15 +145,6 @@ public sealed class TedApp : Window
                     },
                     CommandView = lineNumbersCheckBox,
                     HelpText = "Show line numbers"
-                },
-                new MenuItem
-                {
-                    Action = () =>
-                    {
-                        Editor.ConvertTabsToSpaces = convertTabsToSpacesCheckBox.Value == CheckState.Checked;
-                    },
-                    CommandView = convertTabsToSpacesCheckBox,
-                    HelpText = "Convert inserted tabs to spaces"
                 }
             ]),
             new MenuBarItem (Strings.menuHelp,
@@ -197,11 +165,8 @@ public sealed class TedApp : Window
     /// <summary>The syntax-highlighting theme selector shown in the status bar.</summary>
     public DropDownList<ThemeName> ThemeDropDown { get; }
 
-    /// <summary>The indentation-size selector shown in the status bar.</summary>
-    public NumericUpDown<int> IndentationSizeUpDown { get; }
-
-    /// <summary>The status-bar checkbox that toggles visible tab glyphs.</summary>
-    public CheckBox ShowTabsCheckBox { get; }
+    /// <summary>The tab-width selector shown in the status bar.</summary>
+    public NumericUpDown<int> TabWidthUpDown { get; }
 
     /// <summary>The path currently associated with <see cref="Editor" />, or <see langword="null" /> for an untitled buffer.</summary>
     public string? CurrentFilePath { get; private set; }

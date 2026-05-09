@@ -174,19 +174,19 @@ public class EditorLogicTests
     }
 
     [Fact]
-    public void IndentationSize_Defaults_To_4 ()
+    public void TabWidth_Defaults_To_4 ()
     {
         Views.Editor editor = new ();
 
-        Assert.Equal (4, editor.IndentationSize);
+        Assert.Equal (4, editor.TabWidth);
     }
 
     [Fact]
-    public void IndentationSize_Rejects_Values_Less_Than_1 ()
+    public void TabWidth_Rejects_Values_Less_Than_1 ()
     {
         Views.Editor editor = new ();
 
-        Assert.Throws<ArgumentOutOfRangeException> (() => editor.IndentationSize = 0);
+        Assert.Throws<ArgumentOutOfRangeException> (() => editor.TabWidth = 0);
     }
 
     [Fact]
@@ -220,14 +220,14 @@ public class EditorLogicTests
     }
 
     [Fact]
-    public void Changing_IndentationSize_Recomputes_Caret_Visibility ()
+    public void Changing_TabWidth_Recomputes_Caret_Visibility ()
     {
         Views.Editor editor = new () { Document = new TextDocument ("\t"), Width = 4, Height = 1 };
         editor.Viewport = new (0, 0, 4, 1);
         editor.CaretOffset = 1;
         Assert.Equal (1, editor.Viewport.X);
 
-        editor.IndentationSize = 8;
+        editor.TabWidth = 8;
 
         Assert.Equal (5, editor.Viewport.X);
     }

@@ -1,8 +1,6 @@
 using System.ComponentModel;
 using System.Drawing;
-using System.Globalization;
 using Terminal.Gui.Drawing;
-using Terminal.Gui.Text;
 using Terminal.Gui.Text.Document;
 using Terminal.Gui.ViewBase;
 
@@ -18,10 +16,7 @@ public partial class Editor : View
 {
     private int _caretOffset;
     private TextDocument? _document;
-    private bool _convertTabsToSpaces;
-    private IIndentationStrategy _indentationStrategy = DefaultIndentationStrategy.Instance;
     private bool _showLineNumbers;
-    private bool _showTabs;
     private ISyntaxHighlighter? _syntaxHighlighter;
 
     /// <summary>
@@ -99,6 +94,7 @@ public partial class Editor : View
 
     /// <summary>
     ///     Optional syntax highlighter used when drawing document text.
+    ///     Optional syntax highlighter used when drawing document text.
     /// </summary>
     /// <remarks>
     ///     <para>
@@ -159,8 +155,8 @@ public partial class Editor : View
         }
     } = "csharp";
 
-    /// <summary>Indentation and tab-stop width in cells. Defaults to 4.</summary>
-    public int IndentationSize
+    /// <summary>Visual tab-stop width in cells. Defaults to 4.</summary>
+    public int TabWidth
     {
         get;
         set
@@ -179,40 +175,6 @@ public partial class Editor : View
             SetNeedsDraw ();
         }
     } = 4;
-
-    /// <summary>Whether pressing Tab inserts spaces instead of a tab character.</summary>
-    public bool ConvertTabsToSpaces
-    {
-        get => _convertTabsToSpaces;
-        set => _convertTabsToSpaces = value;
-    }
-
-    /// <summary>Whether tab characters render with a visible glyph at their first cell.</summary>
-    public bool ShowTabs
-    {
-        get => _showTabs;
-        set
-        {
-            if (_showTabs == value)
-            {
-                return;
-            }
-
-            _showTabs = value;
-            SetNeedsDraw ();
-        }
-    }
-
-    /// <summary>Strategy used to compute automatic indentation for new lines.</summary>
-    public IIndentationStrategy IndentationStrategy
-    {
-        get => _indentationStrategy;
-        set
-        {
-            ArgumentNullException.ThrowIfNull (value);
-            _indentationStrategy = value;
-        }
-    }
 
     /// <summary>Raised whenever <see cref="CaretOffset" /> changes.</summary>
     public event EventHandler? CaretChanged;
@@ -353,47 +315,42 @@ public partial class Editor : View
         SetCaretOffset (line.Offset + targetCol, false);
     }
 
-    // TODO(VisualLineBuilder): delete this interim helper when specs/00-plan.md §6 provides VisualLine.GetVisualColumn.
     private int GetVisualColumnFromLogicalColumn (DocumentLine line, int logicalColumn)
     {
         var text = _document!.GetText (line);
         var clampedLogical = Math.Clamp (logicalColumn, 0, text.Length);
         var visualColumn = 0;
 
-        foreach ((int index, string grapheme) in EnumerateGraphemes (text))
+        for (var i = 0; i < clampedLogical; i++)
         {
-            if (index >= clampedLogical)
-            {
-                break;
-            }
-
-            visualColumn += GetVisualWidthForGrapheme (grapheme, visualColumn, IndentationSize);
+            visualColumn += GetVisualWidthForCharacter (text[i], visualColumn, TabWidth);
         }
 
         return visualColumn;
     }
 
-    // TODO(VisualLineBuilder): delete this interim helper when specs/00-plan.md §6 provides VisualLine.GetRelativeOffset.
     private int GetLogicalColumnFromVisualColumn (DocumentLine line, int visualColumn)
     {
         var text = _document!.GetText (line);
         var clampedVisual = Math.Max (0, visualColumn);
         var currentVisual = 0;
 
-        foreach ((int logical, string grapheme) in EnumerateGraphemes (text))
+        for (var logical = 0; logical < text.Length; logical++)
         {
-            int width = GetVisualWidthForGrapheme (grapheme, currentVisual, IndentationSize);
-            int nextVisual = currentVisual + width;
+            var width = GetVisualWidthForCharacter (text[logical], currentVisual, TabWidth);
+            var nextVisual = currentVisual + width;
 
             if (nextVisual >= clampedVisual)
             {
-                if (grapheme == "\t" && clampedVisual > currentVisual && clampedVisual < nextVisual)
+                if (text[logical] == '\t' && clampedVisual > currentVisual)
                 {
-                    // Snap to the start in the left half of the tab span; exact midpoint rounds down.
-                    return (clampedVisual - currentVisual) * 2 <= width ? logical : logical + 1;
+                    // Clicking or moving inside the visual span produced by '\t' snaps the caret
+                    // after the tab character because there is no representable position "inside"
+                    // a single tab code point.
+                    return logical + 1;
                 }
 
-                return clampedVisual >= nextVisual ? logical + grapheme.Length : logical;
+                return clampedVisual >= nextVisual ? logical + 1 : logical;
             }
 
             currentVisual = nextVisual;
@@ -402,27 +359,16 @@ public partial class Editor : View
         return text.Length;
     }
 
-    // TODO(VisualLineBuilder): delete this interim helper when specs/00-plan.md §6 emits tab visual elements.
-    private static int GetVisualWidthForGrapheme (string grapheme, int visualColumn, int indentationSize)
+    private static int GetVisualWidthForCharacter (char c, int visualColumn, int tabWidth)
     {
-        if (grapheme != "\t")
+        if (c != '\t')
         {
-            return grapheme.GetColumns ();
+            return 1;
         }
 
-        int remainder = visualColumn % indentationSize;
+        var remainder = visualColumn % tabWidth;
 
-        return remainder == 0 ? indentationSize : indentationSize - remainder;
-    }
-
-    private static IEnumerable<(int Index, string Grapheme)> EnumerateGraphemes (string text)
-    {
-        TextElementEnumerator enumerator = StringInfo.GetTextElementEnumerator (text);
-
-        while (enumerator.MoveNext ())
-        {
-            yield return (enumerator.ElementIndex, enumerator.GetTextElement ());
-        }
+        return remainder == 0 ? tabWidth : tabWidth - remainder;
     }
 
     private void EnsureCaretVisible ()
