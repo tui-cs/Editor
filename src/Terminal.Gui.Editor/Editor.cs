@@ -263,10 +263,13 @@ public partial class Editor : View
             {
                 if (text[logical] == '\t' && clampedVisual > currentVisual)
                 {
+                    // Clicking or moving inside the visual span produced by '\t' snaps the caret
+                    // after the tab character because there is no representable position "inside"
+                    // a single tab code point.
                     return logical + 1;
                 }
 
-                return nextVisual == clampedVisual ? logical + 1 : logical;
+                return clampedVisual >= nextVisual ? logical + 1 : logical;
             }
 
             currentVisual = nextVisual;

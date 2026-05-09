@@ -43,7 +43,7 @@ public partial class Editor
             int visibleStart = viewport.X;
             int visibleEnd = viewport.X + viewport.Width;
 
-            DrawLine (
+            DrawLineContent (
                 row,
                 text,
                 visibleStart,
@@ -79,7 +79,7 @@ public partial class Editor
         }
     }
 
-    private void DrawLine (
+    private void DrawLineContent (
         int row,
         string text,
         int visibleStart,
@@ -94,7 +94,6 @@ public partial class Editor
     {
         int visualColumn = 0;
         int segmentIndex = 0;
-        int segmentStart = 0;
         int segmentEnd = segments is { Count: > 0 } ? segments[0].Text.Length : int.MaxValue;
 
         for (int i = 0; i < text.Length; i++)
@@ -102,8 +101,7 @@ public partial class Editor
             while (segments is not null && i >= segmentEnd && segmentIndex + 1 < segments.Count)
             {
                 segmentIndex++;
-                segmentStart = segmentEnd;
-                segmentEnd = segmentStart + segments[segmentIndex].Text.Length;
+                segmentEnd += segments[segmentIndex].Text.Length;
             }
 
             Drawing.Attribute attribute = segments is null
