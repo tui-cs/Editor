@@ -29,12 +29,14 @@ if (-not $changed) { exit 0 }
 # than per-file invocations because the workspace loads once.
 & dotnet format Terminal.Gui.Text.slnx --no-restore --exclude third_party/ *> $null
 
-# ReSharper code cleanup with our team-shared "Full Cleanup" profile.
-# --include filters narrow the work to changed files; the profile is loaded from
-# Terminal.Gui.Text.slnx.DotSettings (committed alongside this hook).
+# ReSharper code cleanup. Uses the built-in profile name because jb cleanupcode does not
+# always discover custom profile names from team-shared .DotSettings files reliably; the
+# .DotSettings file's style settings (var preferences, expression-bodied, ConvertToAutoProperty
+# suppression for the C# 13 `field` keyword, etc.) are still honored by the built-in profile.
+# --include narrows the work to changed files.
 $includes = ($changed | ForEach-Object { "--include=$_" }) -join ' '
 if ($includes) {
-    & dotnet jb cleanupcode Terminal.Gui.Text.slnx --profile="Full Cleanup" $includes.Split(' ') --no-build *> $null
+    & dotnet jb cleanupcode Terminal.Gui.Text.slnx --profile="Built-in: Full Cleanup" $includes.Split(' ') --no-build *> $null
 }
 
 # Surface the net effect so the agent sees its own drift.
