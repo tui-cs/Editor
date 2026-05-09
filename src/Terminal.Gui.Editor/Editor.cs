@@ -8,8 +8,7 @@ namespace Terminal.Gui.Views;
 /// <summary>
 ///     Single-document text editor View backed by <see cref="TextDocument" />. Renders multi-line
 ///     text from a rope-backed document, tracks a caret offset, dispatches keyboard input to
-///     navigate / edit, and scrolls content when it exceeds the viewport. Pre-MVP — selection,
-///     folding, syntax highlighting still pending per <c>specs/00-plan.md</c>.
+///     navigate / edit, and scrolls content when it exceeds the viewport.
 /// </summary>
 public partial class Editor : View
 {

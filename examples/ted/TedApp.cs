@@ -88,6 +88,9 @@ public sealed class TedApp : Window
                 ]),
             new MenuBarItem (Strings.menuEdit,
                 [
+                    new MenuItem ("_Find...", "Find text in the current document", Find),
+                    new MenuItem ("_Replace...", "Find and replace text in the current document", Replace),
+                    new Line (),
                     new MenuItem { Command = Command.Undo, Action = Undo, Key = KeyFor (Command.Undo) },
                     new MenuItem { Command = Command.Redo, Action = Redo, Key = KeyFor (Command.Redo) },
                     new Line (),
@@ -189,6 +192,10 @@ public sealed class TedApp : Window
 
     private void Action () { }
 
+    private void Find () { ShowFindReplaceDialog (selectReplaceTab: false); }
+
+    private void Replace () { ShowFindReplaceDialog (selectReplaceTab: true); }
+
     private void SelectAll () { }
 
     private void Paste () { }
@@ -285,5 +292,16 @@ public sealed class TedApp : Window
     {
         // TODO: add logic for unsaved changes, confirm quit, etc.
         RequestStop ();
+    }
+
+    private void ShowFindReplaceDialog (bool selectReplaceTab)
+    {
+        if (App is null)
+        {
+            throw new InvalidOperationException ("ted must be running before showing find/replace.");
+        }
+
+        using FindReplaceDialog dialog = new (Editor, selectReplaceTab);
+        App.Run (dialog);
     }
 }

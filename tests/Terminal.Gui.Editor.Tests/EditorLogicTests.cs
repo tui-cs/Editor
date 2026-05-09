@@ -101,4 +101,66 @@ public class EditorLogicTests
 
         Assert.Equal (2, editor.CaretOffset);
     }
+
+    [Fact]
+    public void FindNext_Selects_Next_Match ()
+    {
+        Views.Editor editor = new () { Document = new TextDocument ("abc abc") };
+        editor.CaretOffset = 0;
+
+        bool found = editor.FindNext ("abc");
+
+        Assert.True (found);
+        Assert.True (editor.HasSelection);
+        Assert.Equal (0, editor.SelectionStart);
+        Assert.Equal (3, editor.SelectionEnd);
+    }
+
+    [Fact]
+    public void FindNext_WithWrapAround_Finds_From_Start ()
+    {
+        Views.Editor editor = new () { Document = new TextDocument ("one two one") };
+        editor.CaretOffset = editor.Document.TextLength;
+
+        bool found = editor.FindNext ("one");
+
+        Assert.True (found);
+        Assert.Equal (0, editor.SelectionStart);
+        Assert.Equal (3, editor.SelectionEnd);
+    }
+
+    [Fact]
+    public void FindPrevious_Selects_Previous_Match ()
+    {
+        Views.Editor editor = new () { Document = new TextDocument ("abc abc abc") };
+        editor.CaretOffset = editor.Document.TextLength;
+
+        bool found = editor.FindPrevious ("abc");
+
+        Assert.True (found);
+        Assert.Equal (8, editor.SelectionStart);
+        Assert.Equal (11, editor.SelectionEnd);
+    }
+
+    [Fact]
+    public void ReplaceNext_Replaces_Selection_When_It_Matches ()
+    {
+        Views.Editor editor = new () { Document = new TextDocument ("alpha beta") };
+
+        Assert.True (editor.FindNext ("alpha"));
+        Assert.True (editor.ReplaceNext ("alpha", "omega"));
+
+        Assert.Equal ("omega beta", editor.Document.Text);
+    }
+
+    [Fact]
+    public void ReplaceAll_Replaces_All_Matches_And_Returns_Count ()
+    {
+        Views.Editor editor = new () { Document = new TextDocument ("cat dog cat dog cat") };
+
+        int replacements = editor.ReplaceAll ("cat", "fox");
+
+        Assert.Equal (3, replacements);
+        Assert.Equal ("fox dog fox dog fox", editor.Document.Text);
+    }
 }
