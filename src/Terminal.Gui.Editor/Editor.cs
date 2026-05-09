@@ -94,7 +94,6 @@ public partial class Editor : View
 
     /// <summary>
     ///     Optional syntax highlighter used when drawing document text.
-    ///     Optional syntax highlighter used when drawing document text.
     /// </summary>
     /// <remarks>
     ///     <para>
