@@ -1,4 +1,5 @@
 using System.Drawing;
+using Terminal.Gui.Drawing;
 using Terminal.Gui.Text.Document;
 using Terminal.Gui.ViewBase;
 
@@ -14,6 +15,7 @@ public partial class Editor : View
 {
     private int _caretOffset;
     private TextDocument? _document;
+    private bool _showLineNumbers;
 
     /// <summary>
     ///     Sticky column for vertical caret moves. Tracks the column the user *intends* to be in,
@@ -54,6 +56,7 @@ public partial class Editor : View
             _caretOffset = Math.Clamp (_caretOffset, 0, _document.TextLength);
             _virtualCaretColumn = GetCaretColumn ();
             UpdateContentSize ();
+            UpdateLineNumberPadding ();
             SetNeedsDraw ();
         }
     }
@@ -66,6 +69,25 @@ public partial class Editor : View
     {
         get => _caretOffset;
         set => SetCaretOffset (value, true);
+    }
+
+    /// <summary>
+    ///     Gets or sets whether one-based line numbers are rendered in the editor's left padding.
+    /// </summary>
+    public bool ShowLineNumbers
+    {
+        get => _showLineNumbers;
+        set
+        {
+            if (_showLineNumbers == value)
+            {
+                return;
+            }
+
+            _showLineNumbers = value;
+            UpdateLineNumberPadding ();
+            SetNeedsDraw ();
+        }
     }
 
     /// <summary>Raised whenever <see cref="Document" /> raises its own <c>Changed</c> event.</summary>
@@ -120,6 +142,7 @@ public partial class Editor : View
         }
 
         UpdateContentSize ();
+        UpdateLineNumberPadding ();
         EnsureCaretVisible ();
         SetNeedsDraw ();
         DocumentChanged?.Invoke (this, e);
@@ -136,6 +159,26 @@ public partial class Editor : View
 
         // +1 column lets the caret sit just past the end-of-line.
         SetContentSize (new (maxWidth + 1, _document.LineCount));
+    }
+
+    private void UpdateLineNumberPadding ()
+    {
+        Thickness thickness = Padding.Thickness;
+        int left = _showLineNumbers && _document is not null ? GetLineNumberPaddingWidth () : 0;
+
+        if (thickness.Left == left)
+        {
+            return;
+        }
+
+        Padding.Thickness = new (left, thickness.Top, thickness.Right, thickness.Bottom);
+    }
+
+    private int GetLineNumberPaddingWidth ()
+    {
+        int lineCount = Math.Max (1, _document?.LineCount ?? 1);
+
+        return lineCount.ToString ().Length + 1;
     }
 
     private int GetCaretColumn ()

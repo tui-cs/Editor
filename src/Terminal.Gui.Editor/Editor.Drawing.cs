@@ -113,4 +113,56 @@ public partial class Editor
         Point screen = ViewportToScreen (new Point (col, row));
         Cursor = new () { Position = screen, Style = CursorStyle.BlinkingBar };
     }
+
+    /// <inheritdoc />
+    protected override void OnDrawComplete (DrawContext? context)
+    {
+        base.OnDrawComplete (context);
+        DrawLineNumbers ();
+    }
+
+    private void DrawLineNumbers ()
+    {
+        if (!_showLineNumbers || _document is null || App?.Driver is not { } driver)
+        {
+            return;
+        }
+
+        int width = Padding.Thickness.Left;
+
+        if (width <= 0)
+        {
+            return;
+        }
+
+        Rectangle viewport = Viewport;
+        Rectangle screen = ViewportToScreen ();
+        Region? clip = GetClip ();
+        Drawing.Attribute previous = driver.SetAttribute (GetAttributeForRole (VisualRole.Normal));
+
+        SetClipToScreen ();
+
+        try
+        {
+            for (int row = 0; row < viewport.Height; row++)
+            {
+                int lineIndex = viewport.Y + row;
+                string text = lineIndex < _document.LineCount
+                                  ? (lineIndex + 1).ToString ().PadLeft (width - 1) + " "
+                                  : new string (' ', width);
+
+                driver.Move (screen.X - width, screen.Y + row);
+                driver.AddStr (text);
+            }
+        }
+        finally
+        {
+            if (clip is not null)
+            {
+                SetClip (clip);
+            }
+
+            driver.SetAttribute (previous);
+        }
+    }
 }
