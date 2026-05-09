@@ -146,6 +146,14 @@ public class TedAppTests
     }
 
     [Fact]
+    public async Task Renders_OptionsMenu_Header ()
+    {
+        await using AppFixture<TedApp> fx = new (() => new TedApp ());
+
+        DriverAssert.ContentsContains (fx.Driver, "Options");
+    }
+
+    [Fact]
     public async Task FileMenu_OpensViaKeyboard_AltF ()
     {
         await using AppFixture<TedApp> fx = new (() => new TedApp ());
@@ -158,6 +166,25 @@ public class TedAppTests
         fx.Render ();
 
         DriverAssert.ContentsContains (fx.Driver, "Open...");
+    }
+
+    [Fact]
+    public async Task OptionsMenu_TogglesLineNumbers_ViaKeyboard ()
+    {
+        await using AppFixture<TedApp> fx = new (() => new TedApp ());
+
+        Assert.False (fx.Top.Editor.ShowLineNumbers);
+
+        InputInjectionOptions options = new () { Mode = InputInjectionMode.Direct };
+        fx.Injector.InjectKey (Key.O.WithAlt, options);
+        fx.Render ();
+
+        DriverAssert.ContentsContains (fx.Driver, "Line Numbers");
+
+        fx.Injector.InjectKey (Key.Enter, options);
+        fx.Render ();
+
+        Assert.True (fx.Top.Editor.ShowLineNumbers);
     }
 
     [Fact]

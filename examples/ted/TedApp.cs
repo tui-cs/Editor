@@ -30,6 +30,11 @@ public sealed class TedApp : Window
         ShowSaveDialog = ShowDefaultSaveDialog;
 
         MenuBar menu = new ();
+        CheckBox lineNumbersCheckBox = new ()
+        {
+            Text = "_Line Numbers",
+            Value = Editor.ShowLineNumbers ? CheckState.Checked : CheckState.UnChecked
+        };
 
         StatusBar statusBar =
             new ([
@@ -64,6 +69,15 @@ public sealed class TedApp : Window
                     new MenuItem { Command = Command.Paste, Action = Paste, Key = KeyFor (Command.Paste) },
                     new MenuItem { Command = Command.SelectAll, Action = SelectAll, Key = KeyFor (Command.SelectAll) }
                 ]),
+            new MenuBarItem ("_Options",
+                [
+                    new MenuItem
+                    {
+                        Action = ToggleLineNumbers,
+                        CommandView = lineNumbersCheckBox,
+                        HelpText = "Show line numbers"
+                    }
+                ]),
             new MenuBarItem (Strings.menuHelp,
                 [new MenuItem ("_About", "Show About dialog", Action)])
         );
@@ -73,6 +87,14 @@ public sealed class TedApp : Window
         Editor.Height = Dim.Fill (statusBar);
 
         Add (menu, Editor, statusBar);
+
+        void ToggleLineNumbers ()
+        {
+            bool showLineNumbers = !Editor.ShowLineNumbers;
+            Editor.ShowLineNumbers = showLineNumbers;
+            lineNumbersCheckBox.Value = showLineNumbers ? CheckState.Checked : CheckState.UnChecked;
+            Editor.SetNeedsDraw ();
+        }
     }
 
 
