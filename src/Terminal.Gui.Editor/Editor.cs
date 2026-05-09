@@ -17,6 +17,7 @@ public partial class Editor : View
     private TextDocument? _document;
     private ISyntaxHighlighter? _syntaxHighlighter;
     private string _syntaxLanguage = "csharp";
+    private int _tabWidth = 4;
 
     /// <summary>
     ///     Sticky column for vertical caret moves. Tracks the column the user *intends* to be in,
@@ -107,6 +108,27 @@ public partial class Editor : View
         }
     }
 
+    /// <summary>Visual tab-stop width in cells. Defaults to 4.</summary>
+    public int TabWidth
+    {
+        get => _tabWidth;
+        set
+        {
+            ArgumentOutOfRangeException.ThrowIfLessThan (value, 1);
+
+            if (_tabWidth == value)
+            {
+                return;
+            }
+
+            _tabWidth = value;
+            _virtualCaretColumn = GetCaretColumn ();
+            UpdateContentSize ();
+            EnsureCaretVisible ();
+            SetNeedsDraw ();
+        }
+    }
+
     /// <summary>Raised whenever <see cref="Document" /> raises its own <c>Changed</c> event.</summary>
     public event EventHandler<DocumentChangeEventArgs>? DocumentChanged;
 
@@ -171,7 +193,7 @@ public partial class Editor : View
             return;
         }
 
-        var maxWidth = _document.Lines.Select (line => line.Length).Prepend (0).Max ();
+        var maxWidth = _document.Lines.Select (line => GetVisualColumnFromLogicalColumn (line, line.Length)).Prepend (0).Max ();
 
         // +1 column lets the caret sit just past the end-of-line.
         SetContentSize (new (maxWidth + 1, _document.LineCount));
@@ -181,7 +203,14 @@ public partial class Editor : View
     {
         DocumentLine? line = _document?.GetLineByOffset (_caretOffset);
 
-        return _caretOffset - (line?.Offset ?? 0);
+        if (line is null)
+        {
+            return 0;
+        }
+
+        int logicalColumn = _caretOffset - line.Offset;
+
+        return GetVisualColumnFromLogicalColumn (line, logicalColumn);
     }
 
     private int GetCaretLineIndex ()
@@ -197,12 +226,68 @@ public partial class Editor : View
     {
         int targetLine = Math.Clamp (GetCaretLineIndex () + delta, 0, _document!.LineCount - 1);
         DocumentLine line = _document!.GetLineByNumber (targetLine + 1);
-        int targetCol = Math.Min (_virtualCaretColumn, line.Length);
+        int targetCol = GetLogicalColumnFromVisualColumn (line, _virtualCaretColumn);
 
         // Preserve the sticky column across vertical moves — SetCaretOffset would otherwise reset it.
         int sticky = _virtualCaretColumn;
         SetCaretOffset (line.Offset + targetCol, resetVirtualColumn: false);
         _virtualCaretColumn = sticky;
+    }
+
+    private int GetVisualColumnFromLogicalColumn (DocumentLine line, int logicalColumn)
+    {
+        string text = _document!.GetText (line);
+        int clampedLogical = Math.Clamp (logicalColumn, 0, text.Length);
+        int visualColumn = 0;
+
+        for (int i = 0; i < clampedLogical; i++)
+        {
+            visualColumn += GetVisualWidthForCharacter (text[i], visualColumn, TabWidth);
+        }
+
+        return visualColumn;
+    }
+
+    private int GetLogicalColumnFromVisualColumn (DocumentLine line, int visualColumn)
+    {
+        string text = _document!.GetText (line);
+        int clampedVisual = Math.Max (0, visualColumn);
+        int currentVisual = 0;
+
+        for (int logical = 0; logical < text.Length; logical++)
+        {
+            int width = GetVisualWidthForCharacter (text[logical], currentVisual, TabWidth);
+            int nextVisual = currentVisual + width;
+
+            if (nextVisual >= clampedVisual)
+            {
+                if (text[logical] == '\t' && clampedVisual > currentVisual)
+                {
+                    // Clicking or moving inside the visual span produced by '\t' snaps the caret
+                    // after the tab character because there is no representable position "inside"
+                    // a single tab code point.
+                    return logical + 1;
+                }
+
+                return clampedVisual >= nextVisual ? logical + 1 : logical;
+            }
+
+            currentVisual = nextVisual;
+        }
+
+        return text.Length;
+    }
+
+    private static int GetVisualWidthForCharacter (char c, int visualColumn, int tabWidth)
+    {
+        if (c != '\t')
+        {
+            return 1;
+        }
+
+        int remainder = visualColumn % tabWidth;
+
+        return remainder == 0 ? tabWidth : tabWidth - remainder;
     }
 
     private void EnsureCaretVisible ()
