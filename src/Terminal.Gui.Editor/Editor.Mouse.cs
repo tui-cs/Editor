@@ -90,7 +90,7 @@ public partial class Editor
             _ when flags.HasFlag (MouseFlags.WheeledDown) => ScrollVertical (1),
             _ when flags.HasFlag (MouseFlags.WheeledLeft) => ScrollHorizontal (-1),
             _ when flags.HasFlag (MouseFlags.WheeledRight) => ScrollHorizontal (1),
-            _ => false
+            _ => (bool?)false
         };
 
         if (scrolled == true)
