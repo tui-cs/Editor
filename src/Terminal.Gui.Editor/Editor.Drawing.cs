@@ -20,7 +20,13 @@ public partial class Editor
         Rectangle viewport = Viewport;
         Drawing.Attribute normal = GetAttributeForRole (VisualRole.Normal);
         Drawing.Attribute selected = GetAttributeForRole (VisualRole.Active);
+
+        // The CS0618 here is the API's purpose: SyntaxHighlighter is [Obsolete] to warn
+        // external callers that this is a stopgap (issue #32). The editor itself still has to
+        // honor the property until Phase 6 lifts AvaloniaEdit's Highlighting/ pipeline (#28).
+#pragma warning disable CS0618 // Type or member is obsolete
         ISyntaxHighlighter? syntaxHighlighter = SyntaxHighlighter;
+#pragma warning restore CS0618 // Type or member is obsolete
 
         bool hasSelection = HasSelection;
         int selStart = hasSelection ? SelectionStart : 0;
@@ -39,7 +45,9 @@ public partial class Editor
 
             DocumentLine line = _document.GetLineByNumber (lineIndex + 1);
             string text = _document.GetText (line);
+#pragma warning disable CS0618 // Type or member is obsolete — see note at top of OnDrawingContent.
             IReadOnlyList<StyledSegment>? segments = syntaxHighlighter?.Highlight (text, SyntaxLanguage);
+#pragma warning restore CS0618 // Type or member is obsolete
             int visibleStart = viewport.X;
             int visibleEnd = viewport.X + viewport.Width;
 
@@ -75,7 +83,9 @@ public partial class Editor
         for (int lineIndex = 0; lineIndex < firstVisibleLineIndex && lineIndex < _document.LineCount; lineIndex++)
         {
             DocumentLine line = _document.GetLineByNumber (lineIndex + 1);
+#pragma warning disable CS0618 // Type or member is obsolete — see note in OnDrawingContent.
             syntaxHighlighter.Highlight (_document.GetText (line), SyntaxLanguage);
+#pragma warning restore CS0618 // Type or member is obsolete
         }
     }
 
@@ -170,5 +180,61 @@ public partial class Editor
 
         Point screen = ViewportToScreen (new Point (col, row));
         Cursor = new () { Position = screen, Style = CursorStyle.BlinkingBar };
+    }
+
+    /// <inheritdoc />
+    protected override void OnDrawComplete (DrawContext? context)
+    {
+        base.OnDrawComplete (context);
+
+        if (App?.Driver is { } driver)
+        {
+            DrawLineNumbers (driver);
+        }
+    }
+
+    private void DrawLineNumbers (IDriver driver)
+    {
+        if (!_showLineNumbers || _document is null)
+        {
+            return;
+        }
+
+        int width = Padding.Thickness.Left;
+
+        if (width <= 0)
+        {
+            return;
+        }
+
+        Rectangle viewport = Viewport;
+        Rectangle screen = ViewportToScreen ();
+        Region? clip = GetClip ();
+        Drawing.Attribute previous = driver.SetAttribute (GetAttributeForRole (VisualRole.Normal));
+
+        SetClipToScreen ();
+
+        try
+        {
+            for (int row = 0; row < viewport.Height; row++)
+            {
+                int lineIndex = viewport.Y + row;
+                string text = lineIndex < _document.LineCount
+                                  ? (lineIndex + 1).ToString ().PadLeft (width - 1).PadRight (width)
+                                  : new string (' ', width);
+
+                driver.Move (screen.X - width, screen.Y + row);
+                driver.AddStr (text);
+            }
+        }
+        finally
+        {
+            if (clip is not null)
+            {
+                SetClip (clip);
+            }
+
+            driver.SetAttribute (previous);
+        }
     }
 }

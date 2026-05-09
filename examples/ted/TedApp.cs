@@ -27,11 +27,25 @@ public sealed class TedApp : Window
         // Editor first so menu/status-bar shortcuts can pull their hotkeys directly from
         // Editor's KeyBindings (any commands the editor doesn't claim fall back to Application).
         Editor = new ();
+
+        // ted is the demo for the stopgap Editor.SyntaxHighlighter / SyntaxLanguage surface
+        // (issue #32). The CS0618 warning is intentional on the public API; suppressed here
+        // because exercising the API is exactly this app's job until issue #28 ships the
+        // visual-line HighlightingColorizer pipeline.
+#pragma warning disable CS0618 // Type or member is obsolete
         Editor.SyntaxHighlighter = new TextMateSyntaxHighlighter (ThemeName.DarkPlus);
+#pragma warning restore CS0618 // Type or member is obsolete
         ShowOpenDialog = ShowDefaultOpenDialog;
         ShowSaveDialog = ShowDefaultSaveDialog;
 
         MenuBar menu = new ();
+        CheckBox lineNumbersCheckBox = new ()
+        {
+            AllowCheckStateNone = false,
+            CanFocus = false,
+            Text = "_Line Numbers",
+            Value = Editor.ShowLineNumbers ? CheckState.Checked : CheckState.UnChecked
+        };
 
         ThemeDropDown = new ()
         {
@@ -42,11 +56,14 @@ public sealed class TedApp : Window
 
         ThemeDropDown.ValueChanged += (_, e) =>
                                        {
-                                          if (e.Value is not { } themeName)
-                                          {
-                                              return;
-                                          }
+                                           if (e.Value is not { } themeName)
+                                           {
+                                               return;
+                                           }
 
+                                          // CS0618: Editor.SyntaxHighlighter is the stopgap API
+                                          // ted exists to exercise. See issue #32.
+#pragma warning disable CS0618 // Type or member is obsolete
                                           if (Editor.SyntaxHighlighter is TextMateSyntaxHighlighter highlighter)
                                           {
                                               if (highlighter.ThemeName == themeName)
@@ -54,13 +71,14 @@ public sealed class TedApp : Window
                                                   return;
                                               }
 
-                                              highlighter.SetTheme (themeName);
-                                              Editor.SetNeedsDraw ();
+                                               highlighter.SetTheme (themeName);
+                                               Editor.SetNeedsDraw ();
 
-                                              return;
-                                          }
+                                               return;
+                                           }
 
                                            Editor.SyntaxHighlighter = new TextMateSyntaxHighlighter (themeName);
+#pragma warning restore CS0618 // Type or member is obsolete
                                        };
 
         TabWidthUpDown = new NumericUpDown<int>
@@ -113,6 +131,19 @@ public sealed class TedApp : Window
                     new MenuItem { Command = Command.Copy, Action = Copy, Key = KeyFor (Command.Copy) },
                     new MenuItem { Command = Command.Paste, Action = Paste, Key = KeyFor (Command.Paste) },
                     new MenuItem { Command = Command.SelectAll, Action = SelectAll, Key = KeyFor (Command.SelectAll) }
+                ]),
+            new MenuBarItem ("_Options",
+                [
+                    new MenuItem
+                    {
+                        Action = () =>
+                        {
+                            Editor.ShowLineNumbers = lineNumbersCheckBox.Value == CheckState.Checked;
+                            Editor.SetNeedsDraw ();
+                        },
+                        CommandView = lineNumbersCheckBox,
+                        HelpText = "Show line numbers"
+                    }
                 ]),
             new MenuBarItem (Strings.menuHelp,
                 [new MenuItem ("_About", "Show About dialog", Action)])
