@@ -55,13 +55,16 @@ internal sealed class FindReplaceDialog : Dialog
     {
         View tab = new () { Title = "_Find" };
         Button findNextButton = new () { X = 1, Y = 3, Text = "Find _Next" };
+        Button findPreviousButton = new () { X = Pos.Right (findNextButton) + 1, Y = 3, Text = "Find _Previous" };
 
         tab.Add (
             new Label { X = 1, Y = 1, Text = "_Find:" },
             _findTextField,
-            findNextButton);
+            findNextButton,
+            findPreviousButton);
 
         findNextButton.Accepting += (_, _) => editor.FindNext (_findTextField.Text);
+        findPreviousButton.Accepting += (_, _) => editor.FindPrevious (_findTextField.Text);
 
         return tab;
     }

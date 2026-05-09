@@ -91,6 +91,7 @@ Adopts Terminal.Gui's house style. Enforced by `.editorconfig`; the highlights:
 - **Collection expressions**: `[...]` not `new () { ... }`.
 - **Guard clauses**; never wrap the happy path in `if`.
 - **One public/internal type per file.**
+- **No unused public/internal APIs.** Every public/internal member in `src/` must have a non-test caller in `src/` or `examples/`. If you add a method, wire it in the same PR; otherwise delete it. Tests don't count as a consumer. See `specs/00-plan.md` R9.
 - **AI-generated tests** marked `// Claude - <model>` or `// CoPilot - <model>` at the top of the file (see `tests/Terminal.Gui.Text.Tests/SmokeTests.cs` for the format).
 
 ## Testing tiers
