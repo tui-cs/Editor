@@ -15,11 +15,6 @@ public partial class Editor
             return false;
         }
 
-        if (mouse.IsWheel)
-        {
-            return ScrollMouseWheel (mouse.Flags);
-        }
-
         if (mouse.Position is not { } pos)
         {
             return false;
@@ -80,25 +75,6 @@ public partial class Editor
         }
 
         return false;
-    }
-
-    private bool ScrollMouseWheel (MouseFlags flags)
-    {
-        bool scrolled = flags switch
-        {
-            _ when flags.HasFlag (MouseFlags.WheeledUp) => ScrollVertical (-1) == true,
-            _ when flags.HasFlag (MouseFlags.WheeledDown) => ScrollVertical (1) == true,
-            _ when flags.HasFlag (MouseFlags.WheeledLeft) => ScrollHorizontal (-1) == true,
-            _ when flags.HasFlag (MouseFlags.WheeledRight) => ScrollHorizontal (1) == true,
-            _ => false
-        };
-
-        if (scrolled)
-        {
-            SetNeedsDraw ();
-        }
-
-        return scrolled;
     }
 
     /// <summary>
