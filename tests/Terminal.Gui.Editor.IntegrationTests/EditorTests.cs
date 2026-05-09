@@ -211,6 +211,71 @@ public class EditorTests
     }
 
     [Fact]
+    public async Task Tab_Inserts_Tab_Character_By_Default ()
+    {
+        await using AppFixture<EditorTestHost> fx = new (() => new ("ab"));
+        fx.Top.Editor.SetFocus ();
+        fx.Top.Editor.CaretOffset = 1;
+
+        fx.Injector.InjectKey (Key.Tab, Direct);
+
+        Assert.Equal ("a\tb", fx.Top.Editor.Document?.Text);
+        Assert.Equal (2, fx.Top.Editor.CaretOffset);
+    }
+
+    [Fact]
+    public async Task Tab_Inserts_Spaces_When_ConvertTabsToSpaces_Is_Enabled ()
+    {
+        await using AppFixture<EditorTestHost> fx = new (() => new ("ab"));
+        fx.Top.Editor.SetFocus ();
+        fx.Top.Editor.ConvertTabsToSpaces = true;
+        fx.Top.Editor.CaretOffset = 1;
+
+        fx.Injector.InjectKey (Key.Tab, Direct);
+
+        Assert.Equal ("a   b", fx.Top.Editor.Document?.Text);
+        Assert.Equal (4, fx.Top.Editor.CaretOffset);
+    }
+
+    [Fact]
+    public async Task Tab_With_Multiline_Selection_Indents_Selected_Lines ()
+    {
+        await using AppFixture<EditorTestHost> fx = new (() => new ("a\nb"));
+        fx.Top.Editor.SetFocus ();
+
+        fx.Injector.InjectKey (Key.A.WithCtrl, Direct);
+        fx.Injector.InjectKey (Key.Tab, Direct);
+
+        Assert.Equal ("\ta\n\tb", fx.Top.Editor.Document?.Text);
+        Assert.True (fx.Top.Editor.HasSelection);
+    }
+
+    [Fact]
+    public async Task ShiftTab_Unindents_Selected_Lines ()
+    {
+        await using AppFixture<EditorTestHost> fx = new (() => new ("\ta\n\tb"));
+        fx.Top.Editor.SetFocus ();
+
+        fx.Injector.InjectKey (Key.A.WithCtrl, Direct);
+        fx.Injector.InjectKey (Key.Tab.WithShift, Direct);
+
+        Assert.Equal ("a\nb", fx.Top.Editor.Document?.Text);
+    }
+
+    [Fact]
+    public async Task Backspace_In_Leading_Indentation_Deletes_One_Indent_Unit ()
+    {
+        await using AppFixture<EditorTestHost> fx = new (() => new ("    x"));
+        fx.Top.Editor.SetFocus ();
+        fx.Top.Editor.CaretOffset = 4;
+
+        fx.Injector.InjectKey (Key.Backspace, Direct);
+
+        Assert.Equal ("x", fx.Top.Editor.Document?.Text);
+        Assert.Equal (0, fx.Top.Editor.CaretOffset);
+    }
+
+    [Fact]
     public async Task CtrlZ_Undoes_LastEdit ()
     {
         await using AppFixture<EditorTestHost> fx = new (() => new ("abc"));

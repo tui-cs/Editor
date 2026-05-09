@@ -96,6 +96,28 @@ public class TedAppTests
     }
 
     [Fact]
+    public void SaveFile_RoundTrip_Preserves_Tab_Characters ()
+    {
+        string filePath = Path.Combine (Path.GetTempPath (), $"ted-tabs-{Guid.NewGuid ():N}.txt");
+        File.WriteAllText (filePath, "a\tb");
+
+        try
+        {
+            TedApp app = new ();
+            app.ShowOpenDialog = () => filePath;
+
+            Assert.True (app.OpenFile ());
+            Assert.Equal ("a\tb", app.Editor.Document!.Text);
+            Assert.True (app.SaveFile ());
+            Assert.Equal ("a\tb", File.ReadAllText (filePath));
+        }
+        finally
+        {
+            File.Delete (filePath);
+        }
+    }
+
+    [Fact]
     public void SaveFileAs_Canceled_DoesNotWrite ()
     {
         bool wrote = false;
@@ -156,11 +178,11 @@ public class TedAppTests
     }
 
     [Fact]
-    public async Task Renders_Tab_StatusBar_Item ()
+    public async Task Renders_Indent_Size_StatusBar_Item ()
     {
         await using AppFixture<TedApp> fx = new (() => new TedApp ());
 
-        DriverAssert.ContentsContains (fx.Driver, "Tab");
+        DriverAssert.ContentsContains (fx.Driver, "Indent Size");
     }
 
     [Fact]
@@ -179,13 +201,13 @@ public class TedAppTests
     }
 
     [Fact]
-    public async Task TabWidth_StatusBar_NumericUpDown_Changes_Editor_TabWidth ()
+    public async Task IndentationSize_StatusBar_NumericUpDown_Changes_Editor_IndentationSize ()
     {
         await using AppFixture<TedApp> fx = new (() => new TedApp ());
 
-        fx.Top.TabWidthUpDown.Value = 8;
+        fx.Top.IndentationSizeUpDown.Value = 8;
 
-        Assert.Equal (8, fx.Top.Editor.TabWidth);
+        Assert.Equal (8, fx.Top.Editor.IndentationSize);
     }
 
     [Fact]

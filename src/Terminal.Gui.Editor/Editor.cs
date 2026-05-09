@@ -155,8 +155,8 @@ public partial class Editor : View
         }
     } = "csharp";
 
-    /// <summary>Visual tab-stop width in cells. Defaults to 4.</summary>
-    public int TabWidth
+    /// <summary>Size of one indentation unit in cells. Defaults to 4.</summary>
+    public int IndentationSize
     {
         get;
         set
@@ -175,6 +175,36 @@ public partial class Editor : View
             SetNeedsDraw ();
         }
     } = 4;
+
+    /// <summary>
+    ///     Gets or sets whether pressing Tab inserts spaces (<see langword="true" />) instead of a
+    ///     literal tab character (<see langword="false" />, default).
+    /// </summary>
+    public bool ConvertTabsToSpaces { get; set; }
+
+    /// <summary>Gets or sets whether tab glyph markers are shown while rendering.</summary>
+    public bool ShowTabs
+    {
+        get;
+        set
+        {
+            if (field == value)
+            {
+                return;
+            }
+
+            field = value;
+            SetNeedsDraw ();
+        }
+    }
+
+    [Obsolete ("Use IndentationSize instead.")]
+    [EditorBrowsable (EditorBrowsableState.Never)]
+    public int TabWidth
+    {
+        get => IndentationSize;
+        set => IndentationSize = value;
+    }
 
     /// <summary>Raised whenever <see cref="CaretOffset" /> changes.</summary>
     public event EventHandler? CaretChanged;
@@ -315,6 +345,7 @@ public partial class Editor : View
         SetCaretOffset (line.Offset + targetCol, false);
     }
 
+    // TODO(VisualLineBuilder): remove once specs/00-plan.md §6 visual-line mapping APIs land.
     private int GetVisualColumnFromLogicalColumn (DocumentLine line, int logicalColumn)
     {
         var text = _document!.GetText (line);
@@ -323,12 +354,13 @@ public partial class Editor : View
 
         for (var i = 0; i < clampedLogical; i++)
         {
-            visualColumn += GetVisualWidthForCharacter (text[i], visualColumn, TabWidth);
+            visualColumn += GetVisualWidthForCharacter (text[i], visualColumn, IndentationSize);
         }
 
         return visualColumn;
     }
 
+    // TODO(VisualLineBuilder): remove once specs/00-plan.md §6 visual-line hit-testing APIs land.
     private int GetLogicalColumnFromVisualColumn (DocumentLine line, int visualColumn)
     {
         var text = _document!.GetText (line);
@@ -337,17 +369,16 @@ public partial class Editor : View
 
         for (var logical = 0; logical < text.Length; logical++)
         {
-            var width = GetVisualWidthForCharacter (text[logical], currentVisual, TabWidth);
+            var width = GetVisualWidthForCharacter (text[logical], currentVisual, IndentationSize);
             var nextVisual = currentVisual + width;
 
             if (nextVisual >= clampedVisual)
             {
-                if (text[logical] == '\t' && clampedVisual > currentVisual)
+                if (text[logical] == '\t' && clampedVisual > currentVisual && clampedVisual < nextVisual)
                 {
-                    // Clicking or moving inside the visual span produced by '\t' snaps the caret
-                    // after the tab character because there is no representable position "inside"
-                    // a single tab code point.
-                    return logical + 1;
+                    var midpoint = currentVisual + (width / 2);
+
+                    return clampedVisual > midpoint ? logical + 1 : logical;
                 }
 
                 return clampedVisual >= nextVisual ? logical + 1 : logical;
@@ -359,16 +390,16 @@ public partial class Editor : View
         return text.Length;
     }
 
-    private static int GetVisualWidthForCharacter (char c, int visualColumn, int tabWidth)
+    private static int GetVisualWidthForCharacter (char c, int visualColumn, int indentationSize)
     {
         if (c != '\t')
         {
             return 1;
         }
 
-        var remainder = visualColumn % tabWidth;
+        var remainder = visualColumn % indentationSize;
 
-        return remainder == 0 ? tabWidth : tabWidth - remainder;
+        return remainder == 0 ? indentationSize : indentationSize - remainder;
     }
 
     private void EnsureCaretVisible ()

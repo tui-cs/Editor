@@ -183,7 +183,10 @@ public partial class Editor
         }
         else if (_caretOffset > 0)
         {
-            _document!.Remove (_caretOffset - 1, 1);
+            if (!TryDeleteSingleIndentationSegmentAtCaret ())
+            {
+                _document!.Remove (_caretOffset - 1, 1);
+            }
         }
 
         return true;
@@ -222,6 +225,46 @@ public partial class Editor
     {
         DocumentLine line = _document!.GetLineByOffset (_caretOffset);
         CaretOffset = line.Offset + line.Length;
+
+        return true;
+    }
+
+    private bool TryDeleteSingleIndentationSegmentAtCaret ()
+    {
+        if (_document is null || _caretOffset == 0)
+        {
+            return false;
+        }
+
+        DocumentLine line = _document.GetLineByOffset (_caretOffset);
+
+        if (_caretOffset < line.Offset || _caretOffset > line.EndOffset)
+        {
+            return false;
+        }
+
+        var pos = line.Offset;
+        ISegment previousSegment = new SimpleSegment (line.Offset, 0);
+
+        while (pos < _caretOffset)
+        {
+            ISegment segment = TextUtilities.GetSingleIndentationSegment (_document, pos, IndentationSize);
+
+            if (segment.Length == 0 || pos + segment.Length > _caretOffset)
+            {
+                return false;
+            }
+
+            previousSegment = segment;
+            pos += segment.Length;
+        }
+
+        if (pos != _caretOffset || previousSegment.Length == 0)
+        {
+            return false;
+        }
+
+        _document.Remove (previousSegment.Offset, previousSegment.Length);
 
         return true;
     }

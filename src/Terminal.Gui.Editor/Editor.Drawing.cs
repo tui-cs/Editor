@@ -1,6 +1,8 @@
 using System.Drawing;
+using System.Globalization;
 using Terminal.Gui.Drawing;
 using Terminal.Gui.Drivers;
+using Terminal.Gui.Text;
 using Terminal.Gui.Text.Document;
 using Terminal.Gui.ViewBase;
 using Attribute = Terminal.Gui.Drawing.Attribute;
@@ -106,7 +108,7 @@ public partial class Editor
         var segmentIndex = 0;
         var segmentEnd = segments is { Count: > 0 } ? segments[0].Text.Length : int.MaxValue;
 
-        for (var i = 0; i < text.Length; i++)
+        for (var i = 0; i < text.Length;)
         {
             while (segments is not null && i >= segmentEnd && segmentIndex + 1 < segments.Count)
             {
@@ -123,37 +125,73 @@ public partial class Editor
                 attribute = selected;
             }
 
-            var c = text[i];
-            var width = GetVisualWidthForCharacter (c, visualColumn, TabWidth);
-            var charVisualStart = visualColumn;
-            var charVisualEnd = visualColumn + width;
+            string textElement = StringInfo.GetNextTextElement (text, i);
+            var width = GetVisualWidthForTextElement (textElement, visualColumn);
+            var textElementVisualStart = visualColumn;
+            var textElementVisualEnd = visualColumn + width;
 
-            if (charVisualEnd <= visibleStart)
+            if (textElementVisualEnd <= visibleStart)
             {
-                visualColumn = charVisualEnd;
+                visualColumn = textElementVisualEnd;
+                i += textElement.Length;
 
                 continue;
             }
 
-            if (charVisualStart >= visibleEnd)
+            if (textElementVisualStart >= visibleEnd)
             {
                 break;
             }
 
-            var drawStart = Math.Max (charVisualStart, visibleStart);
-            var drawEnd = Math.Min (charVisualEnd, visibleEnd);
+            var drawStart = Math.Max (textElementVisualStart, visibleStart);
+            var drawEnd = Math.Min (textElementVisualEnd, visibleEnd);
 
             if (drawEnd > drawStart)
             {
                 SetAttribute (attribute);
-                AddStr (
-                    drawStart - visibleStart,
-                    row,
-                    c == '\t' ? new (' ', drawEnd - drawStart) : c.ToString ());
+
+                if (textElement == "\t")
+                {
+                    var drawLength = drawEnd - drawStart;
+                    var drawColumn = drawStart - visibleStart;
+
+                    if (ShowTabs && drawStart == textElementVisualStart)
+                    {
+                        AddStr (drawColumn, row, "→");
+
+                        if (drawLength > 1)
+                        {
+                            AddStr (drawColumn + 1, row, new (' ', drawLength - 1));
+                        }
+                    }
+                    else
+                    {
+                        AddStr (drawColumn, row, new (' ', drawLength));
+                    }
+                }
+                else if (drawStart == textElementVisualStart && drawEnd == textElementVisualEnd)
+                {
+                    AddStr (drawStart - visibleStart, row, textElement);
+                }
+                else
+                {
+                    AddStr (drawStart - visibleStart, row, new (' ', drawEnd - drawStart));
+                }
             }
 
-            visualColumn = charVisualEnd;
+            visualColumn = textElementVisualEnd;
+            i += textElement.Length;
         }
+    }
+
+    private int GetVisualWidthForTextElement (string textElement, int visualColumn)
+    {
+        if (textElement == "\t")
+        {
+            return GetVisualWidthForCharacter ('\t', visualColumn, IndentationSize);
+        }
+
+        return Math.Max (0, textElement.GetColumns ());
     }
 
     private void UpdateCursor ()
