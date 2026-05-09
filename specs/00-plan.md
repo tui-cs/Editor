@@ -6,6 +6,16 @@ This is a **revision** of the original plan. Pre-alpha is well underway: the doc
 
 ---
 
+## 0. Target: MLP (Minimum Lovable Product) — the alpha release
+
+**The alpha release of `gui-cs/Text` ships when `Editor` reaches MLP.** "Minimum Lovable Product" — *not* "Minimum Viable Product." Viable would be a `View` you can type into. Lovable is the bar:
+
+- **Most of what people expect from a TUI code editor is in place and works.** Typing, selection, multi-caret, find/replace, syntax highlighting, folding, soft wrap, line numbers, indentation, clipboard, mouse, undo with sane granularity, large-file responsiveness. Nothing on that list is a stub.
+- **`examples/ted` is a TUI editor someone would actually want to use.** Open a file, edit it, save it, close it. Find. Replace. Toggle wrap. Pick a theme. It feels finished, not like a demo. Day-to-day editing of `.cs` / `.md` / `.json` files in ted is genuinely pleasant.
+- **`gui-cs/clet` can ship a `clet edit` subcommand on top of `Editor` and not be embarrassed.** That is the single concrete external-consumer test for MLP. If a contributor asks "is feature X needed for MLP?" — the answer is yes iff `clet edit` would feel broken without it.
+
+The track-by-track work in §7 and the per-item briefs in §8 are the path to MLP. The Definition of Done in §9 is the gate. Tracks F (TextMate) and any "post-alpha" annotations below ship in **the next release after alpha**, not in the alpha itself.
+
 ## 1. Purpose & scope (unchanged)
 
 `Terminal.Gui.Text` — UI-framework-independent document model lifted from AvaloniaEdit. No Terminal.Gui dependency.
@@ -89,7 +99,7 @@ These are the rules new work must meet. A reviewer (or a dispatching agent) shou
 
 ## 6. Public API target (`Editor`)
 
-The MVP shape, AvaloniaEdit-aligned. Where current properties differ, the right-hand column says what to rename. The dispatching agent should treat any *new* property added to `Editor` as a spec change requiring a §3-table update.
+The MLP shape, AvaloniaEdit-aligned. Where current properties differ, the right-hand column says what to rename. The dispatching agent should treat any *new* property added to `Editor` as a spec change requiring a §3-table update.
 
 ```csharp
 namespace Terminal.Gui.Views;
@@ -111,7 +121,7 @@ public class Editor : View
     public IList<IBackgroundRenderer> BackgroundRenderers { get; }  // §B1
     public FoldingManager? FoldingManager { get; set; }      // §A1 + §D6
     public ISearchStrategy? SearchStrategy { get; set; }     // §A2 + §D4
-    public IEditorCompletionProvider? CompletionProvider { get; set; } // post-MVP
+    public IEditorCompletionProvider? CompletionProvider { get; set; } // post-MLP
 
     public event EventHandler<DocumentChangeEventArgs>? DocumentChanged;
     public event EventHandler? CaretChanged;
@@ -281,7 +291,7 @@ These four can run as four independent sub-agents. Each is a near-mechanical lif
 - *Files in scope*: `Editor.cs`, `Editor.Commands.cs`, new `Editor.MultiCaret.cs`. Update `IBackgroundRenderer` (current line) and `UpdateCursor ()` to handle the additional caret list.
 - *Tests*: `tests/Terminal.Gui.Editor.Tests/MultiCaretTests.cs` — Ctrl+Click adds caret; typing inserts at every caret; undo collapses to one step; selection per caret survives editing.
 - *Definition of done*: ted demo can demonstrate Ctrl+Click multi-caret typing + undo.
-- *Out of scope*: column-mode selection (post-MVP).
+- *Out of scope*: column-mode selection (post-MLP).
 - *Depends on*: C1.
 
 ---
@@ -309,7 +319,7 @@ These four can run as four independent sub-agents. Each is a near-mechanical lif
 - *Files in scope*: `Editor.Commands.cs` (new `Cut`/`Copy`/`Paste` commands), `Editor.Keyboard.cs` (bindings), tests.
 - *Tests*: `tests/Terminal.Gui.Editor.IntegrationTests/EditorClipboardTests.cs` — round-trip across selection-and-not-selection cases; paste with multi-line text inserts newlines correctly; cut emits one undo step.
 - *Definition of done*: ted demo Edit menu (or status bar) wires Cut/Copy/Paste.
-- *Out of scope*: rectangular paste (post-MVP).
+- *Out of scope*: rectangular paste (post-MLP).
 - *Depends on*: nothing.
 
 #### D4 — Find / Replace UI
@@ -317,7 +327,7 @@ These four can run as four independent sub-agents. Each is a near-mechanical lif
 - *Files in scope*: `Editor.cs` (`SearchStrategy` property; `FindNext`, `FindPrevious`, `Replace`, `ReplaceAll` commands inside `OpenUpdateScope`), new `src/Terminal.Gui.Editor/Rendering/SearchHitRenderer.cs`, `examples/ted/` find/replace dialog wiring.
 - *Tests*: integration tests for find-next wraparound, replace-all undo collapse, hit highlight invalidation on edit.
 - *Definition of done*: ted demo can find + replace; coverage on the strategy seam ≥ 75%.
-- *Out of scope*: incremental search dropdown (post-MVP).
+- *Out of scope*: incremental search dropdown (post-MLP).
 - *Depends on*: A2 + B1.
 
 #### D5 — Word wrap toggle in ted + `Editor.WordWrap`
@@ -341,7 +351,7 @@ These four can run as four independent sub-agents. Each is a near-mechanical lif
 - *Files in scope*: `Editor.cs`, `Editor.Commands.cs` (Enter handler delegates), tests.
 - *Tests*: Enter on a 4-space-indented line creates a new 4-space-indented line; Enter inside a brace block (with a future smart strategy) — the strategy is pluggable, default is dumb.
 - *Definition of done*: default strategy drives Enter; D1's Tab handler defers to the strategy where appropriate.
-- *Out of scope*: shipping a smart C# strategy (post-MVP).
+- *Out of scope*: shipping a smart C# strategy (post-MLP).
 - *Depends on*: A3.
 
 ---
@@ -358,7 +368,7 @@ These four can run as four independent sub-agents. Each is a near-mechanical lif
 
 ---
 
-### Track F — TextMate (post-MVP)
+### Track F — TextMate (post-MLP)
 
 #### F1 — Port `AvaloniaEdit.TextMate`
 - *Goal*: TextMate grammar + `tmTheme` support, mapped to `Terminal.Gui.Color`. Plugs into the same `HighlightingColorizer` seam as E1 (just a different `IHighlighter` implementation).
@@ -369,7 +379,7 @@ These four can run as four independent sub-agents. Each is a near-mechanical lif
 
 ---
 
-## 9. MVP definition of done
+## 9. MLP definition of done
 
 Each criterion below is testable. The dispatching agent should treat the list as the merge-to-`main` gate.
 
@@ -388,13 +398,18 @@ Each criterion below is testable. The dispatching agent should treat the list as
 
 These are blockers if hit by a work-item. The dispatching agent should pause the affected sub-agent and either record a decision in `specs/05-decisions.md` (after asking the human owner) or descope to unblock.
 
-1. **Line-ending policy.** Adopt AvaloniaEdit's per-line preservation as-is? Recommended yes.
-2. **First post-MVP highlighter — xshd vs TextMate.** Recommend TextMate (F1) since A4 already lands xshd as a tokenizer model.
-3. **Distribution of `Terminal.Gui.Text` as an independent NuGet from day one** vs. holding until a second consumer materializes.
-4. **Completion item shape.** Reuse Terminal.Gui's `IAutocomplete`-style types vs. a fresh LSP-flavored `IEditorCompletionProvider`.
-5. **Async I/O.** `LoadAsync (Stream)` / `SaveAsync` on `Editor` vs. on the document.
-6. **Read-only ranges.** Lift `TextSegmentReadOnlySectionProvider`, or YAGNI.
-7. **`HighlightingColor` carries Bold/Italic/Underline.** Confirmed mapping target is `Terminal.Gui.TextStyle`. Verify all xshd attributes are representable; if not, document drops in `05-decisions.md`.
+### Resolved
+
+- **Line-ending policy. Adopt AvaloniaEdit's per-line preservation as-is.** `TextDocument` keeps each line's terminator verbatim on load and round-trips it on save — no normalization to `\n`. Mixed-ending files survive a load/save round trip byte-identical except where the user explicitly edited a line. Move the rationale to `specs/05-decisions.md` when that file is created.
+- **First post-alpha highlighter is TextMate (track F1), not xshd.** xshd lands earlier as the tokenizer model in A4 because the lift is cheap; the consumer-facing grammar story is TextMate. Track F1 ships in the release after alpha.
+
+### Still open
+
+1. **Distribution of `Terminal.Gui.Text` as an independent NuGet from day one** vs. holding until a second consumer materializes.
+2. **Completion item shape.** Reuse Terminal.Gui's `IAutocomplete`-style types vs. a fresh LSP-flavored `IEditorCompletionProvider`.
+3. **Async I/O.** `LoadAsync (Stream)` / `SaveAsync` on `Editor` vs. on the document.
+4. **Read-only ranges.** Lift `TextSegmentReadOnlySectionProvider`, or YAGNI.
+5. **`HighlightingColor` carries Bold/Italic/Underline.** Confirmed mapping target is `Terminal.Gui.TextStyle`. Verify all xshd attributes are representable; if not, document drops in `05-decisions.md`.
 
 ## 11. Risks (carryover, with current readings)
 
