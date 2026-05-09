@@ -147,6 +147,33 @@ public class EditorLogicTests
     }
 
     [Fact]
+    public void ShowLineNumbers_Toggles_LeftPadding ()
+    {
+        Views.Editor editor = new () { Document = new TextDocument (string.Join ('\n', Enumerable.Range (1, 9))) };
+
+        Assert.Equal (0, editor.Padding.Thickness.Left);
+
+        editor.ShowLineNumbers = true;
+        Assert.Equal (2, editor.Padding.Thickness.Left);
+
+        editor.ShowLineNumbers = false;
+        Assert.Equal (0, editor.Padding.Thickness.Left);
+    }
+
+    [Fact]
+    public void ShowLineNumbers_Updates_Padding_When_LineCount_DigitWidth_Changes ()
+    {
+        Views.Editor editor = new () { Document = new TextDocument (string.Join ('\n', Enumerable.Range (1, 9))) };
+        editor.ShowLineNumbers = true;
+
+        Assert.Equal (2, editor.Padding.Thickness.Left);
+
+        editor.Document.Insert (editor.Document.TextLength, "\n10");
+
+        Assert.Equal (3, editor.Padding.Thickness.Left);
+    }
+
+    [Fact]
     public void TabWidth_Defaults_To_4 ()
     {
         Views.Editor editor = new ();

@@ -81,6 +81,65 @@ public class EditorRenderingTests
     }
 
     [Fact]
+    public async Task LineNumbers_Render_In_LeftPadding ()
+    {
+        await using AppFixture<EditorTestHost> fx = new (() =>
+        {
+            EditorTestHost host = new ("alpha\nbeta");
+            host.Editor.ShowLineNumbers = true;
+
+            return host;
+        });
+
+        fx.Render ();
+
+        Assert.Equal (2, fx.Top.Editor.Padding.Thickness.Left);
+        Assert.Equal ("1", fx.Driver.Contents![0, 0].Grapheme);
+        Assert.Equal (" ", fx.Driver.Contents[0, 1].Grapheme);
+        Assert.Equal ("a", fx.Driver.Contents[0, 2].Grapheme);
+        Assert.Equal ("2", fx.Driver.Contents[1, 0].Grapheme);
+        Assert.Equal ("b", fx.Driver.Contents[1, 2].Grapheme);
+    }
+
+    [Fact]
+    public async Task LineNumbers_Follow_Vertical_Scroll ()
+    {
+        string[] lines = new string[50];
+
+        for (int i = 0; i < lines.Length; i++)
+        {
+            lines[i] = $"line-{i:00}";
+        }
+
+        await using AppFixture<EditorTestHost> fx = new (() =>
+        {
+            EditorTestHost host = new (string.Join ("\n", lines));
+            host.Editor.ShowLineNumbers = true;
+
+            return host;
+        });
+
+        int offset = 0;
+
+        for (int i = 0; i < 40; i++)
+        {
+            offset += lines[i].Length + 1;
+        }
+
+        fx.Top.Editor.SetFocus ();
+        fx.Top.Editor.CaretOffset = offset;
+        fx.Render ();
+
+        int row = 40 - fx.Top.Editor.Viewport.Y;
+
+        Assert.Equal (3, fx.Top.Editor.Padding.Thickness.Left);
+        Assert.Equal ("4", fx.Driver.Contents![row, 0].Grapheme);
+        Assert.Equal ("1", fx.Driver.Contents[row, 1].Grapheme);
+        Assert.Equal (" ", fx.Driver.Contents[row, 2].Grapheme);
+        Assert.Equal ("l", fx.Driver.Contents[row, 3].Grapheme);
+    }
+
+    [Fact]
     public async Task Syntax_Highlighting_Uses_TextMate_Token_Attributes ()
     {
         const string text = "public class C";
