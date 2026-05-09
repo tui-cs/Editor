@@ -40,16 +40,10 @@ public partial class Editor
             DocumentLine line = _document.GetLineByNumber (lineIndex + 1);
             string text = _document.GetText (line);
             IReadOnlyList<StyledSegment>? segments = syntaxHighlighter?.Highlight (text, SyntaxLanguage);
-
-            if (viewport.X >= text.Length)
-            {
-                continue;
-            }
-
             int visibleStart = viewport.X;
-            int visibleEnd = Math.Min (text.Length, viewport.X + viewport.Width);
+            int visibleEnd = viewport.X + viewport.Width;
 
-            DrawLineRuns (
+            DrawLine (
                 row,
                 text,
                 visibleStart,
@@ -85,7 +79,7 @@ public partial class Editor
         }
     }
 
-    private void DrawLineRuns (
+    private void DrawLine (
         int row,
         string text,
         int visibleStart,
@@ -98,116 +92,60 @@ public partial class Editor
         int selStart,
         int selEnd)
     {
-        if (segments is null)
-        {
-            DrawRun (
-                row,
-                visibleStart,
-                visibleStart,
-                visibleEnd,
-                text[visibleStart..visibleEnd],
-                normal,
-                selected,
-                lineOffset,
-                hasSelection,
-                selStart,
-                selEnd);
-
-            return;
-        }
-
+        int visualColumn = 0;
+        int segmentIndex = 0;
         int segmentStart = 0;
+        int segmentEnd = segments is { Count: > 0 } ? segments[0].Text.Length : int.MaxValue;
 
-        foreach (StyledSegment segment in segments)
+        for (int i = 0; i < text.Length; i++)
         {
-            int segmentEnd = segmentStart + segment.Text.Length;
-
-            if (segmentEnd <= visibleStart)
+            while (segments is not null && i >= segmentEnd && segmentIndex + 1 < segments.Count)
             {
+                segmentIndex++;
                 segmentStart = segmentEnd;
+                segmentEnd = segmentStart + segments[segmentIndex].Text.Length;
+            }
+
+            Drawing.Attribute attribute = segments is null
+                ? normal
+                : segments[segmentIndex].Attribute ?? normal;
+
+            if (hasSelection && lineOffset + i >= selStart && lineOffset + i < selEnd)
+            {
+                attribute = selected;
+            }
+
+            char c = text[i];
+            int width = GetVisualWidthForCharacter (c, visualColumn, TabWidth);
+            int charVisualStart = visualColumn;
+            int charVisualEnd = visualColumn + width;
+
+            if (charVisualEnd <= visibleStart)
+            {
+                visualColumn = charVisualEnd;
 
                 continue;
             }
 
-            if (segmentStart >= visibleEnd)
+            if (charVisualStart >= visibleEnd)
             {
                 break;
             }
 
-            int runStart = Math.Max (segmentStart, visibleStart);
-            int runEnd = Math.Min (segmentEnd, visibleEnd);
-            Drawing.Attribute attribute = segment.Attribute ?? normal;
+            int drawStart = Math.Max (charVisualStart, visibleStart);
+            int drawEnd = Math.Min (charVisualEnd, visibleEnd);
 
-            DrawRun (
-                row,
-                visibleStart,
-                runStart,
-                runEnd,
-                segment.Text[(runStart - segmentStart)..(runEnd - segmentStart)],
-                attribute,
-                selected,
-                lineOffset,
-                hasSelection,
-                selStart,
-                selEnd);
-            segmentStart = segmentEnd;
+            if (drawEnd > drawStart)
+            {
+                SetAttribute (attribute);
+                AddStr (
+                    drawStart - visibleStart,
+                    row,
+                    c == '\t' ? new (' ', drawEnd - drawStart) : c.ToString ());
+            }
+
+            visualColumn = charVisualEnd;
         }
-    }
-
-    private void DrawRun (
-        int row,
-        int visibleStart,
-        int runStart,
-        int runEnd,
-        string text,
-        Drawing.Attribute attribute,
-        Drawing.Attribute selected,
-        int lineOffset,
-        bool hasSelection,
-        int selStart,
-        int selEnd)
-    {
-        if (!hasSelection || selEnd <= lineOffset + runStart || selStart >= lineOffset + runEnd)
-        {
-            SetAttribute (attribute);
-            AddStr (runStart - visibleStart, row, text);
-
-            return;
-        }
-
-        int lineSelStart = Math.Max (runStart, selStart - lineOffset);
-        int lineSelEnd = Math.Min (runEnd, selEnd - lineOffset);
-        int current = runStart;
-
-        if (current < lineSelStart)
-        {
-            DrawRunPart (row, visibleStart, runStart, current, lineSelStart, text, attribute);
-            current = lineSelStart;
-        }
-
-        if (current < lineSelEnd)
-        {
-            DrawRunPart (row, visibleStart, runStart, current, lineSelEnd, text, selected);
-            current = lineSelEnd;
-        }
-
-        if (current < runEnd)
-        {
-            DrawRunPart (row, visibleStart, runStart, current, runEnd, text, attribute);
-        }
-    }
-
-    private void DrawRunPart (
-        int row,
-        int visibleStart,
-        int runStart,
-        int partStart,
-        int partEnd,
-        string text,
-        Drawing.Attribute attribute)
-    {
-        SetAttribute (attribute);
-        AddStr (partStart - visibleStart, row, text[(partStart - runStart)..(partEnd - runStart)]);
     }
 
     private void UpdateCursor ()

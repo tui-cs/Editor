@@ -82,6 +82,25 @@ public class EditorTests
     }
 
     [Fact]
+    public async Task CursorUp_Down_PreservesVirtualColumn_Across_Tab_Line ()
+    {
+        await using AppFixture<EditorTestHost> fx = new (() => new ("abcde\n\t\nabcde"));
+        fx.Top.Editor.SetFocus ();
+        fx.Top.Editor.CaretOffset = 3;
+
+        fx.Injector.InjectKey (Key.CursorDown, Direct);
+
+        int afterFirstDown = fx.Top.Editor.CaretOffset;
+        Assert.Equal ("abcde\n\t".Length, afterFirstDown);
+
+        fx.Injector.InjectKey (Key.CursorDown, Direct);
+
+        int afterSecondDown = fx.Top.Editor.CaretOffset;
+        int line3Start = "abcde\n\t\n".Length;
+        Assert.Equal (line3Start + 3, afterSecondDown);
+    }
+
+    [Fact]
     public async Task Home_End_Move_WithinLine ()
     {
         await using AppFixture<EditorTestHost> fx = new (() => new ("first\nsecond"));
