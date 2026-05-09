@@ -91,6 +91,7 @@ Adopts Terminal.Gui's house style. Enforced by `.editorconfig`; the highlights:
 - **Collection expressions**: `[...]` not `new () { ... }`.
 - **Guard clauses**; never wrap the happy path in `if`.
 - **One public/internal type per file.**
+- **Subscribe to `-ed` events, not `-ing`, unless you actually cancel.** `button.Accepted += ...` for fire-and-forget side-effects; `button.Accepting += ...` only when the handler reads / sets `e.Cancel` or `e.Handled`. Same rule for every other paired event (`Selecting`/`Selected`, etc.). See `specs/00-plan.md` R10.
 - **No unused public/internal APIs.** Every public/internal member in `src/` must have a non-test caller in `src/` or `examples/`. If you add a method, wire it in the same PR; otherwise delete it. Tests don't count as a consumer. See `specs/00-plan.md` R9.
 - **AI-generated tests** marked `// Claude - <model>` or `// CoPilot - <model>` at the top of the file (see `tests/Terminal.Gui.Text.Tests/SmokeTests.cs` for the format).
 
