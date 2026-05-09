@@ -164,6 +164,14 @@ public class TedAppTests
     }
 
     [Fact]
+    public async Task Renders_Tab_StatusBar_Item ()
+    {
+        await using AppFixture<TedApp> fx = new (() => new TedApp ());
+
+        DriverAssert.ContentsContains (fx.Driver, "Tab");
+    }
+
+    [Fact]
     public async Task Theme_StatusBar_DropDown_Changes_Editor_Syntax_Theme ()
     {
         await using AppFixture<TedApp> fx = new (() => new TedApp ());
@@ -172,6 +180,16 @@ public class TedAppTests
 
         TextMateSyntaxHighlighter highlighter = Assert.IsType<TextMateSyntaxHighlighter> (fx.Top.Editor.SyntaxHighlighter);
         Assert.Equal (ThemeName.LightPlus, highlighter.ThemeName);
+    }
+
+    [Fact]
+    public async Task TabWidth_StatusBar_NumericUpDown_Changes_Editor_TabWidth ()
+    {
+        await using AppFixture<TedApp> fx = new (() => new TedApp ());
+
+        fx.Top.TabWidthUpDown.Value = 8;
+
+        Assert.Equal (8, fx.Top.Editor.TabWidth);
     }
 
     [Fact]

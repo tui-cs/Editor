@@ -48,26 +48,42 @@ public sealed class TedApp : Window
         };
 
         ThemeDropDown.ValueChanged += (_, e) =>
+                                       {
+                                           if (e.Value is not { } themeName)
+                                           {
+                                               return;
+                                           }
+
+                                           if (Editor.SyntaxHighlighter is TextMateSyntaxHighlighter highlighter)
+                                           {
+                                               if (highlighter.ThemeName == themeName)
+                                               {
+                                                   return;
+                                               }
+
+                                               highlighter.SetTheme (themeName);
+                                               Editor.SetNeedsDraw ();
+
+                                               return;
+                                           }
+
+                                           Editor.SyntaxHighlighter = new TextMateSyntaxHighlighter (themeName);
+                                       };
+
+        TabWidthUpDown = new NumericUpDown<int>
+        {
+            Value = Editor.TabWidth,
+            Increment = 1
+        };
+
+        TabWidthUpDown.ValueChanged += (_, e) =>
                                       {
-                                          if (e.Value is not { } themeName)
+                                          if (Editor.TabWidth == e.NewValue)
                                           {
                                               return;
                                           }
 
-                                          if (Editor.SyntaxHighlighter is TextMateSyntaxHighlighter highlighter)
-                                          {
-                                              if (highlighter.ThemeName == themeName)
-                                              {
-                                                  return;
-                                              }
-
-                                              highlighter.SetTheme (themeName);
-                                              Editor.SetNeedsDraw ();
-
-                                              return;
-                                          }
-
-                                          Editor.SyntaxHighlighter = new TextMateSyntaxHighlighter (themeName);
+                                          Editor.TabWidth = e.NewValue;
                                       };
 
         StatusBar statusBar =
@@ -75,6 +91,8 @@ public sealed class TedApp : Window
                 new Shortcut (KeyFor (Command.Quit), "Quit", Quit),
                 new Shortcut (Key.Empty, "Themes", null) { MouseHighlightStates = MouseState.None },
                 new Shortcut { Title = "Themes", CommandView = ThemeDropDown },
+                new Shortcut (Key.Empty, "Tab", null) { MouseHighlightStates = MouseState.None },
+                new Shortcut { Title = "Tab", CommandView = TabWidthUpDown },
                 new Shortcut (Key.Empty, "x, y", null, "Loc") { MouseHighlightStates = MouseState.None },
                 _fileNameShortcut = new Shortcut (Key.Empty, "<untitled>", Open)
                 {
@@ -133,6 +151,8 @@ public sealed class TedApp : Window
 
     /// <summary>The syntax-highlighting theme selector shown in the status bar.</summary>
     public DropDownList<ThemeName> ThemeDropDown { get; }
+    /// <summary>The tab-width selector shown in the status bar.</summary>
+    public NumericUpDown<int> TabWidthUpDown { get; }
     /// <summary>The path currently associated with <see cref="Editor" />, or <see langword="null" /> for an untitled buffer.</summary>
     public string? CurrentFilePath { get; private set; }
 

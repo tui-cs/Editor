@@ -128,4 +128,43 @@ public class EditorLogicTests
 
         Assert.Equal (3, editor.Padding.Thickness.Left);
     }
+
+    [Fact]
+    public void TabWidth_Defaults_To_4 ()
+    {
+        Views.Editor editor = new ();
+
+        Assert.Equal (4, editor.TabWidth);
+    }
+
+    [Fact]
+    public void TabWidth_Rejects_Values_Less_Than_1 ()
+    {
+        Views.Editor editor = new ();
+
+        Assert.Throws<ArgumentOutOfRangeException> (() => editor.TabWidth = 0);
+    }
+
+    [Fact]
+    public void Caret_After_Tab_Uses_Visual_Columns_For_Viewport_Scrolling ()
+    {
+        Views.Editor editor = new () { Document = new TextDocument ("a\tb"), Width = 3, Height = 1 };
+        editor.Viewport = new (0, 0, 3, 1);
+        editor.CaretOffset = 2;
+
+        Assert.Equal (2, editor.Viewport.X);
+    }
+
+    [Fact]
+    public void Changing_TabWidth_Recomputes_Caret_Visibility ()
+    {
+        Views.Editor editor = new () { Document = new TextDocument ("\t"), Width = 4, Height = 1 };
+        editor.Viewport = new (0, 0, 4, 1);
+        editor.CaretOffset = 1;
+        Assert.Equal (1, editor.Viewport.X);
+
+        editor.TabWidth = 8;
+
+        Assert.Equal (5, editor.Viewport.X);
+    }
 }
