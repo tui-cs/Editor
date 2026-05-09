@@ -175,13 +175,13 @@ public class TedAppTests
     }
 
     [Fact]
-    public void TabWidth_StatusBar_NumericUpDown_Changes_Editor_TabWidth ()
+    public async Task TabWidth_StatusBar_NumericUpDown_Changes_Editor_TabWidth ()
     {
-        TedApp app = new ();
+        await using AppFixture<TedApp> fx = new (() => new TedApp ());
 
-        app.TabWidthUpDown.Value = 8;
+        fx.Top.TabWidthUpDown.Value = 8;
 
-        Assert.Equal (8, app.Editor.TabWidth);
+        Assert.Equal (8, fx.Top.Editor.TabWidth);
     }
 
     [Fact]
