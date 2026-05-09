@@ -19,7 +19,8 @@ public partial class Editor
             return false;
         }
 
-        if (key.AsRune is { } rune && rune != default && !Rune.IsControl (rune))
+        // Rune.IsControl already covers U+0000 (default(Rune)), so no explicit NUL guard is needed.
+        if (key.AsRune is { } rune && !Rune.IsControl (rune))
         {
             if (HasSelection)
             {

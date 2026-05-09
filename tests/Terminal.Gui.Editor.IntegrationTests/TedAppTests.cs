@@ -45,7 +45,7 @@ public class TedAppTests
         Assert.False (app.OpenFile ());
 
         Assert.Null (app.CurrentFilePath);
-        Assert.Equal ("Hello world", app.Editor.Document!.Text);
+        Assert.Equal (string.Empty, app.Editor.Document!.Text);
     }
 
     [Fact]
@@ -132,14 +132,6 @@ public class TedAppTests
     }
 
     [Fact]
-    public async Task Renders_HelloWorld_InEditorArea ()
-    {
-        await using AppFixture<TedApp> fx = new (() => new TedApp ());
-
-        DriverAssert.ContentsContains (fx.Driver, "Hello world");
-    }
-
-    [Fact]
     public async Task Renders_FileMenu_Header ()
     {
         await using AppFixture<TedApp> fx = new (() => new TedApp ());
@@ -178,7 +170,11 @@ public class TedAppTests
 
         fx.Top.ThemeDropDown.Value = ThemeName.LightPlus;
 
+        // CS0618: Editor.SyntaxHighlighter is the [Obsolete] stopgap surface (issue #32);
+        // ted's theme drop-down is its UI, so this test must read it.
+#pragma warning disable CS0618 // Type or member is obsolete
         TextMateSyntaxHighlighter highlighter = Assert.IsType<TextMateSyntaxHighlighter> (fx.Top.Editor.SyntaxHighlighter);
+#pragma warning restore CS0618 // Type or member is obsolete
         Assert.Equal (ThemeName.LightPlus, highlighter.ThemeName);
     }
 

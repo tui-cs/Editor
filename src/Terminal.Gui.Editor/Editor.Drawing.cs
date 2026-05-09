@@ -20,7 +20,13 @@ public partial class Editor
         Rectangle viewport = Viewport;
         Drawing.Attribute normal = GetAttributeForRole (VisualRole.Normal);
         Drawing.Attribute selected = GetAttributeForRole (VisualRole.Active);
+
+        // The CS0618 here is the API's purpose: SyntaxHighlighter is [Obsolete] to warn
+        // external callers that this is a stopgap (issue #32). The editor itself still has to
+        // honor the property until Phase 6 lifts AvaloniaEdit's Highlighting/ pipeline (#28).
+#pragma warning disable CS0618 // Type or member is obsolete
         ISyntaxHighlighter? syntaxHighlighter = SyntaxHighlighter;
+#pragma warning restore CS0618 // Type or member is obsolete
 
         bool hasSelection = HasSelection;
         int selStart = hasSelection ? SelectionStart : 0;
@@ -39,7 +45,9 @@ public partial class Editor
 
             DocumentLine line = _document.GetLineByNumber (lineIndex + 1);
             string text = _document.GetText (line);
+#pragma warning disable CS0618 // Type or member is obsolete — see note at top of OnDrawingContent.
             IReadOnlyList<StyledSegment>? segments = syntaxHighlighter?.Highlight (text, SyntaxLanguage);
+#pragma warning restore CS0618 // Type or member is obsolete
             int visibleStart = viewport.X;
             int visibleEnd = viewport.X + viewport.Width;
 
@@ -75,7 +83,9 @@ public partial class Editor
         for (int lineIndex = 0; lineIndex < firstVisibleLineIndex && lineIndex < _document.LineCount; lineIndex++)
         {
             DocumentLine line = _document.GetLineByNumber (lineIndex + 1);
+#pragma warning disable CS0618 // Type or member is obsolete — see note in OnDrawingContent.
             syntaxHighlighter.Highlight (_document.GetText (line), SyntaxLanguage);
+#pragma warning restore CS0618 // Type or member is obsolete
         }
     }
 

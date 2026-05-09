@@ -27,10 +27,9 @@ public partial class Editor
         if (mouse.Flags.FastHasFlags (MouseFlags.LeftButtonPressed | MouseFlags.PositionReport))
         {
             int offset = MousePositionToOffset (pos);
-            EnsureSelectionAnchor ();
-            CaretOffset = offset;
-            SelectionChanged?.Invoke (this, EventArgs.Empty);
-            SetNeedsDraw ();
+
+            // Route through the selection helper so SelectionChanged fires only on real changes.
+            ExtendCaretTo (offset);
 
             return true;
         }
@@ -47,10 +46,7 @@ public partial class Editor
 
             if (shift)
             {
-                EnsureSelectionAnchor ();
-                CaretOffset = offset;
-                SelectionChanged?.Invoke (this, EventArgs.Empty);
-                SetNeedsDraw ();
+                ExtendCaretTo (offset);
             }
             else
             {

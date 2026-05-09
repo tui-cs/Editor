@@ -27,7 +27,14 @@ public sealed class TedApp : Window
         // Editor first so menu/status-bar shortcuts can pull their hotkeys directly from
         // Editor's KeyBindings (any commands the editor doesn't claim fall back to Application).
         Editor = new ();
+
+        // ted is the demo for the stopgap Editor.SyntaxHighlighter / SyntaxLanguage surface
+        // (issue #32). The CS0618 warning is intentional on the public API; suppressed here
+        // because exercising the API is exactly this app's job until issue #28 ships the
+        // visual-line HighlightingColorizer pipeline.
+#pragma warning disable CS0618 // Type or member is obsolete
         Editor.SyntaxHighlighter = new TextMateSyntaxHighlighter (ThemeName.DarkPlus);
+#pragma warning restore CS0618 // Type or member is obsolete
         ShowOpenDialog = ShowDefaultOpenDialog;
         ShowSaveDialog = ShowDefaultSaveDialog;
 
@@ -54,12 +61,15 @@ public sealed class TedApp : Window
                                                return;
                                            }
 
-                                           if (Editor.SyntaxHighlighter is TextMateSyntaxHighlighter highlighter)
-                                           {
-                                               if (highlighter.ThemeName == themeName)
-                                               {
-                                                   return;
-                                               }
+                                          // CS0618: Editor.SyntaxHighlighter is the stopgap API
+                                          // ted exists to exercise. See issue #32.
+#pragma warning disable CS0618 // Type or member is obsolete
+                                          if (Editor.SyntaxHighlighter is TextMateSyntaxHighlighter highlighter)
+                                          {
+                                              if (highlighter.ThemeName == themeName)
+                                              {
+                                                  return;
+                                              }
 
                                                highlighter.SetTheme (themeName);
                                                Editor.SetNeedsDraw ();
@@ -68,6 +78,7 @@ public sealed class TedApp : Window
                                            }
 
                                            Editor.SyntaxHighlighter = new TextMateSyntaxHighlighter (themeName);
+#pragma warning restore CS0618 // Type or member is obsolete
                                        };
 
         TabWidthUpDown = new NumericUpDown<int>

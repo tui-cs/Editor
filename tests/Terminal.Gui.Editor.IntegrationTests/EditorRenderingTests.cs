@@ -145,7 +145,11 @@ public class EditorRenderingTests
         const string text = "public class C";
 
         await using AppFixture<EditorTestHost> fx = new (() => new (text));
+        // Editor.SyntaxHighlighter is [Obsolete] (issue #32); these tests still exercise it
+        // because it's the live behavior until the visual-line pipeline lands (issue #28).
+#pragma warning disable CS0618 // Type or member is obsolete
         fx.Top.Editor.SyntaxHighlighter = new TextMateSyntaxHighlighter (ThemeName.DarkPlus);
+#pragma warning restore CS0618 // Type or member is obsolete
         fx.Render ();
 
         TextMateSyntaxHighlighter highlighter = new (ThemeName.DarkPlus);
@@ -161,7 +165,9 @@ public class EditorRenderingTests
     public async Task Selection_Overrides_Syntax_Highlighting ()
     {
         await using AppFixture<EditorTestHost> fx = new (() => new ("public class C"));
+#pragma warning disable CS0618 // Type or member is obsolete — see note in Syntax_Highlighting_Uses_TextMate_Token_Attributes.
         fx.Top.Editor.SyntaxHighlighter = new TextMateSyntaxHighlighter (ThemeName.DarkPlus);
+#pragma warning restore CS0618 // Type or member is obsolete
         fx.Top.Editor.SetFocus ();
         fx.Top.Editor.CaretOffset = 0;
 
