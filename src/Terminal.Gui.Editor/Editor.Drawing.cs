@@ -105,19 +105,20 @@ public partial class Editor
     {
         int visualColumn = 0;
         int segmentIndex = 0;
-        int segmentEnd = segments is { Count: > 0 } ? segments[0].Text.Length : int.MaxValue;
+        bool hasSegments = segments is { Count: > 0 };
+        int segmentEnd = hasSegments ? segments![0].Text.Length : int.MaxValue;
 
         foreach ((int i, string grapheme) in EnumerateGraphemes (text))
         {
-            while (segments is not null && i >= segmentEnd && segmentIndex + 1 < segments.Count)
+            while (hasSegments && i >= segmentEnd && segmentIndex + 1 < segments!.Count)
             {
                 segmentIndex++;
                 segmentEnd += segments[segmentIndex].Text.Length;
             }
 
-            Drawing.Attribute attribute = segments is null
-                ? normal
-                : segments[segmentIndex].Attribute ?? normal;
+            Drawing.Attribute attribute = hasSegments
+                ? segments![segmentIndex].Attribute ?? normal
+                : normal;
 
             if (hasSelection && lineOffset + i < selEnd && lineOffset + i + grapheme.Length > selStart)
             {
