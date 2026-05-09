@@ -1,6 +1,8 @@
 using System.ComponentModel;
 using System.Drawing;
+using System.Globalization;
 using Terminal.Gui.Drawing;
+using Terminal.Gui.Text;
 using Terminal.Gui.Text.Document;
 using Terminal.Gui.ViewBase;
 
@@ -320,9 +322,14 @@ public partial class Editor : View
         var clampedLogical = Math.Clamp (logicalColumn, 0, text.Length);
         var visualColumn = 0;
 
-        for (var i = 0; i < clampedLogical; i++)
+        foreach ((int index, string grapheme) in EnumerateGraphemes (text))
         {
-            visualColumn += GetVisualWidthForCharacter (text[i], visualColumn, TabWidth);
+            if (index >= clampedLogical)
+            {
+                break;
+            }
+
+            visualColumn += GetVisualWidthForGrapheme (grapheme, visualColumn, TabWidth);
         }
 
         return visualColumn;
@@ -334,14 +341,14 @@ public partial class Editor : View
         var clampedVisual = Math.Max (0, visualColumn);
         var currentVisual = 0;
 
-        for (var logical = 0; logical < text.Length; logical++)
+        foreach ((int logical, string grapheme) in EnumerateGraphemes (text))
         {
-            var width = GetVisualWidthForCharacter (text[logical], currentVisual, TabWidth);
+            var width = GetVisualWidthForGrapheme (grapheme, currentVisual, TabWidth);
             var nextVisual = currentVisual + width;
 
             if (nextVisual >= clampedVisual)
             {
-                if (text[logical] == '\t' && clampedVisual > currentVisual)
+                if (grapheme == "\t" && clampedVisual > currentVisual)
                 {
                     // Clicking or moving inside the visual span produced by '\t' snaps the caret
                     // after the tab character because there is no representable position "inside"
@@ -349,7 +356,7 @@ public partial class Editor : View
                     return logical + 1;
                 }
 
-                return clampedVisual >= nextVisual ? logical + 1 : logical;
+                return clampedVisual >= nextVisual ? logical + grapheme.Length : logical;
             }
 
             currentVisual = nextVisual;
@@ -358,16 +365,26 @@ public partial class Editor : View
         return text.Length;
     }
 
-    private static int GetVisualWidthForCharacter (char c, int visualColumn, int tabWidth)
+    private static int GetVisualWidthForGrapheme (string grapheme, int visualColumn, int tabWidth)
     {
-        if (c != '\t')
+        if (grapheme != "\t")
         {
-            return 1;
+            return grapheme.GetColumns ();
         }
 
         var remainder = visualColumn % tabWidth;
 
         return remainder == 0 ? tabWidth : tabWidth - remainder;
+    }
+
+    private static IEnumerable<(int Index, string Grapheme)> EnumerateGraphemes (string text)
+    {
+        TextElementEnumerator enumerator = StringInfo.GetTextElementEnumerator (text);
+
+        while (enumerator.MoveNext ())
+        {
+            yield return (enumerator.ElementIndex, enumerator.GetTextElement ());
+        }
     }
 
     private void EnsureCaretVisible ()
