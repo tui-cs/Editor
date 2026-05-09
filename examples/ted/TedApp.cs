@@ -298,7 +298,7 @@ public sealed class TedApp : Window
         return dialog.FileName;
     }
 
-    private void SetDocument (string text, string? filePath)
+    internal void SetDocument (string text, string? filePath)
     {
         Editor.ClearSelection ();
         Editor.Document = new TextDocument (text);

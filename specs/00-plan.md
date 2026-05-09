@@ -6,6 +6,16 @@ This is a **revision** of the original plan. Pre-alpha is well underway: the doc
 
 ---
 
+## 0. Target: MLP (Minimum Lovable Product) — the alpha release
+
+**The alpha release of `gui-cs/Text` ships when `Editor` reaches MLP.** "Minimum Lovable Product" — *not* "Minimum Viable Product." Viable would be a `View` you can type into. Lovable is the bar:
+
+- **Most of what people expect from a TUI code editor is in place and works.** Typing, selection, multi-caret, find/replace, syntax highlighting, folding, soft wrap, line numbers, indentation, clipboard, mouse, undo with sane granularity, large-file responsiveness. Nothing on that list is a stub.
+- **`examples/ted` is a TUI editor someone would actually want to use.** Open a file, edit it, save it, close it. Find. Replace. Toggle wrap. Pick a theme. It feels finished, not like a demo. Day-to-day editing of `.cs` / `.md` / `.json` files in ted is genuinely pleasant.
+- **`gui-cs/clet` can ship a `clet edit` subcommand on top of `Editor` and not be embarrassed.** That is the single concrete external-consumer test for MLP. If a contributor asks "is feature X needed for MLP?" — the answer is yes iff `clet edit` would feel broken without it.
+
+The track-by-track work in §7 and the per-item briefs in §8 are the path to MLP. The Definition of Done in §9 is the gate. Tracks F (TextMate) and any "post-alpha" annotations below ship in **the next release after alpha**, not in the alpha itself.
+
 ## 1. Purpose & scope (unchanged)
 
 `Terminal.Gui.Text` — UI-framework-independent document model lifted from AvaloniaEdit. No Terminal.Gui dependency.
@@ -26,8 +36,8 @@ This is a **revision** of the original plan. Pre-alpha is well underway: the doc
 
 - **Repo + CI**: solution (`Terminal.Gui.Text.slnx`), two src csprojs, three test csprojs, `examples/ted`, `examples/EditorBenchmarks` placeholder, GitHub Actions for build/test/format/release. net10.0, xUnit.v3 exe-style tests.
 - **AvaloniaEdit fork**: pinned at `d7a6b63`; `Document/` and `Utils/` lifted; `third_party/AvaloniaEdit/UPSTREAM.md` records every modification. Document tests cover rope, anchors, line tracker, undo, segment tree, change tracking.
-- **Editor partials**: `Editor.cs`, `Editor.Commands.cs`, `Editor.Keyboard.cs`, `Editor.Mouse.cs`, `Editor.Drawing.cs`, `Editor.Selection.cs`. Caret, sticky virtual column, vertical/horizontal/page navigation, Home/End, Backspace/Delete, Enter, Ctrl+Z/Y, Ctrl+A, Shift+arrows for selection, drag-to-select, click-to-place, mouse wheel, line numbers, an obsoleted Markdown `ISyntaxHighlighter` stopgap, a partial `Editor.TabWidth` tab-expansion shortcut.
-- **ted demo**: file menu, theme dropdown, tab-width numeric updown, status bar, line-numbers toggle.
+- **Editor partials**: `Editor.cs`, `Editor.Commands.cs`, `Editor.Keyboard.cs`, `Editor.Mouse.cs`, `Editor.Drawing.cs`, `Editor.Selection.cs`, `Editor.FindReplace.cs`. Caret, sticky virtual column, vertical/horizontal/page navigation, Home/End, Backspace/Delete, Enter, Ctrl+Z/Y, Ctrl+A, Shift+arrows for selection, drag-to-select, click-to-place, mouse wheel, line numbers, an obsoleted Markdown `ISyntaxHighlighter` stopgap, a partial `Editor.TabWidth` tab-expansion shortcut, **find/next/previous/replace/replace-all** (bespoke `string.IndexOf` over `_document.Text`, not yet on `ISearchStrategy`; no hit highlighting yet; `ReplaceAll` does N separate edits without `OpenUpdateScope`).
+- **ted demo**: file menu (incl. Find / Replace items), `FindReplaceDialog` with find + replace tabs, theme dropdown, tab-width numeric updown, status bar, line-numbers toggle.
 
 ### Not landed (the rest of this document)
 
@@ -35,7 +45,8 @@ This is a **revision** of the original plan. Pre-alpha is well underway: the doc
 - `Folding/`, `Search/`, `Indentation/`, `Highlighting/` lifts.
 - Anchor-backed caret + selection; multi-caret.
 - Word wrap.
-- Clipboard, find/replace UI, `ReadOnly`, indentation strategy.
+- Clipboard, `ReadOnly`, indentation strategy.
+- Find/Replace **on the proper seam** — current implementation works but bypasses `ISearchStrategy`, lacks hit highlighting, lacks regex/whole-word, lacks F3/Ctrl+F keybindings, and `ReplaceAll` doesn't collapse undo.
 - Proper tab handling (issue #37) — current `Editor.TabWidth` is a stopgap.
 - TextMate highlighting.
 
@@ -62,6 +73,8 @@ These are the rules new work must meet. A reviewer (or a dispatching agent) shou
 - **R6. Lifted upstream files keep upstream formatting + copyright headers.** Add `// Adapted for Terminal.Gui from AvaloniaEdit <sha>`. Log every modification in `third_party/AvaloniaEdit/UPSTREAM.md`. House-style only applies to non-`/third_party/`-derived files.
 - **R7. New tests default to the parallel project.** Promote to `Editor.IntegrationTests` only if `Application.Init`-style state is genuinely required.
 - **R8. Public API additions on `Editor` come with a brief in `specs/03-public-api.md`** before merge. Stopgaps (like the current Markdown `ISyntaxHighlighter`) are explicitly marked `[Obsolete]` at introduction, not retro-fitted.
+- **R10. Subscribe to `-ed` events, not `-ing`, unless you actually cancel.** Terminal.Gui exposes paired events (`Accepting`/`Accepted`, `Selecting`/`Selected`, `Activating`/`Activated`, etc.). The `-ing` event runs in the cancellable dispatch path and is meant for handlers that read or set `e.Cancel` / `e.Handled`. If your handler is fire-and-forget, use the `-ed` variant. Tracked upstream as gui-cs/Terminal.Gui#5286.
+- **R9. No unused public/internal APIs in `src/`.** If a public or internal member exists, something in `src/` or `examples/` must call it. Tests don't count as a consumer. Concretely: an agent that adds a method, property, command, or event must wire the corresponding UI / keybinding / call site in the same PR, **or** delete the API. If the API is genuinely a future-MLP affordance, leave it out until the consumer is ready. The first concrete enforcement is the `Editor.FindPrevious` ↔ `FindReplaceDialog` "Find Previous" button pair (PR adding `FindPrevious` shipped without a caller; the gap was filled separately, demonstrating the rule). Roslyn's `IDE0051` (private-only) doesn't catch this; reviewers must.
 
 ## 5. Repository layout (as-is)
 
@@ -89,7 +102,7 @@ These are the rules new work must meet. A reviewer (or a dispatching agent) shou
 
 ## 6. Public API target (`Editor`)
 
-The MVP shape, AvaloniaEdit-aligned. Where current properties differ, the right-hand column says what to rename. The dispatching agent should treat any *new* property added to `Editor` as a spec change requiring a §3-table update.
+The MLP shape, AvaloniaEdit-aligned. Where current properties differ, the right-hand column says what to rename. The dispatching agent should treat any *new* property added to `Editor` as a spec change requiring a §3-table update.
 
 ```csharp
 namespace Terminal.Gui.Views;
@@ -111,7 +124,7 @@ public class Editor : View
     public IList<IBackgroundRenderer> BackgroundRenderers { get; }  // §B1
     public FoldingManager? FoldingManager { get; set; }      // §A1 + §D6
     public ISearchStrategy? SearchStrategy { get; set; }     // §A2 + §D4
-    public IEditorCompletionProvider? CompletionProvider { get; set; } // post-MVP
+    public IEditorCompletionProvider? CompletionProvider { get; set; } // post-MLP
 
     public event EventHandler<DocumentChangeEventArgs>? DocumentChanged;
     public event EventHandler? CaretChanged;
@@ -281,7 +294,7 @@ These four can run as four independent sub-agents. Each is a near-mechanical lif
 - *Files in scope*: `Editor.cs`, `Editor.Commands.cs`, new `Editor.MultiCaret.cs`. Update `IBackgroundRenderer` (current line) and `UpdateCursor ()` to handle the additional caret list.
 - *Tests*: `tests/Terminal.Gui.Editor.Tests/MultiCaretTests.cs` — Ctrl+Click adds caret; typing inserts at every caret; undo collapses to one step; selection per caret survives editing.
 - *Definition of done*: ted demo can demonstrate Ctrl+Click multi-caret typing + undo.
-- *Out of scope*: column-mode selection (post-MVP).
+- *Out of scope*: column-mode selection (post-MLP).
 - *Depends on*: C1.
 
 ---
@@ -309,16 +322,17 @@ These four can run as four independent sub-agents. Each is a near-mechanical lif
 - *Files in scope*: `Editor.Commands.cs` (new `Cut`/`Copy`/`Paste` commands), `Editor.Keyboard.cs` (bindings), tests.
 - *Tests*: `tests/Terminal.Gui.Editor.IntegrationTests/EditorClipboardTests.cs` — round-trip across selection-and-not-selection cases; paste with multi-line text inserts newlines correctly; cut emits one undo step.
 - *Definition of done*: ted demo Edit menu (or status bar) wires Cut/Copy/Paste.
-- *Out of scope*: rectangular paste (post-MVP).
+- *Out of scope*: rectangular paste (post-MLP).
 - *Depends on*: nothing.
 
-#### D4 — Find / Replace UI
-- *Goal*: a find dialog (Ctrl+F) and replace dialog (Ctrl+H) consuming `ISearchStrategy`. Hits highlight as a `SearchHitRenderer : IBackgroundRenderer`. F3 / Shift+F3 navigate.
-- *Files in scope*: `Editor.cs` (`SearchStrategy` property; `FindNext`, `FindPrevious`, `Replace`, `ReplaceAll` commands inside `OpenUpdateScope`), new `src/Terminal.Gui.Editor/Rendering/SearchHitRenderer.cs`, `examples/ted/` find/replace dialog wiring.
-- *Tests*: integration tests for find-next wraparound, replace-all undo collapse, hit highlight invalidation on edit.
-- *Definition of done*: ted demo can find + replace; coverage on the strategy seam ≥ 75%.
-- *Out of scope*: incremental search dropdown (post-MVP).
-- *Depends on*: A2 + B1.
+#### D4 — Migrate Find / Replace onto `ISearchStrategy` + hit highlighting + undo grouping + keybindings
+- *Status*: **partially landed.** `Editor.FindReplace.cs` ships `FindNext` / `FindPrevious` / `ReplaceNext` / `ReplaceAll` (case-sensitive option; wrap-around). `examples/ted/FindReplaceDialog.cs` provides the dialog; ted's File menu wires Find / Replace items. **What's missing** is the proper seam, hit-highlighting, undo grouping, and editor-level keybindings — see *Goal*.
+- *Goal*: replace the bespoke `string.IndexOf` implementation with `ISearchStrategy` (lifted in A2). Add a `SearchHitRenderer : IBackgroundRenderer` (B1) that paints the current hit list across the visible viewport. Wrap `ReplaceAll` in a single `Document.OpenUpdateScope ()` so undo collapses to one step (R5). Add `Editor`-level keybindings: F3 → `FindNext`, Shift+F3 → `FindPrevious`, Ctrl+F → open find dialog, Ctrl+H → open replace dialog.
+- *Files in scope*: `Editor.cs` (`SearchStrategy { get; set; }` property), `Editor.FindReplace.cs` (rewrite internals to use `ISearchStrategy`; wrap `ReplaceAll` in `OpenUpdateScope`), `Editor.Commands.cs` (new `FindNext`/`FindPrevious`/`Find`/`Replace` commands + bindings), `Editor.Keyboard.cs` (the binds), new `src/Terminal.Gui.Editor/Rendering/SearchHitRenderer.cs`, `examples/ted/FindReplaceDialog.cs` (expose regex + whole-word toggles to the dialog UI; light wiring only).
+- *Tests*: keep the existing unit/integration tests for the public API contracts; add: regex search (depends on A2's `RegexSearchStrategy`); whole-word; replace-all produces exactly **one** undo step (regression for current N-step bug); hit-highlight invalidation on edit; F3 wraparound integration test.
+- *Definition of done*: `Editor.FindReplace.cs` no longer references `_document.Text.IndexOf`; `SearchStrategy` property is the single seam; `ReplaceAll` undo collapses; hit highlights paint via `IBackgroundRenderer`; ted demo's existing menu items keep working; coverage on the strategy seam ≥ 75%.
+- *Out of scope*: incremental search dropdown (post-alpha).
+- *Depends on*: A2 + B1. Until both land, the current bespoke implementation stays — do **not** weld further features onto it.
 
 #### D5 — Word wrap toggle in ted + `Editor.WordWrap`
 - *Goal*: expose `Editor.WordWrap`; ted status bar toggle.
@@ -341,7 +355,7 @@ These four can run as four independent sub-agents. Each is a near-mechanical lif
 - *Files in scope*: `Editor.cs`, `Editor.Commands.cs` (Enter handler delegates), tests.
 - *Tests*: Enter on a 4-space-indented line creates a new 4-space-indented line; Enter inside a brace block (with a future smart strategy) — the strategy is pluggable, default is dumb.
 - *Definition of done*: default strategy drives Enter; D1's Tab handler defers to the strategy where appropriate.
-- *Out of scope*: shipping a smart C# strategy (post-MVP).
+- *Out of scope*: shipping a smart C# strategy (post-MLP).
 - *Depends on*: A3.
 
 ---
@@ -358,7 +372,7 @@ These four can run as four independent sub-agents. Each is a near-mechanical lif
 
 ---
 
-### Track F — TextMate (post-MVP)
+### Track F — TextMate (post-MLP)
 
 #### F1 — Port `AvaloniaEdit.TextMate`
 - *Goal*: TextMate grammar + `tmTheme` support, mapped to `Terminal.Gui.Color`. Plugs into the same `HighlightingColorizer` seam as E1 (just a different `IHighlighter` implementation).
@@ -369,7 +383,7 @@ These four can run as four independent sub-agents. Each is a near-mechanical lif
 
 ---
 
-## 9. MVP definition of done
+## 9. MLP definition of done
 
 Each criterion below is testable. The dispatching agent should treat the list as the merge-to-`main` gate.
 
@@ -388,13 +402,18 @@ Each criterion below is testable. The dispatching agent should treat the list as
 
 These are blockers if hit by a work-item. The dispatching agent should pause the affected sub-agent and either record a decision in `specs/05-decisions.md` (after asking the human owner) or descope to unblock.
 
-1. **Line-ending policy.** Adopt AvaloniaEdit's per-line preservation as-is? Recommended yes.
-2. **First post-MVP highlighter — xshd vs TextMate.** Recommend TextMate (F1) since A4 already lands xshd as a tokenizer model.
-3. **Distribution of `Terminal.Gui.Text` as an independent NuGet from day one** vs. holding until a second consumer materializes.
-4. **Completion item shape.** Reuse Terminal.Gui's `IAutocomplete`-style types vs. a fresh LSP-flavored `IEditorCompletionProvider`.
-5. **Async I/O.** `LoadAsync (Stream)` / `SaveAsync` on `Editor` vs. on the document.
-6. **Read-only ranges.** Lift `TextSegmentReadOnlySectionProvider`, or YAGNI.
-7. **`HighlightingColor` carries Bold/Italic/Underline.** Confirmed mapping target is `Terminal.Gui.TextStyle`. Verify all xshd attributes are representable; if not, document drops in `05-decisions.md`.
+### Resolved
+
+- **Line-ending policy. Adopt AvaloniaEdit's per-line preservation as-is.** `TextDocument` keeps each line's terminator verbatim on load and round-trips it on save — no normalization to `\n`. Mixed-ending files survive a load/save round trip byte-identical except where the user explicitly edited a line. Move the rationale to `specs/05-decisions.md` when that file is created.
+- **First post-alpha highlighter is TextMate (track F1), not xshd.** xshd lands earlier as the tokenizer model in A4 because the lift is cheap; the consumer-facing grammar story is TextMate. Track F1 ships in the release after alpha.
+
+### Still open
+
+1. **Distribution of `Terminal.Gui.Text` as an independent NuGet from day one** vs. holding until a second consumer materializes.
+2. **Completion item shape.** Reuse Terminal.Gui's `IAutocomplete`-style types vs. a fresh LSP-flavored `IEditorCompletionProvider`.
+3. **Async I/O.** `LoadAsync (Stream)` / `SaveAsync` on `Editor` vs. on the document.
+4. **Read-only ranges.** Lift `TextSegmentReadOnlySectionProvider`, or YAGNI.
+5. **`HighlightingColor` carries Bold/Italic/Underline.** Confirmed mapping target is `Terminal.Gui.TextStyle`. Verify all xshd attributes are representable; if not, document drops in `05-decisions.md`.
 
 ## 11. Risks (carryover, with current readings)
 
