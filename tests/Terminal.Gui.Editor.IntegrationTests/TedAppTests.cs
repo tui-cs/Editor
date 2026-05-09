@@ -112,6 +112,12 @@ public class TedAppTests
             Assert.True (app.SaveFile ());
 
             Assert.Equal ("\tindented", File.ReadAllText (filePath));
+
+            app.NewFile ();
+            app.Editor.ConvertTabsToSpaces = true;
+            app.Editor.NewKeyDownEvent (Key.Tab);
+
+            Assert.Equal ("    ", app.Editor.Document!.Text);
         }
         finally
         {

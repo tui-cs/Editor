@@ -390,6 +390,7 @@ public partial class Editor : View
             {
                 if (grapheme == "\t" && clampedVisual > currentVisual && clampedVisual < nextVisual)
                 {
+                    // Snap to the start in the left half of the tab span; exact midpoint rounds down.
                     return (clampedVisual - currentVisual) * 2 <= width ? logical : logical + 1;
                 }
 
