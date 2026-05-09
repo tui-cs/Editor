@@ -17,9 +17,14 @@ internal sealed class FindReplaceDialog : Dialog
         Width = Dim.Percent (70);
         Height = Dim.Percent (50);
 
-        string initialSearchText = editor.HasSelection
-            ? editor.Document!.Text.Substring (editor.SelectionStart, editor.SelectionLength)
-            : string.Empty;
+        string initialSearchText = string.Empty;
+
+        if (editor.HasSelection && editor.Document is { } document)
+        {
+            int start = Math.Clamp (editor.SelectionStart, 0, document.TextLength);
+            int end = Math.Clamp (editor.SelectionEnd, start, document.TextLength);
+            initialSearchText = document.Text.Substring (start, end - start);
+        }
 
         _findTextField = new () { X = 11, Y = 1, Width = Dim.Fill (2), Text = initialSearchText };
         _replaceFindTextField = new () { X = 11, Y = 1, Width = Dim.Fill (2), Text = initialSearchText };

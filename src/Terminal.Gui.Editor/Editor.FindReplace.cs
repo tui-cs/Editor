@@ -104,7 +104,7 @@ public partial class Editor
         int replacements = 0;
         int searchOffset = 0;
 
-        while (searchOffset <= _document.TextLength)
+        while (searchOffset < _document.TextLength)
         {
             int matchOffset = FindForwardOffset (searchText, searchOffset, matchCase);
 
@@ -155,10 +155,14 @@ public partial class Editor
             return false;
         }
 
-        StringComparison comparison = matchCase ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
-        string selectedText = _document.Text.Substring (SelectionStart, SelectionLength);
+        if (SelectionStart < 0 || SelectionLength < 0 || SelectionEnd > _document.TextLength)
+        {
+            return false;
+        }
 
-        return string.Equals (selectedText, searchText, comparison);
+        StringComparison comparison = matchCase ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
+
+        return string.Compare (_document.Text, SelectionStart, searchText, 0, searchText.Length, comparison) == 0;
     }
 
     private void SelectSearchMatch (int startOffset, int length)

@@ -298,7 +298,7 @@ public sealed class TedApp : Window
     {
         if (App is null)
         {
-            throw new InvalidOperationException ("ted must be running before showing find/replace.");
+            throw new InvalidOperationException ("Cannot show find/replace when Application is not running.");
         }
 
         using FindReplaceDialog dialog = new (Editor, selectReplaceTab);
