@@ -1,0 +1,105 @@
+<wpf:ResourceDictionary xml:space="preserve" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:s="clr-namespace:System;assembly=mscorlib" xmlns:ss="urn:shemas-jetbrains-com:settings-storage-xaml" xmlns:wpf="http://schemas.microsoft.com/winfx/2006/xaml/presentation">
+  <!--
+    Team-shared ReSharper / Rider settings for gui-cs/Text.
+    Committed alongside .editorconfig. Edit in Rider via "Settings | Editor | Code Style"
+    and "Settings | Editor | Code Cleanup", then "Save to: This Solution Team-Shared".
+
+    Most C# style is in .editorconfig (dotnet format reads it). This file holds:
+      - the Code Cleanup profile contributors run via `jb cleanupcode` and the Stop hook
+      - ReSharper-specific knobs that have no .editorconfig equivalent
+      - ReSharper inspection severities elevated to error so CI catches drift
+
+    See CLAUDE.md "Coding standards" for the human-readable rules.
+  -->
+
+  <!-- =============================================================== -->
+  <!-- Cleanup profile: "Full Cleanup" — used by `jb cleanupcode`,     -->
+  <!-- the Claude Code Stop hook, and CI verify step.                   -->
+  <!-- =============================================================== -->
+  <s:String x:Key="/Default/CodeStyle/CodeCleanup/RecentlyUsedProfile/@EntryValue">Full Cleanup</s:String>
+  <s:String x:Key="/Default/CodeStyle/CodeCleanup/SilentCleanupProfile/@EntryValue">Full Cleanup</s:String>
+
+  <s:Boolean x:Key="/Default/CodeStyle/CodeCleanup/Profiles/=Full_0020Cleanup/@EntryIndexedValue">True</s:Boolean>
+  <s:String  x:Key="/Default/CodeStyle/CodeCleanup/Profiles/=Full_0020Cleanup/Description/@EntryValue">gui-cs/Text house cleanup. Keep aligned with CLAUDE.md.</s:String>
+  <s:String  x:Key="/Default/CodeStyle/CodeCleanup/Profiles/=Full_0020Cleanup/Name/@EntryValue">Full Cleanup</s:String>
+
+  <s:Boolean x:Key="/Default/CodeStyle/CodeCleanup/Profiles/=Full_0020Cleanup/CSArrangeAccessorOwnerBody/@EntryIndexedValue">True</s:Boolean>
+  <s:Boolean x:Key="/Default/CodeStyle/CodeCleanup/Profiles/=Full_0020Cleanup/CSArrangeArgumentsStyle/@EntryIndexedValue">True</s:Boolean>
+  <s:Boolean x:Key="/Default/CodeStyle/CodeCleanup/Profiles/=Full_0020Cleanup/CSArrangeAttributes/@EntryIndexedValue">True</s:Boolean>
+  <s:Boolean x:Key="/Default/CodeStyle/CodeCleanup/Profiles/=Full_0020Cleanup/CSArrangeBraces/@EntryIndexedValue">True</s:Boolean>
+  <s:Boolean x:Key="/Default/CodeStyle/CodeCleanup/Profiles/=Full_0020Cleanup/CSArrangeCodeBodyStyle/@EntryIndexedValue">True</s:Boolean>
+  <s:Boolean x:Key="/Default/CodeStyle/CodeCleanup/Profiles/=Full_0020Cleanup/CSArrangeDefaultBody/@EntryIndexedValue">True</s:Boolean>
+  <s:Boolean x:Key="/Default/CodeStyle/CodeCleanup/Profiles/=Full_0020Cleanup/CSArrangeMethodOrOperatorBody/@EntryIndexedValue">True</s:Boolean>
+  <s:Boolean x:Key="/Default/CodeStyle/CodeCleanup/Profiles/=Full_0020Cleanup/CSArrangeQualifiers/@EntryIndexedValue">True</s:Boolean>
+  <s:Boolean x:Key="/Default/CodeStyle/CodeCleanup/Profiles/=Full_0020Cleanup/CSArrangeThisQualifier/@EntryIndexedValue">True</s:Boolean>
+  <s:Boolean x:Key="/Default/CodeStyle/CodeCleanup/Profiles/=Full_0020Cleanup/CSArrangeTrailingCommas/@EntryIndexedValue">True</s:Boolean>
+  <s:Boolean x:Key="/Default/CodeStyle/CodeCleanup/Profiles/=Full_0020Cleanup/CSArrangeTypeMemberModifiers/@EntryIndexedValue">True</s:Boolean>
+  <s:Boolean x:Key="/Default/CodeStyle/CodeCleanup/Profiles/=Full_0020Cleanup/CSArrangeTypeModifiers/@EntryIndexedValue">True</s:Boolean>
+  <s:Boolean x:Key="/Default/CodeStyle/CodeCleanup/Profiles/=Full_0020Cleanup/CSFixBuiltinTypeReferences/@EntryIndexedValue">True</s:Boolean>
+  <s:Boolean x:Key="/Default/CodeStyle/CodeCleanup/Profiles/=Full_0020Cleanup/CSOptimizeUsings/OptimizeUsings/@EntryIndexedValue">True</s:Boolean>
+  <s:Boolean x:Key="/Default/CodeStyle/CodeCleanup/Profiles/=Full_0020Cleanup/CSReformatCode/@EntryIndexedValue">True</s:Boolean>
+  <s:Boolean x:Key="/Default/CodeStyle/CodeCleanup/Profiles/=Full_0020Cleanup/CSReorderTypeMembers/@EntryIndexedValue">True</s:Boolean>
+  <s:Boolean x:Key="/Default/CodeStyle/CodeCleanup/Profiles/=Full_0020Cleanup/CSShortenReferences/@EntryIndexedValue">True</s:Boolean>
+  <s:Boolean x:Key="/Default/CodeStyle/CodeCleanup/Profiles/=Full_0020Cleanup/CSStaticnessAnalysis/@EntryIndexedValue">True</s:Boolean>
+  <s:Boolean x:Key="/Default/CodeStyle/CodeCleanup/Profiles/=Full_0020Cleanup/CSUpdateFileHeader/@EntryIndexedValue">True</s:Boolean>
+  <s:Boolean x:Key="/Default/CodeStyle/CodeCleanup/Profiles/=Full_0020Cleanup/CSUseAutoProperty/@EntryIndexedValue">False</s:Boolean>
+  <s:Boolean x:Key="/Default/CodeStyle/CodeCleanup/Profiles/=Full_0020Cleanup/CSUseVar/BehavourStyle/@EntryIndexedValue">True</s:Boolean>
+  <s:Boolean x:Key="/Default/CodeStyle/CodeCleanup/Profiles/=Full_0020Cleanup/CSDeclareLocalsAsType/@EntryIndexedValue">False</s:Boolean>
+  <s:Boolean x:Key="/Default/CodeStyle/CodeCleanup/Profiles/=Full_0020Cleanup/CsRemoveCodeRedundancies/@EntryIndexedValue">True</s:Boolean>
+  <s:Boolean x:Key="/Default/CodeStyle/CodeCleanup/Profiles/=Full_0020Cleanup/RemoveCodeRedundanciesVB/@EntryIndexedValue">True</s:Boolean>
+
+  <!-- IMPORTANT: CSUseAutoProperty is OFF.                                                  -->
+  <!-- ReSharper has bugs around the C# 13 `field` keyword: it offers / applies              -->
+  <!-- "convert to auto-property" rewrites that destroy intentional `field`-backed           -->
+  <!-- properties. We hand-write `field`-backed properties (see CLAUDE.md "Properties");     -->
+  <!-- cleanup must not undo that work.                                                       -->
+
+  <!-- =============================================================== -->
+  <!-- Code style — items without a .editorconfig equivalent.          -->
+  <!-- =============================================================== -->
+
+  <!-- var: built-ins yes, everything else no. Mirrors .editorconfig. -->
+  <s:String x:Key="/Default/CodeStyle/CSharpVarKeywordUsage/ForBuiltInTypes/@EntryValue">UseVar</s:String>
+  <s:String x:Key="/Default/CodeStyle/CSharpVarKeywordUsage/ForSimpleTypes/@EntryValue">UseExplicitType</s:String>
+  <s:String x:Key="/Default/CodeStyle/CSharpVarKeywordUsage/ForOtherTypes/@EntryValue">UseExplicitType</s:String>
+
+  <!-- Expression-bodied members: properties yes, methods no (see CLAUDE.md). -->
+  <s:String x:Key="/Default/CodeStyle/CSharpCodeStyle/PreferredMethodBodyStyle/@EntryValue">block_body</s:String>
+  <s:String x:Key="/Default/CodeStyle/CSharpCodeStyle/PreferredAccessorBodyStyle/@EntryValue">expression_body</s:String>
+  <s:String x:Key="/Default/CodeStyle/CSharpCodeStyle/PreferredConstructorBodyStyle/@EntryValue">block_body</s:String>
+  <s:String x:Key="/Default/CodeStyle/CSharpCodeStyle/PreferredOperatorBodyStyle/@EntryValue">block_body</s:String>
+  <s:String x:Key="/Default/CodeStyle/CSharpCodeStyle/PreferredLambdaBodyStyle/@EntryValue">expression_body</s:String>
+
+  <!-- Object/collection initializers: prefer collection expressions [...] -->
+  <s:String x:Key="/Default/CodeStyle/CSharpCodeStyle/PreferredObjectCreationStyle/@EntryValue">target_typed</s:String>
+
+  <!-- Blank lines around control blocks (CLAUDE.md "Blank line before return/break"). -->
+  <s:Int64  x:Key="/Default/CodeStyle/CSharpFormat/BLANK_LINES_AROUND_REGION/@EntryValue">1</s:Int64>
+  <s:Int64  x:Key="/Default/CodeStyle/CSharpFormat/BLANK_LINES_INSIDE_REGION/@EntryValue">1</s:Int64>
+  <s:String x:Key="/Default/CodeStyle/CSharpFormat/PLACE_SIMPLE_ACCESSOR_ON_SINGLE_LINE/@EntryValue">True</s:String>
+  <s:String x:Key="/Default/CodeStyle/CSharpFormat/SIMPLE_EMBEDDED_STATEMENT_STYLE/@EntryValue">DO_NOT_CHANGE</s:String>
+
+  <!-- XML doc tags: render `<see cref="X" />` with a space before `/>`. -->
+  <s:Boolean x:Key="/Default/CodeStyle/CSharpFormat/XMLDOC_FORMAT_ON_TYPING/@EntryValue">True</s:Boolean>
+  <s:Boolean x:Key="/Default/CodeStyle/CSharpFormat/XMLDOC_KEEP_USER_LINEBREAKS/@EntryValue">True</s:Boolean>
+
+  <!-- =============================================================== -->
+  <!-- Inspection severities: elevate house-style violations.          -->
+  <!-- =============================================================== -->
+  <s:String x:Key="/Default/CodeInspection/Highlighting/InspectionSeverities/=ConvertIfStatementToReturnStatement/@EntryIndexedValue">SUGGESTION</s:String>
+  <s:String x:Key="/Default/CodeInspection/Highlighting/InspectionSeverities/=InvertIf/@EntryIndexedValue">WARNING</s:String>
+  <s:String x:Key="/Default/CodeInspection/Highlighting/InspectionSeverities/=ReplaceWithFieldKeyword/@EntryIndexedValue">DO_NOT_SHOW</s:String>
+  <s:String x:Key="/Default/CodeInspection/Highlighting/InspectionSeverities/=ConvertToAutoProperty/@EntryIndexedValue">DO_NOT_SHOW</s:String>
+  <s:String x:Key="/Default/CodeInspection/Highlighting/InspectionSeverities/=ConvertToAutoPropertyWhenPossible/@EntryIndexedValue">DO_NOT_SHOW</s:String>
+  <s:String x:Key="/Default/CodeInspection/Highlighting/InspectionSeverities/=ConvertToAutoPropertyWithPrivateSetter/@EntryIndexedValue">DO_NOT_SHOW</s:String>
+  <s:String x:Key="/Default/CodeInspection/Highlighting/InspectionSeverities/=UseCollectionExpression/@EntryIndexedValue">WARNING</s:String>
+  <s:String x:Key="/Default/CodeInspection/Highlighting/InspectionSeverities/=ArrangeObjectCreationWhenTypeNotEvident/@EntryIndexedValue">SUGGESTION</s:String>
+  <s:String x:Key="/Default/CodeInspection/Highlighting/InspectionSeverities/=ArrangeObjectCreationWhenTypeEvident/@EntryIndexedValue">WARNING</s:String>
+  <s:String x:Key="/Default/CodeInspection/Highlighting/InspectionSeverities/=RedundantNameQualifier/@EntryIndexedValue">WARNING</s:String>
+  <s:String x:Key="/Default/CodeInspection/Highlighting/InspectionSeverities/=RedundantUsingDirective/@EntryIndexedValue">WARNING</s:String>
+
+  <!-- =============================================================== -->
+  <!-- Folder excludes: never run cleanup on lifted upstream files.   -->
+  <!-- =============================================================== -->
+  <s:Boolean x:Key="/Default/CodeInspection/ExcludedFiles/FilesAndFoldersToSkip2/=third_005Fparty/@EntryIndexedValue">True</s:Boolean>
+</wpf:ResourceDictionary>

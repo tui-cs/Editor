@@ -81,18 +81,86 @@ The fork is **hard** — re-syncs are manual and deliberate, triggered only by u
 
 ## Coding standards (for new code outside `third_party/`)
 
-Adopts Terminal.Gui's house style. Enforced by `.editorconfig`; the highlights:
+Adopts Terminal.Gui's house style. Three enforcement layers:
 
-- **Space before `()` and `[]`**: `Method ()`, `array [i]`, `new ()`.
-- **Allman braces** everywhere.
-- **Blank line before** `return` / `break` / `continue` / `throw`; blank line after control blocks.
-- **No `var` except for built-ins** (`int`, `string`, `bool`, `double`, `float`, `decimal`, `char`, `byte`).
-- **`new ()`** not `new TypeName ()` when the type is inferable.
-- **Collection expressions**: `[...]` not `new () { ... }`.
-- **Guard clauses**; never wrap the happy path in `if`.
-- **One public/internal type per file.**
-- **Subscribe to `-ed` events, not `-ing`, unless you actually cancel.** `button.Accepted += ...` for fire-and-forget side-effects; `button.Accepting += ...` only when the handler reads / sets `e.Cancel` or `e.Handled`. Same rule for every other paired event (`Selecting`/`Selected`, etc.). See `specs/00-plan.md` R10.
-- **No unused public/internal APIs.** Every public/internal member in `src/` must have a non-test caller in `src/` or `examples/`. If you add a method, wire it in the same PR; otherwise delete it. Tests don't count as a consumer. See `specs/00-plan.md` R9.
+1. **`.editorconfig` + `dotnet format`** — formatting, var, expression-bodied, collection expressions, modern syntax preferences. CI runs `dotnet format --verify-no-changes`.
+2. **`Terminal.Gui.Text.slnx.DotSettings` + `dotnet jb cleanupcode`** — ReSharper-driven cleanup ("Full Cleanup" profile). Catches what `dotnet format` misses (XML doc spacing, using sorting, name qualifier removal, expression-bodied conversions). CI runs `dotnet jb cleanupcode` and fails on any diff.
+3. **A Stop hook in `.claude/settings.json`** that runs both tools on .cs files modified during the session before the agent reports done. Output is suppressed unless the cleanup actually changed something.
+
+**Before declaring work complete, an agent must run `dotnet tool restore && dotnet format Terminal.Gui.Text.slnx --exclude third_party/ && dotnet jb cleanupcode Terminal.Gui.Text.slnx --profile="Full Cleanup"` (the Stop hook does this automatically). If the cleanup adjusts files, those changes are part of the work — re-stage and continue.**
+
+### Formatting and spacing
+
+- **Space before `()` and `[]`**: `Method ()`, `array [i]`, `new ()`, `nameof (x)`, `typeof (T)`.
+- **Allman braces** everywhere. No single-line `if (x) Foo ();`.
+- **Blank line before** `return` / `break` / `continue` / `throw`; blank line after a control block before the next statement.
+- **XML doc tags carry a space before `/>`**: `<see cref="X" />`, `<paramref name="x" />`, `<see langword="true" />`. (`dotnet jb cleanupcode` enforces this; `dotnet format` does not.)
+
+### `var`, types, and modern syntax
+
+- **`var` for built-ins only** (`int`, `string`, `bool`, `double`, `float`, `decimal`, `char`, `byte`). Use the explicit type for everything else (`DocumentLine line = ...`, `Rectangle viewport = ...`). The `dotnet format` rule is `:warning`, so deviation fails CI.
+- **`new ()` (target-typed)** when the LHS or context makes the type obvious: `Editor editor = new ();`, `_lines = new List<int> ();`. Do **not** write `new Editor ()` on the right of `Editor editor = ...`.
+- **Specify the type on `new` when it is *not* obvious from a few characters of context.** Examples where the explicit form wins: arguments to overloaded methods (`Foo (new SomeRequest { ... })`), return statements where the method's return type is far away (`return new TextSegment { ... };`), or object-initializer-only constructions used as the only argument to a generic.
+- **Collection expressions `[...]`** instead of `new[] { ... }` / `new List<T> { ... }`. For `params` arrays of literals: `Foo ([1, 2, 3])`. For empty: `[]`. For spread: `[..a, ..b, x]`. Applies anywhere a collection-expression target type exists (`IEnumerable<T>`, arrays, `Span`, `ImmutableArray`, etc.).
+- **Modern string features.** Prefer raw string literals `"""..."""` for any string containing escapes / quotes / multi-line content. Prefer interpolation `$"..."` over `string.Format`. Prefer `string.Create` only when measurable allocation matters. Prefer `ReadOnlySpan<char>` parameters over `string` for perf-sensitive parsers.
+- **Pattern matching over null + cast**: `if (x is Foo f)` not `if (x != null && x is Foo)`; `obj is { Prop: var p }` for member extraction; switch expressions over chained `if/else if`.
+- **Range/index operators**: `s[..^1]`, `arr[1..]`, not `s.Substring (0, s.Length - 1)`.
+
+### Properties: prefer the C# 13 `field` keyword over `_backingField` + property pairs
+
+When a property has a setter with logic (validation, equality check, side effects), use the `field` keyword:
+
+```csharp
+public int IndentationSize
+{
+    get;
+    set
+    {
+        ArgumentOutOfRangeException.ThrowIfLessThan (value, 1);
+        if (field == value) return;
+        field = value;
+        SetNeedsDraw ();
+    }
+} = 4;
+```
+
+Do **not** introduce a separate `private int _indentationSize;` field. The initializer trails the close-brace as shown.
+
+> **ReSharper bug warning.** ReSharper / Rider's "Convert to auto-property" and "Use auto-property" inspections are unreliable around `field` and may rewrite intentional `field`-backed properties into broken auto-properties. The team-shared `.DotSettings` disables these inspections (`ConvertToAutoProperty`, `ConvertToAutoPropertyWhenPossible`, `ConvertToAutoPropertyWithPrivateSetter` set to `DO_NOT_SHOW`; `CSUseAutoProperty` cleanup step disabled). If you see the suggestion in your IDE, ignore it and check that your local Rider is using the team-shared settings. **`field` is not optional in this codebase.**
+
+For trivial getters with no setter logic, plain auto-properties are fine: `public TextDocument? Document { get; private set; }`.
+
+### Methods vs properties — body style
+
+- **Properties / accessors / lambdas: expression-bodied** (`=>`) when the body is one expression that fits on a single line.
+- **Methods / constructors / operators / local functions: block-bodied** (`{ ... }`) even if the body is a single expression. Block-bodied keeps tracebacks readable, lets debuggers set breakpoints on individual statements, and avoids churn when a future edit needs to add a second line.
+
+```csharp
+// Property — expression-bodied is fine.
+public bool HasSelection => _selectionAnchor is { } a && a != _caretOffset;
+
+// Method — block body, even for a one-liner.
+private void ExtendCaretBy (int delta)
+{
+    ExtendCaretTo (_caretOffset + delta);
+}
+```
+
+### Control flow and shape
+
+- **Guard clauses**; never wrap the happy path in `if`. If a method's success path is wrapped in `if (cond) { ... return X; } return Y;`, **invert** to `if (!cond) return Y; ... return X;`. Example before/after lives in PR history (`OnKeyDownNotHandled`, commit `4f600ab`).
+- **Return early on null/empty/invalid input.** No nested-if pyramids.
+- **One return per logical branch is fine; one return per method is a non-rule** — readability wins.
+
+### Type and file layout
+
+- **One public or internal type per file.** No nested types except inside the file that owns the outer type, and only when the nested type is a private implementation detail (`DocumentLine.LineNode`-style). If a nested type grows interesting, promote it to its own file.
+- **No file longer than 1000 lines.** When a file approaches that, split — by partial class (`Editor.Drawing.cs`, `Editor.Mouse.cs`), by helper extraction, or by genuinely splitting the type. The cleanup hook does not enforce this; the reviewer does.
+- **C# 14 `extension` blocks**: prefer extension blocks over a static class full of `this`-prefixed extension methods when the extensions form a coherent group on a single receiver type.
+- **Namespace per folder.** `src/Terminal.Gui.Text/Document/` ⇒ `Terminal.Gui.Text.Document`; `src/Terminal.Gui.Editor/Rendering/` ⇒ `Terminal.Gui.Views.Rendering`. Don't put unrelated types in the same namespace just because they share a folder.
+
+### Testing convention
+
 - **AI-generated tests** marked `// Claude - <model>` or `// CoPilot - <model>` at the top of the file (see `tests/Terminal.Gui.Text.Tests/SmokeTests.cs` for the format).
 
 ## Testing tiers

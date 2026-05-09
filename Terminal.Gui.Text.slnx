@@ -3,14 +3,19 @@
     <File Path="CLAUDE.md" />
     <File Path="LICENSE" />
     <File Path="README.md" />
+    <File Path="specs/00-plan.md" />
   </Folder>
   <Folder Name="/Settings/">
+    <File Path=".claude/hooks/cleanup-cs.ps1" />
+    <File Path=".claude/settings.json" />
+    <File Path=".config/dotnet-tools.json" />
     <File Path=".editorconfig" />
     <File Path=".gitattributes" />
     <File Path=".github/workflows/ci.yml" />
     <File Path=".github/workflows/release.yml" />
     <File Path=".gitignore" />
     <File Path="Directory.Build.props" />
+    <File Path="Terminal.Gui.Text.slnx.DotSettings" />
   </Folder>
   <Project Path="examples/ted/ted.csproj" />
   <Project Path="src/Terminal.Gui.Editor/Terminal.Gui.Editor.csproj" />

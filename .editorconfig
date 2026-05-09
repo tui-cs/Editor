@@ -52,15 +52,86 @@ csharp_space_between_empty_square_brackets = false
 csharp_space_between_parentheses = false
 csharp_space_between_square_brackets = false
 
-# `var` policy: built-ins only (see §4)
+# NOTE on severities below.
+#
+# Directory.Build.props sets BOTH <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+# AND <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>. Together those turn every
+# style rule with severity `:warning` (or higher) into a build error. So we deliberately
+# keep stylistic preferences at `:suggestion` here — they show as IDE squiggles for
+# discoverability, but don't block the build. Enforcement happens in two other places:
+#
+#   1. `dotnet format Terminal.Gui.Text.slnx --verify-no-changes` in CI, and
+#   2. `dotnet jb cleanupcode Terminal.Gui.Text.slnx --profile="Full Cleanup"` in CI
+#      (and the Stop hook in .claude/settings.json before each agent turn ends).
+#
+# Both tools auto-fix what they can and surface a clean diff. The `:warning` posture
+# is reserved for things that should genuinely fail the build immediately — currently
+# nothing stylistic does. If you want a rule to be ship-blocking, raise it explicitly
+# below the `# Build-blocking rules` line.
+
+# `var` policy: built-ins only (see CLAUDE.md "Coding standards")
 csharp_style_var_for_built_in_types = true:suggestion
 csharp_style_var_when_type_is_apparent = false:suggestion
 csharp_style_var_elsewhere = false:suggestion
 
+# Expression-bodied members
+# Properties / accessors / lambdas: prefer expression bodies when they fit.
+# Methods / constructors / operators / local-functions: block bodies (see CLAUDE.md).
+csharp_style_expression_bodied_methods = false:suggestion
+csharp_style_expression_bodied_constructors = false:suggestion
+csharp_style_expression_bodied_operators = false:suggestion
+csharp_style_expression_bodied_local_functions = false:suggestion
+csharp_style_expression_bodied_properties = when_on_single_line:suggestion
+csharp_style_expression_bodied_indexers = when_on_single_line:suggestion
+csharp_style_expression_bodied_accessors = when_on_single_line:suggestion
+csharp_style_expression_bodied_lambdas = true:suggestion
+
+# C# 12+ collection expressions and target-typed `new`.
+# `[1, 2, 3]` not `new int[] { 1, 2, 3 }`; `new ()` not `new Foo ()` when type is inferable.
+dotnet_style_prefer_collection_expression = when_types_loosely_match:suggestion
+csharp_style_implicit_object_creation_when_type_is_apparent = true:suggestion
+
+# Pattern matching, modern null handling.
+csharp_style_pattern_matching_over_is_with_cast_check = true:suggestion
+csharp_style_pattern_matching_over_as_with_null_check = true:suggestion
+csharp_style_prefer_pattern_matching = true:suggestion
+csharp_style_prefer_not_pattern = true:suggestion
+csharp_style_prefer_switch_expression = true:suggestion
+csharp_style_throw_expression = true:suggestion
+csharp_style_conditional_delegate_call = true:suggestion
+dotnet_style_coalesce_expression = true:suggestion
+dotnet_style_null_propagation = true:suggestion
+dotnet_style_prefer_conditional_expression_over_assignment = true:suggestion
+dotnet_style_prefer_conditional_expression_over_return = true:suggestion
+
+# Range / index, modern string handling.
+csharp_style_prefer_range_operator = true:suggestion
+csharp_style_prefer_index_operator = true:suggestion
+csharp_prefer_simple_using_statement = true:suggestion
+csharp_using_directive_placement = outside_namespace:suggestion
+
+# Auto-property convention: ReSharper's "convert field to auto-property" is unreliable
+# around the C# 13 `field` keyword (see CLAUDE.md "Properties"), so we DO NOT enforce it.
+# Hand-write `field`-backed properties when the setter has logic; cleanup leaves them alone.
+dotnet_style_prefer_auto_properties = false:none
+
 # Misc
-csharp_prefer_braces = true:warning
+csharp_prefer_braces = true:suggestion
+csharp_prefer_static_local_function = true:suggestion
+dotnet_style_readonly_field = true:suggestion
 dotnet_style_require_accessibility_modifiers = for_non_interface_members:suggestion
-csharp_preferred_modifier_order = public, private, protected, internal, file, new, static, abstract, virtual, sealed, readonly, override, extern, unsafe, volatile, async, required:warning
+dotnet_style_qualification_for_field = false:suggestion
+dotnet_style_qualification_for_property = false:suggestion
+dotnet_style_qualification_for_method = false:suggestion
+dotnet_style_qualification_for_event = false:suggestion
+csharp_preferred_modifier_order = public, private, protected, internal, file, new, static, abstract, virtual, sealed, readonly, override, extern, unsafe, volatile, async, required:suggestion
+
+# Build-blocking rules (intentionally none right now — see note at top).
+# IDE0005 (unused usings) is NOT promoted because Roslyn requires
+# <GenerateDocumentationFile>true</GenerateDocumentationFile> for that rule to run during
+# build (https://github.com/dotnet/roslyn/issues/41640), and that flag emits a flood of
+# CS1591 warnings on every undocumented public member. `dotnet format` and `jb cleanupcode`
+# in the CI verify step catch unused usings without needing the doc file.
 
 # ReSharper-specific space rules — `dotnet format` reads the csharp_space_* keys above, but
 # ReSharper has additional knobs that don't have csharp_* equivalents. These keep ReSharper's
