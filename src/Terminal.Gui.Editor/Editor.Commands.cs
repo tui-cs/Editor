@@ -110,6 +110,9 @@ public partial class Editor
 
         ApplyKeyBindings (View.DefaultKeyBindings, DefaultKeyBindings);
 
+        KeyBindings.Remove (Key.Tab);
+        KeyBindings.Remove (Key.Tab.WithShift);
+
         MouseBindings.Add (MouseFlags.WheeledUp, Command.ScrollUp);
         MouseBindings.Add (MouseFlags.WheeledDown, Command.ScrollDown);
         MouseBindings.Add (MouseFlags.WheeledLeft, Command.ScrollLeft);
@@ -180,6 +183,10 @@ public partial class Editor
         if (HasSelection)
         {
             ReplaceSelection (string.Empty);
+        }
+        else if (TryDeleteIndentationLeft ())
+        {
+            return true;
         }
         else if (_caretOffset > 0)
         {
