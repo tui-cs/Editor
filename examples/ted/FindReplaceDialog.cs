@@ -63,8 +63,8 @@ internal sealed class FindReplaceDialog : Dialog
             findNextButton,
             findPreviousButton);
 
-        findNextButton.Accepting += (_, _) => editor.FindNext (_findTextField.Text);
-        findPreviousButton.Accepting += (_, _) => editor.FindPrevious (_findTextField.Text);
+        findNextButton.Accepted += (_, _) => editor.FindNext (_findTextField.Text);
+        findPreviousButton.Accepted += (_, _) => editor.FindPrevious (_findTextField.Text);
 
         return tab;
     }
@@ -83,11 +83,11 @@ internal sealed class FindReplaceDialog : Dialog
         Button replaceButton = new () { X = Pos.Right (findNextButton) + 1, Y = 5, Text = "_Replace" };
         Button replaceAllButton = new () { X = Pos.Right (replaceButton) + 1, Y = 5, Text = "Replace _All" };
 
-        findNextButton.Accepting += (_, _) => editor.FindNext (_replaceFindTextField.Text);
-        replaceButton.Accepting += (_, _) => editor.ReplaceNext (
+        findNextButton.Accepted += (_, _) => editor.FindNext (_replaceFindTextField.Text);
+        replaceButton.Accepted += (_, _) => editor.ReplaceNext (
             _replaceFindTextField.Text,
             _replaceWithTextField.Text);
-        replaceAllButton.Accepting += (_, _) => editor.ReplaceAll (
+        replaceAllButton.Accepted += (_, _) => editor.ReplaceAll (
             _replaceFindTextField.Text,
             _replaceWithTextField.Text);
 
