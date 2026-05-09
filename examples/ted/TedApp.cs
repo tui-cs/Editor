@@ -37,6 +37,7 @@ public sealed class TedApp : Window
 #pragma warning restore CS0618 // Type or member is obsolete
         ShowOpenDialog = ShowDefaultOpenDialog;
         ShowSaveDialog = ShowDefaultSaveDialog;
+        ShowSaveChangesDialog = ShowDefaultSaveChangesDialog;
 
         MenuBar menu = new ();
         CheckBox lineNumbersCheckBox = new ()
@@ -177,6 +178,9 @@ public sealed class TedApp : Window
     /// <summary>Dialog hook used by <see cref="SaveFileAs" />. Tests can replace it to avoid interactive UI.</summary>
     public Func<string?> ShowSaveDialog { get; set; }
 
+    /// <summary>Dialog hook used by <see cref="QuitFile" />. Tests can replace it to avoid interactive UI.</summary>
+    public Func<SaveChangesChoice?> ShowSaveChangesDialog { get; set; }
+
     /// <summary>File read hook used by <see cref="OpenFile" />. Tests can replace it with an in-memory fake.</summary>
     public Func<string, string> ReadAllText { get; set; } = File.ReadAllText;
 
@@ -185,6 +189,9 @@ public sealed class TedApp : Window
     ///     in-memory fake.
     /// </summary>
     public Action<string, string> WriteAllText { get; set; } = File.WriteAllText;
+
+    /// <summary>Gets whether the current editor document has unsaved changes.</summary>
+    public bool IsDocumentModified => Editor.Document?.UndoStack.IsOriginalFile == false;
 
     /// <summary>Clears the editor and makes the buffer untitled.</summary>
     public void NewFile ()
@@ -216,6 +223,7 @@ public sealed class TedApp : Window
         }
 
         WriteAllText (CurrentFilePath, GetEditorText ());
+        Editor.Document!.UndoStack.MarkAsOriginalFile ();
 
         return true;
     }
@@ -232,6 +240,7 @@ public sealed class TedApp : Window
 
         CurrentFilePath = filePath;
         WriteAllText (filePath, GetEditorText ());
+        Editor.Document!.UndoStack.MarkAsOriginalFile ();
         UpdateFileNameShortcut ();
 
         return true;
@@ -298,6 +307,29 @@ public sealed class TedApp : Window
         return dialog.FileName;
     }
 
+    private SaveChangesChoice? ShowDefaultSaveChangesDialog ()
+    {
+        if (App is null)
+        {
+            throw new InvalidOperationException ("ted must be running before showing the save-changes dialog.");
+        }
+
+        int? result = MessageBox.Query (
+            App,
+            "Save changes?",
+            "The document has unsaved changes. Save before quitting?",
+            Strings.btnCancel,
+            "Don't Save",
+            Strings.btnSave);
+
+        return result switch
+        {
+            1 => SaveChangesChoice.Discard,
+            2 => SaveChangesChoice.Save,
+            _ => SaveChangesChoice.Cancel
+        };
+    }
+
     internal void SetDocument (string text, string? filePath)
     {
         Editor.ClearSelection ();
@@ -341,10 +373,22 @@ public sealed class TedApp : Window
 
     private void SaveAs () { SaveFileAs (); }
 
+    /// <summary>Quits ted, prompting to save first when the current document has unsaved changes.</summary>
+    public bool QuitFile ()
+    {
+        if (!ConfirmSaveChanges ())
+        {
+            return false;
+        }
+
+        RequestStop ();
+
+        return true;
+    }
+
     private void Quit ()
     {
-        // TODO: add logic for unsaved changes, confirm quit, etc.
-        RequestStop ();
+        QuitFile ();
     }
 
     private void ShowFindReplaceDialog (bool selectReplaceTab)
@@ -356,5 +400,20 @@ public sealed class TedApp : Window
 
         using FindReplaceDialog dialog = new (Editor, selectReplaceTab);
         App.Run (dialog);
+    }
+
+    private bool ConfirmSaveChanges ()
+    {
+        if (!IsDocumentModified)
+        {
+            return true;
+        }
+
+        return ShowSaveChangesDialog () switch
+        {
+            SaveChangesChoice.Discard => true,
+            SaveChangesChoice.Save => SaveFile (),
+            _ => false
+        };
     }
 }
