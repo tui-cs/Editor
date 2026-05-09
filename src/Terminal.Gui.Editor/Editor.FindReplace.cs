@@ -104,6 +104,12 @@ public partial class Editor
         var replacements = 0;
         var searchOffset = 0;
 
+        // Group every replacement into one undo step (R5). Without this, ReplaceAll on N
+        // matches produces N separate undo entries, so undoing the operation requires N
+        // Ctrl+Z presses — surprising and wrong. RunUpdate () increments BeginUpdate; the
+        // using-disposal calls EndUpdate, which collapses the operation group.
+        using IDisposable scope = _document.RunUpdate ();
+
         while (searchOffset < _document.TextLength)
         {
             var matchOffset = FindForwardOffset (searchText, searchOffset, matchCase);
