@@ -180,11 +180,22 @@ public class TedAppTests
         fx.Render ();
 
         DriverAssert.ContentsContains (fx.Driver, "Line Numbers");
+        DriverAssert.ContentsContains (fx.Driver, "☐ Line Numbers");
 
         fx.Injector.InjectKey (Key.Enter, options);
         fx.Render ();
 
         Assert.True (fx.Top.Editor.ShowLineNumbers);
+
+        fx.Injector.InjectKey (Key.O.WithAlt, options);
+        fx.Render ();
+
+        DriverAssert.ContentsContains (fx.Driver, "☒ Line Numbers");
+
+        fx.Injector.InjectKey (Key.Enter, options);
+        fx.Render ();
+
+        Assert.False (fx.Top.Editor.ShowLineNumbers);
     }
 
     [Fact]

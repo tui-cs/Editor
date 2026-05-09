@@ -32,7 +32,9 @@ public sealed class TedApp : Window
         MenuBar menu = new ();
         CheckBox lineNumbersCheckBox = new ()
         {
-            Text = "_Line Numbers",
+            AllowCheckStateNone = false,
+            CanFocus = false,
+            Title = "_Line Numbers",
             Value = Editor.ShowLineNumbers ? CheckState.Checked : CheckState.UnChecked
         };
 
@@ -73,7 +75,11 @@ public sealed class TedApp : Window
                 [
                     new MenuItem
                     {
-                        Action = ToggleLineNumbers,
+                        Action = () =>
+                        {
+                            Editor.ShowLineNumbers = lineNumbersCheckBox.Value == CheckState.Checked;
+                            Editor.SetNeedsDraw ();
+                        },
                         CommandView = lineNumbersCheckBox,
                         HelpText = "Show line numbers"
                     }
@@ -87,14 +93,6 @@ public sealed class TedApp : Window
         Editor.Height = Dim.Fill (statusBar);
 
         Add (menu, Editor, statusBar);
-
-        void ToggleLineNumbers ()
-        {
-            bool showLineNumbers = !Editor.ShowLineNumbers;
-            Editor.ShowLineNumbers = showLineNumbers;
-            lineNumbersCheckBox.Value = showLineNumbers ? CheckState.Checked : CheckState.UnChecked;
-            Editor.SetNeedsDraw ();
-        }
     }
 
 
