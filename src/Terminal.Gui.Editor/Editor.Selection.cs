@@ -24,7 +24,8 @@ public partial class Editor
     public int SelectionLength => SelectionEnd - SelectionStart;
 
     /// <summary>The selection as a <see cref="TextSegment" />, or <see langword="null" /> if no selection.</summary>
-    public TextSegment? Selection => !HasSelection ? null : new TextSegment { StartOffset = SelectionStart, Length = SelectionLength };
+    public TextSegment? Selection =>
+        !HasSelection ? null : new TextSegment { StartOffset = SelectionStart, Length = SelectionLength };
 
     /// <summary>Raised whenever the selection range changes (created, extended, cleared).</summary>
     public event EventHandler? SelectionChanged;

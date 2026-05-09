@@ -26,7 +26,7 @@ public sealed class TedApp : Window
 
         // Editor first so menu/status-bar shortcuts can pull their hotkeys directly from
         // Editor's KeyBindings (any commands the editor doesn't claim fall back to Application).
-        Editor = new ();
+        Editor = new Editor ();
 
         // ted is the demo for the stopgap Editor.SyntaxHighlighter / SyntaxLanguage surface
         // (issue #32). The CS0618 warning is intentional on the public API; suppressed here
@@ -47,7 +47,7 @@ public sealed class TedApp : Window
             Value = Editor.ShowLineNumbers ? CheckState.Checked : CheckState.UnChecked
         };
 
-        ThemeDropDown = new ()
+        ThemeDropDown = new DropDownList<ThemeName>
         {
             Value = ThemeName.DarkPlus,
             ReadOnly = true,
@@ -310,12 +310,7 @@ public sealed class TedApp : Window
 
     private string GetEditorText ()
     {
-        if (Editor.Document is null)
-        {
-            throw new InvalidOperationException ("ted cannot save because the editor has no document.");
-        }
-
-        return Editor.Document.Text;
+        return Editor.Document is null ? throw new InvalidOperationException ("ted cannot save because the editor has no document.") : Editor.Document.Text;
     }
 
     private void UpdateFileNameShortcut ()
