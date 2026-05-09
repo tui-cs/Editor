@@ -1,10 +1,30 @@
-# Three-Agent Autonomous MLP Sprint — Setup Spec
+# Three-Agent Autonomous Sprint — Setup Spec
 
-This is a mini-spec for a single experiment: hand the **same goal** ("finish the MLP per `specs/00-plan.md`") to three different AI coding agents — **Claude Code**, **OpenAI Codex**, and **GitHub Copilot Coding Agent** — running concurrently on a single Mac mini, and compare what each produces and how each got there.
+This is a mini-spec for a single experiment: hand the **same goal** to three different AI coding agents — **Claude Code**, **OpenAI Codex**, and **GitHub Copilot Coding Agent** — running concurrently on a single Mac mini, and compare what each produces and how each got there.
 
-The point is not to ship the MLP. The point is to learn how the three systems differ — at planning, at decomposition, at code style, at review-response, at giving up. The MLP is the substrate.
+The point is not to ship the goal. The point is to learn how the three systems differ — at planning, at decomposition, at code style, at review-response, at giving up. The goal is the substrate.
 
-## 0. Goals & non-goals
+## 0. Test run vs. full run
+
+There are **two scopes** to this experiment, and you should do them in order:
+
+### 0.1 Test run (start here) — implement issue #37 (tabs)
+
+A short, scoped dry-run of the harness on a single work-item: **issue #37 — proper tab handling per `specs/00-plan.md` §8 D1**. One issue per agent (3 issues total, mirrored), small enough to compare three implementations side by side, big enough to exercise the actually-interesting decisions:
+
+- The spec mandates that D1 **depends on B1** (the `VisualLineBuilder` pipeline) and that without B1 it becomes another welded shortcut and should be **rejected**. So each agent has to choose: (a) refuse to ship until B1 lands, (b) implement B1 and then D1, (c) ship a stopgap and explicitly mark it as such, or (d) ship a stopgap and pretend it's fine. **The choice itself is the comparison signal.** Don't pre-decide for them.
+- Tabs touch rendering (R1, R2 grapheme rule), public API surface (R3 — `IndentationSize` vs `TabWidth`), undo grouping (R5 — block indent on selection), and key bindings. It hits half the architectural rules in one work-item.
+- The issue is already fully specified (issue #37 §1–§9), so the input quality is high and equal across agents.
+
+The test run is the *forcing function*: if the harness, the kick-off prompts, the gh isolation, and the observability all work for one work-item, they'll work for the full set.
+
+### 0.2 Full run — finish the MLP per `specs/00-plan.md`
+
+Same agents, same Mac mini, same harness — pointed at all of `specs/00-plan.md` instead of just one work-item. Only after the test run produces a usable comparison artifact (`specs/runs/<test-run>/comparison.md`).
+
+The rest of this spec is written for the **full run**. The test run uses the same scaffolding with three swap-outs called out in §11.
+
+## 1. Goals & non-goals
 
 **Goals**
 - Each agent runs **fully autonomously** (no human steering after kick-off) until it stops, gives up, hits a wall clock, or finishes.
@@ -17,7 +37,7 @@ The point is not to ship the MLP. The point is to learn how the three systems di
 - Building bespoke harnesses. Use each agent's native long-running mode.
 - Cost optimization. Treat this as a metered experiment with a budget cap, not a tuning exercise.
 
-## 1. Topology
+## 2. Topology
 
 ```
                  ┌──────────────────────────────────────────┐
@@ -45,7 +65,7 @@ The point is not to ship the MLP. The point is to learn how the three systems di
 
 Each agent runs in its **own working tree** (its own clone, not just a worktree off one clone). This isolates: `obj/`, `bin/`, `node_modules`, dotnet tool restore caches, NuGet packages folders if relocated, any per-agent config file the tool wants to write, and any dirty state. A worktree off one shared clone would put `.git/` write contention back on the table; separate clones avoid that entirely.
 
-## 2. Mac mini prerequisites
+## 3. Mac mini prerequisites
 
 ```sh
 # Toolchain (each agent will assume these are present)
@@ -57,7 +77,7 @@ brew install claude                     # Claude Code
 npm i -g @openai/codex                  # Codex CLI
 gh extension install github/gh-copilot  # only if you also want a local Copilot CLI;
                                         # the GitHub Copilot *Coding Agent* runs
-                                        # entirely on github.com — see §3.
+                                        # entirely on github.com — see §4.
 
 # Repo bootstrap (one-time)
 mkdir -p /work && cd /work
@@ -74,7 +94,7 @@ Authentication, **per agent identity**:
 - gh CLI: log in **once per agent's clone** with a separate machine user / PAT scoped to `repo` + `workflow`. Do **not** share credentials across the three working trees — `gh auth status` should show three different identities. This is what stops one agent's `gh` invocation from pushing under another agent's branch.
 - Copilot Coding Agent: assigned via GitHub's `assign_copilot_to_issue` flow on github.com; nothing local to install.
 
-## 3. Per-agent run mode
+## 4. Per-agent run mode
 
 Each agent has a different idiom for "long-running autonomous." Use the native one — don't try to homogenize.
 
@@ -113,7 +133,7 @@ Each agent has a different idiom for "long-running autonomous." Use the native o
 - Long-running: nothing to supervise — Copilot's internal scheduler handles it.
 - Budget cap: Copilot quota on the org.
 
-## 4. Collision avoidance
+## 5. Collision avoidance
 
 The risk is three agents stamping on the same branches, PRs, issues, and `develop`. Mitigations:
 
@@ -149,7 +169,7 @@ This is the cleanest fence: agents never compete for the same issue handle.
 
 ### 4.4 Versioning
 
-`Directory.Build.props` has a single `<Version>`. If two agents simultaneously push to `develop` (don't allow that — see §4.1), the `release.yml` workflow's `.${run_number}` suffix already gives unique pre-release versions per run. So even without the protection, NuGet uploads don't clobber. Belt-and-suspenders fine.
+`Directory.Build.props` has a single `<Version>`. If two agents simultaneously push to `develop` (don't allow that — see §5.1), the `release.yml` workflow's `.${run_number}` suffix already gives unique pre-release versions per run. So even without the protection, NuGet uploads don't clobber. Belt-and-suspenders fine.
 
 ### 4.5 Dotnet tool restore caches
 
@@ -159,7 +179,7 @@ Each clone runs its own `dotnet tool restore`, so `.config/dotnet-tools.json` re
 
 Three concurrent `dotnet build` runs on the same machine fight for CPU and disk. Acceptable — the experiment is agentic behavior, not throughput. If it matters, gate each tmux window's builds on a `flock` over a single lockfile so only one builds at a time.
 
-## 5. Observability
+## 6. Observability
 
 For each agent, capture:
 
@@ -184,7 +204,7 @@ specs/runs/2026-05-15-claude/
 
 `specs/runs/` is gitignored except the `final.md` files (which you commit to the repo as the experiment artifact).
 
-## 6. Comparison rubric
+## 7. Comparison rubric
 
 When all three have run (or you cut them off), evaluate on:
 
@@ -198,7 +218,7 @@ When all three have run (or you cut them off), evaluate on:
 
 These don't add up to a single number. Write them up qualitatively in `specs/runs/comparison.md`.
 
-## 7. Operator runbook
+## 8. Operator runbook
 
 Day -1:
 1. Cut a tag `experiment/start` on `develop` — every agent starts here.
@@ -218,7 +238,7 @@ Day N (when you've seen enough or the budget caps hit):
 4. Write `specs/runs/comparison.md`.
 5. Decide which (if any) PRs to actually keep merging into `develop`. The experiment artifact is independent of whether you ship the work.
 
-## 8. What can go wrong
+## 9. What can go wrong
 
 - **Claude tries to merge its own PRs.** Branch protection on `develop` stops it.
 - **Codex pushes to `develop` directly.** Same.
@@ -229,13 +249,96 @@ Day N (when you've seen enough or the budget caps hit):
 - **The Mac mini OOMs.** Three `dotnet build`s + three model-context-loaded sessions is comfortably under 16GB but not by much. Watch `top` once.
 - **Anthropic / OpenAI / Copilot ship a model bump mid-experiment.** Pin model versions in each agent's config at day -1. Note the pinned versions in `comparison.md`.
 
-## 9. Out of scope for this spec
+## 10. Out of scope for this spec
 
 - Training data extraction or red-teaming.
 - Fine-tuning / RAG over the spec.
 - Cost optimization.
 - Anything that changes the agents' behavior (system prompts beyond the kick-off, custom tools, MCP servers).
 
-## 10. After-action
+## 11. After-action
 
-Whichever PRs you keep, cherry-pick into a normal `develop` history with a clear commit author distinguishing them. The three agents' branches stay around as evidence; tag the closing point as `experiment/end`. The interesting artifact is `specs/runs/comparison.md`, and that goes in the repo.
+Whichever PRs you keep, cherry-pick into a normal `develop` history with a clear commit author distinguishing them. The three agents' branches stay around as evidence; tag the closing point as `experiment/end` (or `experiment/test-end` for the test run). The interesting artifact is `specs/runs/comparison.md`, and that goes in the repo.
+
+## 12. Test run swap-outs (§0.1)
+
+The test run reuses the entire harness above with three swap-outs. Use these instead of, not in addition to, the §3–§8 defaults.
+
+### 12.1 Issue scope
+
+Create exactly **three issues**, not the A1..E1 set:
+
+| Title | Body | Label |
+|---|---|---|
+| `[D1] Implement tab handling per issue #37 — agent: claude` | "Read issue #37 in full. Read `specs/00-plan.md` §4 (R1–R10), §8 D1, and §9. Implement issue #37 to the bar in those sections. Open one PR against `develop` from `experiment/claude/d1-tabs`. When you stop, write `specs/runs/test-claude-final.md` summarizing what you did, what you skipped, and why." | `agent:claude`, `experiment` |
+| `[D1] Implement tab handling per issue #37 — agent: codex` | (same body) | `agent:codex`, `experiment` |
+| `[D1] Implement tab handling per issue #37 — agent: copilot` | (same body) | `agent:copilot`, `experiment` |
+
+**Don't pre-decide the B1 dependency.** §8 D1 says D1 depends on B1 and that without B1 the implementation is rejected. The agent has to navigate that. The four ways an agent could respond — refuse, build B1 first, ship a stopgap and own it, ship a stopgap and pretend — are themselves the comparison artifact. Whatever the kick-off prompt looks like, **do not** include phrases like "you may skip B1" or "implement B1 first" — those bias the result.
+
+### 12.2 Terminal.Gui bugs — high bar, failing-test required
+
+The Mac mini has the Terminal.Gui repo enlisted at `../Terminal.Gui` (`develop` branch). Agents will inevitably hit behavior they suspect is a TG bug — that's expected. What's not expected is a flood of speculative issues on `gui-cs/Terminal.Gui`.
+
+The rule, in every agent's kick-off prompt and in every issue body:
+
+> When you encounter behavior you suspect is a Terminal.Gui bug:
+> 1. **Reproduce it in a unit test that fails.** No failing test, no issue. The test lives in your PR's test project (or a new one), not in TG's tree.
+> 2. **Verify the test fails for the right reason** — not because of your code.
+> 3. **Only then** open an issue on `gui-cs/Terminal.Gui` with the failing test code, the pinned TG version (`Directory.Build.props`), the exact symptom, and a minimal repro.
+>
+> If you cannot write a failing test, the bug isn't filed. Work around it locally, note the workaround in your final report, and move on.
+
+This is partly because Copilot/Claude/Codex all have varying tendencies to "ask for upstream changes" instead of fitting the existing surface — and partly because TG's maintainers (the same humans operating this experiment) will reject speculative issues anyway. Forcing the failing-test gate filters out the noise.
+
+The §7 comparison rubric counts how many issues each agent files and whether each one ships with a failing test.
+
+### 12.3 Kick-off prompts
+
+Replace the §4.1 and §4.2 kick-off prompts with one focused on the assigned issue:
+
+```
+# Claude (in /work/claude/)
+claude --dangerously-skip-permissions \
+  "Take the issue assigned to you (label agent:claude, experiment).
+   Read it. Read CLAUDE.md and specs/00-plan.md §4, §8 D1, §9.
+   Execute. Open one PR against develop. Branch name: experiment/claude/d1-tabs.
+   When you stop, write specs/runs/test-claude-final.md with a self-report:
+   what you did, what you skipped, what you'd do differently, total tokens spent.
+   Stop only when the PR is open and CI is either green or you've decided you cannot make it green.
+   Do not edit specs/00-plan.md, CLAUDE.md, .claude/, .config/, .github/, or third_party/."
+```
+
+(Codex and Copilot get the equivalent — the kick-off-agent.sh script handles the per-agent variations.)
+
+### 12.4 Comparison rubric
+
+§7 of this doc still applies, but for the test run narrow it to:
+
+1. **Did D1 actually ship?** PR open, CI green, ted demonstrably handles tabs.
+2. **B1 dependency handling.** Which of the four responses did the agent pick? Was the choice acknowledged or hidden?
+3. **R1–R10 adherence.** Specifically R1 (no welding into `OnDrawingContent`), R2 (graphemes not chars), R3 (named `IndentationSize` / `ConvertTabsToSpaces` / `ShowTabs`, not bespoke), R5 (block-indent on selection collapses to one undo step), R9 (no unused public APIs), R10 (`Accepted` not `Accepting` for any new dialog wiring).
+4. **Style hook compliance.** Did the agent's commits trip the Stop hook into running cleanup? Did it commit the cleanup or fight it?
+5. **Total cost** in dollars and wall-clock minutes.
+6. **Recovery.** Pick the PR with the most interesting outcome and leave a non-trivial review comment; observe.
+
+The whole test run should produce a single artifact: `specs/runs/<date>-test/comparison.md` (~2 pages). If the test run goes well, kick off the full run.
+
+### 12.5 Tag points
+
+- Day -1: tag `experiment/test-start` on `develop`.
+- Day N: tag `experiment/test-end`. Branches stay; nothing on `develop` changes.
+
+## 13. Scripts
+
+Operator helpers live in `./scripts/`:
+
+| Script | Purpose |
+|---|---|
+| `setup-host.sh` | One-time Mac mini bootstrap (brew, dotnet SDK, gh, tmux, claude, codex). |
+| `setup-agent-clone.sh <agent>` | Per-agent clone in `/work/<agent>/`, `dotnet tool restore`, gh-auth check. Idempotent. |
+| `create-test-run-issues.sh` | Creates the three D1/tabs issues with the right labels (test run only). |
+| `start-agent.sh <agent>` | Launches the agent in a tmux window with the right kick-off prompt. |
+| `collect-run.sh <run-name>` | Pulls per-agent PRs, transcripts, and a spend snapshot into `specs/runs/<run-name>/`. |
+
+Each script prints `--help` and is safe to re-run. See `scripts/README.md` for the run order.
