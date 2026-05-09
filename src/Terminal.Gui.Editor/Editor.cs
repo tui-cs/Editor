@@ -228,10 +228,8 @@ public partial class Editor : View
         DocumentLine line = _document!.GetLineByNumber (targetLine + 1);
         int targetCol = GetLogicalColumnFromVisualColumn (line, _virtualCaretColumn);
 
-        // Preserve the sticky column across vertical moves — SetCaretOffset would otherwise reset it.
-        int sticky = _virtualCaretColumn;
+        // resetVirtualColumn: false keeps the sticky column intact across vertical moves.
         SetCaretOffset (line.Offset + targetCol, resetVirtualColumn: false);
-        _virtualCaretColumn = sticky;
     }
 
     private int GetVisualColumnFromLogicalColumn (DocumentLine line, int logicalColumn)
