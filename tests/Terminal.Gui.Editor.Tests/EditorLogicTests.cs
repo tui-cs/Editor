@@ -22,6 +22,15 @@ public class EditorLogicTests
     }
 
     [Fact]
+    public void Default_DocumentIsEmpty ()
+    {
+        Views.Editor editor = new ();
+
+        Assert.NotNull (editor.Document);
+        Assert.Equal (string.Empty, editor.Document!.Text);
+    }
+
+    [Fact]
     public void CaretOffset_Clamps_To_DocumentLength ()
     {
         Views.Editor editor = new () { Document = new TextDocument ("abc") };
