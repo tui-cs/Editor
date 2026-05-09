@@ -5,6 +5,7 @@ using Terminal.Gui.Resources;
 using Terminal.Gui.Text.Document;
 using Terminal.Gui.ViewBase;
 using Terminal.Gui.Views;
+using TextMateSharp.Grammars;
 
 namespace Ted;
 
@@ -26,16 +27,47 @@ public sealed class TedApp : Window
         // Editor first so menu/status-bar shortcuts can pull their hotkeys directly from
         // Editor's KeyBindings (any commands the editor doesn't claim fall back to Application).
         Editor = new ();
+        Editor.SyntaxHighlighter = new TextMateSyntaxHighlighter (ThemeName.DarkPlus);
         ShowOpenDialog = ShowDefaultOpenDialog;
         ShowSaveDialog = ShowDefaultSaveDialog;
 
         MenuBar menu = new ();
 
+        ThemeDropDown = new ()
+        {
+            Value = ThemeName.DarkPlus,
+            ReadOnly = true,
+            CanFocus = false
+        };
+
+        ThemeDropDown.ValueChanged += (_, e) =>
+                                      {
+                                          if (e.Value is not { } themeName)
+                                          {
+                                              return;
+                                          }
+
+                                          if (Editor.SyntaxHighlighter is TextMateSyntaxHighlighter highlighter)
+                                          {
+                                              if (highlighter.ThemeName == themeName)
+                                              {
+                                                  return;
+                                              }
+
+                                              highlighter.SetTheme (themeName);
+                                              Editor.SetNeedsDraw ();
+
+                                              return;
+                                          }
+
+                                          Editor.SyntaxHighlighter = new TextMateSyntaxHighlighter (themeName);
+                                      };
+
         StatusBar statusBar =
             new ([
                 new Shortcut (KeyFor (Command.Quit), "Quit", Quit),
-
-                // TODO: Add a themes dropdown shortcut
+                new Shortcut (Key.Empty, "Themes", null) { MouseHighlightStates = MouseState.None },
+                new Shortcut { Title = "Themes", CommandView = ThemeDropDown },
                 new Shortcut (Key.Empty, "x, y", null, "Loc") { MouseHighlightStates = MouseState.None },
                 _fileNameShortcut = new Shortcut (Key.Empty, "<untitled>", Open)
                 {
@@ -79,6 +111,8 @@ public sealed class TedApp : Window
     /// <summary>The editor View at the centre of the app. Exposed for tests and future commands.</summary>
     public Editor Editor { get; }
 
+    /// <summary>The syntax-highlighting theme selector shown in the status bar.</summary>
+    public DropDownList<ThemeName> ThemeDropDown { get; }
     /// <summary>The path currently associated with <see cref="Editor" />, or <see langword="null" /> for an untitled buffer.</summary>
     public string? CurrentFilePath { get; private set; }
 
