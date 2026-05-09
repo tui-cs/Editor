@@ -2,9 +2,11 @@
 
 using System.Drawing;
 using Ted;
+using Terminal.Gui.Drawing;
 using Terminal.Gui.Editor.IntegrationTests.Testing;
 using Terminal.Gui.Input;
 using Terminal.Gui.Testing;
+using TextMateSharp.Grammars;
 using Xunit;
 
 namespace Terminal.Gui.Editor.IntegrationTests;
@@ -15,6 +17,120 @@ namespace Terminal.Gui.Editor.IntegrationTests;
 /// </summary>
 public class TedAppTests
 {
+    [Fact]
+    public void NewFile_ClearsEditor_AndCurrentFilePath ()
+    {
+        TedApp app = new ();
+        app.ShowOpenDialog = () => "/tmp/ted-open.txt";
+        app.ReadAllText = _ => "opened";
+
+        Assert.True (app.OpenFile ());
+        app.Editor.SelectAll ();
+
+        app.NewFile ();
+
+        Assert.Null (app.CurrentFilePath);
+        Assert.Equal (string.Empty, app.Editor.Document!.Text);
+        Assert.Equal (0, app.Editor.CaretOffset);
+        Assert.False (app.Editor.HasSelection);
+    }
+
+    [Fact]
+    public void OpenFile_Canceled_DoesNotChangeEditor ()
+    {
+        TedApp app = new ();
+        app.ShowOpenDialog = () => null;
+        app.ReadAllText = _ => throw new InvalidOperationException ("Canceled open should not read.");
+
+        Assert.False (app.OpenFile ());
+
+        Assert.Null (app.CurrentFilePath);
+        Assert.Equal ("Hello world", app.Editor.Document!.Text);
+    }
+
+    [Fact]
+    public void OpenFile_LoadsSelectedFile_FromDisk ()
+    {
+        string filePath = Path.Combine (Path.GetTempPath (), $"ted-open-{Guid.NewGuid ():N}.txt");
+        File.WriteAllText (filePath, "from disk");
+
+        try
+        {
+            TedApp app = new ();
+            app.ShowOpenDialog = () => filePath;
+
+            Assert.True (app.OpenFile ());
+
+            Assert.Equal (filePath, app.CurrentFilePath);
+            Assert.Equal ("from disk", app.Editor.Document!.Text);
+            Assert.Equal (0, app.Editor.CaretOffset);
+        }
+        finally
+        {
+            File.Delete (filePath);
+        }
+    }
+
+    [Fact]
+    public void SaveFile_WritesCurrentEditorText_ToCurrentPath ()
+    {
+        string filePath = Path.Combine (Path.GetTempPath (), $"ted-save-{Guid.NewGuid ():N}.txt");
+        File.WriteAllText (filePath, "before");
+
+        try
+        {
+            TedApp app = new ();
+            app.ShowOpenDialog = () => filePath;
+            Assert.True (app.OpenFile ());
+            app.Editor.Document!.Text = "after";
+
+            Assert.True (app.SaveFile ());
+
+            Assert.Equal ("after", File.ReadAllText (filePath));
+            Assert.Equal (filePath, app.CurrentFilePath);
+        }
+        finally
+        {
+            File.Delete (filePath);
+        }
+    }
+
+    [Fact]
+    public void SaveFileAs_Canceled_DoesNotWrite ()
+    {
+        bool wrote = false;
+        TedApp app = new ();
+        app.ShowSaveDialog = () => " ";
+        app.WriteAllText = (_, _) => wrote = true;
+
+        Assert.False (app.SaveFileAs ());
+
+        Assert.False (wrote);
+        Assert.Null (app.CurrentFilePath);
+    }
+
+    [Fact]
+    public void SaveFileAs_WritesEditorText_ToSelectedPath ()
+    {
+        string filePath = Path.Combine (Path.GetTempPath (), $"ted-save-as-{Guid.NewGuid ():N}.txt");
+
+        try
+        {
+            TedApp app = new ();
+            app.ShowSaveDialog = () => filePath;
+            app.Editor.Document!.Text = "save as";
+
+            Assert.True (app.SaveFileAs ());
+
+            Assert.Equal ("save as", File.ReadAllText (filePath));
+            Assert.Equal (filePath, app.CurrentFilePath);
+        }
+        finally
+        {
+            File.Delete (filePath);
+        }
+    }
+
     [Fact]
     public async Task Renders_HelloWorld_InEditorArea ()
     {
@@ -29,6 +145,25 @@ public class TedAppTests
         await using AppFixture<TedApp> fx = new (() => new TedApp ());
 
         DriverAssert.ContentsContains (fx.Driver, "File");
+    }
+
+    [Fact]
+    public async Task Renders_Themes_StatusBar_Item ()
+    {
+        await using AppFixture<TedApp> fx = new (() => new TedApp ());
+
+        DriverAssert.ContentsContains (fx.Driver, "Themes");
+    }
+
+    [Fact]
+    public async Task Theme_StatusBar_DropDown_Changes_Editor_Syntax_Theme ()
+    {
+        await using AppFixture<TedApp> fx = new (() => new TedApp ());
+
+        fx.Top.ThemeDropDown.Value = ThemeName.LightPlus;
+
+        TextMateSyntaxHighlighter highlighter = Assert.IsType<TextMateSyntaxHighlighter> (fx.Top.Editor.SyntaxHighlighter);
+        Assert.Equal (ThemeName.LightPlus, highlighter.ThemeName);
     }
 
     [Fact]

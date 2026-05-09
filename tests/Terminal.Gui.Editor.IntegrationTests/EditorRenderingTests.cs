@@ -5,6 +5,7 @@ using Terminal.Gui.Editor.IntegrationTests.Testing;
 using Attribute = Terminal.Gui.Drawing.Attribute;
 using Terminal.Gui.Input;
 using Terminal.Gui.Testing;
+using TextMateSharp.Grammars;
 using Xunit;
 
 namespace Terminal.Gui.Editor.IntegrationTests;
@@ -35,7 +36,7 @@ public class EditorRenderingTests
         // would pass spuriously.
         Assert.NotEqual (normal, editable);
 
-        Cell cell = fx.Driver.Contents! [0, 0];
+        Cell cell = fx.Driver.Contents![0, 0];
         Assert.Equal ("H", cell.Grapheme);
         Assert.Equal (normal, cell.Attribute);
     }
@@ -53,7 +54,7 @@ public class EditorRenderingTests
 
         Attribute active = fx.Top.Editor.GetAttributeForRole (VisualRole.Active);
 
-        Cell cellSelected = fx.Driver.Contents! [0, 0];
+        Cell cellSelected = fx.Driver.Contents![0, 0];
         Assert.Equal ("H", cellSelected.Grapheme);
         Assert.Equal (active, cellSelected.Attribute);
     }
@@ -74,8 +75,43 @@ public class EditorRenderingTests
         Assert.NotEqual (normal, editable);
 
         // Cells past the selection (column index >= 2) should be Normal, not Editable.
-        Cell tail = fx.Driver.Contents! [0, 2];
+        Cell tail = fx.Driver.Contents![0, 2];
         Assert.Equal ("l", tail.Grapheme);
         Assert.Equal (normal, tail.Attribute);
+    }
+
+    [Fact]
+    public async Task Syntax_Highlighting_Uses_TextMate_Token_Attributes ()
+    {
+        const string text = "public class C";
+
+        await using AppFixture<EditorTestHost> fx = new (() => new (text));
+        fx.Top.Editor.SyntaxHighlighter = new TextMateSyntaxHighlighter (ThemeName.DarkPlus);
+        fx.Render ();
+
+        TextMateSyntaxHighlighter highlighter = new (ThemeName.DarkPlus);
+        Attribute expected = highlighter.Highlight (text, "csharp")[0].Attribute!.Value;
+
+        Cell cell = fx.Driver.Contents![0, 0];
+        Assert.Equal ("p", cell.Grapheme);
+        Assert.Equal (expected, cell.Attribute);
+        Assert.NotEqual (fx.Top.Editor.GetAttributeForRole (VisualRole.Normal), cell.Attribute);
+    }
+
+    [Fact]
+    public async Task Selection_Overrides_Syntax_Highlighting ()
+    {
+        await using AppFixture<EditorTestHost> fx = new (() => new ("public class C"));
+        fx.Top.Editor.SyntaxHighlighter = new TextMateSyntaxHighlighter (ThemeName.DarkPlus);
+        fx.Top.Editor.SetFocus ();
+        fx.Top.Editor.CaretOffset = 0;
+
+        fx.Injector.InjectKey (Key.CursorRight.WithShift, Direct);
+        fx.Render ();
+
+        Attribute active = fx.Top.Editor.GetAttributeForRole (VisualRole.Active);
+        Cell cell = fx.Driver.Contents![0, 0];
+        Assert.Equal ("p", cell.Grapheme);
+        Assert.Equal (active, cell.Attribute);
     }
 }

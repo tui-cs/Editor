@@ -1,4 +1,5 @@
 using System.Drawing;
+using Terminal.Gui.Drawing;
 using Terminal.Gui.Text.Document;
 using Terminal.Gui.ViewBase;
 
@@ -14,6 +15,8 @@ public partial class Editor : View
 {
     private int _caretOffset;
     private TextDocument? _document;
+    private ISyntaxHighlighter? _syntaxHighlighter;
+    private string _syntaxLanguage = "csharp";
 
     /// <summary>
     ///     Sticky column for vertical caret moves. Tracks the column the user *intends* to be in,
@@ -66,6 +69,42 @@ public partial class Editor : View
     {
         get => _caretOffset;
         set => SetCaretOffset (value, true);
+    }
+
+    /// <summary>Optional syntax highlighter used when drawing document text.</summary>
+    public ISyntaxHighlighter? SyntaxHighlighter
+    {
+        get => _syntaxHighlighter;
+        set
+        {
+            if (ReferenceEquals (_syntaxHighlighter, value))
+            {
+                return;
+            }
+
+            _syntaxHighlighter = value;
+            _syntaxHighlighter?.ResetState ();
+            SetNeedsDraw ();
+        }
+    }
+
+    /// <summary>The language identifier passed to <see cref="SyntaxHighlighter" />. Defaults to C#.</summary>
+    public string SyntaxLanguage
+    {
+        get => _syntaxLanguage;
+        set
+        {
+            ArgumentNullException.ThrowIfNull (value);
+
+            if (_syntaxLanguage == value)
+            {
+                return;
+            }
+
+            _syntaxLanguage = value;
+            _syntaxHighlighter?.ResetState ();
+            SetNeedsDraw ();
+        }
     }
 
     /// <summary>Raised whenever <see cref="Document" /> raises its own <c>Changed</c> event.</summary>
