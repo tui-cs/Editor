@@ -156,11 +156,11 @@ public class TedAppTests
     }
 
     [Fact]
-    public async Task Renders_Tab_StatusBar_Item ()
+    public async Task Renders_IndentSize_StatusBar_Item ()
     {
         await using AppFixture<TedApp> fx = new (() => new TedApp ());
 
-        DriverAssert.ContentsContains (fx.Driver, "Tab");
+        DriverAssert.ContentsContains (fx.Driver, "Indent Size");
     }
 
     [Fact]
@@ -179,13 +179,13 @@ public class TedAppTests
     }
 
     [Fact]
-    public async Task TabWidth_StatusBar_NumericUpDown_Changes_Editor_TabWidth ()
+    public async Task IndentationSize_StatusBar_NumericUpDown_Changes_Editor_IndentationSize ()
     {
         await using AppFixture<TedApp> fx = new (() => new TedApp ());
 
-        fx.Top.TabWidthUpDown.Value = 8;
+        fx.Top.IndentationSizeUpDown.Value = 8;
 
-        Assert.Equal (8, fx.Top.Editor.TabWidth);
+        Assert.Equal (8, fx.Top.Editor.IndentationSize);
     }
 
     [Fact]

@@ -155,8 +155,12 @@ public partial class Editor : View
         }
     } = "csharp";
 
-    /// <summary>Visual tab-stop width in cells. Defaults to 4.</summary>
-    public int TabWidth
+    /// <summary>
+    ///     Width of one indent unit in visual columns (cells). Controls tab-stop spacing for both
+    ///     rendering (<c>\t</c> expansion) and editing (Tab / Shift+Tab). Mirrors AvaloniaEdit's
+    ///     <c>TextEditorOptions.IndentationSize</c>. Defaults to 4.
+    /// </summary>
+    public int IndentationSize
     {
         get;
         set
@@ -175,6 +179,33 @@ public partial class Editor : View
             SetNeedsDraw ();
         }
     } = 4;
+
+    /// <summary>
+    ///     When <see langword="true" />, pressing Tab inserts spaces (up to the next tab stop) instead
+    ///     of a literal <c>\t</c>. Does not affect existing document content — only governs what
+    ///     the Tab key inserts. Mirrors AvaloniaEdit's <c>TextEditorOptions.ConvertTabsToSpaces</c>.
+    /// </summary>
+    public bool ConvertTabsToSpaces { get; set; }
+
+    /// <summary>
+    ///     When <see langword="true" />, renders a tab glyph (<c>→</c>) in the first cell of each
+    ///     tab expansion, padding the remaining cells with spaces. When <see langword="false" />,
+    ///     tabs render as plain spaces. Mirrors AvaloniaEdit's <c>TextEditorOptions.ShowTabs</c>.
+    /// </summary>
+    public bool ShowTabs
+    {
+        get;
+        set
+        {
+            if (field == value)
+            {
+                return;
+            }
+
+            field = value;
+            SetNeedsDraw ();
+        }
+    }
 
     /// <summary>Raised whenever <see cref="CaretOffset" /> changes.</summary>
     public event EventHandler? CaretChanged;
@@ -315,6 +346,7 @@ public partial class Editor : View
         SetCaretOffset (line.Offset + targetCol, false);
     }
 
+    // TODO(VisualLineBuilder): replace with CellVisualLine.GetVisualColumn once B1 lands.
     private int GetVisualColumnFromLogicalColumn (DocumentLine line, int logicalColumn)
     {
         var text = _document!.GetText (line);
@@ -323,12 +355,13 @@ public partial class Editor : View
 
         for (var i = 0; i < clampedLogical; i++)
         {
-            visualColumn += GetVisualWidthForCharacter (text[i], visualColumn, TabWidth);
+            visualColumn += GetVisualWidthForCharacter (text[i], visualColumn, IndentationSize);
         }
 
         return visualColumn;
     }
 
+    // TODO(VisualLineBuilder): replace with CellVisualLine.GetRelativeOffset once B1 lands.
     private int GetLogicalColumnFromVisualColumn (DocumentLine line, int visualColumn)
     {
         var text = _document!.GetText (line);
@@ -337,17 +370,19 @@ public partial class Editor : View
 
         for (var logical = 0; logical < text.Length; logical++)
         {
-            var width = GetVisualWidthForCharacter (text[logical], currentVisual, TabWidth);
+            var width = GetVisualWidthForCharacter (text[logical], currentVisual, IndentationSize);
             var nextVisual = currentVisual + width;
 
             if (nextVisual >= clampedVisual)
             {
                 if (text[logical] == '\t' && clampedVisual > currentVisual)
                 {
-                    // Clicking or moving inside the visual span produced by '\t' snaps the caret
-                    // after the tab character because there is no representable position "inside"
-                    // a single tab code point.
-                    return logical + 1;
+                    // Mouse click inside the visual span produced by '\t' snaps to the *nearest*
+                    // logical edge (before vs. after). The midpoint rounds down to "before the tab".
+                    // TODO(VisualLineBuilder): replace with CellVisualLine.GetRelativeOffset.
+                    var midpoint = currentVisual + width / 2;
+
+                    return clampedVisual > midpoint ? logical + 1 : logical;
                 }
 
                 return clampedVisual >= nextVisual ? logical + 1 : logical;
@@ -359,6 +394,7 @@ public partial class Editor : View
         return text.Length;
     }
 
+    // TODO(VisualLineBuilder): remove once TabElement handles tab expansion in the pipeline.
     private static int GetVisualWidthForCharacter (char c, int visualColumn, int tabWidth)
     {
         if (c != '\t')

@@ -181,7 +181,7 @@ public class EditorRenderingTests
     }
 
     [Fact]
-    public async Task Tabs_Render_As_Spaces_Using_Default_TabWidth ()
+    public async Task Tabs_Render_As_Spaces_Using_Default_IndentationSize ()
     {
         await using AppFixture<EditorTestHost> fx = new (() => new ("a\tb"));
         fx.Render ();
@@ -194,10 +194,10 @@ public class EditorRenderingTests
     }
 
     [Fact]
-    public async Task Tabs_Render_As_Spaces_Using_Configured_TabWidth ()
+    public async Task Tabs_Render_As_Spaces_Using_Configured_IndentationSize ()
     {
         await using AppFixture<EditorTestHost> fx = new (() => new ("a\tb"));
-        fx.Top.Editor.TabWidth = 2;
+        fx.Top.Editor.IndentationSize = 2;
         fx.Render ();
 
         Assert.Equal ("a", fx.Driver.Contents![0, 0].Grapheme);

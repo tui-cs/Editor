@@ -124,7 +124,7 @@ public partial class Editor
             }
 
             var c = text[i];
-            var width = GetVisualWidthForCharacter (c, visualColumn, TabWidth);
+            var width = GetVisualWidthForCharacter (c, visualColumn, IndentationSize);
             var charVisualStart = visualColumn;
             var charVisualEnd = visualColumn + width;
 
@@ -146,10 +146,29 @@ public partial class Editor
             if (drawEnd > drawStart)
             {
                 SetAttribute (attribute);
-                AddStr (
-                    drawStart - visibleStart,
-                    row,
-                    c == '\t' ? new (' ', drawEnd - drawStart) : c.ToString ());
+
+                if (c == '\t')
+                {
+                    // TODO(VisualLineBuilder): tab rendering will move to TabElement.Draw once B1 lands.
+                    if (ShowTabs && drawStart == charVisualStart)
+                    {
+                        // ShowTabs: render '→' at the tab's first cell, spaces for the rest.
+                        AddStr (drawStart - visibleStart, row, "→");
+
+                        if (drawEnd - drawStart > 1)
+                        {
+                            AddStr (drawStart - visibleStart + 1, row, new string (' ', drawEnd - drawStart - 1));
+                        }
+                    }
+                    else
+                    {
+                        AddStr (drawStart - visibleStart, row, new string (' ', drawEnd - drawStart));
+                    }
+                }
+                else
+                {
+                    AddStr (drawStart - visibleStart, row, c.ToString ());
+                }
             }
 
             visualColumn = charVisualEnd;

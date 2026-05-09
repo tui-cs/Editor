@@ -1,3 +1,4 @@
+using System.Text;
 using Terminal.Gui.Input;
 using Terminal.Gui.Text.Document;
 using Terminal.Gui.ViewBase;
@@ -30,10 +31,12 @@ public partial class Editor
 
     private void CreateCommandsAndBindings ()
     {
-        // View's SetupKeyboard pre-binds Enter→Accept and Space→Activate. In a text editor those
-        // are the literal characters, so reclaim them before applying layered bindings.
+        // View's SetupKeyboard pre-binds Enter→Accept, Space→Activate, and Tab→Tab. In a text
+        // editor those are literal characters / indent operations, so reclaim them.
         KeyBindings.Remove (Key.Enter);
         KeyBindings.Remove (Key.Space);
+        KeyBindings.Remove (Key.Tab);
+        KeyBindings.Remove (Key.Tab.WithShift);
 
         // Plain movement (collapses any existing selection)
         AddCommand (Command.Left, () => MoveCaretByCollapsing (-1));
@@ -201,6 +204,100 @@ public partial class Editor
         }
 
         return true;
+    }
+
+    private bool? HandleTab ()
+    {
+        if (HasSelection && SpansMultipleLines ())
+        {
+            IndentSelectedLines ();
+
+            return true;
+        }
+
+        // No selection (or single-line selection): insert whitespace at the caret.
+        if (HasSelection)
+        {
+            ReplaceSelection (string.Empty);
+        }
+
+        if (ConvertTabsToSpaces)
+        {
+            DocumentLine line = _document!.GetLineByOffset (_caretOffset);
+            var logicalCol = _caretOffset - line.Offset;
+            var visualCol = GetVisualColumnFromLogicalColumn (line, logicalCol);
+            var spacesNeeded = IndentationSize - visualCol % IndentationSize;
+            _document!.Insert (_caretOffset, new string (' ', spacesNeeded));
+        }
+        else
+        {
+            _document!.Insert (_caretOffset, "\t");
+        }
+
+        return true;
+    }
+
+    private bool? HandleBackTab ()
+    {
+        if (HasSelection && SpansMultipleLines ())
+        {
+            UnindentSelectedLines ();
+
+            return true;
+        }
+
+        // Unindent the current line (single-line or no selection).
+        UnindentLine (_document!.GetLineByOffset (_caretOffset));
+
+        return true;
+    }
+
+    private bool SpansMultipleLines ()
+    {
+        DocumentLine startLine = _document!.GetLineByOffset (SelectionStart);
+        DocumentLine endLine = _document!.GetLineByOffset (SelectionEnd);
+
+        return startLine.LineNumber != endLine.LineNumber;
+    }
+
+    private void IndentSelectedLines ()
+    {
+        DocumentLine startLine = _document!.GetLineByOffset (SelectionStart);
+        DocumentLine endLine = _document!.GetLineByOffset (SelectionEnd);
+        var indent = ConvertTabsToSpaces ? new string (' ', IndentationSize) : "\t";
+
+        using (_document.RunUpdate ())
+        {
+            for (var lineNum = startLine.LineNumber; lineNum <= endLine.LineNumber; lineNum++)
+            {
+                DocumentLine line = _document.GetLineByNumber (lineNum);
+                _document.Insert (line.Offset, indent);
+            }
+        }
+    }
+
+    private void UnindentSelectedLines ()
+    {
+        DocumentLine startLine = _document!.GetLineByOffset (SelectionStart);
+        DocumentLine endLine = _document!.GetLineByOffset (SelectionEnd);
+
+        using (_document.RunUpdate ())
+        {
+            for (var lineNum = startLine.LineNumber; lineNum <= endLine.LineNumber; lineNum++)
+            {
+                UnindentLine (_document.GetLineByNumber (lineNum));
+            }
+        }
+    }
+
+    private void UnindentLine (DocumentLine line)
+    {
+        ISegment segment = TextUtilities.GetSingleIndentationSegment (_document!, line.Offset, IndentationSize);
+
+        if (segment.Length > 0)
+        {
+            _document!.Remove (segment.Offset, segment.Length);
+        }
     }
 
     private bool? SetCaretAndReturnTrue (int offset)
