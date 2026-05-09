@@ -14,6 +14,20 @@ public partial class Editor
     /// <inheritdoc />
     protected override bool OnKeyDownNotHandled (Key key)
     {
+        if (key == Key.Tab.WithShift)
+        {
+            Unindent ();
+
+            return true;
+        }
+
+        if (key == Key.Tab)
+        {
+            InsertTab ();
+
+            return true;
+        }
+
         if (key.IsCtrl || key.IsAlt)
         {
             return false;

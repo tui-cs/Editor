@@ -181,7 +181,7 @@ public class EditorRenderingTests
     }
 
     [Fact]
-    public async Task Tabs_Render_As_Spaces_Using_Default_TabWidth ()
+    public async Task Tabs_Render_As_Spaces_Using_Default_IndentationSize ()
     {
         await using AppFixture<EditorTestHost> fx = new (() => new ("a\tb"));
         fx.Render ();
@@ -194,15 +194,39 @@ public class EditorRenderingTests
     }
 
     [Fact]
-    public async Task Tabs_Render_As_Spaces_Using_Configured_TabWidth ()
+    public async Task Tabs_Render_As_Spaces_Using_Configured_IndentationSize ()
     {
         await using AppFixture<EditorTestHost> fx = new (() => new ("a\tb"));
-        fx.Top.Editor.TabWidth = 2;
+        fx.Top.Editor.IndentationSize = 2;
         fx.Render ();
 
         Assert.Equal ("a", fx.Driver.Contents![0, 0].Grapheme);
         Assert.Equal (" ", fx.Driver.Contents![0, 1].Grapheme);
         Assert.Equal ("b", fx.Driver.Contents![0, 2].Grapheme);
+    }
+
+    [Fact]
+    public async Task Tabs_Render_With_Glyph_When_ShowTabs_Is_True ()
+    {
+        await using AppFixture<EditorTestHost> fx = new (() => new ("a\tb"));
+        fx.Top.Editor.ShowTabs = true;
+        fx.Render ();
+
+        Assert.Equal ("a", fx.Driver.Contents![0, 0].Grapheme);
+        Assert.Equal ("→", fx.Driver.Contents![0, 1].Grapheme);
+        Assert.Equal (" ", fx.Driver.Contents![0, 2].Grapheme);
+        Assert.Equal (" ", fx.Driver.Contents![0, 3].Grapheme);
+        Assert.Equal ("b", fx.Driver.Contents![0, 4].Grapheme);
+    }
+
+    [Fact]
+    public async Task Grapheme_Cluster_Renders_Correctly_On_Line_With_Tabs ()
+    {
+        await using AppFixture<EditorTestHost> fx = new (() => new ("a\t👨‍👩‍👧‍👦b"));
+        fx.Render ();
+
+        Assert.Equal ("👨‍👩‍👧‍👦", fx.Driver.Contents![0, 4].Grapheme);
+        Assert.Equal ("b", fx.Driver.Contents![0, 6].Grapheme);
     }
 
     [Fact]

@@ -6,6 +6,7 @@ using Terminal.Gui.Drawing;
 using Terminal.Gui.Editor.IntegrationTests.Testing;
 using Terminal.Gui.Input;
 using Terminal.Gui.Testing;
+using Terminal.Gui.Views;
 using TextMateSharp.Grammars;
 using Xunit;
 
@@ -96,6 +97,29 @@ public class TedAppTests
     }
 
     [Fact]
+    public void SaveFile_Preserves_Tabs_From_Loaded_File ()
+    {
+        string filePath = Path.Combine (Path.GetTempPath (), $"ted-tabs-{Guid.NewGuid ():N}.txt");
+        File.WriteAllText (filePath, "\tindented");
+
+        try
+        {
+            TedApp app = new ();
+            app.ShowOpenDialog = () => filePath;
+
+            Assert.True (app.OpenFile ());
+            app.Editor.ConvertTabsToSpaces = true;
+            Assert.True (app.SaveFile ());
+
+            Assert.Equal ("\tindented", File.ReadAllText (filePath));
+        }
+        finally
+        {
+            File.Delete (filePath);
+        }
+    }
+
+    [Fact]
     public void SaveFileAs_Canceled_DoesNotWrite ()
     {
         bool wrote = false;
@@ -156,11 +180,11 @@ public class TedAppTests
     }
 
     [Fact]
-    public async Task Renders_Tab_StatusBar_Item ()
+    public async Task Renders_IndentSize_StatusBar_Item ()
     {
         await using AppFixture<TedApp> fx = new (() => new TedApp ());
 
-        DriverAssert.ContentsContains (fx.Driver, "Tab");
+        DriverAssert.ContentsContains (fx.Driver, "Indent Size");
     }
 
     [Fact]
@@ -179,13 +203,23 @@ public class TedAppTests
     }
 
     [Fact]
-    public async Task TabWidth_StatusBar_NumericUpDown_Changes_Editor_TabWidth ()
+    public async Task IndentationSize_StatusBar_NumericUpDown_Changes_Editor_IndentationSize ()
     {
         await using AppFixture<TedApp> fx = new (() => new TedApp ());
 
-        fx.Top.TabWidthUpDown.Value = 8;
+        fx.Top.IndentationSizeUpDown.Value = 8;
 
-        Assert.Equal (8, fx.Top.Editor.TabWidth);
+        Assert.Equal (8, fx.Top.Editor.IndentationSize);
+    }
+
+    [Fact]
+    public async Task ShowTabs_StatusBar_CheckBox_Changes_Editor_ShowTabs ()
+    {
+        await using AppFixture<TedApp> fx = new (() => new TedApp ());
+
+        fx.Top.ShowTabsCheckBox.Value = CheckState.Checked;
+
+        Assert.True (fx.Top.Editor.ShowTabs);
     }
 
     [Fact]
@@ -216,6 +250,7 @@ public class TedAppTests
 
         DriverAssert.ContentsContains (fx.Driver, "Line Numbers");
         DriverAssert.ContentsContains (fx.Driver, "☐ Line Numbers");
+        DriverAssert.ContentsContains (fx.Driver, "Convert Tabs To Spaces");
 
         fx.Injector.InjectKey (Key.Enter, options);
         fx.Render ();

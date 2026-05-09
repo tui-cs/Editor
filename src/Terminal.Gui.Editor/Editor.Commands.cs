@@ -78,7 +78,7 @@ public partial class Editor
         });
 
         // Editing — selection-aware
-        AddCommand (Command.NewLine, () => InsertOrReplace ("\n"));
+        AddCommand (Command.NewLine, InsertNewLine);
         AddCommand (Command.DeleteCharLeft, DeleteLeft);
         AddCommand (Command.DeleteCharRight, DeleteRight);
 
@@ -172,11 +172,55 @@ public partial class Editor
         return true;
     }
 
+    private bool? InsertNewLine ()
+    {
+        DocumentLine line = _document!.GetLineByOffset (_caretOffset);
+        string indentation = IndentationStrategy.GetIndentationForNewLine (_document, line);
+
+        return InsertOrReplace ("\n" + indentation);
+    }
+
+    private bool? InsertTab ()
+    {
+        if (HasSelection && SelectionSpansMultipleLines ())
+        {
+            IndentSelectedLines ();
+
+            return true;
+        }
+
+        return InsertOrReplace (GetTabInsertionText ());
+    }
+
+    private bool? Unindent ()
+    {
+        if (HasSelection && SelectionSpansMultipleLines ())
+        {
+            UnindentSelectedLines ();
+
+            return true;
+        }
+
+        DocumentLine line = _document!.GetLineByOffset (_caretOffset);
+        ISegment segment = TextUtilities.GetSingleIndentationSegment (_document, line.Offset, IndentationSize);
+
+        if (segment.Length > 0)
+        {
+            _document.Remove (segment.Offset, segment.Length);
+        }
+
+        return true;
+    }
+
     private bool? DeleteLeft ()
     {
         if (HasSelection)
         {
             ReplaceSelection (string.Empty);
+        }
+        else if (TryDeleteIndentationBeforeCaret ())
+        {
+            return true;
         }
         else if (_caretOffset > 0)
         {
@@ -219,6 +263,147 @@ public partial class Editor
     {
         DocumentLine line = _document!.GetLineByOffset (_caretOffset);
         CaretOffset = line.Offset + line.Length;
+
+        return true;
+    }
+
+    private string GetTabInsertionText ()
+    {
+        if (!ConvertTabsToSpaces)
+        {
+            return "\t";
+        }
+
+        int visualColumn = GetCaretColumn ();
+        int remainder = visualColumn % IndentationSize;
+        int spaces = remainder == 0 ? IndentationSize : IndentationSize - remainder;
+
+        return new (' ', spaces);
+    }
+
+    private bool SelectionSpansMultipleLines ()
+    {
+        return _document!.GetLineByOffset (SelectionStart).LineNumber
+               != _document.GetLineByOffset (Math.Max (SelectionStart, SelectionEnd - 1)).LineNumber;
+    }
+
+    private void IndentSelectedLines ()
+    {
+        string indentation = ConvertTabsToSpaces ? new (' ', IndentationSize) : "\t";
+        int start = SelectionStart;
+        int end = SelectionEnd;
+        bool forward = _selectionAnchor <= _caretOffset;
+        int firstLine = _document!.GetLineByOffset (start).LineNumber;
+        int lastLine = _document.GetLineByOffset (Math.Max (start, end - 1)).LineNumber;
+
+        using (_document.RunUpdate ())
+        {
+            for (int lineNumber = firstLine; lineNumber <= lastLine; lineNumber++)
+            {
+                _document.Insert (_document.GetLineByNumber (lineNumber).Offset, indentation);
+            }
+        }
+
+        int newStart = start + indentation.Length;
+        int newEnd = end + ((lastLine - firstLine + 1) * indentation.Length);
+        RestoreSelection (forward, newStart, newEnd);
+    }
+
+    private void UnindentSelectedLines ()
+    {
+        int start = SelectionStart;
+        int end = SelectionEnd;
+        bool forward = _selectionAnchor <= _caretOffset;
+        int firstLine = _document!.GetLineByOffset (start).LineNumber;
+        int lastLine = _document.GetLineByOffset (Math.Max (start, end - 1)).LineNumber;
+        int newStart = start;
+        int newEnd = end;
+
+        using (_document.RunUpdate ())
+        {
+            for (int lineNumber = firstLine; lineNumber <= lastLine; lineNumber++)
+            {
+                DocumentLine line = _document.GetLineByNumber (lineNumber);
+                ISegment segment = TextUtilities.GetSingleIndentationSegment (_document, line.Offset, IndentationSize);
+
+                if (segment.Length == 0)
+                {
+                    continue;
+                }
+
+                if (segment.Offset < newStart)
+                {
+                    newStart -= segment.Length;
+                }
+
+                if (segment.Offset < newEnd)
+                {
+                    newEnd -= segment.Length;
+                }
+
+                _document.Remove (segment.Offset, segment.Length);
+            }
+        }
+
+        RestoreSelection (forward, Math.Max (0, newStart), Math.Max (0, newEnd));
+    }
+
+    private void RestoreSelection (bool forward, int start, int end)
+    {
+        (int start, int end) before = SelectionTuple ();
+
+        if (forward)
+        {
+            _selectionAnchor = start;
+            SetCaretOffset (end, true);
+        }
+        else
+        {
+            _selectionAnchor = end;
+            SetCaretOffset (start, true);
+        }
+
+        RaiseSelectionChangedIfMoved (before);
+        SetNeedsDraw ();
+    }
+
+    private bool TryDeleteIndentationBeforeCaret ()
+    {
+        if (_caretOffset == 0)
+        {
+            return false;
+        }
+
+        DocumentLine line = _document!.GetLineByOffset (_caretOffset);
+        ISegment leading = TextUtilities.GetLeadingWhitespace (_document, line);
+
+        if (_caretOffset != leading.EndOffset || leading.Length == 0)
+        {
+            return false;
+        }
+
+        int scan = line.Offset;
+        ISegment? previous = null;
+
+        while (scan < _caretOffset)
+        {
+            ISegment segment = TextUtilities.GetSingleIndentationSegment (_document, scan, IndentationSize);
+
+            if (segment.Length == 0 || segment.EndOffset > _caretOffset)
+            {
+                break;
+            }
+
+            previous = segment;
+            scan = segment.EndOffset;
+        }
+
+        if (previous is null || previous.EndOffset != _caretOffset)
+        {
+            return false;
+        }
+
+        _document.Remove (previous.Offset, previous.Length);
 
         return true;
     }

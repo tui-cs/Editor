@@ -2,6 +2,7 @@ using System.Drawing;
 using Terminal.Gui.Drawing;
 using Terminal.Gui.Drivers;
 using Terminal.Gui.Input;
+using Terminal.Gui.Text;
 using Terminal.Gui.Text.Document;
 using Terminal.Gui.ViewBase;
 
@@ -106,7 +107,7 @@ public partial class Editor
         int segmentIndex = 0;
         int segmentEnd = segments is { Count: > 0 } ? segments[0].Text.Length : int.MaxValue;
 
-        for (int i = 0; i < text.Length; i++)
+        foreach ((int i, string grapheme) in EnumerateGraphemes (text))
         {
             while (segments is not null && i >= segmentEnd && segmentIndex + 1 < segments.Count)
             {
@@ -118,41 +119,51 @@ public partial class Editor
                 ? normal
                 : segments[segmentIndex].Attribute ?? normal;
 
-            if (hasSelection && lineOffset + i >= selStart && lineOffset + i < selEnd)
+            if (hasSelection && lineOffset + i < selEnd && lineOffset + i + grapheme.Length > selStart)
             {
                 attribute = selected;
             }
 
-            char c = text[i];
-            int width = GetVisualWidthForCharacter (c, visualColumn, TabWidth);
-            int charVisualStart = visualColumn;
-            int charVisualEnd = visualColumn + width;
+            int width = GetVisualWidthForGrapheme (grapheme, visualColumn, IndentationSize);
+            int graphemeVisualStart = visualColumn;
+            int graphemeVisualEnd = visualColumn + width;
 
-            if (charVisualEnd <= visibleStart)
+            if (graphemeVisualEnd <= visibleStart)
             {
-                visualColumn = charVisualEnd;
+                visualColumn = graphemeVisualEnd;
 
                 continue;
             }
 
-            if (charVisualStart >= visibleEnd)
+            if (graphemeVisualStart >= visibleEnd)
             {
                 break;
             }
 
-            int drawStart = Math.Max (charVisualStart, visibleStart);
-            int drawEnd = Math.Min (charVisualEnd, visibleEnd);
+            int drawStart = Math.Max (graphemeVisualStart, visibleStart);
+            int drawEnd = Math.Min (graphemeVisualEnd, visibleEnd);
 
             if (drawEnd > drawStart)
             {
                 SetAttribute (attribute);
-                AddStr (
-                    drawStart - visibleStart,
-                    row,
-                    c == '\t' ? new (' ', drawEnd - drawStart) : c.ToString ());
+
+                if (grapheme == "\t")
+                {
+                    string textToDraw = ShowTabs
+                                            ? "→" + new string (' ', width - 1)
+                                            : new string (' ', width);
+                    AddStr (
+                        drawStart - visibleStart,
+                        row,
+                        textToDraw.Substring (drawStart - graphemeVisualStart, drawEnd - drawStart));
+                }
+                else if (graphemeVisualStart >= visibleStart && graphemeVisualEnd <= visibleEnd)
+                {
+                    AddStr (graphemeVisualStart - visibleStart, row, grapheme);
+                }
             }
 
-            visualColumn = charVisualEnd;
+            visualColumn = graphemeVisualEnd;
         }
     }
 
