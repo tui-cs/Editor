@@ -1,5 +1,6 @@
 // Claude - claude-opus-4-7
 
+using System.Reflection;
 using Terminal.Gui.Text.Document;
 using Terminal.Gui.Views;
 using Xunit;
@@ -139,5 +140,37 @@ public class EditorLogicTests
         editor.TabWidth = 8;
 
         Assert.Equal (5, editor.Viewport.X);
+    }
+
+    // The Editor.SyntaxHighlighter / Editor.SyntaxLanguage surface reuses Terminal.Gui's
+    // Markdown ISyntaxHighlighter as a stopgap until specs/00-plan.md Phase 6 lifts the
+    // AvaloniaEdit Highlighting/ pipeline (HighlightingColorizer : IVisualLineTransformer,
+    // tracked by issue #28). Mark the property [Obsolete] so external code knows not to
+    // take a hard dependency on the temporary contract. See issue #32.
+    //
+    // The CS0618 suppressions here exist so the compiler doesn't fight the test's purpose,
+    // which is to *verify* the obsoletion is wired up.
+    [Fact]
+    public void SyntaxHighlighter_Is_Obsolete ()
+    {
+#pragma warning disable CS0618 // Type or member is obsolete
+        PropertyInfo prop = typeof (Views.Editor).GetProperty (nameof (Views.Editor.SyntaxHighlighter))!;
+#pragma warning restore CS0618 // Type or member is obsolete
+        ObsoleteAttribute? attr = prop.GetCustomAttribute<ObsoleteAttribute> ();
+
+        Assert.NotNull (attr);
+        Assert.Contains ("28", attr!.Message ?? string.Empty);
+    }
+
+    [Fact]
+    public void SyntaxLanguage_Is_Obsolete ()
+    {
+#pragma warning disable CS0618 // Type or member is obsolete
+        PropertyInfo prop = typeof (Views.Editor).GetProperty (nameof (Views.Editor.SyntaxLanguage))!;
+#pragma warning restore CS0618 // Type or member is obsolete
+        ObsoleteAttribute? attr = prop.GetCustomAttribute<ObsoleteAttribute> ();
+
+        Assert.NotNull (attr);
+        Assert.Contains ("28", attr!.Message ?? string.Empty);
     }
 }
