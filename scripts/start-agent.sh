@@ -110,6 +110,6 @@ case "$AGENT" in
     if [[ ! -f AGENTS.md ]]; then
       ln -s CLAUDE.md AGENTS.md
     fi
-    exec codex --auto "$PROMPT"
+    exec codex --dangerously-bypass-approvals-and-sandbox "$PROMPT"
     ;;
 esac
