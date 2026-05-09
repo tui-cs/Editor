@@ -36,8 +36,8 @@ The track-by-track work in §7 and the per-item briefs in §8 are the path to ML
 
 - **Repo + CI**: solution (`Terminal.Gui.Text.slnx`), two src csprojs, three test csprojs, `examples/ted`, `examples/EditorBenchmarks` placeholder, GitHub Actions for build/test/format/release. net10.0, xUnit.v3 exe-style tests.
 - **AvaloniaEdit fork**: pinned at `d7a6b63`; `Document/` and `Utils/` lifted; `third_party/AvaloniaEdit/UPSTREAM.md` records every modification. Document tests cover rope, anchors, line tracker, undo, segment tree, change tracking.
-- **Editor partials**: `Editor.cs`, `Editor.Commands.cs`, `Editor.Keyboard.cs`, `Editor.Mouse.cs`, `Editor.Drawing.cs`, `Editor.Selection.cs`. Caret, sticky virtual column, vertical/horizontal/page navigation, Home/End, Backspace/Delete, Enter, Ctrl+Z/Y, Ctrl+A, Shift+arrows for selection, drag-to-select, click-to-place, mouse wheel, line numbers, an obsoleted Markdown `ISyntaxHighlighter` stopgap, a partial `Editor.TabWidth` tab-expansion shortcut.
-- **ted demo**: file menu, theme dropdown, tab-width numeric updown, status bar, line-numbers toggle.
+- **Editor partials**: `Editor.cs`, `Editor.Commands.cs`, `Editor.Keyboard.cs`, `Editor.Mouse.cs`, `Editor.Drawing.cs`, `Editor.Selection.cs`, `Editor.FindReplace.cs`. Caret, sticky virtual column, vertical/horizontal/page navigation, Home/End, Backspace/Delete, Enter, Ctrl+Z/Y, Ctrl+A, Shift+arrows for selection, drag-to-select, click-to-place, mouse wheel, line numbers, an obsoleted Markdown `ISyntaxHighlighter` stopgap, a partial `Editor.TabWidth` tab-expansion shortcut, **find/next/previous/replace/replace-all** (bespoke `string.IndexOf` over `_document.Text`, not yet on `ISearchStrategy`; no hit highlighting yet; `ReplaceAll` does N separate edits without `OpenUpdateScope`).
+- **ted demo**: file menu (incl. Find / Replace items), `FindReplaceDialog` with find + replace tabs, theme dropdown, tab-width numeric updown, status bar, line-numbers toggle.
 
 ### Not landed (the rest of this document)
 
@@ -45,7 +45,8 @@ The track-by-track work in §7 and the per-item briefs in §8 are the path to ML
 - `Folding/`, `Search/`, `Indentation/`, `Highlighting/` lifts.
 - Anchor-backed caret + selection; multi-caret.
 - Word wrap.
-- Clipboard, find/replace UI, `ReadOnly`, indentation strategy.
+- Clipboard, `ReadOnly`, indentation strategy.
+- Find/Replace **on the proper seam** — current implementation works but bypasses `ISearchStrategy`, lacks hit highlighting, lacks regex/whole-word, lacks F3/Ctrl+F keybindings, and `ReplaceAll` doesn't collapse undo.
 - Proper tab handling (issue #37) — current `Editor.TabWidth` is a stopgap.
 - TextMate highlighting.
 
@@ -322,13 +323,14 @@ These four can run as four independent sub-agents. Each is a near-mechanical lif
 - *Out of scope*: rectangular paste (post-MLP).
 - *Depends on*: nothing.
 
-#### D4 — Find / Replace UI
-- *Goal*: a find dialog (Ctrl+F) and replace dialog (Ctrl+H) consuming `ISearchStrategy`. Hits highlight as a `SearchHitRenderer : IBackgroundRenderer`. F3 / Shift+F3 navigate.
-- *Files in scope*: `Editor.cs` (`SearchStrategy` property; `FindNext`, `FindPrevious`, `Replace`, `ReplaceAll` commands inside `OpenUpdateScope`), new `src/Terminal.Gui.Editor/Rendering/SearchHitRenderer.cs`, `examples/ted/` find/replace dialog wiring.
-- *Tests*: integration tests for find-next wraparound, replace-all undo collapse, hit highlight invalidation on edit.
-- *Definition of done*: ted demo can find + replace; coverage on the strategy seam ≥ 75%.
-- *Out of scope*: incremental search dropdown (post-MLP).
-- *Depends on*: A2 + B1.
+#### D4 — Migrate Find / Replace onto `ISearchStrategy` + hit highlighting + undo grouping + keybindings
+- *Status*: **partially landed.** `Editor.FindReplace.cs` ships `FindNext` / `FindPrevious` / `ReplaceNext` / `ReplaceAll` (case-sensitive option; wrap-around). `examples/ted/FindReplaceDialog.cs` provides the dialog; ted's File menu wires Find / Replace items. **What's missing** is the proper seam, hit-highlighting, undo grouping, and editor-level keybindings — see *Goal*.
+- *Goal*: replace the bespoke `string.IndexOf` implementation with `ISearchStrategy` (lifted in A2). Add a `SearchHitRenderer : IBackgroundRenderer` (B1) that paints the current hit list across the visible viewport. Wrap `ReplaceAll` in a single `Document.OpenUpdateScope ()` so undo collapses to one step (R5). Add `Editor`-level keybindings: F3 → `FindNext`, Shift+F3 → `FindPrevious`, Ctrl+F → open find dialog, Ctrl+H → open replace dialog.
+- *Files in scope*: `Editor.cs` (`SearchStrategy { get; set; }` property), `Editor.FindReplace.cs` (rewrite internals to use `ISearchStrategy`; wrap `ReplaceAll` in `OpenUpdateScope`), `Editor.Commands.cs` (new `FindNext`/`FindPrevious`/`Find`/`Replace` commands + bindings), `Editor.Keyboard.cs` (the binds), new `src/Terminal.Gui.Editor/Rendering/SearchHitRenderer.cs`, `examples/ted/FindReplaceDialog.cs` (expose regex + whole-word toggles to the dialog UI; light wiring only).
+- *Tests*: keep the existing unit/integration tests for the public API contracts; add: regex search (depends on A2's `RegexSearchStrategy`); whole-word; replace-all produces exactly **one** undo step (regression for current N-step bug); hit-highlight invalidation on edit; F3 wraparound integration test.
+- *Definition of done*: `Editor.FindReplace.cs` no longer references `_document.Text.IndexOf`; `SearchStrategy` property is the single seam; `ReplaceAll` undo collapses; hit highlights paint via `IBackgroundRenderer`; ted demo's existing menu items keep working; coverage on the strategy seam ≥ 75%.
+- *Out of scope*: incremental search dropdown (post-alpha).
+- *Depends on*: A2 + B1. Until both land, the current bespoke implementation stays — do **not** weld further features onto it.
 
 #### D5 — Word wrap toggle in ted + `Editor.WordWrap`
 - *Goal*: expose `Editor.WordWrap`; ted status bar toggle.
