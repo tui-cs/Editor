@@ -247,6 +247,10 @@ public sealed class TedApp : Window
 
     private void Action () { }
 
+    private void Find () { ShowFindReplaceDialog (selectReplaceTab: false); }
+
+    private void Replace () { ShowFindReplaceDialog (selectReplaceTab: true); }
+
     private void SelectAll () { }
 
     private void Paste () { }
@@ -343,5 +347,16 @@ public sealed class TedApp : Window
     {
         // TODO: add logic for unsaved changes, confirm quit, etc.
         RequestStop ();
+    }
+
+    private void ShowFindReplaceDialog (bool selectReplaceTab)
+    {
+        if (App is null)
+        {
+            throw new InvalidOperationException ("Cannot show find/replace when Application is not running.");
+        }
+
+        using FindReplaceDialog dialog = new (Editor, selectReplaceTab);
+        App.Run (dialog);
     }
 }
