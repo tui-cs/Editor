@@ -34,7 +34,7 @@ public sealed class TedApp : Window
         {
             AllowCheckStateNone = false,
             CanFocus = false,
-            Title = "_Line Numbers",
+            Text = "_Line Numbers",
             Value = Editor.ShowLineNumbers ? CheckState.Checked : CheckState.UnChecked
         };
 
