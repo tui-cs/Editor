@@ -45,7 +45,7 @@ public class TedAppTests
         Assert.False (app.OpenFile ());
 
         Assert.Null (app.CurrentFilePath);
-        Assert.Equal ("Hello world", app.Editor.Document!.Text);
+        Assert.Equal (string.Empty, app.Editor.Document!.Text);
     }
 
     [Fact]
@@ -129,14 +129,6 @@ public class TedAppTests
         {
             File.Delete (filePath);
         }
-    }
-
-    [Fact]
-    public async Task Renders_HelloWorld_InEditorArea ()
-    {
-        await using AppFixture<TedApp> fx = new (() => new TedApp ());
-
-        DriverAssert.ContentsContains (fx.Driver, "Hello world");
     }
 
     [Fact]

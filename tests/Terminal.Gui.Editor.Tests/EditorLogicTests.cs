@@ -13,15 +13,6 @@ namespace Terminal.Gui.Editor.Tests;
 public class EditorLogicTests
 {
     [Fact]
-    public void Default_DocumentSays_HelloWorld ()
-    {
-        Views.Editor editor = new ();
-
-        Assert.NotNull (editor.Document);
-        Assert.Equal ("Hello world", editor.Document.Text);
-    }
-
-    [Fact]
     public void Default_DocumentIsEmpty ()
     {
         Views.Editor editor = new ();
