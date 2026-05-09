@@ -58,15 +58,15 @@ public class EditorLogicTests
 
         Assert.Same (replacement, editor.Document);
 
-        // Mutating the original after the swap should NOT raise DocumentChanged on the editor.
-        var fired = false;
-        editor.DocumentChanged += (_, _) => fired = true;
-        original?.Insert (0, "x");
-        Assert.False (fired);
+        // Mutating the original after the swap should NOT move the editor's caret — the editor
+        // must have unsubscribed from the original document's Changed event.
+        editor.CaretOffset = 0;
+        original?.Insert (0, "xxx");
+        Assert.Equal (0, editor.CaretOffset);
 
-        // Mutating the replacement does raise it.
+        // Mutating the replacement still drives the editor's caret arithmetic.
         replacement.Insert (0, "y");
-        Assert.True (fired);
+        Assert.Equal (1, editor.CaretOffset);
     }
 
     [Fact]

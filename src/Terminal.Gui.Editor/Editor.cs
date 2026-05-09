@@ -129,9 +129,6 @@ public partial class Editor : View
         }
     }
 
-    /// <summary>Raised whenever <see cref="Document" /> raises its own <c>Changed</c> event.</summary>
-    public event EventHandler<DocumentChangeEventArgs>? DocumentChanged;
-
     /// <summary>Raised whenever <see cref="CaretOffset" /> changes.</summary>
     public event EventHandler? CaretChanged;
 
@@ -161,29 +158,45 @@ public partial class Editor : View
         }
     }
 
-    private void OnDocumentChanged (object? sender, DocumentChangeEventArgs e)
+    /// <inheritdoc />
+    protected override void Dispose (bool disposing)
     {
-        // AnchorMovementType.AfterInsertion semantics: an insert at the caret moves the caret past
-        // the inserted text; an insert strictly after the caret leaves it alone; a removal that
-        // straddles the caret snaps it to the removal start.
-        if (_caretOffset >= e.Offset)
+        if (disposing && _document is not null)
         {
-            if (_caretOffset < e.Offset + e.RemovalLength)
-            {
-                _caretOffset = e.Offset;
-            }
-            else
-            {
-                _caretOffset = _caretOffset - e.RemovalLength + e.InsertionLength;
-            }
-
-            _virtualCaretColumn = GetCaretColumn ();
+            // Without this the document keeps the editor alive via the Changed subscription whenever
+            // external code retains the TextDocument (test fixtures, future shared docs across panes,
+            // etc.). The Document setter unsubscribes on swap; this covers View-teardown.
+            _document.Changed -= OnDocumentChanged;
         }
 
+        base.Dispose (disposing);
+    }
+
+    private void OnDocumentChanged (object? sender, DocumentChangeEventArgs e)
+    {
+        // Content-size has to refresh first so EnsureCaretVisible inside SetCaretOffset clamps the
+        // viewport against the new line count.
         UpdateContentSize ();
+
+        // Manual stand-in for TextAnchor.AfterInsertion until specs/00-plan.md §6 lands. The math:
+        // an insert at-or-before the caret pushes it forward by InsertionLength; an insert strictly
+        // after the caret leaves it alone; a removal that straddles the caret snaps it to the
+        // removal start; a removal entirely before the caret slides it back by RemovalLength.
+        if (_caretOffset >= e.Offset)
+        {
+            int target = _caretOffset < e.Offset + e.RemovalLength
+                             ? e.Offset
+                             : _caretOffset - e.RemovalLength + e.InsertionLength;
+
+            // Route through SetCaretOffset so CaretChanged fires when the caret actually moves.
+            // SetCaretOffset also handles EnsureCaretVisible + SetNeedsDraw.
+            SetCaretOffset (target, true);
+
+            return;
+        }
+
         EnsureCaretVisible ();
         SetNeedsDraw ();
-        DocumentChanged?.Invoke (this, e);
     }
 
     private void UpdateContentSize ()
