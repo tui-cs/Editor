@@ -20,11 +20,10 @@ All scripts are bash, target macOS (the Mac mini host), and are idempotent — r
 # Day -1, from any clone (creates the 3 mirrored issues on github.com):
 ./scripts/create-test-run-issues.sh
 
-# Day 0 — ONE tmux session, one window per agent:
-tmux new-session -d -s autonomy
-tmux new-window -t autonomy -n claude  './scripts/start-agent.sh claude'
-tmux new-window -t autonomy -n codex   './scripts/start-agent.sh codex'
-# Copilot is dispatched by assigning the agent:copilot issue on github.com — no local window.
+# Day 0 — one-liner:
+./scripts/start-experiment.sh
+tmux attach -t autonomy
+# Then go to https://github.com/gui-cs/Text/issues/44 and assign Copilot.
 
 # Day N — when you've seen enough, capture the artifact:
 ./scripts/collect-run.sh test-2026-05-09
