@@ -84,21 +84,21 @@ public partial class Editor
 
     private bool ScrollMouseWheel (MouseFlags flags)
     {
-        bool? scrolled = flags switch
+        bool scrolled = flags switch
         {
-            _ when flags.HasFlag (MouseFlags.WheeledUp) => ScrollVertical (-1),
-            _ when flags.HasFlag (MouseFlags.WheeledDown) => ScrollVertical (1),
-            _ when flags.HasFlag (MouseFlags.WheeledLeft) => ScrollHorizontal (-1),
-            _ when flags.HasFlag (MouseFlags.WheeledRight) => ScrollHorizontal (1),
-            _ => (bool?)false
+            _ when flags.HasFlag (MouseFlags.WheeledUp) => ScrollVertical (-1) == true,
+            _ when flags.HasFlag (MouseFlags.WheeledDown) => ScrollVertical (1) == true,
+            _ when flags.HasFlag (MouseFlags.WheeledLeft) => ScrollHorizontal (-1) == true,
+            _ when flags.HasFlag (MouseFlags.WheeledRight) => ScrollHorizontal (1) == true,
+            _ => false
         };
 
-        if (scrolled == true)
+        if (scrolled)
         {
             SetNeedsDraw ();
         }
 
-        return scrolled == true;
+        return scrolled;
     }
 
     /// <summary>

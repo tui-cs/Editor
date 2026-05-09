@@ -205,7 +205,7 @@ public class EditorTests
     [Fact]
     public async Task MouseWheel_Scrolls_LongDocument ()
     {
-        var lines = new string[50];
+        string[] lines = new string[50];
         for (int i = 0; i < 50; i++)
         {
             lines[i] = $"line-{i:00}";
