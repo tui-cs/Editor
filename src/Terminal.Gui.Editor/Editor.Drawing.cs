@@ -3,6 +3,7 @@ using Terminal.Gui.Drawing;
 using Terminal.Gui.Drivers;
 using Terminal.Gui.Text.Document;
 using Terminal.Gui.ViewBase;
+using Terminal.Gui.Views.Rendering;
 using Attribute = Terminal.Gui.Drawing.Attribute;
 
 namespace Terminal.Gui.Views;
@@ -53,13 +54,12 @@ public partial class Editor
 
             DrawLineContent (
                 row,
-                text,
+                line,
                 visibleStart,
                 visibleEnd,
                 segments,
                 normal,
                 selected,
-                line.Offset,
                 hasSelection,
                 selStart,
                 selEnd);
@@ -91,68 +91,32 @@ public partial class Editor
 
     private void DrawLineContent (
         int row,
-        string text,
+        DocumentLine line,
         int visibleStart,
         int visibleEnd,
         IReadOnlyList<StyledSegment>? segments,
         Attribute normal,
         Attribute selected,
-        int lineOffset,
         bool hasSelection,
         int selStart,
         int selEnd)
     {
-        var visualColumn = 0;
-        var segmentIndex = 0;
-        var segmentEnd = segments is { Count: > 0 } ? segments[0].Text.Length : int.MaxValue;
+        CellVisualLine visualLine = BuildVisualLine (
+            line,
+            segments,
+            normal,
+            selected,
+            hasSelection ? selStart : 0,
+            hasSelection ? selEnd : 0);
 
-        for (var i = 0; i < text.Length; i++)
+        foreach (IBackgroundRenderer renderer in BackgroundRenderers)
         {
-            while (segments is not null && i >= segmentEnd && segmentIndex + 1 < segments.Count)
-            {
-                segmentIndex++;
-                segmentEnd += segments[segmentIndex].Text.Length;
-            }
+            renderer.Draw (this, visualLine, row, Viewport);
+        }
 
-            Attribute attribute = segments is null
-                ? normal
-                : segments[segmentIndex].Attribute ?? normal;
-
-            if (hasSelection && lineOffset + i >= selStart && lineOffset + i < selEnd)
-            {
-                attribute = selected;
-            }
-
-            var c = text[i];
-            var width = GetVisualWidthForCharacter (c, visualColumn, TabWidth);
-            var charVisualStart = visualColumn;
-            var charVisualEnd = visualColumn + width;
-
-            if (charVisualEnd <= visibleStart)
-            {
-                visualColumn = charVisualEnd;
-
-                continue;
-            }
-
-            if (charVisualStart >= visibleEnd)
-            {
-                break;
-            }
-
-            var drawStart = Math.Max (charVisualStart, visibleStart);
-            var drawEnd = Math.Min (charVisualEnd, visibleEnd);
-
-            if (drawEnd > drawStart)
-            {
-                SetAttribute (attribute);
-                AddStr (
-                    drawStart - visibleStart,
-                    row,
-                    c == '\t' ? new (' ', drawEnd - drawStart) : c.ToString ());
-            }
-
-            visualColumn = charVisualEnd;
+        foreach (CellVisualLineElement element in visualLine.Elements)
+        {
+            element.Draw (this, 0, row, visibleStart, visibleEnd);
         }
     }
 
@@ -160,7 +124,7 @@ public partial class Editor
     {
         if (!HasFocus || _document is null)
         {
-            Cursor = new ();
+            Cursor = new Cursor ();
 
             return;
         }
@@ -173,68 +137,12 @@ public partial class Editor
 
         if (row < 0 || row >= viewport.Height || col < 0 || col >= viewport.Width)
         {
-            Cursor = new ();
+            Cursor = new Cursor ();
 
             return;
         }
 
         Point screen = ViewportToScreen (new Point (col, row));
-        Cursor = new () { Position = screen, Style = CursorStyle.BlinkingBar };
-    }
-
-    /// <inheritdoc />
-    protected override void OnDrawComplete (DrawContext? context)
-    {
-        base.OnDrawComplete (context);
-
-        if (App?.Driver is { } driver)
-        {
-            DrawLineNumbers (driver);
-        }
-    }
-
-    private void DrawLineNumbers (IDriver driver)
-    {
-        if (!_showLineNumbers || _document is null)
-        {
-            return;
-        }
-
-        var width = Padding.Thickness.Left;
-
-        if (width <= 0)
-        {
-            return;
-        }
-
-        Rectangle viewport = Viewport;
-        Rectangle screen = ViewportToScreen ();
-        Region? clip = GetClip ();
-        Attribute previous = driver.SetAttribute (GetAttributeForRole (VisualRole.Normal));
-
-        SetClipToScreen ();
-
-        try
-        {
-            for (var row = 0; row < viewport.Height; row++)
-            {
-                var lineIndex = viewport.Y + row;
-                var text = lineIndex < _document.LineCount
-                    ? (lineIndex + 1).ToString ().PadLeft (width - 1).PadRight (width)
-                    : new string (' ', width);
-
-                driver.Move (screen.X - width, screen.Y + row);
-                driver.AddStr (text);
-            }
-        }
-        finally
-        {
-            if (clip is not null)
-            {
-                SetClip (clip);
-            }
-
-            driver.SetAttribute (previous);
-        }
+        Cursor = new Cursor { Position = screen, Style = CursorStyle.BlinkingBar };
     }
 }

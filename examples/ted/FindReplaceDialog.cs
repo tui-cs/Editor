@@ -26,9 +26,9 @@ internal sealed class FindReplaceDialog : Dialog
             initialSearchText = document.Text.Substring (start, end - start);
         }
 
-        _findTextField = new () { X = 11, Y = 1, Width = Dim.Fill (2), Text = initialSearchText };
-        _replaceFindTextField = new () { X = 11, Y = 1, Width = Dim.Fill (2), Text = initialSearchText };
-        _replaceWithTextField = new () { X = 11, Y = 3, Width = Dim.Fill (2) };
+        _findTextField = new TextField { X = 11, Y = 1, Width = Dim.Fill (2), Text = initialSearchText };
+        _replaceFindTextField = new TextField { X = 11, Y = 1, Width = Dim.Fill (2), Text = initialSearchText };
+        _replaceWithTextField = new TextField { X = 11, Y = 3, Width = Dim.Fill (2) };
 
         Tabs tabs = new () { Width = Dim.Fill (), Height = Dim.Fill () };
         View findTab = BuildFindTab (editor);

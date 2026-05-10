@@ -88,27 +88,36 @@ public partial class Editor
         // History
         AddCommand (Command.Undo, () =>
         {
-            if (_document!.UndoStack.CanUndo)
+            if (!_document!.UndoStack.CanUndo)
             {
-                ClearSelection ();
-                _document!.UndoStack.Undo ();
+                return true;
             }
+
+            ClearSelection ();
+            _document!.UndoStack.Undo ();
 
             return true;
         });
 
         AddCommand (Command.Redo, () =>
         {
-            if (_document!.UndoStack.CanRedo)
+            if (!_document!.UndoStack.CanRedo)
             {
-                ClearSelection ();
-                _document!.UndoStack.Redo ();
+                return true;
             }
+
+            ClearSelection ();
+            _document!.UndoStack.Redo ();
 
             return true;
         });
 
         ApplyKeyBindings (View.DefaultKeyBindings, DefaultKeyBindings);
+
+        // Reclaim Tab before the framework consumes it; the editor handles Tab / Shift+Tab
+        // in OnKeyDownNotHandled so indentation still works without a command binding.
+        KeyBindings.Remove (Key.Tab);
+        KeyBindings.Remove (Key.Tab.WithShift);
 
         MouseBindings.Add (MouseFlags.WheeledUp, Command.ScrollUp);
         MouseBindings.Add (MouseFlags.WheeledDown, Command.ScrollDown);
@@ -180,6 +189,10 @@ public partial class Editor
         if (HasSelection)
         {
             ReplaceSelection (string.Empty);
+        }
+        else if (TryDeleteIndentationLeft ())
+        {
+            return true;
         }
         else if (_caretOffset > 0)
         {

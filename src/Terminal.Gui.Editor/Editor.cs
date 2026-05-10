@@ -3,6 +3,8 @@ using System.Drawing;
 using Terminal.Gui.Drawing;
 using Terminal.Gui.Text.Document;
 using Terminal.Gui.ViewBase;
+using Terminal.Gui.Views.Rendering;
+using Attribute = Terminal.Gui.Drawing.Attribute;
 
 namespace Terminal.Gui.Views;
 
@@ -14,8 +16,10 @@ namespace Terminal.Gui.Views;
 /// </summary>
 public partial class Editor : View
 {
+    private readonly VisualLineBuilder _visualLineBuilder = new ();
     private int _caretOffset;
     private TextDocument? _document;
+    private LineNumberView? _lineNumberView;
     private bool _showLineNumbers;
     private ISyntaxHighlighter? _syntaxHighlighter;
 
@@ -31,7 +35,7 @@ public partial class Editor : View
     {
         CanFocus = true;
         CreateCommandsAndBindings ();
-        Document = new ();
+        Document = new TextDocument ();
     }
 
     /// <summary>The backing <see cref="TextDocument" />. Setting this rewires change handlers and clamps the caret.</summary>
@@ -155,8 +159,8 @@ public partial class Editor : View
         }
     } = "csharp";
 
-    /// <summary>Visual tab-stop width in cells. Defaults to 4.</summary>
-    public int TabWidth
+    /// <summary>Width of one indentation unit, in terminal cells. Defaults to 4.</summary>
+    public int IndentationSize
     {
         get;
         set
@@ -175,6 +179,31 @@ public partial class Editor : View
             SetNeedsDraw ();
         }
     } = 4;
+
+    /// <summary>Whether pressing Tab inserts spaces instead of a tab character.</summary>
+    public bool ConvertTabsToSpaces { get; set; }
+
+    /// <summary>Whether tab characters render with a visible glyph in their first cell.</summary>
+    public bool ShowTabs
+    {
+        get;
+        set
+        {
+            if (field == value)
+            {
+                return;
+            }
+
+            field = value;
+            SetNeedsDraw ();
+        }
+    }
+
+    /// <summary>Transformers applied to visual lines after they are built.</summary>
+    public IList<IVisualLineTransformer> LineTransformers { get; } = [];
+
+    /// <summary>Background renderers drawn before visual-line elements.</summary>
+    public IList<IBackgroundRenderer> BackgroundRenderers { get; } = [];
 
     /// <summary>Raised whenever <see cref="CaretOffset" /> changes.</summary>
     public event EventHandler? CaretChanged;
@@ -259,7 +288,7 @@ public partial class Editor : View
             .Max ();
 
         // +1 column lets the caret sit just past the end-of-line.
-        SetContentSize (new (maxWidth + 1, _document.LineCount));
+        SetContentSize (new Size (maxWidth + 1, _document.LineCount));
     }
 
     private void UpdateLineNumberPadding ()
@@ -267,12 +296,44 @@ public partial class Editor : View
         Thickness thickness = Padding.Thickness;
         var left = _showLineNumbers && _document is not null ? GetLineNumberPaddingWidth () : 0;
 
-        if (thickness.Left == left)
+        if (thickness.Left != left)
         {
-            return;
+            Padding.Thickness = new Thickness (left, thickness.Top, thickness.Right, thickness.Bottom);
         }
 
-        Padding.Thickness = new (left, thickness.Top, thickness.Right, thickness.Bottom);
+        SyncLineNumberView (left);
+    }
+
+    private void SyncLineNumberView (int left)
+    {
+        if (left > 0)
+        {
+            if (_lineNumberView is null)
+            {
+                // Hosting LineNumberView as a SubView of Padding (instead of painting in
+                // OnDrawComplete via the driver) keeps it inside the View hierarchy, so popovers
+                // and menus correctly clip it instead of being drawn over.
+                _lineNumberView = new LineNumberView (this)
+                {
+                    X = 0,
+                    Y = 0,
+                    Width = left,
+                    Height = Dim.Fill ()
+                };
+                Padding.GetOrCreateView ().Add (_lineNumberView);
+            }
+            else
+            {
+                _lineNumberView.Width = left;
+                _lineNumberView.SetNeedsDraw ();
+            }
+        }
+        else if (_lineNumberView is not null)
+        {
+            Padding.GetOrCreateView ().Remove (_lineNumberView);
+            _lineNumberView.Dispose ();
+            _lineNumberView = null;
+        }
     }
 
     private int GetLineNumberPaddingWidth ()
@@ -317,58 +378,36 @@ public partial class Editor : View
 
     private int GetVisualColumnFromLogicalColumn (DocumentLine line, int logicalColumn)
     {
-        var text = _document!.GetText (line);
-        var clampedLogical = Math.Clamp (logicalColumn, 0, text.Length);
-        var visualColumn = 0;
-
-        for (var i = 0; i < clampedLogical; i++)
-        {
-            visualColumn += GetVisualWidthForCharacter (text[i], visualColumn, TabWidth);
-        }
-
-        return visualColumn;
+        // TODO(VisualLineBuilder): delete this wrapper once caret callers work directly with CellVisualLine.
+        return BuildVisualLine (line).GetVisualColumn (logicalColumn);
     }
 
     private int GetLogicalColumnFromVisualColumn (DocumentLine line, int visualColumn)
     {
-        var text = _document!.GetText (line);
-        var clampedVisual = Math.Max (0, visualColumn);
-        var currentVisual = 0;
-
-        for (var logical = 0; logical < text.Length; logical++)
-        {
-            var width = GetVisualWidthForCharacter (text[logical], currentVisual, TabWidth);
-            var nextVisual = currentVisual + width;
-
-            if (nextVisual >= clampedVisual)
-            {
-                if (text[logical] == '\t' && clampedVisual > currentVisual)
-                {
-                    // Clicking or moving inside the visual span produced by '\t' snaps the caret
-                    // after the tab character because there is no representable position "inside"
-                    // a single tab code point.
-                    return logical + 1;
-                }
-
-                return clampedVisual >= nextVisual ? logical + 1 : logical;
-            }
-
-            currentVisual = nextVisual;
-        }
-
-        return text.Length;
+        // TODO(VisualLineBuilder): delete this wrapper once mouse callers work directly with CellVisualLine.
+        return BuildVisualLine (line).GetRelativeOffset (visualColumn);
     }
 
-    private static int GetVisualWidthForCharacter (char c, int visualColumn, int tabWidth)
+    private CellVisualLine BuildVisualLine (
+        DocumentLine line,
+        IReadOnlyList<StyledSegment>? styledSegments = null,
+        Attribute? normalAttribute = null,
+        Attribute? selectedAttribute = null,
+        int selectionStart = 0,
+        int selectionEnd = 0)
     {
-        if (c != '\t')
-        {
-            return 1;
-        }
+        VisualLineBuildContext context = new (
+            _document!,
+            IndentationSize,
+            ShowTabs,
+            normalAttribute ?? Attribute.Default,
+            selectedAttribute ?? Attribute.Default,
+            styledSegments,
+            selectionStart,
+            selectionEnd,
+            LineTransformers);
 
-        var remainder = visualColumn % tabWidth;
-
-        return remainder == 0 ? tabWidth : tabWidth - remainder;
+        return _visualLineBuilder.Build (line, context);
     }
 
     private void EnsureCaretVisible ()

@@ -154,10 +154,14 @@ public class EditorMouseTests
     }
 
     [Fact]
-    public async Task LeftClick_Inside_TabExpansion_Snaps_After_Tab_Character ()
+    public async Task LeftClick_Inside_TabExpansion_Snaps_To_Nearest_Tab_Edge ()
     {
         await using AppFixture<EditorTestHost> fx = new (() => new ("a\tb"));
         fx.Top.Editor.SetFocus ();
+
+        InjectClick (fx, new (2, 0));
+
+        Assert.Equal (1, fx.Top.Editor.CaretOffset);
 
         InjectClick (fx, new (3, 0));
 
