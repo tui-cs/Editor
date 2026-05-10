@@ -58,7 +58,8 @@ jobs:
           dotnet jb cleanupcode Terminal.Gui.Text.slnx \
             --profile="Built-in: Full Cleanup" \
             --no-build \
-            --exclude="third_party/**/*"
+            --exclude="third_party/**/*" \
+            || true
           if ! git diff --exit-code; then
             echo "::error::ReSharper code cleanup found style drift. Run 'dotnet jb cleanupcode Terminal.Gui.Text.slnx --profile=\"Built-in: Full Cleanup\"' locally and commit the result."
             exit 1

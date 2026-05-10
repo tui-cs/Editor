@@ -2,6 +2,7 @@
 
 using Terminal.Gui.Drawing;
 using Terminal.Gui.Editor.IntegrationTests.Testing;
+using Terminal.Gui.Text;
 using Attribute = Terminal.Gui.Drawing.Attribute;
 using Terminal.Gui.Input;
 using Terminal.Gui.Testing;
@@ -181,7 +182,7 @@ public class EditorRenderingTests
     }
 
     [Fact]
-    public async Task Tabs_Render_As_Spaces_Using_Default_TabWidth ()
+    public async Task Tabs_Render_As_Spaces_Using_Default_IndentationSize ()
     {
         await using AppFixture<EditorTestHost> fx = new (() => new ("a\tb"));
         fx.Render ();
@@ -194,15 +195,62 @@ public class EditorRenderingTests
     }
 
     [Fact]
-    public async Task Tabs_Render_As_Spaces_Using_Configured_TabWidth ()
+    public async Task Tabs_Render_As_Spaces_Using_Configured_IndentationSize ()
     {
         await using AppFixture<EditorTestHost> fx = new (() => new ("a\tb"));
-        fx.Top.Editor.TabWidth = 2;
+        fx.Top.Editor.IndentationSize = 2;
         fx.Render ();
 
         Assert.Equal ("a", fx.Driver.Contents![0, 0].Grapheme);
         Assert.Equal (" ", fx.Driver.Contents![0, 1].Grapheme);
         Assert.Equal ("b", fx.Driver.Contents![0, 2].Grapheme);
+    }
+
+    [Fact]
+    public async Task ShowTabs_Renders_Glyph_At_First_Tab_Cell ()
+    {
+        await using AppFixture<EditorTestHost> fx = new (() => new ("a\tb"));
+        fx.Top.Editor.ShowTabs = true;
+        fx.Render ();
+
+        Assert.Equal ("a", fx.Driver.Contents![0, 0].Grapheme);
+        Assert.Equal ("→", fx.Driver.Contents![0, 1].Grapheme);
+        Assert.Equal (" ", fx.Driver.Contents![0, 2].Grapheme);
+        Assert.Equal (" ", fx.Driver.Contents![0, 3].Grapheme);
+        Assert.Equal ("b", fx.Driver.Contents![0, 4].Grapheme);
+    }
+
+    [Fact]
+    public async Task Grapheme_Cluster_After_Tab_Renders_At_Expanded_Column ()
+    {
+        const string emoji = "👩‍💻";
+
+        await using AppFixture<EditorTestHost> fx = new (() => new ($"a\t{emoji}b"));
+        fx.Render ();
+
+        var emojiColumn = 4;
+        var nextColumn = emojiColumn + emoji.GetColumns ();
+
+        Assert.Equal (emoji, fx.Driver.Contents![0, emojiColumn].Grapheme);
+        Assert.Equal ("b", fx.Driver.Contents![0, nextColumn].Grapheme);
+    }
+
+    [Fact]
+    public async Task Wide_Grapheme_At_Viewport_Right_Edge_Still_Renders ()
+    {
+        // "abc💥" with viewport width=4 means visibleEnd=4. The emoji sits at visual
+        // column 3, occupying 2 cells (VisualEndColumn=5 > visibleEnd=4). The bug was
+        // that TextRunElement.Draw skipped rendering entirely because VisualEndColumn
+        // exceeded visibleEnd — leaving column 3 blank.
+        const string emoji = "\U0001f4a5"; // 💥 — 2 cells wide
+
+        await using AppFixture<EditorTestHost> fx = new (() => new ($"abc{emoji}"), width: 4, height: 1);
+        fx.Render ();
+
+        Assert.Equal ("a", fx.Driver.Contents![0, 0].Grapheme);
+        Assert.Equal ("b", fx.Driver.Contents![0, 1].Grapheme);
+        Assert.Equal ("c", fx.Driver.Contents![0, 2].Grapheme);
+        Assert.Equal (emoji, fx.Driver.Contents![0, 3].Grapheme);
     }
 
     [Fact]
