@@ -47,9 +47,9 @@ The rest of this spec is written for the **full run**. The test run uses the sam
                  │  │ tmux session  │  one window per agent │
                  │  └───────────────┘                       │
                  │                                          │
-                 │  /work/claude/  ──┐                      │
-                 │  /work/codex/   ──┼─ separate clones,    │
-                 │  /work/copilot/ ──┘  separate worktrees  │
+                 │  $HOME/s/Terminal.Gui.Text/claude/  ──┐                      │
+                 │  $HOME/s/Terminal.Gui.Text/codex/   ──┼─ separate clones,    │
+                 │  $HOME/s/Terminal.Gui.Text/copilot/ ──┘  separate worktrees  │
                  └──────────────────────────────────────────┘
                               │
                               │  pushes to
@@ -80,7 +80,7 @@ gh extension install github/gh-copilot  # only if you also want a local Copilot 
                                         # entirely on github.com — see §4.
 
 # Repo bootstrap (one-time)
-mkdir -p /work && cd /work
+mkdir -p /work && cd $HOME/s/Terminal.Gui.Text
 for who in claude codex copilot; do
   gh repo clone gui-cs/Text $who
   (cd $who && git checkout develop && dotnet tool restore)
@@ -100,7 +100,7 @@ Each agent has a different idiom for "long-running autonomous." Use the native o
 
 ### 3.1 Claude Code
 
-- Run in `/work/claude/` with the `.claude/settings.json` already in this repo (style enforcement Stop hook + permission allowlist).
+- Run in `$HOME/s/Terminal.Gui.Text/claude/` with the `.claude/settings.json` already in this repo (style enforcement Stop hook + permission allowlist).
 - Kick-off prompt: a single shell command in the tmux window:
   ```
   claude --dangerously-skip-permissions \
@@ -115,7 +115,7 @@ Each agent has a different idiom for "long-running autonomous." Use the native o
 
 ### 3.2 OpenAI Codex
 
-- Run in `/work/codex/` with `codex --auto` (or whatever the current "approve everything" flag is at experiment time).
+- Run in `$HOME/s/Terminal.Gui.Text/codex/` with `codex --auto` (or whatever the current "approve everything" flag is at experiment time).
 - Codex has its own `AGENTS.md` convention. Either:
   - copy this repo's `CLAUDE.md` to `AGENTS.md`, or
   - create a thin `AGENTS.md` that points at `CLAUDE.md` ("read this, also").
@@ -298,7 +298,7 @@ The §7 comparison rubric counts how many issues each agent files and whether ea
 Replace the §4.1 and §4.2 kick-off prompts with one focused on the assigned issue:
 
 ```
-# Claude (in /work/claude/)
+# Claude (in $HOME/s/Terminal.Gui.Text/claude/)
 claude --dangerously-skip-permissions \
   "Take the issue assigned to you (label agent:claude, experiment).
    Read it. Read CLAUDE.md and specs/00-plan.md §4, §8 D1, §9.
@@ -336,7 +336,7 @@ Operator helpers live in `./scripts/`:
 | Script | Purpose |
 |---|---|
 | `setup-host.sh` | One-time Mac mini bootstrap (brew, dotnet SDK, gh, tmux, claude, codex). |
-| `setup-agent-clone.sh <agent>` | Per-agent clone in `/work/<agent>/`, `dotnet tool restore`, gh-auth check. Idempotent. |
+| `setup-agent-clone.sh <agent>` | Per-agent clone in `$HOME/s/Terminal.Gui.Text/<agent>/`, `dotnet tool restore`, gh-auth check. Idempotent. |
 | `create-test-run-issues.sh` | Creates the three D1/tabs issues with the right labels (test run only). |
 | `start-agent.sh <agent>` | Launches the agent in a tmux window with the right kick-off prompt. |
 | `collect-run.sh <run-name>` | Pulls per-agent PRs, transcripts, and a spend snapshot into `specs/runs/<run-name>/`. |

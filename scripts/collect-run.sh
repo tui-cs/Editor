@@ -18,7 +18,7 @@ runs from, NOT the per-agent clones), and populates it with:
 
   - prs.json                   — PRs filtered by experiment branch prefixes
   - <agent>-transcript.txt     — best-effort transcript dump (Claude/Codex)
-  - <agent>-final.md           — copy of the agent's self-report from /work/<agent>/
+  - <agent>-final.md           — copy of the agent's self-report from $HOME/s/Terminal.Gui.Text/<agent>/
   - spend.txt                  — empty template; you fill in $$ from each
                                  provider's dashboard
   - comparison.md              — empty template per spec §7
@@ -41,7 +41,7 @@ gh pr list --state all \
   > "$OUT/prs.json" || true
 
 for AGENT in claude codex copilot; do
-  WORK="/work/$AGENT"
+  WORK="$HOME/s/Terminal.Gui.Text/$AGENT"
   if [[ -f "$WORK/specs/runs/test-$AGENT-final.md" ]]; then
     cp "$WORK/specs/runs/test-$AGENT-final.md" "$OUT/$AGENT-final.md"
   elif [[ -f "$WORK/specs/runs/$AGENT-final.md" ]]; then

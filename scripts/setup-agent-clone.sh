@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# setup-agent-clone.sh — clone gui-cs/Text into /work/<agent>/, restore tools,
+# setup-agent-clone.sh — clone gui-cs/Text into $HOME/s/Terminal.Gui.Text/<agent>/, restore tools,
 # and verify the per-agent gh auth posture.
 #
 # Per spec §3: each agent runs in its own clone (not a worktree) with its own
@@ -17,7 +17,7 @@ Usage: ./scripts/setup-agent-clone.sh <agent>
 
   agent: claude | codex | copilot
 
-Idempotent. Clones gui-cs/Text into /work/<agent>/ if not already there,
+Idempotent. Clones gui-cs/Text into $HOME/s/Terminal.Gui.Text/<agent>/ if not already there,
 runs `dotnet tool restore`, and verifies the gh auth identity for that
 clone is distinct from the other agents'.
 
@@ -36,7 +36,7 @@ case "$AGENT" in
   *) echo "error: agent must be one of: claude | codex | copilot" >&2; exit 1 ;;
 esac
 
-WORK="/work/$AGENT"
+WORK="$HOME/s/Terminal.Gui.Text/$AGENT"
 
 if [[ ! -d "$WORK/.git" ]]; then
   echo "==> Cloning gui-cs/Text into $WORK"
@@ -68,6 +68,16 @@ warning: no gh auth identity detected for $WORK.
 EOF
 else
   echo "    Active gh identity: $identity"
+fi
+
+echo "==> Setting per-clone git author (for unambiguous commit attribution)"
+if [[ "$AGENT" != "copilot" ]]; then
+  git config user.name "${AGENT}-agent"
+  git config user.email "${AGENT}-agent@experiment"
+  echo "    user.name = $(git config user.name)"
+  echo "    user.email = $(git config user.email)"
+else
+  echo "    copilot: Copilot sets its own commit author — skipping."
 fi
 
 echo
