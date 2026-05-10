@@ -1,0 +1,11 @@
+# Fill in from each provider's dashboard.
+# (No automated lookup — APIs differ across providers and break.)
+
+claude:   USD ____ (start) → USD ____ (end) = USD ____
+codex:    USD ____ (start) → USD ____ (end) = USD ____
+copilot:  Copilot org seat ____ (no per-task billing surfaced in dashboard)
+
+wall-clock minutes per agent:
+  claude:   ____
+  codex:    ____
+  copilot:  ____

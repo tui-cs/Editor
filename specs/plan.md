@@ -54,6 +54,7 @@ specs/                              # spec-kit structure
   plan.md                          # this file — MLP roadmap
   public-api.md                    # Editor target API surface
   decisions.md                     # decision log (resolved + open)
+  principal-engineering-tenets.md  # PE tenets reference
   <name>/spec.md                    # per-feature specifications
   runs/                            # experiment run data
   archive/                         # superseded docs
