@@ -66,8 +66,8 @@ src/Terminal.Gui.Editor/           # the View
   Rendering/                       # rendering pipeline types
 tests/
   Terminal.Gui.Text.Tests/         (parallel, pure)
-  Terminal.Gui.Editor.Tests/       (parallel logic)
-  Terminal.Gui.Editor.IntegrationTests/  (Application.Init)
+  Terminal.Gui.Editor.Tests/       (parallel, logic)
+  Terminal.Gui.Editor.IntegrationTests/  (parallel, per-test IApplication.Create())
 examples/
   ted/                             (TG demo app)
   EditorBenchmarks/                (placeholder)

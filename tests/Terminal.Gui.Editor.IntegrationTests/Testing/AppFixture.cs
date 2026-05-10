@@ -7,15 +7,30 @@ using Terminal.Gui.Testing;
 namespace Terminal.Gui.Editor.IntegrationTests.Testing;
 
 /// <summary>
-///     Generic test fixture that boots an <see cref="IApplication" /> on the ANSI driver, instantiates a
-///     <typeparamref name="TRunnable" /> via the supplied factory, and starts a non-blocking session via
-///     <see cref="IApplication.Begin" />. Tests then drive the app synchronously via <see cref="Injector" />
-///     and assert against <see cref="Driver" />.
+///     Generic test fixture that boots a per-test <see cref="IApplication" /> via
+///     <see cref="Application.Create" /> on the ANSI driver, instantiates a
+///     <typeparamref name="TRunnable" /> via the supplied factory, and starts a non-blocking session
+///     via <see cref="IApplication.Begin" />. Tests then drive the app synchronously via
+///     <see cref="Injector" /> and assert against <see cref="Driver" />.
 /// </summary>
 /// <remarks>
-///     Modeled loosely on Terminal.Gui's <c>AppTestHelper</c> but slimmer and only what the gui-cs/Text
-///     integration tests need today. Uses <c>app.Begin</c> (non-blocking) instead of <c>app.Run</c>
-///     (blocks) so each test can inject + assert + dispose deterministically without a worker thread.
+///     <para>
+///         Modeled loosely on Terminal.Gui's <c>AppTestHelper</c> but slimmer and only what the
+///         gui-cs/Text integration tests need today. Uses <c>app.Begin</c> (non-blocking) instead of
+///         <c>app.Run</c> (blocks) so each test can inject + assert + dispose deterministically
+///         without a worker thread.
+///     </para>
+///     <para>
+///         <b>Parallel-safe.</b> The whole point of <see cref="Application.Create" /> over the static
+///         <c>Application.Init()</c> is that each <see cref="IApplication" /> is
+///         <see cref="System.Threading.ThreadLocal{T}" />-isolated. xUnit runs test collections in
+///         parallel; never call <c>Application.Init()</c> (the static, process-global form) from a
+///         test, never enable <c>ConfigurationManager</c>, and never mutate process-global statics
+///         that Terminal.Gui itself reads (<c>Logging.Logger</c>, <c>Trace.EnabledCategories</c>,
+///         etc.). Tests that legitimately must do so opt out via
+///         <c>[CollectionDefinition(name, DisableParallelization = true)]</c>; see
+///         <c>HostingTests</c>.
+///     </para>
 /// </remarks>
 public sealed class AppFixture<TRunnable> : IAsyncDisposable
     where TRunnable : class, IRunnable

@@ -19,6 +19,7 @@ public partial class Editor : View
     private readonly VisualLineBuilder _visualLineBuilder = new ();
     private int _caretOffset;
     private TextDocument? _document;
+    private LineNumberView? _lineNumberView;
     private bool _showLineNumbers;
     private ISyntaxHighlighter? _syntaxHighlighter;
 
@@ -295,12 +296,44 @@ public partial class Editor : View
         Thickness thickness = Padding.Thickness;
         var left = _showLineNumbers && _document is not null ? GetLineNumberPaddingWidth () : 0;
 
-        if (thickness.Left == left)
+        if (thickness.Left != left)
         {
-            return;
+            Padding.Thickness = new Thickness (left, thickness.Top, thickness.Right, thickness.Bottom);
         }
 
-        Padding.Thickness = new Thickness (left, thickness.Top, thickness.Right, thickness.Bottom);
+        SyncLineNumberView (left);
+    }
+
+    private void SyncLineNumberView (int left)
+    {
+        if (left > 0)
+        {
+            if (_lineNumberView is null)
+            {
+                // Hosting LineNumberView as a SubView of Padding (instead of painting in
+                // OnDrawComplete via the driver) keeps it inside the View hierarchy, so popovers
+                // and menus correctly clip it instead of being drawn over.
+                _lineNumberView = new LineNumberView (this)
+                {
+                    X = 0,
+                    Y = 0,
+                    Width = left,
+                    Height = Dim.Fill ()
+                };
+                Padding.GetOrCreateView ().Add (_lineNumberView);
+            }
+            else
+            {
+                _lineNumberView.Width = left;
+                _lineNumberView.SetNeedsDraw ();
+            }
+        }
+        else if (_lineNumberView is not null)
+        {
+            Padding.GetOrCreateView ().Remove (_lineNumberView);
+            _lineNumberView.Dispose ();
+            _lineNumberView = null;
+        }
     }
 
     private int GetLineNumberPaddingWidth ()

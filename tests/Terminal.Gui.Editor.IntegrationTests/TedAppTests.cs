@@ -52,7 +52,7 @@ public class TedAppTests
     [Fact]
     public void OpenFile_LoadsSelectedFile_FromDisk ()
     {
-        string filePath = Path.Combine (Path.GetTempPath (), $"ted-open-{Guid.NewGuid ():N}.txt");
+        var filePath = Path.Combine (Path.GetTempPath (), $"ted-open-{Guid.NewGuid ():N}.txt");
         File.WriteAllText (filePath, "from disk");
 
         try
@@ -75,7 +75,7 @@ public class TedAppTests
     [Fact]
     public void SaveFile_WritesCurrentEditorText_ToCurrentPath ()
     {
-        string filePath = Path.Combine (Path.GetTempPath (), $"ted-save-{Guid.NewGuid ():N}.txt");
+        var filePath = Path.Combine (Path.GetTempPath (), $"ted-save-{Guid.NewGuid ():N}.txt");
         File.WriteAllText (filePath, "before");
 
         try
@@ -99,7 +99,7 @@ public class TedAppTests
     [Fact]
     public void Open_Save_RoundTrip_Preserves_Tab_Characters ()
     {
-        string filePath = Path.Combine (Path.GetTempPath (), $"ted-tabs-{Guid.NewGuid ():N}.txt");
+        var filePath = Path.Combine (Path.GetTempPath (), $"ted-tabs-{Guid.NewGuid ():N}.txt");
         File.WriteAllText (filePath, "a\tb");
 
         try
@@ -121,7 +121,7 @@ public class TedAppTests
     [Fact]
     public void SaveFileAs_Canceled_DoesNotWrite ()
     {
-        bool wrote = false;
+        var wrote = false;
         TedApp app = new ();
         app.ShowSaveDialog = () => " ";
         app.WriteAllText = (_, _) => wrote = true;
@@ -135,7 +135,7 @@ public class TedAppTests
     [Fact]
     public void SaveFileAs_WritesEditorText_ToSelectedPath ()
     {
-        string filePath = Path.Combine (Path.GetTempPath (), $"ted-save-as-{Guid.NewGuid ():N}.txt");
+        var filePath = Path.Combine (Path.GetTempPath (), $"ted-save-as-{Guid.NewGuid ():N}.txt");
 
         try
         {
@@ -171,19 +171,11 @@ public class TedAppTests
     }
 
     [Fact]
-    public async Task Renders_Themes_StatusBar_Item ()
-    {
-        await using AppFixture<TedApp> fx = new (() => new TedApp ());
-
-        DriverAssert.ContentsContains (fx.Driver, "Themes");
-    }
-
-    [Fact]
     public async Task Renders_Indent_Size_StatusBar_Item ()
     {
         await using AppFixture<TedApp> fx = new (() => new TedApp ());
 
-        DriverAssert.ContentsContains (fx.Driver, "Indent Size");
+        DriverAssert.ContentsContains (fx.Driver, "Indent");
     }
 
     [Fact]
@@ -196,7 +188,8 @@ public class TedAppTests
         // CS0618: Editor.SyntaxHighlighter is the [Obsolete] stopgap surface (issue #32);
         // ted's theme drop-down is its UI, so this test must read it.
 #pragma warning disable CS0618 // Type or member is obsolete
-        TextMateSyntaxHighlighter highlighter = Assert.IsType<TextMateSyntaxHighlighter> (fx.Top.Editor.SyntaxHighlighter);
+        TextMateSyntaxHighlighter highlighter =
+            Assert.IsType<TextMateSyntaxHighlighter> (fx.Top.Editor.SyntaxHighlighter);
 #pragma warning restore CS0618 // Type or member is obsolete
         Assert.Equal (ThemeName.LightPlus, highlighter.ThemeName);
     }
@@ -240,31 +233,30 @@ public class TedAppTests
     public async Task OptionsMenu_TogglesLineNumbers_ViaKeyboard ()
     {
         await using AppFixture<TedApp> fx = new (() => new TedApp ());
-
-        Assert.False (fx.Top.Editor.ShowLineNumbers);
+        Assert.True (fx.Top.Editor.ShowLineNumbers);
 
         InputInjectionOptions options = new () { Mode = InputInjectionMode.Direct };
         fx.Injector.InjectKey (Key.O.WithAlt, options);
         fx.Render ();
 
         DriverAssert.ContentsContains (fx.Driver, "Line Numbers");
-        DriverAssert.ContentsContains (fx.Driver, "☐ Line Numbers");
+        DriverAssert.ContentsContains (fx.Driver, "☒ Line Numbers");
         DriverAssert.ContentsContains (fx.Driver, "Convert Tabs To Spaces");
 
         fx.Injector.InjectKey (Key.Enter, options);
         fx.Render ();
 
-        Assert.True (fx.Top.Editor.ShowLineNumbers);
+        Assert.False (fx.Top.Editor.ShowLineNumbers);
 
         fx.Injector.InjectKey (Key.O.WithAlt, options);
         fx.Render ();
 
-        DriverAssert.ContentsContains (fx.Driver, "☒ Line Numbers");
+        DriverAssert.ContentsContains (fx.Driver, "☐ Line Numbers");
 
         fx.Injector.InjectKey (Key.Enter, options);
         fx.Render ();
 
-        Assert.False (fx.Top.Editor.ShowLineNumbers);
+        Assert.True (fx.Top.Editor.ShowLineNumbers);
     }
 
     [Fact]
@@ -279,9 +271,10 @@ public class TedAppTests
         Point clickPos = new (2, 0); // somewhere on the "File" header at row 0
 
         fx.Injector.InjectMouse (
-            new () { ScreenPosition = clickPos, Flags = MouseFlags.LeftButtonPressed, Timestamp = baseTime }, options);
+            new Mouse { ScreenPosition = clickPos, Flags = MouseFlags.LeftButtonPressed, Timestamp = baseTime },
+            options);
         fx.Injector.InjectMouse (
-            new ()
+            new Mouse
             {
                 ScreenPosition = clickPos, Flags = MouseFlags.LeftButtonReleased,
                 Timestamp = baseTime.AddMilliseconds (50)

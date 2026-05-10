@@ -8,7 +8,7 @@ namespace Terminal.Gui.Editor.Tests;
 
 /// <summary>
 ///     Tests for <see cref="Editor" /> find/replace surface. Pure logic — no
-///     <c>Application.Init</c>, no driver. The bigger migration onto
+///     <see cref="App.IApplication" />, no driver. The bigger migration onto
 ///     <c>ISearchStrategy</c> is tracked by spec §8 D4; these tests pin the current
 ///     contract so the migration is a refactor, not a rewrite.
 /// </summary>

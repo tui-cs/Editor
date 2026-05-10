@@ -8,7 +8,7 @@ namespace Terminal.Gui.Editor.Tests;
 
 /// <summary>
 ///     Selection state logic — anchor + caret arithmetic, ClearSelection, ReplaceSelection, SelectAll.
-///     No <c>Application.Init</c> needed; covered separately by integration tests for keyboard wiring.
+///     No <see cref="App.IApplication" /> needed; integration tests cover keyboard wiring.
 /// </summary>
 public class EditorSelectionLogicTests
 {

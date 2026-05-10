@@ -100,9 +100,11 @@ Undo collapses to one user-visible step. No exceptions for "small" multi-edits.
 
 Preserve original formatting + copyright headers. Add `// Adapted for Terminal.Gui from AvaloniaEdit <sha>`. Log every modification in `third_party/AvaloniaEdit/UPSTREAM.md`. House-style only applies to non-`third_party/`-derived files.
 
-### R7 — New tests default to the parallel project
+### R7 — All test projects run in parallel; never touch process globals
 
-Promote to `Editor.IntegrationTests` only if `Application.Init`-style state is genuinely required.
+Every test project — including `Editor.IntegrationTests` — runs in parallel. `AppFixture<T>` boots a per-test `IApplication` from `Application.Create()`, whose state is `ThreadLocal<>`-isolated. **Tests must not** call the static `Application.Init()` shortcut, must not call `ConfigurationManager.Enable()`, and must not mutate any `static` state that Terminal.Gui itself reads (`Logging.Logger`, `Trace.EnabledCategories`, etc.). A test that legitimately must mutate a process-global opts out via `[CollectionDefinition(name, DisableParallelization = true)]` + `[Collection(name)]` (see `HostingTests`); this is the exception, never the default.
+
+Promote a new test to `Editor.IntegrationTests` only when an `IApplication` (driver, input injection, layout/draw) is genuinely needed.
 
 ### R8 — Public API additions come with a spec brief
 
@@ -136,8 +138,10 @@ Three test projects mirroring Terminal.Gui's convention:
 | Project | Parallel | Purpose | Coverage Target |
 |---------|----------|---------|-----------------|
 | `Terminal.Gui.Text.Tests` | ✅ | Pure, no UI, no static state | ≥ 90% |
-| `Terminal.Gui.Editor.Tests` | ✅ where possible | Visual-line builder, wrap, caret/selection, commands | ≥ 75% |
-| `Terminal.Gui.Editor.IntegrationTests` | ❌ | Full key-input → render with `Application.Init` | Informational |
+| `Terminal.Gui.Editor.Tests` | ✅ | Visual-line builder, wrap, caret/selection, commands | ≥ 75% |
+| `Terminal.Gui.Editor.IntegrationTests` | ✅ | Full key-input → render via `AppFixture<T>` (per-test `IApplication.Create()`) | Informational |
+
+The lone exception: a class that mutates a process-global static (e.g. `HostingTests`) opts out of cross-collection parallelism via `[CollectionDefinition(..., DisableParallelization = true)]` + `[Collection(...)]`. Never disable parallelism at the assembly level.
 
 Tests run as **executables** (xUnit.v3): `dotnet run --project tests/<project>`.
 

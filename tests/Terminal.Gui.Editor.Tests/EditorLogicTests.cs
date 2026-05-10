@@ -8,8 +8,9 @@ using Xunit;
 namespace Terminal.Gui.Editor.Tests;
 
 /// <summary>
-///     Tests for <see cref="Editor" /> behaviors that don't need <c>Application.Init</c> — caret math,
-///     document rewiring, edit-tracking arithmetic. UI-side tests live in IntegrationTests.
+///     Tests for <see cref="Editor" /> behaviors that don't need an <see cref="App.IApplication" /> —
+///     caret math, document rewiring, edit-tracking arithmetic. UI-side tests (full layout/draw,
+///     input injection) live in IntegrationTests, which also runs in parallel.
 /// </summary>
 public class EditorLogicTests
 {

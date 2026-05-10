@@ -141,6 +141,48 @@ public class EditorRenderingTests
     }
 
     [Fact]
+    public async Task LineNumbers_Show_Blank_For_Rows_Past_End_Of_Document ()
+    {
+        await using AppFixture<EditorTestHost> fx = new (() =>
+        {
+            EditorTestHost host = new ("only");
+            host.Editor.ShowLineNumbers = true;
+
+            return host;
+        });
+
+        fx.Render ();
+
+        Assert.Equal ("1", fx.Driver.Contents![0, 0].Grapheme);
+
+        // Row 1 is past the end of a 1-line document — gutter should be blank, not "2".
+        Assert.Equal (" ", fx.Driver.Contents![1, 0].Grapheme);
+        Assert.Equal (" ", fx.Driver.Contents![1, 1].Grapheme);
+    }
+
+    [Fact]
+    public async Task LineNumbers_Disable_Removes_Gutter_From_Driver ()
+    {
+        await using AppFixture<EditorTestHost> fx = new (() =>
+        {
+            EditorTestHost host = new ("alpha\nbeta");
+            host.Editor.ShowLineNumbers = true;
+
+            return host;
+        });
+
+        fx.Render ();
+        Assert.Equal ("1", fx.Driver.Contents![0, 0].Grapheme);
+
+        fx.Top.Editor.ShowLineNumbers = false;
+        fx.Render ();
+
+        // With the gutter gone, content shifts left to column 0.
+        Assert.Equal (0, fx.Top.Editor.Padding.Thickness.Left);
+        Assert.Equal ("a", fx.Driver.Contents![0, 0].Grapheme);
+    }
+
+    [Fact]
     public async Task Syntax_Highlighting_Uses_TextMate_Token_Attributes ()
     {
         const string text = "public class C";
