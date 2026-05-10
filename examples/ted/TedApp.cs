@@ -26,14 +26,28 @@ public sealed class TedApp : Window
 
         // Editor first so menu/status-bar shortcuts can pull their hotkeys directly from
         // Editor's KeyBindings (any commands the editor doesn't claim fall back to Application).
-        Editor = new ();
-        Editor.SyntaxHighlighter = new TextMateSyntaxHighlighter (ThemeName.DarkPlus);
+        Editor = new Editor ();
+
+        // ted is the demo for the stopgap Editor.SyntaxHighlighter / SyntaxLanguage surface
+        // (issue #32). The CS0618 warning is intentional on the public API; suppressed here
+        // because exercising the API is exactly this app's job until issue #28 ships the
+        // visual-line HighlightingColorizer pipeline.
+#pragma warning disable CS0618 // Type or member is obsolete
+        Editor.SyntaxHighlighter = new TextMateSyntaxHighlighter ();
+#pragma warning restore CS0618 // Type or member is obsolete
         ShowOpenDialog = ShowDefaultOpenDialog;
         ShowSaveDialog = ShowDefaultSaveDialog;
 
         MenuBar menu = new ();
+        CheckBox lineNumbersCheckBox = new ()
+        {
+            AllowCheckStateNone = false,
+            CanFocus = false,
+            Text = "_Line Numbers",
+            Value = Editor.ShowLineNumbers ? CheckState.Checked : CheckState.UnChecked
+        };
 
-        ThemeDropDown = new ()
+        ThemeDropDown = new DropDownList<ThemeName>
         {
             Value = ThemeName.DarkPlus,
             ReadOnly = true,
@@ -41,27 +55,31 @@ public sealed class TedApp : Window
         };
 
         ThemeDropDown.ValueChanged += (_, e) =>
-                                       {
-                                          if (e.Value is not { } themeName)
-                                          {
-                                              return;
-                                          }
+        {
+            if (e.Value is not { } themeName)
+            {
+                return;
+            }
 
-                                          if (Editor.SyntaxHighlighter is TextMateSyntaxHighlighter highlighter)
-                                          {
-                                              if (highlighter.ThemeName == themeName)
-                                              {
-                                                  return;
-                                              }
+            // CS0618: Editor.SyntaxHighlighter is the stopgap API
+            // ted exists to exercise. See issue #32.
+#pragma warning disable CS0618 // Type or member is obsolete
+            if (Editor.SyntaxHighlighter is TextMateSyntaxHighlighter highlighter)
+            {
+                if (highlighter.ThemeName == themeName)
+                {
+                    return;
+                }
 
-                                              highlighter.SetTheme (themeName);
-                                              Editor.SetNeedsDraw ();
+                highlighter.SetTheme (themeName);
+                Editor.SetNeedsDraw ();
 
-                                              return;
-                                          }
+                return;
+            }
 
-                                           Editor.SyntaxHighlighter = new TextMateSyntaxHighlighter (themeName);
-                                       };
+            Editor.SyntaxHighlighter = new TextMateSyntaxHighlighter (themeName);
+#pragma warning restore CS0618 // Type or member is obsolete
+        };
 
         TabWidthUpDown = new NumericUpDown<int>
         {
@@ -70,14 +88,14 @@ public sealed class TedApp : Window
         };
 
         TabWidthUpDown.ValueChanged += (_, e) =>
-                                      {
-                                          if (Editor.TabWidth == e.NewValue)
-                                          {
-                                              return;
-                                          }
+        {
+            if (Editor.TabWidth == e.NewValue)
+            {
+                return;
+            }
 
-                                          Editor.TabWidth = e.NewValue;
-                                      };
+            Editor.TabWidth = e.NewValue;
+        };
 
         StatusBar statusBar =
             new ([
@@ -97,23 +115,38 @@ public sealed class TedApp : Window
             };
 
         menu.Add (new MenuBarItem (Strings.menuFile,
-                [
-                    new MenuItem { Command = Command.New, Action = New, Key = KeyFor (Command.New) },
-                    new MenuItem { Command = Command.Open, Action = Open, Key = KeyFor (Command.Open) },
-                    new MenuItem { Command = Command.Save, Action = Save, Key = KeyFor (Command.Save) },
-                    new MenuItem { Command = Command.SaveAs, Action = SaveAs, Key = KeyFor (Command.SaveAs) },
-                    new MenuItem { Command = Command.Quit, Action = Quit, Key = KeyFor (Command.Quit) }
-                ]),
+            [
+                new MenuItem { Command = Command.New, Action = New, Key = KeyFor (Command.New) },
+                new MenuItem { Command = Command.Open, Action = Open, Key = KeyFor (Command.Open) },
+                new MenuItem { Command = Command.Save, Action = Save, Key = KeyFor (Command.Save) },
+                new MenuItem { Command = Command.SaveAs, Action = SaveAs, Key = KeyFor (Command.SaveAs) },
+                new MenuItem { Command = Command.Quit, Action = Quit, Key = KeyFor (Command.Quit) }
+            ]),
             new MenuBarItem (Strings.menuEdit,
-                [
-                    new MenuItem { Command = Command.Undo, Action = Undo, Key = KeyFor (Command.Undo) },
-                    new MenuItem { Command = Command.Redo, Action = Redo, Key = KeyFor (Command.Redo) },
-                    new Line (),
-                    new MenuItem { Command = Command.Cut, Action = Cut, Key = KeyFor (Command.Cut) },
-                    new MenuItem { Command = Command.Copy, Action = Copy, Key = KeyFor (Command.Copy) },
-                    new MenuItem { Command = Command.Paste, Action = Paste, Key = KeyFor (Command.Paste) },
-                    new MenuItem { Command = Command.SelectAll, Action = SelectAll, Key = KeyFor (Command.SelectAll) }
-                ]),
+            [
+                new MenuItem ("_Find...", "Find text in the current document", Find),
+                new MenuItem ("_Replace...", "Find and replace text in the current document", Replace),
+                new Line (), new MenuItem { Command = Command.Undo, Action = Undo, Key = KeyFor (Command.Undo) },
+                new MenuItem { Command = Command.Redo, Action = Redo, Key = KeyFor (Command.Redo) },
+                new Line (),
+                new MenuItem { Command = Command.Cut, Action = Cut, Key = KeyFor (Command.Cut) },
+                new MenuItem { Command = Command.Copy, Action = Copy, Key = KeyFor (Command.Copy) },
+                new MenuItem { Command = Command.Paste, Action = Paste, Key = KeyFor (Command.Paste) },
+                new MenuItem { Command = Command.SelectAll, Action = SelectAll, Key = KeyFor (Command.SelectAll) }
+            ]),
+            new MenuBarItem ("_Options",
+            [
+                new MenuItem
+                {
+                    Action = () =>
+                    {
+                        Editor.ShowLineNumbers = lineNumbersCheckBox.Value == CheckState.Checked;
+                        Editor.SetNeedsDraw ();
+                    },
+                    CommandView = lineNumbersCheckBox,
+                    HelpText = "Show line numbers"
+                }
+            ]),
             new MenuBarItem (Strings.menuHelp,
                 [new MenuItem ("_About", "Show About dialog", Action)])
         );
@@ -131,8 +164,10 @@ public sealed class TedApp : Window
 
     /// <summary>The syntax-highlighting theme selector shown in the status bar.</summary>
     public DropDownList<ThemeName> ThemeDropDown { get; }
+
     /// <summary>The tab-width selector shown in the status bar.</summary>
     public NumericUpDown<int> TabWidthUpDown { get; }
+
     /// <summary>The path currently associated with <see cref="Editor" />, or <see langword="null" /> for an untitled buffer.</summary>
     public string? CurrentFilePath { get; private set; }
 
@@ -145,7 +180,10 @@ public sealed class TedApp : Window
     /// <summary>File read hook used by <see cref="OpenFile" />. Tests can replace it with an in-memory fake.</summary>
     public Func<string, string> ReadAllText { get; set; } = File.ReadAllText;
 
-    /// <summary>File write hook used by <see cref="SaveFile" /> and <see cref="SaveFileAs" />. Tests can replace it with an in-memory fake.</summary>
+    /// <summary>
+    ///     File write hook used by <see cref="SaveFile" /> and <see cref="SaveFileAs" />. Tests can replace it with an
+    ///     in-memory fake.
+    /// </summary>
     public Action<string, string> WriteAllText { get; set; } = File.WriteAllText;
 
     /// <summary>Clears the editor and makes the buffer untitled.</summary>
@@ -157,7 +195,7 @@ public sealed class TedApp : Window
     /// <summary>Prompts for a file path, then loads that file into the editor.</summary>
     public bool OpenFile ()
     {
-        string? filePath = ShowOpenDialog ();
+        var filePath = ShowOpenDialog ();
 
         if (string.IsNullOrWhiteSpace (filePath))
         {
@@ -185,7 +223,7 @@ public sealed class TedApp : Window
     /// <summary>Prompts for a file path, then saves the editor text to that path.</summary>
     public bool SaveFileAs ()
     {
-        string? filePath = ShowSaveDialog ();
+        var filePath = ShowSaveDialog ();
 
         if (string.IsNullOrWhiteSpace (filePath))
         {
@@ -204,10 +242,16 @@ public sealed class TedApp : Window
     ///     <see cref="View.KeyBindings" /> first; falls back to <see cref="Application.GetDefaultKey" /> for
     ///     commands the editor doesn't claim (Quit, Open/Save, clipboard, …).
     /// </summary>
-    private Key KeyFor (Command command) =>
-        Editor.KeyBindings.GetAllFromCommands (command).FirstOrDefault () ?? Application.GetDefaultKey (command);
+    private Key KeyFor (Command command)
+    {
+        return Editor.KeyBindings.GetAllFromCommands (command).FirstOrDefault () ?? Application.GetDefaultKey (command);
+    }
 
     private void Action () { }
+
+    private void Find () { ShowFindReplaceDialog (false); }
+
+    private void Replace () { ShowFindReplaceDialog (true); }
 
     private void SelectAll () { }
 
@@ -223,12 +267,10 @@ public sealed class TedApp : Window
 
     private string? ShowDefaultOpenDialog ()
     {
-        using OpenDialog dialog = new ()
-        {
-            AllowsMultipleSelection = false,
-            MustExist = true,
-            OpenMode = OpenMode.File
-        };
+        using OpenDialog dialog = new ();
+        dialog.AllowsMultipleSelection = false;
+        dialog.MustExist = true;
+        dialog.OpenMode = OpenMode.File;
 
         if (App is null)
         {
@@ -242,11 +284,9 @@ public sealed class TedApp : Window
 
     private string? ShowDefaultSaveDialog ()
     {
-        using SaveDialog dialog = new ()
-        {
-            AllowsMultipleSelection = false,
-            OpenMode = OpenMode.File
-        };
+        using SaveDialog dialog = new ();
+        dialog.AllowsMultipleSelection = false;
+        dialog.OpenMode = OpenMode.File;
 
         if (App is null)
         {
@@ -258,7 +298,7 @@ public sealed class TedApp : Window
         return dialog.FileName;
     }
 
-    private void SetDocument (string text, string? filePath)
+    internal void SetDocument (string text, string? filePath)
     {
         Editor.ClearSelection ();
         Editor.Document = new TextDocument (text);
@@ -270,12 +310,7 @@ public sealed class TedApp : Window
 
     private string GetEditorText ()
     {
-        if (Editor.Document is null)
-        {
-            throw new InvalidOperationException ("ted cannot save because the editor has no document.");
-        }
-
-        return Editor.Document.Text;
+        return Editor.Document is null ? throw new InvalidOperationException ("ted cannot save because the editor has no document.") : Editor.Document.Text;
     }
 
     private void UpdateFileNameShortcut ()
@@ -305,5 +340,16 @@ public sealed class TedApp : Window
     {
         // TODO: add logic for unsaved changes, confirm quit, etc.
         RequestStop ();
+    }
+
+    private void ShowFindReplaceDialog (bool selectReplaceTab)
+    {
+        if (App is null)
+        {
+            throw new InvalidOperationException ("Cannot show find/replace when Application is not running.");
+        }
+
+        using FindReplaceDialog dialog = new (Editor, selectReplaceTab);
+        App.Run (dialog);
     }
 }

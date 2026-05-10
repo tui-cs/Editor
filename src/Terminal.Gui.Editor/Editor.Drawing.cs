@@ -1,9 +1,9 @@
 using System.Drawing;
 using Terminal.Gui.Drawing;
 using Terminal.Gui.Drivers;
-using Terminal.Gui.Input;
 using Terminal.Gui.Text.Document;
 using Terminal.Gui.ViewBase;
+using Attribute = Terminal.Gui.Drawing.Attribute;
 
 namespace Terminal.Gui.Views;
 
@@ -18,19 +18,25 @@ public partial class Editor
         }
 
         Rectangle viewport = Viewport;
-        Drawing.Attribute normal = GetAttributeForRole (VisualRole.Normal);
-        Drawing.Attribute selected = GetAttributeForRole (VisualRole.Active);
-        ISyntaxHighlighter? syntaxHighlighter = SyntaxHighlighter;
+        Attribute normal = GetAttributeForRole (VisualRole.Normal);
+        Attribute selected = GetAttributeForRole (VisualRole.Active);
 
-        bool hasSelection = HasSelection;
-        int selStart = hasSelection ? SelectionStart : 0;
-        int selEnd = hasSelection ? SelectionEnd : 0;
+        // The CS0618 here is the API's purpose: SyntaxHighlighter is [Obsolete] to warn
+        // external callers that this is a stopgap (issue #32). The editor itself still has to
+        // honor the property until Phase 6 lifts AvaloniaEdit's Highlighting/ pipeline (#28).
+#pragma warning disable CS0618 // Type or member is obsolete
+        ISyntaxHighlighter? syntaxHighlighter = SyntaxHighlighter;
+#pragma warning restore CS0618 // Type or member is obsolete
+
+        var hasSelection = HasSelection;
+        var selStart = hasSelection ? SelectionStart : 0;
+        var selEnd = hasSelection ? SelectionEnd : 0;
 
         PrepareSyntaxHighlighter (syntaxHighlighter, viewport.Y);
 
-        for (int row = 0; row < viewport.Height; row++)
+        for (var row = 0; row < viewport.Height; row++)
         {
-            int lineIndex = viewport.Y + row;
+            var lineIndex = viewport.Y + row;
 
             if (lineIndex < 0 || lineIndex >= _document.LineCount)
             {
@@ -38,10 +44,12 @@ public partial class Editor
             }
 
             DocumentLine line = _document.GetLineByNumber (lineIndex + 1);
-            string text = _document.GetText (line);
+            var text = _document.GetText (line);
+#pragma warning disable CS0618 // Type or member is obsolete — see note at top of OnDrawingContent.
             IReadOnlyList<StyledSegment>? segments = syntaxHighlighter?.Highlight (text, SyntaxLanguage);
-            int visibleStart = viewport.X;
-            int visibleEnd = viewport.X + viewport.Width;
+#pragma warning restore CS0618 // Type or member is obsolete
+            var visibleStart = viewport.X;
+            var visibleEnd = viewport.X + viewport.Width;
 
             DrawLineContent (
                 row,
@@ -72,10 +80,12 @@ public partial class Editor
 
         syntaxHighlighter.ResetState ();
 
-        for (int lineIndex = 0; lineIndex < firstVisibleLineIndex && lineIndex < _document.LineCount; lineIndex++)
+        for (var lineIndex = 0; lineIndex < firstVisibleLineIndex && lineIndex < _document.LineCount; lineIndex++)
         {
             DocumentLine line = _document.GetLineByNumber (lineIndex + 1);
+#pragma warning disable CS0618 // Type or member is obsolete — see note in OnDrawingContent.
             syntaxHighlighter.Highlight (_document.GetText (line), SyntaxLanguage);
+#pragma warning restore CS0618 // Type or member is obsolete
         }
     }
 
@@ -85,18 +95,18 @@ public partial class Editor
         int visibleStart,
         int visibleEnd,
         IReadOnlyList<StyledSegment>? segments,
-        Drawing.Attribute normal,
-        Drawing.Attribute selected,
+        Attribute normal,
+        Attribute selected,
         int lineOffset,
         bool hasSelection,
         int selStart,
         int selEnd)
     {
-        int visualColumn = 0;
-        int segmentIndex = 0;
-        int segmentEnd = segments is { Count: > 0 } ? segments[0].Text.Length : int.MaxValue;
+        var visualColumn = 0;
+        var segmentIndex = 0;
+        var segmentEnd = segments is { Count: > 0 } ? segments[0].Text.Length : int.MaxValue;
 
-        for (int i = 0; i < text.Length; i++)
+        for (var i = 0; i < text.Length; i++)
         {
             while (segments is not null && i >= segmentEnd && segmentIndex + 1 < segments.Count)
             {
@@ -104,7 +114,7 @@ public partial class Editor
                 segmentEnd += segments[segmentIndex].Text.Length;
             }
 
-            Drawing.Attribute attribute = segments is null
+            Attribute attribute = segments is null
                 ? normal
                 : segments[segmentIndex].Attribute ?? normal;
 
@@ -113,10 +123,10 @@ public partial class Editor
                 attribute = selected;
             }
 
-            char c = text[i];
-            int width = GetVisualWidthForCharacter (c, visualColumn, TabWidth);
-            int charVisualStart = visualColumn;
-            int charVisualEnd = visualColumn + width;
+            var c = text[i];
+            var width = GetVisualWidthForCharacter (c, visualColumn, TabWidth);
+            var charVisualStart = visualColumn;
+            var charVisualEnd = visualColumn + width;
 
             if (charVisualEnd <= visibleStart)
             {
@@ -130,8 +140,8 @@ public partial class Editor
                 break;
             }
 
-            int drawStart = Math.Max (charVisualStart, visibleStart);
-            int drawEnd = Math.Min (charVisualEnd, visibleEnd);
+            var drawStart = Math.Max (charVisualStart, visibleStart);
+            var drawEnd = Math.Min (charVisualEnd, visibleEnd);
 
             if (drawEnd > drawStart)
             {
@@ -156,10 +166,10 @@ public partial class Editor
         }
 
         Rectangle viewport = Viewport;
-        int caretLine = GetCaretLineIndex ();
-        int caretCol = GetCaretColumn ();
-        int row = caretLine - viewport.Y;
-        int col = caretCol - viewport.X;
+        var caretLine = GetCaretLineIndex ();
+        var caretCol = GetCaretColumn ();
+        var row = caretLine - viewport.Y;
+        var col = caretCol - viewport.X;
 
         if (row < 0 || row >= viewport.Height || col < 0 || col >= viewport.Width)
         {
@@ -170,5 +180,61 @@ public partial class Editor
 
         Point screen = ViewportToScreen (new Point (col, row));
         Cursor = new () { Position = screen, Style = CursorStyle.BlinkingBar };
+    }
+
+    /// <inheritdoc />
+    protected override void OnDrawComplete (DrawContext? context)
+    {
+        base.OnDrawComplete (context);
+
+        if (App?.Driver is { } driver)
+        {
+            DrawLineNumbers (driver);
+        }
+    }
+
+    private void DrawLineNumbers (IDriver driver)
+    {
+        if (!_showLineNumbers || _document is null)
+        {
+            return;
+        }
+
+        var width = Padding.Thickness.Left;
+
+        if (width <= 0)
+        {
+            return;
+        }
+
+        Rectangle viewport = Viewport;
+        Rectangle screen = ViewportToScreen ();
+        Region? clip = GetClip ();
+        Attribute previous = driver.SetAttribute (GetAttributeForRole (VisualRole.Normal));
+
+        SetClipToScreen ();
+
+        try
+        {
+            for (var row = 0; row < viewport.Height; row++)
+            {
+                var lineIndex = viewport.Y + row;
+                var text = lineIndex < _document.LineCount
+                    ? (lineIndex + 1).ToString ().PadLeft (width - 1).PadRight (width)
+                    : new string (' ', width);
+
+                driver.Move (screen.X - width, screen.Y + row);
+                driver.AddStr (text);
+            }
+        }
+        finally
+        {
+            if (clip is not null)
+            {
+                SetClip (clip);
+            }
+
+            driver.SetAttribute (previous);
+        }
     }
 }

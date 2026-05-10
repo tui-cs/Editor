@@ -34,8 +34,35 @@ jobs:
       - name: Restore
         run: dotnet restore Terminal.Gui.Text.slnx
 
+      - name: Restore dotnet tools
+        run: dotnet tool restore
+
       - name: Build
         run: dotnet build Terminal.Gui.Text.slnx --no-restore
+
+      # Style gate runs once (Linux). dotnet format catches whitespace/analyzer drift;
+      # jb cleanupcode catches what dotnet format misses (var, expression-bodied members,
+      # XML doc spacing, using sorting). Both must produce a clean working tree.
+      - name: Verify code style — dotnet format
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          dotnet format Terminal.Gui.Text.slnx --no-restore --exclude third_party/ --verify-no-changes
+
+      - name: Verify code style — ReSharper cleanupcode
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          # Use the built-in profile name (jb cleanupcode does not always discover custom
+          # profile names from team-shared .DotSettings files reliably). Our .DotSettings
+          # still ships its own profile + style settings (var, expression-bodied, etc.) for
+          # Rider users; the CLI just runs the default-shaped cleanup using those settings.
+          dotnet jb cleanupcode Terminal.Gui.Text.slnx \
+            --profile="Built-in: Full Cleanup" \
+            --no-build \
+            --exclude="third_party/**/*"
+          if ! git diff --exit-code; then
+            echo "::error::ReSharper code cleanup found style drift. Run 'dotnet jb cleanupcode Terminal.Gui.Text.slnx --profile=\"Built-in: Full Cleanup\"' locally and commit the result."
+            exit 1
+          fi
 
       - name: Terminal.Gui.Text.Tests
         run: dotnet run --project tests/Terminal.Gui.Text.Tests --no-build
