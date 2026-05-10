@@ -3,6 +3,7 @@ using Terminal.Gui.Drawing;
 using Terminal.Gui.Drivers;
 using Terminal.Gui.Text.Document;
 using Terminal.Gui.ViewBase;
+using Terminal.Gui.Views.Rendering;
 using Attribute = Terminal.Gui.Drawing.Attribute;
 
 namespace Terminal.Gui.Views;
@@ -44,7 +45,7 @@ public partial class Editor
             }
 
             DocumentLine line = _document.GetLineByNumber (lineIndex + 1);
-            var text = _document.GetText (line);
+            string text = _document.GetText (line);
 #pragma warning disable CS0618 // Type or member is obsolete — see note at top of OnDrawingContent.
             IReadOnlyList<StyledSegment>? segments = syntaxHighlighter?.Highlight (text, SyntaxLanguage);
 #pragma warning restore CS0618 // Type or member is obsolete
@@ -53,13 +54,12 @@ public partial class Editor
 
             DrawLineContent (
                 row,
-                text,
+                line,
                 visibleStart,
                 visibleEnd,
                 segments,
                 normal,
                 selected,
-                line.Offset,
                 hasSelection,
                 selStart,
                 selEnd);
@@ -91,68 +91,32 @@ public partial class Editor
 
     private void DrawLineContent (
         int row,
-        string text,
+        DocumentLine line,
         int visibleStart,
         int visibleEnd,
         IReadOnlyList<StyledSegment>? segments,
         Attribute normal,
         Attribute selected,
-        int lineOffset,
         bool hasSelection,
         int selStart,
         int selEnd)
     {
-        var visualColumn = 0;
-        var segmentIndex = 0;
-        var segmentEnd = segments is { Count: > 0 } ? segments[0].Text.Length : int.MaxValue;
+        CellVisualLine visualLine = BuildVisualLine (
+            line,
+            segments,
+            normal,
+            selected,
+            hasSelection ? selStart : 0,
+            hasSelection ? selEnd : 0);
 
-        for (var i = 0; i < text.Length; i++)
+        foreach (IBackgroundRenderer renderer in BackgroundRenderers)
         {
-            while (segments is not null && i >= segmentEnd && segmentIndex + 1 < segments.Count)
-            {
-                segmentIndex++;
-                segmentEnd += segments[segmentIndex].Text.Length;
-            }
+            renderer.Draw (this, visualLine, row, Viewport);
+        }
 
-            Attribute attribute = segments is null
-                ? normal
-                : segments[segmentIndex].Attribute ?? normal;
-
-            if (hasSelection && lineOffset + i >= selStart && lineOffset + i < selEnd)
-            {
-                attribute = selected;
-            }
-
-            var c = text[i];
-            var width = GetVisualWidthForCharacter (c, visualColumn, TabWidth);
-            var charVisualStart = visualColumn;
-            var charVisualEnd = visualColumn + width;
-
-            if (charVisualEnd <= visibleStart)
-            {
-                visualColumn = charVisualEnd;
-
-                continue;
-            }
-
-            if (charVisualStart >= visibleEnd)
-            {
-                break;
-            }
-
-            var drawStart = Math.Max (charVisualStart, visibleStart);
-            var drawEnd = Math.Min (charVisualEnd, visibleEnd);
-
-            if (drawEnd > drawStart)
-            {
-                SetAttribute (attribute);
-                AddStr (
-                    drawStart - visibleStart,
-                    row,
-                    c == '\t' ? new (' ', drawEnd - drawStart) : c.ToString ());
-            }
-
-            visualColumn = charVisualEnd;
+        foreach (CellVisualLineElement element in visualLine.Elements)
+        {
+            element.Draw (this, 0, row, visibleStart, visibleEnd);
         }
     }
 
