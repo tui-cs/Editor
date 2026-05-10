@@ -1,4 +1,4 @@
-<wpf:ResourceDictionary xml:space="preserve" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:s="clr-namespace:System;assembly=mscorlib" xmlns:ss="urn:shemas-jetbrains-com:settings-storage-xaml" xmlns:wpf="http://schemas.microsoft.com/winfx/2006/xaml/presentation">
+﻿<wpf:ResourceDictionary xml:space="preserve" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:s="clr-namespace:System;assembly=mscorlib" xmlns:ss="urn:shemas-jetbrains-com:settings-storage-xaml" xmlns:wpf="http://schemas.microsoft.com/winfx/2006/xaml/presentation">
   <!--
     Team-shared ReSharper / Rider settings for gui-cs/Text.
     Committed alongside .editorconfig. Edit in Rider via "Settings | Editor | Code Style"
@@ -20,8 +20,8 @@
   <s:String x:Key="/Default/CodeStyle/CodeCleanup/SilentCleanupProfile/@EntryValue">Full Cleanup</s:String>
 
   <s:Boolean x:Key="/Default/CodeStyle/CodeCleanup/Profiles/=Full_0020Cleanup/@EntryIndexedValue">True</s:Boolean>
-  <s:String  x:Key="/Default/CodeStyle/CodeCleanup/Profiles/=Full_0020Cleanup/Description/@EntryValue">gui-cs/Text house cleanup. Keep aligned with CLAUDE.md.</s:String>
-  <s:String  x:Key="/Default/CodeStyle/CodeCleanup/Profiles/=Full_0020Cleanup/Name/@EntryValue">Full Cleanup</s:String>
+  <s:String x:Key="/Default/CodeStyle/CodeCleanup/Profiles/=Full_0020Cleanup/Description/@EntryValue">gui-cs/Text house cleanup. Keep aligned with CLAUDE.md.</s:String>
+  <s:String x:Key="/Default/CodeStyle/CodeCleanup/Profiles/=Full_0020Cleanup/Name/@EntryValue">Full Cleanup</s:String>
 
   <s:Boolean x:Key="/Default/CodeStyle/CodeCleanup/Profiles/=Full_0020Cleanup/CSArrangeAccessorOwnerBody/@EntryIndexedValue">True</s:Boolean>
   <s:Boolean x:Key="/Default/CodeStyle/CodeCleanup/Profiles/=Full_0020Cleanup/CSArrangeArgumentsStyle/@EntryIndexedValue">True</s:Boolean>
@@ -74,8 +74,8 @@
   <s:String x:Key="/Default/CodeStyle/CSharpCodeStyle/PreferredObjectCreationStyle/@EntryValue">target_typed</s:String>
 
   <!-- Blank lines around control blocks (CLAUDE.md "Blank line before return/break"). -->
-  <s:Int64  x:Key="/Default/CodeStyle/CSharpFormat/BLANK_LINES_AROUND_REGION/@EntryValue">1</s:Int64>
-  <s:Int64  x:Key="/Default/CodeStyle/CSharpFormat/BLANK_LINES_INSIDE_REGION/@EntryValue">1</s:Int64>
+  <s:Int64 x:Key="/Default/CodeStyle/CSharpFormat/BLANK_LINES_AROUND_REGION/@EntryValue">1</s:Int64>
+  <s:Int64 x:Key="/Default/CodeStyle/CSharpFormat/BLANK_LINES_INSIDE_REGION/@EntryValue">1</s:Int64>
   <s:String x:Key="/Default/CodeStyle/CSharpFormat/PLACE_SIMPLE_ACCESSOR_ON_SINGLE_LINE/@EntryValue">True</s:String>
   <s:String x:Key="/Default/CodeStyle/CSharpFormat/SIMPLE_EMBEDDED_STATEMENT_STYLE/@EntryValue">DO_NOT_CHANGE</s:String>
 
@@ -102,4 +102,5 @@
   <!-- Folder excludes: never run cleanup on lifted upstream files.   -->
   <!-- =============================================================== -->
   <s:Boolean x:Key="/Default/CodeInspection/ExcludedFiles/FilesAndFoldersToSkip2/=third_005Fparty/@EntryIndexedValue">True</s:Boolean>
+	<s:Boolean x:Key="/Default/UserDictionary/Words/=slnx/@EntryIndexedValue">True</s:Boolean>
 </wpf:ResourceDictionary>

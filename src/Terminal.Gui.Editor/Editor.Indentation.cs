@@ -19,7 +19,7 @@ public partial class Editor
             return true;
         }
 
-        string text = GetTabInsertionText (HasSelection ? SelectionStart : _caretOffset);
+        var text = GetTabInsertionText (HasSelection ? SelectionStart : _caretOffset);
 
         if (HasSelection)
         {
@@ -94,7 +94,7 @@ public partial class Editor
             return;
         }
 
-        string indentText = GetIndentText ();
+        var indentText = GetIndentText ();
         var selectionWasForward = _selectionAnchor <= _caretOffset;
         var selectionStart = SelectionStart;
         var selectionEnd = SelectionEnd;
@@ -221,7 +221,7 @@ public partial class Editor
     {
         var adjusted = offset;
 
-        foreach ((int removeOffset, int removeLength) in removals.OrderBy (static r => r.offset))
+        foreach (var (removeOffset, removeLength) in removals.OrderBy (static r => r.offset))
         {
             if (removeOffset + removeLength <= adjusted)
             {

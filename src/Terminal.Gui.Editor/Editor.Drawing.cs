@@ -45,7 +45,7 @@ public partial class Editor
             }
 
             DocumentLine line = _document.GetLineByNumber (lineIndex + 1);
-            string text = _document.GetText (line);
+            var text = _document.GetText (line);
 #pragma warning disable CS0618 // Type or member is obsolete — see note at top of OnDrawingContent.
             IReadOnlyList<StyledSegment>? segments = syntaxHighlighter?.Highlight (text, SyntaxLanguage);
 #pragma warning restore CS0618 // Type or member is obsolete
@@ -124,7 +124,7 @@ public partial class Editor
     {
         if (!HasFocus || _document is null)
         {
-            Cursor = new ();
+            Cursor = new Cursor ();
 
             return;
         }
@@ -137,13 +137,13 @@ public partial class Editor
 
         if (row < 0 || row >= viewport.Height || col < 0 || col >= viewport.Width)
         {
-            Cursor = new ();
+            Cursor = new Cursor ();
 
             return;
         }
 
         Point screen = ViewportToScreen (new Point (col, row));
-        Cursor = new () { Position = screen, Style = CursorStyle.BlinkingBar };
+        Cursor = new Cursor { Position = screen, Style = CursorStyle.BlinkingBar };
     }
 
     /// <inheritdoc />

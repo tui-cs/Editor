@@ -16,11 +16,11 @@ namespace Terminal.Gui.Views;
 /// </summary>
 public partial class Editor : View
 {
+    private readonly VisualLineBuilder _visualLineBuilder = new ();
     private int _caretOffset;
     private TextDocument? _document;
     private bool _showLineNumbers;
     private ISyntaxHighlighter? _syntaxHighlighter;
-    private readonly VisualLineBuilder _visualLineBuilder = new ();
 
     /// <summary>
     ///     Sticky column for vertical caret moves. Tracks the column the user *intends* to be in,
@@ -34,7 +34,7 @@ public partial class Editor : View
     {
         CanFocus = true;
         CreateCommandsAndBindings ();
-        Document = new ();
+        Document = new TextDocument ();
     }
 
     /// <summary>The backing <see cref="TextDocument" />. Setting this rewires change handlers and clamps the caret.</summary>
@@ -287,7 +287,7 @@ public partial class Editor : View
             .Max ();
 
         // +1 column lets the caret sit just past the end-of-line.
-        SetContentSize (new (maxWidth + 1, _document.LineCount));
+        SetContentSize (new Size (maxWidth + 1, _document.LineCount));
     }
 
     private void UpdateLineNumberPadding ()
@@ -300,7 +300,7 @@ public partial class Editor : View
             return;
         }
 
-        Padding.Thickness = new (left, thickness.Top, thickness.Right, thickness.Bottom);
+        Padding.Thickness = new Thickness (left, thickness.Top, thickness.Right, thickness.Bottom);
     }
 
     private int GetLineNumberPaddingWidth ()

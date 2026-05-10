@@ -26,7 +26,13 @@ public sealed class TedApp : Window
 
         // Editor first so menu/status-bar shortcuts can pull their hotkeys directly from
         // Editor's KeyBindings (any commands the editor doesn't claim fall back to Application).
-        Editor = new Editor ();
+        Editor = new Editor ()
+        {
+            ShowLineNumbers = true,
+            ConvertTabsToSpaces = true,
+
+            ViewportSettings = ViewportSettingsFlags.HasScrollBars
+        };
 
         // ted is the demo for the stopgap Editor.SyntaxHighlighter / SyntaxLanguage surface
         // (issue #32). The CS0618 warning is intentional on the public API; suppressed here
@@ -126,9 +132,8 @@ public sealed class TedApp : Window
         StatusBar statusBar =
             new ([
                 new Shortcut (KeyFor (Command.Quit), "Quit", Quit),
-                new Shortcut (Key.Empty, "Themes", null) { MouseHighlightStates = MouseState.None },
                 new Shortcut { Title = "Themes", CommandView = ThemeDropDown },
-                new Shortcut { Text = "Indent Size", CommandView = IndentationSizeUpDown },
+                new Shortcut { Text = "Indent", CommandView = IndentationSizeUpDown, MouseHighlightStates = MouseState.None },
                 new Shortcut { CommandView = ShowTabsCheckBox },
                 new Shortcut (Key.Empty, "x, y", null, "Loc") { MouseHighlightStates = MouseState.None },
                 _fileNameShortcut = new Shortcut (Key.Empty, "<untitled>", Open)
@@ -344,7 +349,9 @@ public sealed class TedApp : Window
 
     private string GetEditorText ()
     {
-        return Editor.Document is null ? throw new InvalidOperationException ("ted cannot save because the editor has no document.") : Editor.Document.Text;
+        return Editor.Document is null
+            ? throw new InvalidOperationException ("ted cannot save because the editor has no document.")
+            : Editor.Document.Text;
     }
 
     private void UpdateFileNameShortcut ()

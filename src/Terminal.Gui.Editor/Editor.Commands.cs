@@ -88,22 +88,26 @@ public partial class Editor
         // History
         AddCommand (Command.Undo, () =>
         {
-            if (_document!.UndoStack.CanUndo)
+            if (!_document!.UndoStack.CanUndo)
             {
-                ClearSelection ();
-                _document!.UndoStack.Undo ();
+                return true;
             }
+
+            ClearSelection ();
+            _document!.UndoStack.Undo ();
 
             return true;
         });
 
         AddCommand (Command.Redo, () =>
         {
-            if (_document!.UndoStack.CanRedo)
+            if (!_document!.UndoStack.CanRedo)
             {
-                ClearSelection ();
-                _document!.UndoStack.Redo ();
+                return true;
             }
+
+            ClearSelection ();
+            _document!.UndoStack.Redo ();
 
             return true;
         });
