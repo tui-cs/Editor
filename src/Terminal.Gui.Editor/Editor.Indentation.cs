@@ -128,6 +128,7 @@ public partial class Editor
             return false;
         }
 
+        // Walk forward through indent units; delete the last complete one ending at the caret.
         var scanOffset = line.Offset;
         (int offset, int length) lastSegment = (0, 0);
 
@@ -156,7 +157,16 @@ public partial class Editor
 
     private bool SelectionSpansMultipleLines ()
     {
-        return HasSelection && GetSelectedLines ().Count > 1;
+        if (_document is null || !HasSelection)
+        {
+            return false;
+        }
+
+        DocumentLine firstLine = _document.GetLineByOffset (SelectionStart);
+        var endOffset = Math.Max (SelectionStart, SelectionEnd - 1);
+        DocumentLine lastLine = _document.GetLineByOffset (endOffset);
+
+        return firstLine.LineNumber != lastLine.LineNumber;
     }
 
     private List<DocumentLine> GetSelectedLines ()

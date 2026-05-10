@@ -32,6 +32,7 @@ public abstract class CellVisualLineElement
 
     public int VisualEndColumn => VisualColumn + VisualLength;
 
+    /// <summary>Mutable: visual-line transformers may override this before draw.</summary>
     public Attribute Attribute { get; set; }
 
     public abstract void Draw (View host, int x, int y, int visibleStart, int visibleEnd);

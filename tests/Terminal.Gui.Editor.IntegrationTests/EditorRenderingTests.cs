@@ -236,6 +236,24 @@ public class EditorRenderingTests
     }
 
     [Fact]
+    public async Task Wide_Grapheme_At_Viewport_Right_Edge_Still_Renders ()
+    {
+        // "abc💥" with viewport width=4 means visibleEnd=4. The emoji sits at visual
+        // column 3, occupying 2 cells (VisualEndColumn=5 > visibleEnd=4). The bug was
+        // that TextRunElement.Draw skipped rendering entirely because VisualEndColumn
+        // exceeded visibleEnd — leaving column 3 blank.
+        const string emoji = "\U0001f4a5"; // 💥 — 2 cells wide
+
+        await using AppFixture<EditorTestHost> fx = new (() => new ($"abc{emoji}"), width: 4, height: 1);
+        fx.Render ();
+
+        Assert.Equal ("a", fx.Driver.Contents![0, 0].Grapheme);
+        Assert.Equal ("b", fx.Driver.Contents![0, 1].Grapheme);
+        Assert.Equal ("c", fx.Driver.Contents![0, 2].Grapheme);
+        Assert.Equal (emoji, fx.Driver.Contents![0, 3].Grapheme);
+    }
+
+    [Fact]
     public async Task Cursor_Position_After_Tab_Uses_Expanded_Tab_Columns ()
     {
         await using AppFixture<EditorTestHost> fx = new (() => new ("a\tb"));

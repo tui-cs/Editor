@@ -83,6 +83,43 @@ public class EditorTabTests
     }
 
     [Fact]
+    public async Task Tab_On_Selection_Within_Single_Line_Replaces_With_Tab ()
+    {
+        // Selection that stays on one line must use single-line tab behavior (replace
+        // selection with tab) rather than block-indent. This exercises the optimized
+        // SelectionSpansMultipleLines path that avoids allocating a List<DocumentLine>.
+        await using AppFixture<EditorTestHost> fx = new (() => new ("one\ntwo"));
+        fx.Top.Editor.SetFocus ();
+        fx.Top.Editor.CaretOffset = 0;
+
+        // Select "one" (offsets 0–3) via Shift+End
+        fx.Injector.InjectKey (Key.End.WithShift, Direct);
+
+        fx.Injector.InjectKey (Key.Tab, Direct);
+
+        Assert.Equal ("\t\ntwo", fx.Top.Editor.Document!.Text);
+    }
+
+    [Fact]
+    public async Task Tab_On_Selection_Spanning_Two_Lines_Indents_Both ()
+    {
+        // Ensures the multi-line detection works: selection from line 1 into line 2
+        // must trigger block-indent, not replacement.
+        await using AppFixture<EditorTestHost> fx = new (() => new ("aaa\nbbb"));
+        fx.Top.Editor.SetFocus ();
+        fx.Top.Editor.CaretOffset = 0;
+
+        // Select across both lines: Shift+Down moves caret to line 2 col 0
+        fx.Injector.InjectKey (Key.CursorDown.WithShift, Direct);
+        // Then Shift+End to extend to end of line 2
+        fx.Injector.InjectKey (Key.End.WithShift, Direct);
+
+        fx.Injector.InjectKey (Key.Tab, Direct);
+
+        Assert.Equal ("\taaa\n\tbbb", fx.Top.Editor.Document!.Text);
+    }
+
+    [Fact]
     public async Task Backspace_At_End_Of_Leading_Whitespace_Removes_One_Indentation_Unit ()
     {
         await using AppFixture<EditorTestHost> fx = new (() => new ("    alpha"));

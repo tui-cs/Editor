@@ -110,6 +110,8 @@ public partial class Editor
 
         ApplyKeyBindings (View.DefaultKeyBindings, DefaultKeyBindings);
 
+        // Reclaim Tab before the framework consumes it; the editor handles Tab / Shift+Tab
+        // in OnKeyDownNotHandled so indentation still works without a command binding.
         KeyBindings.Remove (Key.Tab);
         KeyBindings.Remove (Key.Tab.WithShift);
 
