@@ -3,7 +3,7 @@
 **Date**: 2026-05-11
 **Branch**: `experiment/codex/develop`
 **Base checked**: `origin/develop`
-**Integration status**: `origin/experiment/codex/develop` is 4 commits ahead of `origin/develop` after this report commit.
+**Integration status**: `origin/experiment/codex/develop` is 5 commits ahead of `origin/develop` after this report update.
 
 ## PRs Opened And Integrated
 
@@ -37,11 +37,18 @@ Latest integrated branch validation from the `read-only` branch, which included 
 - `dotnet jb cleanupcode Terminal.Gui.Text.slnx --profile="Full Cleanup"` - blocked: profile named `Full Cleanup` is not defined in the shared settings
 - `dotnet jb cleanupcode Terminal.Gui.Text.slnx` - reported no items to cleanup; the tool exited 3
 
+Focused visual-line benchmark check:
+
+- `./benchmarks/compare-baseline.sh` did not produce results because BenchmarkDotNet rejected the script's `--job ShortRun` argument; valid job names include `short`.
+- Reran the same focused filter manually with `dotnet run --project benchmarks/Terminal.Gui.Editor.Benchmarks -c Release -- --filter "*VisualLineBuild*" --job short --exporters json`.
+- Results vs `benchmarks/baseline.json`: Short ASCII 3.445 us vs 2.6 us (1.33x), Long ASCII 17.736 us vs 15.7 us (1.13x), Tabs 3.296 us vs 3.0 us (1.10x), Emoji 2.910 us vs 2.7 us (1.08x), Mixed 2.820 us vs 2.6 us (1.08x). All are below the repo's 3x regression threshold.
+
 The Terminal.Gui clone at `../Terminal.Gui` was verified at startup with a clean `develop` worktree. No Terminal.Gui bugs were proven with failing tests, so no upstream issues were filed.
 
 ## Risks And Follow-Ups
 
 - The JetBrains cleanup profile mismatch is a repo/tooling issue. Proposal: add or rename the shared cleanup profile, or update the documented command and CI to the profile that exists.
+- The benchmark comparison script has a job-name mismatch (`ShortRun` vs BenchmarkDotNet's accepted `short`). Proposal: update the script to pass `--job short`.
 - Read-only currently guards the existing ted paste path and editor edit paths. The future `clipboard` feature must also check `Editor.ReadOnly` in editor-level paste/cut handlers.
 - The untracked `AGENTS.md` present at startup remains untracked and untouched.
 - Approximate spend/tokens: not available from the local environment.
