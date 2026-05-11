@@ -10,7 +10,7 @@ namespace Terminal.Gui.Editor.Tests;
 
 /// <summary>
 ///     Tests for <see cref="Editor" /> behaviors that don't need an <see cref="App.IApplication" /> —
-///     caret math, document rewiring, edit-tracking arithmetic. UI-side tests (full layout/draw,
+///     caret tracking, document rewiring, and edit reactions. UI-side tests (full layout/draw,
 ///     input injection) live in IntegrationTests, which also runs in parallel.
 /// </summary>
 public class EditorLogicTests
@@ -67,7 +67,7 @@ public class EditorLogicTests
         original?.Insert (0, "xxx");
         Assert.Equal (0, editor.CaretOffset);
 
-        // Mutating the replacement still drives the editor's caret arithmetic.
+        // Mutating the replacement still drives the editor's caret anchor.
         replacement.Insert (0, "y");
         Assert.Equal (1, editor.CaretOffset);
     }
@@ -81,6 +81,30 @@ public class EditorLogicTests
         editor.Document.Insert (0, ">>>");
 
         Assert.Equal (8, editor.CaretOffset);
+    }
+
+    [Fact]
+    public void Caret_Tracks_Insertion_At_It_With_AfterInsertion_Semantics ()
+    {
+        Views.Editor editor = new () { Document = new TextDocument ("hello") };
+        editor.CaretOffset = 2;
+
+        editor.Document.Insert (2, "XYZ");
+
+        Assert.Equal (5, editor.CaretOffset);
+    }
+
+    [Fact]
+    public void Caret_Tracks_External_Edit_On_Shared_Document ()
+    {
+        TextDocument document = new ("0123456789");
+        Views.Editor editor = new () { Document = document };
+        Views.Editor secondConsumer = new () { Document = document };
+        editor.CaretOffset = 8;
+
+        secondConsumer.Document!.Insert (3, "abc");
+
+        Assert.Equal (11, editor.CaretOffset);
     }
 
     [Fact]

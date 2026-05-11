@@ -57,11 +57,11 @@ public partial class Editor
         AddCommand (Command.UpExtend, () => ExtendCommand (() => ExtendCaretVertically (-1)));
         AddCommand (Command.DownExtend, () => ExtendCommand (() => ExtendCaretVertically (1)));
         AddCommand (Command.LeftStartExtend,
-            () => ExtendCommand (() => ExtendCaretTo (_document!.GetLineByOffset (_caretOffset).Offset)));
+            () => ExtendCommand (() => ExtendCaretTo (_document!.GetLineByOffset (CaretOffset).Offset)));
 
         AddCommand (Command.RightEndExtend, () => ExtendCommand (() =>
         {
-            DocumentLine line = _document!.GetLineByOffset (_caretOffset);
+            DocumentLine line = _document!.GetLineByOffset (CaretOffset);
             ExtendCaretTo (line.Offset + line.Length);
         }));
 
@@ -178,7 +178,7 @@ public partial class Editor
         }
         else
         {
-            _document!.Insert (_caretOffset, text);
+            _document!.Insert (CaretOffset, text);
         }
 
         return true;
@@ -194,9 +194,9 @@ public partial class Editor
         {
             return true;
         }
-        else if (_caretOffset > 0)
+        else if (CaretOffset > 0)
         {
-            _document!.Remove (_caretOffset - 1, 1);
+            _document!.Remove (CaretOffset - 1, 1);
         }
 
         return true;
@@ -208,9 +208,9 @@ public partial class Editor
         {
             ReplaceSelection (string.Empty);
         }
-        else if (_caretOffset < _document!.TextLength)
+        else if (CaretOffset < _document!.TextLength)
         {
-            _document!.Remove (_caretOffset, 1);
+            _document!.Remove (CaretOffset, 1);
         }
 
         return true;
@@ -225,7 +225,7 @@ public partial class Editor
 
     private bool? MoveCaretToLineStart ()
     {
-        DocumentLine line = _document!.GetLineByOffset (_caretOffset);
+        DocumentLine line = _document!.GetLineByOffset (CaretOffset);
         CaretOffset = line.Offset;
 
         return true;
@@ -233,7 +233,7 @@ public partial class Editor
 
     private bool? MoveCaretToLineEnd ()
     {
-        DocumentLine line = _document!.GetLineByOffset (_caretOffset);
+        DocumentLine line = _document!.GetLineByOffset (CaretOffset);
         CaretOffset = line.Offset + line.Length;
 
         return true;

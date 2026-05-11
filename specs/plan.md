@@ -24,6 +24,7 @@ The textmate-grammars feature ships in the release **after** alpha.
 - **rendering-pipeline — Rendering pipeline** ✅: `VisualLineBuilder` → `CellVisualLine` → `CellVisualLineElement` (`TextRunElement`, `TabElement`). `IVisualLineTransformer`, `IBackgroundRenderer` interfaces. Grapheme-aware via `GraphemeHelper`. `Editor.LineTransformers` and `BackgroundRenderers` exposed. (Codex branch, merged with tweaks.)
 - **tab-handling — Tab handling** ✅: `IndentationSize`, `ConvertTabsToSpaces`, `ShowTabs` properties. Tab/Shift+Tab insert/indent/unindent. `TabElement` in pipeline. Mouse midpoint snap. Indentation-aware Backspace. (Codex branch, merged with tweaks.)
 - **drawing-overhaul — Drawing overhaul** ✅: `OnDrawingContent` is a thin `CellVisualLine` walker, old char-iteration helpers are removed, visual-line draw caching is in place, and line numbers render through `Gutter : View` as a Padding SubView.
+- **caret-anchors — Anchor-backed caret & selection** ✅: `CaretOffset` is backed by a `TextAnchor` with `AnchorMovementType.AfterInsertion`; selection uses an anchor plus the caret anchor; manual document-change offset arithmetic is removed.
 - **ted demo**: file menu, `FindReplaceDialog`, theme dropdown, tab controls, status bar, line-numbers toggle.
 
 ### Remaining (per-feature specs in `specs/<name>/spec.md`)
@@ -35,8 +36,7 @@ The textmate-grammars feature ships in the release **after** alpha.
 | [indentation](indentation/spec.md) | Ready | — |
 | [syntax-highlighting](syntax-highlighting/spec.md) | Ready | — |
 | [word-wrap](word-wrap/spec.md) | Ready | — |
-| [caret-anchors](caret-anchors/spec.md) | Ready | — |
-| [multi-caret](multi-caret/spec.md) | Blocked | caret-anchors |
+| [multi-caret](multi-caret/spec.md) | Ready | — |
 | [read-only](read-only/spec.md) | Ready | — |
 | [clipboard](clipboard/spec.md) | Ready | — |
 | [find-and-replace](find-and-replace/spec.md) | Blocked | search |
@@ -89,7 +89,7 @@ The diagram shows **must-finish-before** edges. Features not shown are independe
    │
    └── syntax-highlighting ─────────────────────────────────────────────────────┘
 
-   caret-anchors ── multi-caret
+   ██ caret-anchors DONE ██ ── multi-caret
 
    ██ tab-handling DONE ██
    read-only            ── independent
@@ -101,11 +101,11 @@ The diagram shows **must-finish-before** edges. Features not shown are independe
 
 ### Ready start state (post drawing-overhaul merge)
 
-All of these can be picked up immediately: **folding, search, indentation, syntax-highlighting, word-wrap, caret-anchors, read-only, clipboard**.
+All of these can be picked up immediately: **folding, search, indentation, syntax-highlighting, word-wrap, multi-caret, read-only, clipboard**.
 
 syntax-highlighting is the remaining dependency before syntax-colorizer can start.
 
-Second wave (after their dependencies): **multi-caret** (after caret-anchors), **find-and-replace** (after search), **word-wrap-toggle** (after word-wrap), **folding-ui** (after folding), **auto-indent** (after indentation), **syntax-colorizer** (after syntax-highlighting).
+Second wave (after their dependencies): **find-and-replace** (after search), **word-wrap-toggle** (after word-wrap), **folding-ui** (after folding), **auto-indent** (after indentation), **syntax-colorizer** (after syntax-highlighting).
 
 ## MLP Definition of Done
 

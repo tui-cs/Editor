@@ -19,7 +19,7 @@ public partial class Editor
             return true;
         }
 
-        var text = GetTabInsertionText (HasSelection ? SelectionStart : _caretOffset);
+        var text = GetTabInsertionText (HasSelection ? SelectionStart : CaretOffset);
 
         if (HasSelection)
         {
@@ -27,7 +27,7 @@ public partial class Editor
         }
         else
         {
-            _document.Insert (_caretOffset, text);
+            _document.Insert (CaretOffset, text);
         }
 
         return true;
@@ -42,7 +42,7 @@ public partial class Editor
 
         List<DocumentLine> lines = HasSelection && SelectionSpansMultipleLines ()
             ? GetSelectedLines ()
-            : [_document.GetLineByOffset (_caretOffset)];
+            : [_document.GetLineByOffset (CaretOffset)];
 
         List<(int offset, int length)> removals = [];
 
@@ -62,7 +62,7 @@ public partial class Editor
         }
 
         var hadSelection = HasSelection;
-        var selectionWasForward = _selectionAnchor <= _caretOffset;
+        var selectionWasForward = SelectionAnchorOffset <= CaretOffset;
         var selectionStart = SelectionStart;
         var selectionEnd = SelectionEnd;
 
@@ -95,7 +95,7 @@ public partial class Editor
         }
 
         var indentText = GetIndentText ();
-        var selectionWasForward = _selectionAnchor <= _caretOffset;
+        var selectionWasForward = SelectionAnchorOffset <= CaretOffset;
         var selectionStart = SelectionStart;
         var selectionEnd = SelectionEnd;
 
@@ -115,15 +115,16 @@ public partial class Editor
 
     private bool TryDeleteIndentationLeft ()
     {
-        if (_document is null || _caretOffset == 0)
+        if (_document is null || CaretOffset == 0)
         {
             return false;
         }
 
-        DocumentLine line = _document.GetLineByOffset (_caretOffset);
+        var caretOffset = CaretOffset;
+        DocumentLine line = _document.GetLineByOffset (caretOffset);
         ISegment leadingWhitespace = TextUtilities.GetLeadingWhitespace (_document, line);
 
-        if (leadingWhitespace.Length == 0 || _caretOffset != leadingWhitespace.EndOffset)
+        if (leadingWhitespace.Length == 0 || caretOffset != leadingWhitespace.EndOffset)
         {
             return false;
         }
@@ -136,7 +137,7 @@ public partial class Editor
         {
             ISegment segment = TextUtilities.GetSingleIndentationSegment (_document, scanOffset, IndentationSize);
 
-            if (segment.Length == 0 || scanOffset + segment.Length > _caretOffset)
+            if (segment.Length == 0 || scanOffset + segment.Length > caretOffset)
             {
                 break;
             }
@@ -145,7 +146,7 @@ public partial class Editor
             scanOffset += segment.Length;
         }
 
-        if (scanOffset != _caretOffset || lastSegment.length == 0)
+        if (scanOffset != caretOffset || lastSegment.length == 0)
         {
             return false;
         }
@@ -211,8 +212,9 @@ public partial class Editor
 
     private void SetSelectionRangePreservingDirection (bool forward, int start, int end)
     {
-        _selectionAnchor = forward ? start : end;
+        _selectionAnchor = CreateSelectionAnchor (forward ? start : end);
         SetCaretOffset (forward ? end : start, true);
+        RefreshSelectionAnchorMovement ();
         SelectionChanged?.Invoke (this, EventArgs.Empty);
         SetNeedsDraw ();
     }

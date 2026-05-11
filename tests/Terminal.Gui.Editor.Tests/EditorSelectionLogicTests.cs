@@ -85,6 +85,20 @@ public class EditorSelectionLogicTests
     }
 
     [Fact]
+    public void Selection_Tracks_Insertion_Before_Range ()
+    {
+        Views.Editor editor = new () { Document = new TextDocument ("abcdef") };
+        editor.SelectRange (2, 3);
+
+        editor.Document!.Insert (0, ">>");
+
+        Assert.True (editor.HasSelection);
+        Assert.Equal (4, editor.SelectionStart);
+        Assert.Equal (7, editor.SelectionEnd);
+        Assert.Equal ("cde", editor.SelectedText);
+    }
+
+    [Fact]
     public void SelectionChanged_Fires_On_SelectAll_And_Clear ()
     {
         Views.Editor editor = new () { Document = new TextDocument ("abc") };

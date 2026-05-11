@@ -3,22 +3,22 @@ using Terminal.Gui.Text.Document;
 namespace Terminal.Gui.Views;
 
 /// <summary>
-///     Selection state and operations. Internal model is anchor + caret: <c>_selectionAnchor</c> is
-///     where Shift was first held; the <c>CaretOffset</c> is the live end. Selection is the segment
-///     between the two; when they coincide (or the anchor is null), there is no selection.
+///     Selection state and operations. Internal model is two anchors: <c>_selectionAnchor</c> is
+///     where Shift was first held; the caret anchor is the live end. Selection is the segment
+///     between the two; when they coincide (or the selection anchor is null), there is no selection.
 /// </summary>
 public partial class Editor
 {
-    private int? _selectionAnchor;
+    private TextAnchor? _selectionAnchor;
 
     /// <summary>True when there is a non-empty selection.</summary>
-    public bool HasSelection => _selectionAnchor is { } a && a != _caretOffset;
+    public bool HasSelection => _selectionAnchor is { IsDeleted: false } a && a.Offset != CaretOffset;
 
     /// <summary>Start offset of the selection (inclusive). Equals <see cref="CaretOffset" /> when no selection.</summary>
-    public int SelectionStart => HasSelection ? Math.Min (_selectionAnchor!.Value, _caretOffset) : _caretOffset;
+    public int SelectionStart => HasSelection ? Math.Min (SelectionAnchorOffset, CaretOffset) : CaretOffset;
 
     /// <summary>End offset of the selection (exclusive). Equals <see cref="CaretOffset" /> when no selection.</summary>
-    public int SelectionEnd => HasSelection ? Math.Max (_selectionAnchor!.Value, _caretOffset) : _caretOffset;
+    public int SelectionEnd => HasSelection ? Math.Max (SelectionAnchorOffset, CaretOffset) : CaretOffset;
 
     /// <summary>Length of the selection in characters; 0 when no selection.</summary>
     public int SelectionLength => SelectionEnd - SelectionStart;
@@ -65,15 +65,16 @@ public partial class Editor
         var end = (int)Math.Clamp ((long)start + Math.Max (0L, length), 0L, _document.TextLength);
 
         (int start, int end) before = SelectionTuple ();
-        _selectionAnchor = start == end ? null : start;
+        _selectionAnchor = start == end ? null : CreateSelectionAnchor (start);
         CaretOffset = end;
+        RefreshSelectionAnchorMovement ();
         RaiseSelectionChangedIfMoved (before);
         SetNeedsDraw ();
     }
 
     /// <summary>
     ///     Replaces the current selection with <paramref name="replacement" />. If there is no selection, this is a no-op.
-    ///     The caret lands at <c>SelectionStart + replacement.Length</c> via the document's edit-tracking arithmetic.
+    ///     The caret lands at <c>SelectionStart + replacement.Length</c>.
     /// </summary>
     public void ReplaceSelection (string replacement)
     {
@@ -88,6 +89,7 @@ public partial class Editor
         (int start, int end) before = SelectionTuple ();
         _selectionAnchor = null;
         _document!.Replace (start, len, replacement);
+        SetCaretOffset (start + replacement.Length, true);
         RaiseSelectionChangedIfMoved (before);
     }
 
@@ -97,7 +99,7 @@ public partial class Editor
     /// </summary>
     private void ExtendCaretBy (int delta)
     {
-        ExtendCaretTo (_caretOffset + delta);
+        ExtendCaretTo (CaretOffset + delta);
     }
 
     private void ExtendCaretVertically (int delta)
@@ -118,7 +120,8 @@ public partial class Editor
 
     private void EnsureSelectionAnchor ()
     {
-        _selectionAnchor ??= _caretOffset;
+        _selectionAnchor ??= CreateSelectionAnchor (CaretOffset);
+        RefreshSelectionAnchorMovement ();
     }
 
     /// <summary>
@@ -168,7 +171,7 @@ public partial class Editor
             return;
         }
 
-        CaretOffset = _caretOffset + delta;
+        CaretOffset = CaretOffset + delta;
     }
 
     /// <summary>
@@ -271,5 +274,27 @@ public partial class Editor
         char ch = _document!.GetCharAt (offset);
 
         return char.IsLetterOrDigit (ch) || ch == '_';
+    }
+
+    private int SelectionAnchorOffset => _selectionAnchor is { IsDeleted: false } anchor ? anchor.Offset : CaretOffset;
+
+    private TextAnchor CreateSelectionAnchor (int offset)
+    {
+        TextAnchor anchor = _document!.CreateAnchor (offset);
+        anchor.SurviveDeletion = true;
+
+        return anchor;
+    }
+
+    private void RefreshSelectionAnchorMovement ()
+    {
+        if (_selectionAnchor is not { IsDeleted: false } anchor)
+        {
+            return;
+        }
+
+        anchor.MovementType = anchor.Offset <= CaretOffset
+            ? AnchorMovementType.AfterInsertion
+            : AnchorMovementType.BeforeInsertion;
     }
 }

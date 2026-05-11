@@ -40,7 +40,7 @@ public partial class Editor
         }
         else
         {
-            _document!.Insert (_caretOffset, rune.ToString ());
+            _document!.Insert (CaretOffset, rune.ToString ());
         }
 
         return true;
