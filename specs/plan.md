@@ -136,7 +136,7 @@ Each criterion is testable. This is the merge-to-`main` gate.
 2. Use `specs/codex-autonomous-sprint.md` as the runbook.
 3. Pick one ready feature from the status table above, preferring dependency-unblocking work.
 4. Read that feature's `specs/<name>/spec.md` verbatim before editing.
-5. Open one PR per feature or tightly-coupled feature slice under `experiment/codex/`.
+5. Integrate completed work into `experiment/codex/develop`; use feature branches under `experiment/codex/<feature>`.
 6. Track each PR against the Definition of Done in its spec, not the agent's self-report.
 7. When drawing-overhaul merges, the second wave (find-and-replace, word-wrap-toggle, folding-ui, auto-indent, syntax-colorizer) becomes eligible.
 8. Update the status table in this file every time an item lands.

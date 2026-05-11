@@ -26,6 +26,8 @@ tmux attach -t codex-autonomy
 
 The artifact lands in `specs/runs/<run-name>/` — transcript, PR list, spend snapshot, copied final report when present, and a stub `summary.md`.
 
+Codex integrates completed work into `experiment/codex/develop`. Use that branch for final checks before deciding whether anything should land on `develop`.
+
 ## What each script assumes
 
 - `bash 4+` and `gh` on `$PATH`.

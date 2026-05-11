@@ -57,11 +57,14 @@ Run the Codex-only autonomous sprint described in [`specs/codex-autonomous-sprin
 
 **How to work:**
 
-1. Open one PR per feature or tightly-coupled feature slice.
-2. Use branch prefix `experiment/codex/`.
-3. Target `develop`.
-4. Do not merge your own PRs.
-5. Before stopping, write `specs/runs/codex-final.md` or `specs/runs/<run-name>/codex-final.md` with PRs opened, features completed, blockers, validation, and follow-up risks.
+1. Maintain `experiment/codex/develop` as the Codex shadow develop branch.
+2. Create feature branches under `experiment/codex/<feature>` from `experiment/codex/develop`.
+3. Open feature PRs against `experiment/codex/develop`.
+4. After validation, integrate completed feature work into `experiment/codex/develop` and push it.
+5. Never push to or merge into `develop`.
+6. Before stopping, write `specs/runs/codex-final.md` or `specs/runs/<run-name>/codex-final.md` with PRs opened, features completed, blockers, validation, and follow-up risks.
+
+The operator will run final checks from `experiment/codex/develop`.
 
 **Terminal.Gui bug bar:** no speculative upstream issues. File an issue on `gui-cs/Terminal.Gui` only after adding a failing unit test in this repo that proves the suspected TG bug.
 EOF
