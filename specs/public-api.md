@@ -27,7 +27,7 @@ public class Editor : View
     // --- Display ---
     public bool ShowLineNumbers { get; set; }                     // exists
     public bool WordWrap { get; set; }                            // word-wrap-toggle (needs word-wrap)
-    public bool ReadOnly { get; set; }                            // read-only
+    public bool ReadOnly { get; set; }                            // exists (read-only ✅)
 
     // --- Indentation (tab-handling ✅ + auto-indent) ---
     public int IndentationSize { get; set; } = 4;                 // exists (codex merge)
@@ -94,3 +94,4 @@ public interface IBackgroundRenderer
 | 2026-05-10 | rendering-pipeline pipeline types landed (codex merge) | rendering-pipeline |
 | 2026-05-10 | tab-handling tab properties landed (codex merge) | tab-handling |
 | 2026-05-11 | Caret and selection storage migrated to TextAnchor-backed tracking | caret-anchors |
+| 2026-05-11 | ReadOnly property landed on Editor | read-only |

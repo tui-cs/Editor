@@ -72,6 +72,18 @@ public class EditorSelectionLogicTests
     }
 
     [Fact]
+    public void ReplaceSelection_ReadOnly_Does_Not_Modify_Document ()
+    {
+        Views.Editor editor = new () { Document = new TextDocument ("hello world"), ReadOnly = true };
+        editor.SelectAll ();
+
+        editor.ReplaceSelection ("hi");
+
+        Assert.Equal ("hello world", editor.Document.Text);
+        Assert.True (editor.HasSelection);
+    }
+
+    [Fact]
     public void Selection_TextSegment_Reflects_Range ()
     {
         Views.Editor editor = new () { Document = new TextDocument ("hello") };

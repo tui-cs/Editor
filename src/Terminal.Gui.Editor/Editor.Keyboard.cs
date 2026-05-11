@@ -34,6 +34,11 @@ public partial class Editor
             return false;
         }
 
+        if (ReadOnly)
+        {
+            return true;
+        }
+
         if (HasSelection)
         {
             ReplaceSelection (rune.ToString ());

@@ -20,7 +20,7 @@ public sealed class TedApp : Window
     private readonly Shortcut _locShortcut;
 
     /// <summary>Initializes a new <see cref="TedApp" />.</summary>
-    public TedApp ()
+    public TedApp (bool readOnly = false)
     {
         Title = "ted — Terminal.Gui.Editor demo";
         BorderStyle = LineStyle.None;
@@ -31,6 +31,7 @@ public sealed class TedApp : Window
         {
             ShowLineNumbers = true,
             ConvertTabsToSpaces = true,
+            ReadOnly = readOnly,
 
             ViewportSettings = ViewportSettingsFlags.HasScrollBars
         };
@@ -342,6 +343,11 @@ public sealed class TedApp : Window
 
     private void Paste ()
     {
+        if (Editor.ReadOnly)
+        {
+            return;
+        }
+
         IClipboard? clipboard = App?.Clipboard;
 
         if (clipboard is null || !clipboard.TryGetClipboardData (out string contents))
@@ -371,7 +377,7 @@ public sealed class TedApp : Window
 
     private void Cut ()
     {
-        if (!Editor.HasSelection)
+        if (Editor.ReadOnly || !Editor.HasSelection)
         {
             return;
         }
@@ -380,9 +386,21 @@ public sealed class TedApp : Window
         Editor.ReplaceSelection (string.Empty);
     }
 
-    private void Redo () { Editor.Document?.UndoStack.Redo (); }
+    private void Undo ()
+    {
+        if (!Editor.ReadOnly)
+        {
+            Editor.Document?.UndoStack.Undo ();
+        }
+    }
 
-    private void Undo () { Editor.Document?.UndoStack.Undo (); }
+    private void Redo ()
+    {
+        if (!Editor.ReadOnly)
+        {
+            Editor.Document?.UndoStack.Redo ();
+        }
+    }
 
     private string? ShowDefaultOpenDialog ()
     {

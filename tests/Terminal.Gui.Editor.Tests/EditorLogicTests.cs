@@ -232,6 +232,14 @@ public class EditorLogicTests
     }
 
     [Fact]
+    public void ReadOnly_Defaults_To_False ()
+    {
+        Views.Editor editor = new ();
+
+        Assert.False (editor.ReadOnly);
+    }
+
+    [Fact]
     public void Caret_After_Tab_Uses_Visual_Columns_For_Viewport_Scrolling ()
     {
         Views.Editor editor = new () { Document = new TextDocument ("a\tb"), Width = 3, Height = 1 };

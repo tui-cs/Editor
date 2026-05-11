@@ -12,6 +12,11 @@ public partial class Editor
             return false;
         }
 
+        if (ReadOnly)
+        {
+            return true;
+        }
+
         if (HasSelection && SelectionSpansMultipleLines ())
         {
             IndentSelectedLines ();
@@ -38,6 +43,11 @@ public partial class Editor
         if (_document is null)
         {
             return false;
+        }
+
+        if (ReadOnly)
+        {
+            return true;
         }
 
         List<DocumentLine> lines = HasSelection && SelectionSpansMultipleLines ()

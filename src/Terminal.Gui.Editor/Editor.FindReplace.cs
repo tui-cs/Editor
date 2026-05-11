@@ -70,7 +70,7 @@ public partial class Editor
     {
         ArgumentNullException.ThrowIfNull (replacement);
 
-        if (string.IsNullOrEmpty (searchText) || _document is null)
+        if (ReadOnly || string.IsNullOrEmpty (searchText) || _document is null)
         {
             return false;
         }
@@ -96,7 +96,7 @@ public partial class Editor
     {
         ArgumentNullException.ThrowIfNull (replacement);
 
-        if (string.IsNullOrEmpty (searchText) || _document is null)
+        if (ReadOnly || string.IsNullOrEmpty (searchText) || _document is null)
         {
             return 0;
         }

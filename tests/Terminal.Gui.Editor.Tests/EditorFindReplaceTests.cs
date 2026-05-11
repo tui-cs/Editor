@@ -56,6 +56,27 @@ public class EditorFindReplaceTests
     }
 
     [Fact]
+    public void ReplaceNext_ReadOnly_Does_Not_Modify_Document ()
+    {
+        Views.Editor editor = new () { Document = new TextDocument ("one two one"), ReadOnly = true };
+
+        Assert.False (editor.ReplaceNext ("one", "1"));
+
+        Assert.Equal ("one two one", editor.Document!.Text);
+        Assert.False (editor.HasSelection);
+    }
+
+    [Fact]
+    public void ReplaceAll_ReadOnly_Does_Not_Modify_Document ()
+    {
+        Views.Editor editor = new () { Document = new TextDocument ("one two one"), ReadOnly = true };
+
+        Assert.Equal (0, editor.ReplaceAll ("one", "1"));
+
+        Assert.Equal ("one two one", editor.Document!.Text);
+    }
+
+    [Fact]
     public void ReplaceAll_Throws_On_Null_Replacement ()
     {
         Views.Editor editor = new () { Document = new TextDocument ("foo") };

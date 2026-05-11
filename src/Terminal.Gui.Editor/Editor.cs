@@ -128,6 +128,12 @@ public partial class Editor : View
     }
 
     /// <summary>
+    ///     Gets or sets whether editor commands are allowed to modify the document.
+    ///     Navigation and selection commands continue to work while read-only.
+    /// </summary>
+    public bool ReadOnly { get; set; }
+
+    /// <summary>
     ///     Optional syntax highlighter used when drawing document text.
     ///     Optional syntax highlighter used when drawing document text.
     /// </summary>

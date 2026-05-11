@@ -88,7 +88,7 @@ public partial class Editor
         // History
         AddCommand (Command.Undo, () =>
         {
-            if (!_document!.UndoStack.CanUndo)
+            if (ReadOnly || !_document!.UndoStack.CanUndo)
             {
                 return true;
             }
@@ -101,7 +101,7 @@ public partial class Editor
 
         AddCommand (Command.Redo, () =>
         {
-            if (!_document!.UndoStack.CanRedo)
+            if (ReadOnly || !_document!.UndoStack.CanRedo)
             {
                 return true;
             }
@@ -172,6 +172,11 @@ public partial class Editor
 
     private bool? InsertOrReplace (string text)
     {
+        if (ReadOnly)
+        {
+            return true;
+        }
+
         if (HasSelection)
         {
             ReplaceSelection (text);
@@ -186,6 +191,11 @@ public partial class Editor
 
     private bool? DeleteLeft ()
     {
+        if (ReadOnly)
+        {
+            return true;
+        }
+
         if (HasSelection)
         {
             ReplaceSelection (string.Empty);
@@ -204,6 +214,11 @@ public partial class Editor
 
     private bool? DeleteRight ()
     {
+        if (ReadOnly)
+        {
+            return true;
+        }
+
         if (HasSelection)
         {
             ReplaceSelection (string.Empty);

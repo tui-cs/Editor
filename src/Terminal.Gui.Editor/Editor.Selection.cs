@@ -78,7 +78,7 @@ public partial class Editor
     /// </summary>
     public void ReplaceSelection (string replacement)
     {
-        if (!HasSelection)
+        if (ReadOnly || !HasSelection)
         {
             return;
         }
