@@ -224,6 +224,29 @@ public class EditorRenderingTests
     }
 
     [Fact]
+    public async Task Tab_Then_Emoji_Renders_At_Correct_Cells ()
+    {
+        // drawing-overhaul Scenario 3 regression: `\tHello 🌍` must render with the tab expanded
+        // to the next tab stop, "Hello" as five normal cells, and the globe emoji at columns
+        // [tab-stop + 6, +7] as a two-cell wide grapheme.
+        await using AppFixture<EditorTestHost> fx = new (() => new ("\tHello 🌍"));
+        fx.Render ();
+
+        // Default IndentationSize is 4, so the tab expands to columns 0..3.
+        Assert.Equal (" ", fx.Driver.Contents![0, 0].Grapheme);
+        Assert.Equal (" ", fx.Driver.Contents![0, 3].Grapheme);
+
+        Assert.Equal ("H", fx.Driver.Contents![0, 4].Grapheme);
+        Assert.Equal ("e", fx.Driver.Contents![0, 5].Grapheme);
+        Assert.Equal ("l", fx.Driver.Contents![0, 6].Grapheme);
+        Assert.Equal ("l", fx.Driver.Contents![0, 7].Grapheme);
+        Assert.Equal ("o", fx.Driver.Contents![0, 8].Grapheme);
+        Assert.Equal (" ", fx.Driver.Contents![0, 9].Grapheme);
+
+        Assert.Equal ("🌍", fx.Driver.Contents![0, 10].Grapheme);
+    }
+
+    [Fact]
     public async Task Tabs_Render_As_Spaces_Using_Default_IndentationSize ()
     {
         await using AppFixture<EditorTestHost> fx = new (() => new ("a\tb"));

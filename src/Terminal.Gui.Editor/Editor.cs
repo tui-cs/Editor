@@ -17,6 +17,14 @@ namespace Terminal.Gui.Views;
 public partial class Editor : View
 {
     private readonly VisualLineBuilder _visualLineBuilder = new ();
+
+    // Default-args CellVisualLine cache keyed by DocumentLine.LineNumber. Hit by caret math,
+    // mouse hit-testing, indentation calculations, and the all-lines walk in UpdateContentSize —
+    // i.e. every place that just wants visual-column geometry, not a per-frame styled build.
+    // Invalidated in OnDocumentChanged (lines whose offset range touches the change) and on
+    // wholesale config changes (Document swap, IndentationSize, ShowTabs).
+    private readonly Dictionary<int, CellVisualLine> _defaultVisualLineCache = [];
+
     private int _caretOffset;
     private TextDocument? _document;
     private LineNumberView? _lineNumberView;
@@ -58,6 +66,7 @@ public partial class Editor : View
 
             _document = value;
             _document.Changed += OnDocumentChanged;
+            _defaultVisualLineCache.Clear ();
 
             _caretOffset = Math.Clamp (_caretOffset, 0, _document.TextLength);
             _virtualCaretColumn = GetCaretColumn ();
@@ -173,6 +182,7 @@ public partial class Editor : View
             }
 
             field = value;
+            _defaultVisualLineCache.Clear ();
             _virtualCaretColumn = GetCaretColumn ();
             UpdateContentSize ();
             EnsureCaretVisible ();
@@ -195,6 +205,7 @@ public partial class Editor : View
             }
 
             field = value;
+            _defaultVisualLineCache.Clear ();
             SetNeedsDraw ();
         }
     }
@@ -250,6 +261,12 @@ public partial class Editor : View
 
     private void OnDocumentChanged (object? sender, DocumentChangeEventArgs e)
     {
+        // Drop cached visual lines whose content the change could have touched. The change
+        // affects the line containing e.Offset; if the insertion/removal includes newlines,
+        // line numbers downstream may also have shifted, so clear everything from that line on.
+        // Cheap: usually one or a handful of entries; correctness > saving a few cache hits.
+        InvalidateDefaultVisualLineCache (e);
+
         // Content-size has to refresh first so EnsureCaretVisible inside SetCaretOffset clamps the
         // viewport against the new line count.
         UpdateContentSize ();
@@ -284,11 +301,55 @@ public partial class Editor : View
             return;
         }
 
-        var maxWidth = _document.Lines.Select (line => GetVisualColumnFromLogicalColumn (line, line.Length)).Prepend (0)
-            .Max ();
+        var maxWidth = 0;
+
+        foreach (DocumentLine line in _document.Lines)
+        {
+            var width = GetOrBuildDefaultVisualLine (line).VisualLength;
+
+            if (width > maxWidth)
+            {
+                maxWidth = width;
+            }
+        }
 
         // +1 column lets the caret sit just past the end-of-line.
         SetContentSize (new Size (maxWidth + 1, _document.LineCount));
+    }
+
+    private void InvalidateDefaultVisualLineCache (DocumentChangeEventArgs e)
+    {
+        if (_defaultVisualLineCache.Count == 0 || _document is null)
+        {
+            return;
+        }
+
+        // The change starts at e.Offset; anything before that line is unaffected. The cheapest
+        // sound invalidation is "drop entries for line numbers ≥ the changed line's number" —
+        // newline insert/delete renumbers everything downstream, so per-line keys past the edit
+        // are stale even if their content is untouched.
+        DocumentLine firstAffected = _document.GetLineByOffset (Math.Min (e.Offset, _document.TextLength));
+        var threshold = firstAffected.LineNumber;
+
+        List<int>? toRemove = null;
+
+        foreach (var lineNumber in _defaultVisualLineCache.Keys)
+        {
+            if (lineNumber >= threshold)
+            {
+                (toRemove ??= []).Add (lineNumber);
+            }
+        }
+
+        if (toRemove is null)
+        {
+            return;
+        }
+
+        foreach (var lineNumber in toRemove)
+        {
+            _defaultVisualLineCache.Remove (lineNumber);
+        }
     }
 
     private void UpdateLineNumberPadding ()
@@ -352,9 +413,7 @@ public partial class Editor : View
             return 0;
         }
 
-        var logicalColumn = _caretOffset - line.Offset;
-
-        return GetVisualColumnFromLogicalColumn (line, logicalColumn);
+        return GetOrBuildDefaultVisualLine (line).GetVisualColumn (_caretOffset - line.Offset);
     }
 
     private int GetCaretLineIndex ()
@@ -370,22 +429,29 @@ public partial class Editor : View
     {
         var targetLine = Math.Clamp (GetCaretLineIndex () + delta, 0, _document!.LineCount - 1);
         DocumentLine line = _document!.GetLineByNumber (targetLine + 1);
-        var targetCol = GetLogicalColumnFromVisualColumn (line, _virtualCaretColumn);
+        var targetCol = GetOrBuildDefaultVisualLine (line).GetRelativeOffset (_virtualCaretColumn);
 
         // resetVirtualColumn: false keeps the sticky column intact across vertical moves.
         SetCaretOffset (line.Offset + targetCol, false);
     }
 
-    private int GetVisualColumnFromLogicalColumn (DocumentLine line, int logicalColumn)
+    /// <summary>
+    ///     Builds (or returns the cached) <see cref="CellVisualLine" /> with default attributes / no
+    ///     selection / no syntax segments. Used by every caller that needs visual-column geometry
+    ///     but not styled cell content: caret math, mouse hit-testing, indentation, the all-lines
+    ///     walk in <see cref="UpdateContentSize" />, and <see cref="LineNumberView" />.
+    /// </summary>
+    private CellVisualLine GetOrBuildDefaultVisualLine (DocumentLine line)
     {
-        // TODO(VisualLineBuilder): delete this wrapper once caret callers work directly with CellVisualLine.
-        return BuildVisualLine (line).GetVisualColumn (logicalColumn);
-    }
+        if (_defaultVisualLineCache.TryGetValue (line.LineNumber, out CellVisualLine? cached))
+        {
+            return cached;
+        }
 
-    private int GetLogicalColumnFromVisualColumn (DocumentLine line, int visualColumn)
-    {
-        // TODO(VisualLineBuilder): delete this wrapper once mouse callers work directly with CellVisualLine.
-        return BuildVisualLine (line).GetRelativeOffset (visualColumn);
+        CellVisualLine built = BuildVisualLine (line);
+        _defaultVisualLineCache[line.LineNumber] = built;
+
+        return built;
     }
 
     private CellVisualLine BuildVisualLine (
