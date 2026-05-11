@@ -14,11 +14,11 @@ public class Editor : View
     public event EventHandler<DocumentChangeEventArgs>? DocumentChanged; // exists
 
     // --- Caret ---
-    public int CaretOffset { get; set; }                          // exists; migrate to TextAnchor (caret-anchors)
+    public int CaretOffset { get; set; }                          // exists; backed by TextAnchor (caret-anchors ✅)
     public event EventHandler? CaretChanged;                      // exists
 
     // --- Selection ---
-    public TextSegment? Selection { get; }                        // exists; migrate to anchor pair (caret-anchors)
+    public TextSegment? Selection { get; }                        // exists; backed by anchor pair (caret-anchors ✅)
     public event EventHandler? SelectionChanged;                  // exists
 
     // --- Multi-caret ---
@@ -27,7 +27,7 @@ public class Editor : View
     // --- Display ---
     public bool ShowLineNumbers { get; set; }                     // exists
     public bool WordWrap { get; set; }                            // word-wrap-toggle (needs word-wrap)
-    public bool ReadOnly { get; set; }                            // read-only
+    public bool ReadOnly { get; set; }                            // exists (read-only ✅)
 
     // --- Indentation (tab-handling ✅ + auto-indent) ---
     public int IndentationSize { get; set; } = 4;                 // exists (codex merge)
@@ -93,3 +93,5 @@ public interface IBackgroundRenderer
 | 2026-05-10 | Initial API target extracted from plan | — |
 | 2026-05-10 | rendering-pipeline pipeline types landed (codex merge) | rendering-pipeline |
 | 2026-05-10 | tab-handling tab properties landed (codex merge) | tab-handling |
+| 2026-05-11 | Caret and selection storage migrated to TextAnchor-backed tracking | caret-anchors |
+| 2026-05-11 | ReadOnly property landed on Editor | read-only |

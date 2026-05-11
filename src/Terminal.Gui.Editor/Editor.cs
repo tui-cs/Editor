@@ -11,8 +11,8 @@ namespace Terminal.Gui.Views;
 /// <summary>
 ///     Single-document text editor View backed by <see cref="TextDocument" />. Renders multi-line
 ///     text from a rope-backed document, tracks a caret offset, dispatches keyboard input to
-///     navigate / edit, and scrolls content when it exceeds the viewport. Pre-MVP — selection,
-///     folding, syntax highlighting still pending per <c>specs/00-plan.md</c>.
+///     navigate / edit, and scrolls content when it exceeds the viewport. Pre-MVP — folding,
+///     syntax highlighting, and multi-caret still pending per <c>specs/plan.md</c>.
 /// </summary>
 public partial class Editor : View
 {
@@ -34,9 +34,10 @@ public partial class Editor : View
     private readonly Dictionary<int, DrawCacheEntry> _drawVisualLineCache = [];
     private readonly VisualLineBuilder _visualLineBuilder = new ();
 
-    private int _caretOffset;
+    private TextAnchor? _caretAnchor;
     private TextDocument? _document;
     private Gutter? _gutter;
+    private int _lastKnownCaretOffset;
     private bool _showLineNumbers;
     private ISyntaxHighlighter? _syntaxHighlighter;
 
@@ -73,14 +74,26 @@ public partial class Editor : View
                 _document.Changed -= OnDocumentChanged;
             }
 
+            var caretOffset = Math.Clamp (CaretOffset, 0, value.TextLength);
+            var hadSelection = HasSelection;
+            (int start, int end) beforeSelection = SelectionTuple ();
+
             _document = value;
             _document.Changed += OnDocumentChanged;
+            _caretAnchor = CreateCaretAnchor (caretOffset);
+            _lastKnownCaretOffset = caretOffset;
+            _selectionAnchor = null;
             ClearVisualLineCaches ();
 
-            _caretOffset = Math.Clamp (_caretOffset, 0, _document.TextLength);
             _virtualCaretColumn = GetCaretColumn ();
             UpdateContentSize ();
             UpdateLineNumberPadding ();
+
+            if (hadSelection)
+            {
+                RaiseSelectionChangedIfMoved (beforeSelection);
+            }
+
             SetNeedsDraw ();
         }
     }
@@ -91,7 +104,7 @@ public partial class Editor : View
     /// </summary>
     public int CaretOffset
     {
-        get => _caretOffset;
+        get => GetCaretOffset ();
         set => SetCaretOffset (value, true);
     }
 
@@ -113,6 +126,12 @@ public partial class Editor : View
             SetNeedsDraw ();
         }
     }
+
+    /// <summary>
+    ///     Gets or sets whether editor commands are allowed to modify the document.
+    ///     Navigation and selection commands continue to work while read-only.
+    /// </summary>
+    public bool ReadOnly { get; set; }
 
     /// <summary>
     ///     Optional syntax highlighter used when drawing document text.
@@ -231,14 +250,16 @@ public partial class Editor : View
     private void SetCaretOffset (int value, bool resetVirtualColumn)
     {
         var clamped = Math.Clamp (value, 0, _document?.TextLength ?? 0);
+        var current = CaretOffset;
 
-        if (clamped == _caretOffset && !resetVirtualColumn)
+        if (clamped == current && !resetVirtualColumn)
         {
             return;
         }
 
-        var changed = clamped != _caretOffset;
-        _caretOffset = clamped;
+        var changed = clamped != current;
+        _caretAnchor = _document is null ? null : CreateCaretAnchor (clamped);
+        _lastKnownCaretOffset = clamped;
 
         if (resetVirtualColumn)
         {
@@ -263,6 +284,9 @@ public partial class Editor : View
             // external code retains the TextDocument (test fixtures, future shared docs across panes,
             // etc.). The Document setter unsubscribes on swap; this covers View-teardown.
             _document.Changed -= OnDocumentChanged;
+            _lastKnownCaretOffset = CaretOffset;
+            _caretAnchor = null;
+            _selectionAnchor = null;
         }
 
         base.Dispose (disposing);
@@ -275,30 +299,19 @@ public partial class Editor : View
         // line numbers downstream may also have shifted, so clear everything from that line on.
         // Cheap: usually one or a handful of entries; correctness > saving a few cache hits.
         InvalidateVisualLineCaches (e);
-
-        // Content-size has to refresh first so EnsureCaretVisible inside SetCaretOffset clamps the
-        // viewport against the new line count.
-        UpdateContentSize ();
-
-        // Manual stand-in for TextAnchor.AfterInsertion until specs/00-plan.md §6 lands. The math:
-        // an insert at-or-before the caret pushes it forward by InsertionLength; an insert strictly
-        // after the caret leaves it alone; a removal that straddles the caret snaps it to the
-        // removal start; a removal entirely before the caret slides it back by RemovalLength.
-        if (_caretOffset >= e.Offset)
-        {
-            var target = _caretOffset < e.Offset + e.RemovalLength
-                ? e.Offset
-                : _caretOffset - e.RemovalLength + e.InsertionLength;
-
-            // Route through SetCaretOffset so CaretChanged fires when the caret actually moves.
-            // SetCaretOffset also handles EnsureCaretVisible + SetNeedsDraw.
-            SetCaretOffset (target, true);
-
-            return;
-        }
-
         UpdateContentSize ();
         UpdateLineNumberPadding ();
+
+        var current = CaretOffset;
+
+        if (current != _lastKnownCaretOffset)
+        {
+            _lastKnownCaretOffset = current;
+            _virtualCaretColumn = GetCaretColumn ();
+            CaretChanged?.Invoke (this, EventArgs.Empty);
+        }
+
+        RefreshSelectionAnchorMovement ();
         EnsureCaretVisible ();
         SetNeedsDraw ();
     }
@@ -432,14 +445,15 @@ public partial class Editor : View
 
     private int GetCaretColumn ()
     {
-        DocumentLine? line = _document?.GetLineByOffset (_caretOffset);
+        var caretOffset = CaretOffset;
+        DocumentLine? line = _document?.GetLineByOffset (caretOffset);
 
-        return line is null ? 0 : GetOrBuildDefaultVisualLine (line).GetVisualColumn (_caretOffset - line.Offset);
+        return line is null ? 0 : GetOrBuildDefaultVisualLine (line).GetVisualColumn (caretOffset - line.Offset);
     }
 
     private int GetCaretLineIndex ()
     {
-        return _document?.GetLineByOffset (_caretOffset).LineNumber - 1 ?? 0;
+        return _document?.GetLineByOffset (CaretOffset).LineNumber - 1 ?? 0;
     }
 
     /// <summary>
@@ -454,6 +468,25 @@ public partial class Editor : View
 
         // resetVirtualColumn: false keeps the sticky column intact across vertical moves.
         SetCaretOffset (line.Offset + targetCol, false);
+    }
+
+    private int GetCaretOffset ()
+    {
+        if (_caretAnchor is not { IsDeleted: false } anchor)
+        {
+            return _lastKnownCaretOffset;
+        }
+
+        return anchor.Offset;
+    }
+
+    private TextAnchor CreateCaretAnchor (int offset)
+    {
+        TextAnchor anchor = _document!.CreateAnchor (offset);
+        anchor.MovementType = AnchorMovementType.AfterInsertion;
+        anchor.SurviveDeletion = true;
+
+        return anchor;
     }
 
     /// <summary>

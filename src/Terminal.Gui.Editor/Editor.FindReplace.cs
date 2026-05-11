@@ -14,7 +14,7 @@ public partial class Editor
             return false;
         }
 
-        var startOffset = HasSelection ? SelectionEnd : _caretOffset;
+        var startOffset = HasSelection ? SelectionEnd : CaretOffset;
         var matchOffset = FindForwardOffset (searchText, startOffset, matchCase);
 
         if (matchOffset < 0 && wrapAround && startOffset > 0)
@@ -44,7 +44,7 @@ public partial class Editor
             return false;
         }
 
-        var startOffset = HasSelection ? SelectionStart - 1 : _caretOffset - 1;
+        var startOffset = HasSelection ? SelectionStart - 1 : CaretOffset - 1;
         var matchOffset = FindBackwardOffset (searchText, startOffset, matchCase);
 
         if (matchOffset < 0 && wrapAround && startOffset < _document.TextLength - 1)
@@ -70,7 +70,7 @@ public partial class Editor
     {
         ArgumentNullException.ThrowIfNull (replacement);
 
-        if (string.IsNullOrEmpty (searchText) || _document is null)
+        if (ReadOnly || string.IsNullOrEmpty (searchText) || _document is null)
         {
             return false;
         }
@@ -96,7 +96,7 @@ public partial class Editor
     {
         ArgumentNullException.ThrowIfNull (replacement);
 
-        if (string.IsNullOrEmpty (searchText) || _document is null)
+        if (ReadOnly || string.IsNullOrEmpty (searchText) || _document is null)
         {
             return 0;
         }
@@ -181,8 +181,9 @@ public partial class Editor
         var start = Math.Clamp (startOffset, 0, _document.TextLength);
         var end = Math.Clamp (start + length, start, _document.TextLength);
 
-        _selectionAnchor = start;
+        _selectionAnchor = CreateSelectionAnchor (start);
         CaretOffset = end;
+        RefreshSelectionAnchorMovement ();
         SelectionChanged?.Invoke (this, EventArgs.Empty);
         SetNeedsDraw ();
     }

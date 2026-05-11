@@ -44,7 +44,7 @@ else
   git push -u origin "$INTEGRATION_BRANCH"
 fi
 
-PROMPT=$(cat <<EOF
+read -r -d '' PROMPT <<'EOF' || true
 You are the Codex agent in the Codex-only autonomous sprint described in
 \`specs/codex-autonomous-sprint.md\`.
 
@@ -88,7 +88,6 @@ unit test and a clear repro. The bar is high — do not file speculative or "thi
 might be" issues. If you cannot write a failing test, the bug isn't filed; work
 around it locally, note the workaround in your final report, and move on.
 EOF
-)
 
 echo "==> Starting Codex in $WORK"
 echo "    (Ctrl+C inside the agent to stop. Detach the tmux pane with Ctrl+B D.)"

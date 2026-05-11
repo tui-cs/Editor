@@ -192,6 +192,90 @@ public class EditorMouseTests
         Assert.False (fx.Top.Editor.HasSelection);
     }
 
+    [Fact]
+    public async Task DoubleClick_Selects_Word_Under_Cursor ()
+    {
+        await using AppFixture<EditorTestHost> fx = new (() => new ("hello world"));
+        fx.Top.Editor.SetFocus ();
+
+        fx.Injector.InjectMouse (
+            new () { ScreenPosition = new (1, 0), Flags = MouseFlags.LeftButtonDoubleClicked, Timestamp = BaseTime },
+            Direct);
+
+        Assert.True (fx.Top.Editor.HasSelection);
+        Assert.Equal (0, fx.Top.Editor.SelectionStart);
+        Assert.Equal (5, fx.Top.Editor.SelectionEnd);
+        Assert.Equal ("hello", fx.Top.Editor.SelectedText);
+    }
+
+    [Fact]
+    public async Task TripleClick_Selects_Line_Under_Cursor ()
+    {
+        await using AppFixture<EditorTestHost> fx = new (() => new ("alpha\nbeta"));
+        fx.Top.Editor.SetFocus ();
+
+        fx.Injector.InjectMouse (
+            new () { ScreenPosition = new (2, 0), Flags = MouseFlags.LeftButtonTripleClicked, Timestamp = BaseTime },
+            Direct);
+
+        Assert.True (fx.Top.Editor.HasSelection);
+        Assert.Equal (0, fx.Top.Editor.SelectionStart);
+        Assert.Equal (6, fx.Top.Editor.SelectionEnd);
+        Assert.Equal ("alpha\n", fx.Top.Editor.SelectedText);
+    }
+
+    [Fact]
+    public async Task GutterClick_Selects_Associated_Line ()
+    {
+        await using AppFixture<EditorTestHost> fx = new (() =>
+        {
+            EditorTestHost host = new ("alpha\nbeta\ngamma");
+            host.Editor.ShowLineNumbers = true;
+
+            return host;
+        });
+
+        fx.Top.Editor.SetFocus ();
+        InjectClick (fx, new (0, 1));
+
+        Assert.True (fx.Top.Editor.HasSelection);
+        Assert.Equal (6, fx.Top.Editor.SelectionStart);
+        Assert.Equal (11, fx.Top.Editor.SelectionEnd);
+        Assert.Equal ("beta\n", fx.Top.Editor.SelectedText);
+    }
+
+    [Fact]
+    public async Task GutterDrag_Selects_Line_Range ()
+    {
+        await using AppFixture<EditorTestHost> fx = new (() =>
+        {
+            EditorTestHost host = new ("alpha\nbeta\ngamma");
+            host.Editor.ShowLineNumbers = true;
+
+            return host;
+        });
+
+        fx.Top.Editor.SetFocus ();
+
+        fx.Injector.InjectMouse (
+            new () { ScreenPosition = new (0, 0), Flags = MouseFlags.LeftButtonPressed, Timestamp = BaseTime },
+            Direct);
+
+        fx.Injector.InjectMouse (
+            new ()
+            {
+                ScreenPosition = new (0, 2),
+                Flags = MouseFlags.LeftButtonPressed | MouseFlags.PositionReport,
+                Timestamp = BaseTime.AddMilliseconds (50)
+            },
+            Direct);
+
+        Assert.True (fx.Top.Editor.HasSelection);
+        Assert.Equal (0, fx.Top.Editor.SelectionStart);
+        Assert.Equal (16, fx.Top.Editor.SelectionEnd);
+        Assert.Equal ("alpha\nbeta\ngamma", fx.Top.Editor.SelectedText);
+    }
+
     private static void InjectClick (AppFixture<EditorTestHost> fx, Point pos)
     {
         fx.Injector.InjectMouse (

@@ -1,6 +1,6 @@
 # Feature Specification: Anchor-Backed Caret & Selection
 
-**Status**: Ready
+**Status**: Complete
 **Created**: 2026-05-10
 **Depends on**: None
 **Blocked by**: None
@@ -45,13 +45,13 @@ Replace the Editor's hand-rolled caret-offset tracking with a `TextAnchor` (`Anc
 
 ## Definition of Done
 
-- [ ] `OnDocumentChanged`'s manual `if (_caretOffset >= e.Offset)` arithmetic is gone
-- [ ] `CaretOffset` is a thin wrapper over the anchor's offset
-- [ ] All existing caret tests pass unchanged
-- [ ] All existing selection tests pass unchanged
-- [ ] New test: external edit on shared `TextDocument` advances caret correctly
-- [ ] New test: edit at caret with `AfterInsertion` semantics behaves correctly
-- [ ] R4 enforceable
+- [x] `OnDocumentChanged`'s manual `if (_caretOffset >= e.Offset)` arithmetic is gone
+- [x] `CaretOffset` is a thin wrapper over the anchor's offset
+- [x] All existing caret tests pass unchanged
+- [x] All existing selection tests pass unchanged
+- [x] New test: external edit on shared `TextDocument` advances caret correctly
+- [x] New test: edit at caret with `AfterInsertion` semantics behaves correctly
+- [x] R4 enforceable
 
 ## Out of Scope
 

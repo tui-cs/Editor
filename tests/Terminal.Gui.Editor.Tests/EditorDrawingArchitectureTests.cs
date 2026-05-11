@@ -55,6 +55,7 @@ public class EditorDrawingArchitectureTests
     {
         var source = ReadAllEditorSources ();
 
+        Assert.DoesNotContain ("DrawLineContent", source);
         Assert.DoesNotContain ("GetVisualWidthForCharacter", source);
         Assert.DoesNotContain ("private int GetVisualColumnFromLogicalColumn", source);
         Assert.DoesNotContain ("private int GetLogicalColumnFromVisualColumn", source);
