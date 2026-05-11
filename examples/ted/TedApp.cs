@@ -315,7 +315,7 @@ public sealed class TedApp : Window
 
     private void Action () { }
 
-    private View [] CreateEditMenuItems ()
+    private View[] CreateEditMenuItems ()
     {
         return
         [

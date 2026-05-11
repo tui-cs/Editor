@@ -62,7 +62,7 @@ public partial class Editor
         }
 
         var start = Math.Clamp (startOffset, 0, _document.TextLength);
-        var end = Math.Clamp (start + Math.Max (0, length), 0, _document.TextLength);
+        var end = (int)Math.Clamp ((long)start + Math.Max (0L, length), 0L, _document.TextLength);
 
         (int start, int end) before = SelectionTuple ();
         _selectionAnchor = start == end ? null : start;
