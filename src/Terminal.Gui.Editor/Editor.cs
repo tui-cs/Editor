@@ -453,7 +453,9 @@ public partial class Editor : View
         }
 
         int startOffset = Math.Clamp (e.Offset, 0, _document.TextLength);
-        int firstAffectedLineNumber = _document.GetLineByOffset (startOffset).LineNumber;
+        int maxDocumentOffset = Math.Max (0, _document.TextLength - 1);
+        int affectedOffset = Math.Min (startOffset, maxDocumentOffset);
+        int firstAffectedLineNumber = _document.GetLineByOffset (affectedOffset).LineNumber;
         List<DocumentLine> linesToRemove = [];
 
         foreach (KeyValuePair<DocumentLine, CachedVisualLine> entry in _visualLineCache)
