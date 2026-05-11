@@ -38,7 +38,8 @@ public class PerformanceSmokeTests
 
     /// <summary>
     ///     Building a single long line (~200 chars) should complete well under the threshold.
-    ///     Typical: ~16 µs. Threshold: 10 ms.
+    ///     Typical: ~16 µs locally; CI runners (shared, no turbo) run 2–4x slower.
+    ///     Threshold: 100 ms.
     /// </summary>
     [Fact]
     public void BuildSingleLongLine_CompletesWithinBudget ()
@@ -62,8 +63,8 @@ public class PerformanceSmokeTests
 
         sw.Stop ();
 
-        Assert.True (sw.ElapsedMilliseconds < 10,
-            $"100 long-line builds took {sw.ElapsedMilliseconds}ms — expected < 10ms. Possible performance regression.");
+        Assert.True (sw.ElapsedMilliseconds < 100,
+            $"100 long-line builds took {sw.ElapsedMilliseconds}ms — expected < 100ms. Possible performance regression.");
     }
 
     /// <summary>
