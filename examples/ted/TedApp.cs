@@ -149,6 +149,22 @@ public sealed class TedApp : Window
                 AlignmentModes = AlignmentModes.IgnoreFirstOrLast
             };
 
+        PopoverMenu editorContextMenu = new (CreateEditMenuItems ())
+        {
+            Target = new WeakReference<View> (Editor)
+        };
+
+        Editor.MouseEvent += (_, mouse) =>
+        {
+            if (!mouse.Flags.HasFlag (MouseFlags.RightButtonClicked))
+            {
+                return;
+            }
+
+            editorContextMenu.MakeVisible (mouse.ScreenPosition, null);
+            mouse.Handled = true;
+        };
+
         menu.Add (new MenuBarItem (Strings.menuFile,
             [
                 new MenuItem { Command = Command.New, Action = New, Key = KeyFor (Command.New) },
@@ -157,18 +173,7 @@ public sealed class TedApp : Window
                 new MenuItem { Command = Command.SaveAs, Action = SaveAs, Key = KeyFor (Command.SaveAs) },
                 new MenuItem { Command = Command.Quit, Action = Quit, Key = KeyFor (Command.Quit) }
             ]),
-            new MenuBarItem (Strings.menuEdit,
-            [
-                new MenuItem ("_Find...", "Find text in the current document", Find),
-                new MenuItem ("_Replace...", "Find and replace text in the current document", Replace),
-                new Line (), new MenuItem { Command = Command.Undo, Action = Undo, Key = KeyFor (Command.Undo) },
-                new MenuItem { Command = Command.Redo, Action = Redo, Key = KeyFor (Command.Redo) },
-                new Line (),
-                new MenuItem { Command = Command.Cut, Action = Cut, Key = KeyFor (Command.Cut) },
-                new MenuItem { Command = Command.Copy, Action = Copy, Key = KeyFor (Command.Copy) },
-                new MenuItem { Command = Command.Paste, Action = Paste, Key = KeyFor (Command.Paste) },
-                new MenuItem { Command = Command.SelectAll, Action = SelectAll, Key = KeyFor (Command.SelectAll) }
-            ]),
+            new MenuBarItem (Strings.menuEdit, CreateEditMenuItems ()),
             new MenuBarItem ("_Options",
             [
                 new MenuItem
@@ -312,17 +317,68 @@ public sealed class TedApp : Window
 
     private void Action () { }
 
+    private View[] CreateEditMenuItems ()
+    {
+        return
+        [
+            new MenuItem ("_Find...", "Find text in the current document", Find),
+            new MenuItem ("_Replace...", "Find and replace text in the current document", Replace),
+            new Line (),
+            new MenuItem { Command = Command.Undo, Action = Undo, Key = KeyFor (Command.Undo) },
+            new MenuItem { Command = Command.Redo, Action = Redo, Key = KeyFor (Command.Redo) },
+            new Line (),
+            new MenuItem { Command = Command.Cut, Action = Cut, Key = KeyFor (Command.Cut) },
+            new MenuItem { Command = Command.Copy, Action = Copy, Key = KeyFor (Command.Copy) },
+            new MenuItem { Command = Command.Paste, Action = Paste, Key = KeyFor (Command.Paste) },
+            new MenuItem { Command = Command.SelectAll, Action = SelectAll, Key = KeyFor (Command.SelectAll) }
+        ];
+    }
+
     private void Find () { ShowFindReplaceDialog (false); }
 
     private void Replace () { ShowFindReplaceDialog (true); }
 
-    private void SelectAll () { }
+    private void SelectAll () { Editor.SelectAll (); }
 
-    private void Paste () { }
+    private void Paste ()
+    {
+        IClipboard? clipboard = App?.Clipboard;
 
-    private void Copy () { }
+        if (clipboard is null || !clipboard.TryGetClipboardData (out string contents))
+        {
+            return;
+        }
 
-    private void Cut () { }
+        if (Editor.HasSelection)
+        {
+            Editor.ReplaceSelection (contents);
+        }
+        else
+        {
+            Editor.Document?.Insert (Editor.CaretOffset, contents);
+        }
+    }
+
+    private void Copy ()
+    {
+        if (!Editor.HasSelection)
+        {
+            return;
+        }
+
+        App?.Clipboard?.TrySetClipboardData (Editor.SelectedText);
+    }
+
+    private void Cut ()
+    {
+        if (!Editor.HasSelection)
+        {
+            return;
+        }
+
+        Copy ();
+        Editor.ReplaceSelection (string.Empty);
+    }
 
     private void Redo () { Editor.Document?.UndoStack.Redo (); }
 

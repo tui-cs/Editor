@@ -403,4 +403,29 @@ public class TedAppTests
         DriverAssert.ContentsContains (fx.Driver, "Find...");
         DriverAssert.ContentsContains (fx.Driver, "Replace...");
     }
+
+    [Fact]
+    public async Task Editor_RightClick_Opens_Edit_Context_Menu ()
+    {
+        await using AppFixture<TedApp> fx = new (() => new TedApp ());
+
+        DriverAssert.ContentsDoesNotContain (fx.Driver, "Find...");
+        DriverAssert.ContentsDoesNotContain (fx.Driver, "Replace...");
+
+        InputInjectionOptions options = new () { Mode = InputInjectionMode.Direct };
+
+        fx.Injector.InjectMouse (
+            new Mouse
+            {
+                ScreenPosition = new Point (4, 2),
+                Flags = MouseFlags.RightButtonClicked,
+                Timestamp = new DateTime (2025, 1, 1, 12, 0, 0)
+            },
+            options);
+        fx.Render ();
+
+        DriverAssert.ContentsContains (fx.Driver, "Find...");
+        DriverAssert.ContentsContains (fx.Driver, "Replace...");
+        DriverAssert.ContentsContains (fx.Driver, "Select all");
+    }
 }
