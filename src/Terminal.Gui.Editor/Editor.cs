@@ -16,12 +16,22 @@ namespace Terminal.Gui.Views;
 /// </summary>
 public partial class Editor : View
 {
-    // Default-args CellVisualLine cache keyed by DocumentLine.LineNumber. Hit by caret math,
-    // mouse hit-testing, indentation calculations, and the all-lines walk in UpdateContentSize —
-    // i.e. every place that just wants visual-column geometry, not a per-frame styled build.
-    // Invalidated in OnDocumentChanged (lines whose offset range touches the change) and on
-    // wholesale config changes (Document swap, IndentationSize, ShowTabs).
+    // Two narrow caches keyed by DocumentLine.LineNumber. Kept separate so the caret path and
+    // the draw path don't thrash each other's entries (different attribute sets per call site).
+    //
+    //   _defaultVisualLineCache: built with Attribute.Default, no selection / no segments. Hit by
+    //     caret math, mouse hit-testing, indentation, UpdateContentSize's all-lines walk, Gutter.
+    //
+    //   _drawVisualLineCache: built with the editor's role attributes for the draw path, but only
+    //     when no syntax segments / no selection / no transformers are in play — i.e. plain-text
+    //     scrolling without a highlighter. Idea from PR #54: a consumer that doesn't enable
+    //     syntax highlighting otherwise rebuilds every visible line on every frame.
+    //
+    // Both invalidate together: ranged in OnDocumentChanged (from the first affected line down)
+    // and wholesale on Document swap / IndentationSize / ShowTabs / (draw cache only) attribute
+    // role mismatch.
     private readonly Dictionary<int, CellVisualLine> _defaultVisualLineCache = [];
+    private readonly Dictionary<int, DrawCacheEntry> _drawVisualLineCache = [];
     private readonly VisualLineBuilder _visualLineBuilder = new ();
 
     private int _caretOffset;
@@ -65,7 +75,7 @@ public partial class Editor : View
 
             _document = value;
             _document.Changed += OnDocumentChanged;
-            _defaultVisualLineCache.Clear ();
+            ClearVisualLineCaches ();
 
             _caretOffset = Math.Clamp (_caretOffset, 0, _document.TextLength);
             _virtualCaretColumn = GetCaretColumn ();
@@ -181,7 +191,7 @@ public partial class Editor : View
             }
 
             field = value;
-            _defaultVisualLineCache.Clear ();
+            ClearVisualLineCaches ();
             _virtualCaretColumn = GetCaretColumn ();
             UpdateContentSize ();
             EnsureCaretVisible ();
@@ -204,7 +214,7 @@ public partial class Editor : View
             }
 
             field = value;
-            _defaultVisualLineCache.Clear ();
+            ClearVisualLineCaches ();
             SetNeedsDraw ();
         }
     }
@@ -264,7 +274,7 @@ public partial class Editor : View
         // affects the line containing e.Offset; if the insertion/removal includes newlines,
         // line numbers downstream may also have shifted, so clear everything from that line on.
         // Cheap: usually one or a handful of entries; correctness > saving a few cache hits.
-        InvalidateDefaultVisualLineCache (e);
+        InvalidateVisualLineCaches (e);
 
         // Content-size has to refresh first so EnsureCaretVisible inside SetCaretOffset clamps the
         // viewport against the new line count.
@@ -316,9 +326,15 @@ public partial class Editor : View
         SetContentSize (new Size (maxWidth + 1, _document.LineCount));
     }
 
-    private void InvalidateDefaultVisualLineCache (DocumentChangeEventArgs e)
+    private void ClearVisualLineCaches ()
     {
-        if (_defaultVisualLineCache.Count == 0 || _document is null)
+        _defaultVisualLineCache.Clear ();
+        _drawVisualLineCache.Clear ();
+    }
+
+    private void InvalidateVisualLineCaches (DocumentChangeEventArgs e)
+    {
+        if (_document is null || (_defaultVisualLineCache.Count == 0 && _drawVisualLineCache.Count == 0))
         {
             return;
         }
@@ -330,24 +346,35 @@ public partial class Editor : View
         DocumentLine firstAffected = _document.GetLineByOffset (Math.Min (e.Offset, _document.TextLength));
         var threshold = firstAffected.LineNumber;
 
-        List<int>? toRemove = null;
+        RemoveFromCache (_defaultVisualLineCache, threshold);
+        RemoveFromCache (_drawVisualLineCache, threshold);
 
-        foreach (var lineNumber in _defaultVisualLineCache.Keys)
+        static void RemoveFromCache<TValue> (Dictionary<int, TValue> cache, int threshold)
         {
-            if (lineNumber >= threshold)
+            if (cache.Count == 0)
             {
-                (toRemove ??= []).Add (lineNumber);
+                return;
             }
-        }
 
-        if (toRemove is null)
-        {
-            return;
-        }
+            List<int>? toRemove = null;
 
-        foreach (var lineNumber in toRemove)
-        {
-            _defaultVisualLineCache.Remove (lineNumber);
+            foreach (var lineNumber in cache.Keys)
+            {
+                if (lineNumber >= threshold)
+                {
+                    (toRemove ??= []).Add (lineNumber);
+                }
+            }
+
+            if (toRemove is null)
+            {
+                return;
+            }
+
+            foreach (var lineNumber in toRemove)
+            {
+                cache.Remove (lineNumber);
+            }
         }
     }
 
@@ -447,6 +474,46 @@ public partial class Editor : View
 
         return built;
     }
+
+    /// <summary>
+    ///     Returns a cached draw-path <see cref="CellVisualLine" /> when the call is eligible
+    ///     (no segments, no selection on this line, no transformers, attributes match the cached
+    ///     entry). Otherwise builds fresh and — if eligible — stores it. The draw cache only fires
+    ///     for consumers that don't enable syntax highlighting; once segments are present every
+    ///     call falls through to a fresh build.
+    /// </summary>
+    private CellVisualLine GetOrBuildDrawVisualLine (
+        DocumentLine line,
+        IReadOnlyList<StyledSegment>? segments,
+        Attribute normal,
+        Attribute selected,
+        int selStart,
+        int selEnd)
+    {
+        if (!IsDrawCacheEligible (segments, selStart, selEnd))
+        {
+            return BuildVisualLine (line, segments, normal, selected, selStart, selEnd);
+        }
+
+        if (_drawVisualLineCache.TryGetValue (line.LineNumber, out DrawCacheEntry cached)
+            && cached.Normal == normal
+            && cached.Selected == selected)
+        {
+            return cached.Line;
+        }
+
+        CellVisualLine built = BuildVisualLine (line, segments, normal, selected, selStart, selEnd);
+        _drawVisualLineCache[line.LineNumber] = new DrawCacheEntry (built, normal, selected);
+
+        return built;
+    }
+
+    private bool IsDrawCacheEligible (IReadOnlyList<StyledSegment>? segments, int selStart, int selEnd)
+    {
+        return segments is null && selStart >= selEnd && LineTransformers.Count == 0;
+    }
+
+    private readonly record struct DrawCacheEntry (CellVisualLine Line, Attribute Normal, Attribute Selected);
 
     private CellVisualLine BuildVisualLine (
         DocumentLine line,

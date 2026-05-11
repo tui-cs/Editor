@@ -145,4 +145,90 @@ public class EditorVisualLineCacheTests
 
         return (Dictionary<int, CellVisualLine>)field.GetValue (editor)!;
     }
+
+    /// <summary>
+    ///     Cherry-picked from PR #54: <see cref="Views.Editor.OnDrawingContent" /> can also cache
+    ///     when there's no syntax highlighter, no selection, and no transformers. The cache is
+    ///     separate from the default-args cache so the two paths don't thrash each other.
+    /// </summary>
+    public class DrawCache
+    {
+        [Fact]
+        public void Repeated_Draw_Of_Same_Line_With_Same_Attributes_Reuses_Entry ()
+        {
+            Views.Editor editor = new () { Document = new TextDocument ("alpha") };
+            DocumentLine line = editor.Document!.GetLineByNumber (1);
+
+            CellVisualLine first = InvokeDrawBuild (editor, line);
+            CellVisualLine second = InvokeDrawBuild (editor, line);
+
+            Assert.Same (first, second);
+        }
+
+        [Fact]
+        public void Different_Attributes_Bypass_Cache ()
+        {
+            Views.Editor editor = new () { Document = new TextDocument ("alpha") };
+            DocumentLine line = editor.Document!.GetLineByNumber (1);
+
+            Terminal.Gui.Drawing.Attribute red = new (Terminal.Gui.Drawing.Color.Red, Terminal.Gui.Drawing.Color.Black);
+            Terminal.Gui.Drawing.Attribute blue = new (Terminal.Gui.Drawing.Color.Blue, Terminal.Gui.Drawing.Color.Black);
+
+            CellVisualLine first = InvokeDrawBuild (editor, line, red, red);
+            CellVisualLine second = InvokeDrawBuild (editor, line, blue, blue);
+
+            Assert.NotSame (first, second);
+        }
+
+        [Fact]
+        public void Selection_Bypasses_Cache ()
+        {
+            Views.Editor editor = new () { Document = new TextDocument ("alpha") };
+            DocumentLine line = editor.Document!.GetLineByNumber (1);
+
+            CellVisualLine first = InvokeDrawBuild (editor, line);
+            CellVisualLine withSelection = InvokeDrawBuild (editor, line, selStart: 0, selEnd: 3);
+
+            // With selection active, the eligibility predicate fails; the call falls through to
+            // a fresh build rather than returning the cached no-selection entry.
+            Assert.NotSame (first, withSelection);
+        }
+
+        [Fact]
+        public void Document_Edit_Drops_Draw_Cache_From_Affected_Line ()
+        {
+            Views.Editor editor = new () { Document = new TextDocument ("alpha\nbeta") };
+            DocumentLine line2 = editor.Document!.GetLineByNumber (2);
+            CellVisualLine before = InvokeDrawBuild (editor, line2);
+
+            editor.Document!.Insert (line2.Offset, "!");
+
+            DocumentLine line2After = editor.Document.GetLineByNumber (2);
+            CellVisualLine after = InvokeDrawBuild (editor, line2After);
+
+            Assert.NotSame (before, after);
+        }
+
+        private static CellVisualLine InvokeDrawBuild (
+            Views.Editor editor,
+            DocumentLine line,
+            Terminal.Gui.Drawing.Attribute? normal = null,
+            Terminal.Gui.Drawing.Attribute? selected = null,
+            int selStart = 0,
+            int selEnd = 0)
+        {
+            MethodInfo method = typeof (Views.Editor)
+                                    .GetMethod (
+                                        "GetOrBuildDrawVisualLine",
+                                        BindingFlags.Instance | BindingFlags.NonPublic)
+                                ?? throw new InvalidOperationException ("GetOrBuildDrawVisualLine missing");
+
+            Terminal.Gui.Drawing.Attribute n = normal ?? Terminal.Gui.Drawing.Attribute.Default;
+            Terminal.Gui.Drawing.Attribute s = selected ?? Terminal.Gui.Drawing.Attribute.Default;
+
+            return (CellVisualLine)method.Invoke (
+                editor,
+                [line, null!, n, s, selStart, selEnd])!;
+        }
+    }
 }

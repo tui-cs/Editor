@@ -94,9 +94,10 @@ public partial class Editor
         int selStart,
         int selEnd)
     {
-        // The draw path needs the full segment/selection context, so it can't share the default
-        // CellVisualLine cache used by caret/mouse math — it always builds fresh.
-        CellVisualLine visualLine = BuildVisualLine (line, segments, normal, selected, selStart, selEnd);
+        // GetOrBuildDrawVisualLine caches when segments == null && no selection && no transformers,
+        // i.e. plain-text scrolling without a highlighter. The caret-path cache is separate so the
+        // two don't thrash each other's entries (they use different attribute sets).
+        CellVisualLine visualLine = GetOrBuildDrawVisualLine (line, segments, normal, selected, selStart, selEnd);
 
         foreach (IBackgroundRenderer renderer in BackgroundRenderers)
         {
