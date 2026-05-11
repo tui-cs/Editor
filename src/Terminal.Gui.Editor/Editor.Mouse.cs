@@ -21,6 +21,20 @@ public partial class Editor
 
         var shift = mouse.Flags.HasFlag (MouseFlags.Shift);
 
+        if (mouse.Flags.HasFlag (MouseFlags.LeftButtonTripleClicked))
+        {
+            SelectLineAtOffset (MousePositionToOffset (pos));
+
+            return true;
+        }
+
+        if (mouse.Flags.HasFlag (MouseFlags.LeftButtonDoubleClicked))
+        {
+            SelectWordAtOffset (MousePositionToOffset (pos));
+
+            return true;
+        }
+
         // Drag: left button held while position changes — extend selection from the press point.
         // Tested first because PositionReport+LeftButtonPressed also satisfies the plain-press check.
         if (mouse.Flags.FastHasFlags (MouseFlags.LeftButtonPressed | MouseFlags.PositionReport))

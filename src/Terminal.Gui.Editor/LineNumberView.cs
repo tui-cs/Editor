@@ -1,5 +1,6 @@
 using System.Drawing;
 using Terminal.Gui.Drawing;
+using Terminal.Gui.Input;
 using Terminal.Gui.Text.Document;
 using Terminal.Gui.ViewBase;
 
@@ -17,6 +18,7 @@ namespace Terminal.Gui.Views;
 public sealed class LineNumberView : View
 {
     private readonly Editor _editor;
+    private int? _selectionAnchorLineNumber;
 
     /// <summary>Initializes a new <see cref="LineNumberView" /> for <paramref name="editor" />.</summary>
     public LineNumberView (Editor editor)
@@ -25,7 +27,6 @@ public sealed class LineNumberView : View
 
         _editor = editor;
         CanFocus = false;
-        ViewportSettings |= ViewportSettingsFlags.TransparentMouse;
     }
 
 
@@ -70,6 +71,47 @@ public sealed class LineNumberView : View
         }
 
         return true;
+    }
+
+    /// <inheritdoc />
+    protected override bool OnMouseEvent (Mouse mouse)
+    {
+        if (mouse.Position is not { } pos)
+        {
+            return false;
+        }
+
+        if (mouse.Flags.FastHasFlags (MouseFlags.LeftButtonPressed | MouseFlags.PositionReport))
+        {
+            if (_selectionAnchorLineNumber is not { } anchor)
+            {
+                anchor = _editor.ViewRowToLineNumber (pos.Y);
+                _selectionAnchorLineNumber = anchor;
+            }
+
+            _editor.SelectLines (anchor, _editor.ViewRowToLineNumber (pos.Y));
+
+            return true;
+        }
+
+        if (mouse.Flags.HasFlag (MouseFlags.LeftButtonPressed))
+        {
+            _selectionAnchorLineNumber = _editor.ViewRowToLineNumber (pos.Y);
+            _editor.SelectLineAtViewRow (pos.Y);
+            App?.Mouse.GrabMouse (this);
+
+            return true;
+        }
+
+        if (mouse.Flags.HasFlag (MouseFlags.LeftButtonReleased))
+        {
+            _selectionAnchorLineNumber = null;
+            App?.Mouse.UngrabMouse ();
+
+            return true;
+        }
+
+        return false;
     }
 
 }

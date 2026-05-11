@@ -27,6 +27,9 @@ public partial class Editor
     public TextSegment? Selection =>
         !HasSelection ? null : new TextSegment { StartOffset = SelectionStart, Length = SelectionLength };
 
+    /// <summary>The selected document text, or an empty string when there is no selection.</summary>
+    public string SelectedText => HasSelection ? _document!.GetText (SelectionStart, SelectionLength) : string.Empty;
+
     /// <summary>Raised whenever the selection range changes (created, extended, cleared).</summary>
     public event EventHandler? SelectionChanged;
 
@@ -47,9 +50,23 @@ public partial class Editor
     /// <summary>Selects the entire document. Caret moves to <c>TextLength</c>.</summary>
     public void SelectAll ()
     {
+        SelectRange (0, _document!.TextLength);
+    }
+
+    /// <summary>Selects a document range and moves the caret to the range end.</summary>
+    public void SelectRange (int startOffset, int length)
+    {
+        if (_document is null)
+        {
+            return;
+        }
+
+        var start = Math.Clamp (startOffset, 0, _document.TextLength);
+        var end = Math.Clamp (start + Math.Max (0, length), 0, _document.TextLength);
+
         (int start, int end) before = SelectionTuple ();
-        _selectionAnchor = 0;
-        CaretOffset = _document!.TextLength;
+        _selectionAnchor = start == end ? null : start;
+        CaretOffset = end;
         RaiseSelectionChangedIfMoved (before);
         SetNeedsDraw ();
     }
@@ -161,5 +178,98 @@ public partial class Editor
     {
         ClearSelection ();
         MoveCaretVertically (delta);
+    }
+
+    private void SelectWordAtOffset (int offset)
+    {
+        if (_document is null)
+        {
+            return;
+        }
+
+        var originalOffset = Math.Clamp (offset, 0, _document.TextLength);
+        var wordOffset = originalOffset;
+
+        if (wordOffset == _document.TextLength || !IsWordCharAt (wordOffset))
+        {
+            if (wordOffset == 0 || !IsWordCharAt (wordOffset - 1))
+            {
+                ClearSelection ();
+                CaretOffset = originalOffset;
+
+                return;
+            }
+
+            wordOffset--;
+        }
+
+        var start = wordOffset;
+
+        while (start > 0 && IsWordCharAt (start - 1))
+        {
+            start--;
+        }
+
+        var end = wordOffset + 1;
+
+        while (end < _document.TextLength && IsWordCharAt (end))
+        {
+            end++;
+        }
+
+        SelectRange (start, end - start);
+    }
+
+    private void SelectLineAtOffset (int offset)
+    {
+        if (_document is null)
+        {
+            return;
+        }
+
+        DocumentLine line = _document.GetLineByOffset (Math.Clamp (offset, 0, _document.TextLength));
+        SelectRange (line.Offset, line.TotalLength);
+    }
+
+    internal void SelectLineAtViewRow (int row)
+    {
+        if (_document is null || _document.LineCount == 0)
+        {
+            return;
+        }
+
+        var lineNumber = Math.Clamp (Viewport.Y + row + 1, 1, _document.LineCount);
+        SelectLines (lineNumber, lineNumber);
+    }
+
+    internal void SelectLines (int anchorLineNumber, int activeLineNumber)
+    {
+        if (_document is null || _document.LineCount == 0)
+        {
+            return;
+        }
+
+        var startLineNumber = Math.Clamp (Math.Min (anchorLineNumber, activeLineNumber), 1, _document.LineCount);
+        var endLineNumber = Math.Clamp (Math.Max (anchorLineNumber, activeLineNumber), 1, _document.LineCount);
+        DocumentLine startLine = _document.GetLineByNumber (startLineNumber);
+        DocumentLine endLine = _document.GetLineByNumber (endLineNumber);
+        SelectRange (startLine.Offset, endLine.Offset + endLine.TotalLength - startLine.Offset);
+    }
+
+    internal int ViewRowToLineNumber (int row)
+    {
+        if (_document is null || _document.LineCount == 0)
+        {
+            return 1;
+        }
+
+        return Math.Clamp (Viewport.Y + row + 1, 1, _document.LineCount);
+    }
+
+    private bool IsWordCharAt (int offset)
+    {
+        char ch = _document!.GetCharAt (offset);
+
+        return char.IsLetterOrDigit (ch) || ch == '_';
     }
 }
