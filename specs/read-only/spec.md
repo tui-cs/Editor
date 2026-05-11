@@ -1,6 +1,6 @@
 # Feature Specification: Read-Only Mode
 
-**Status**: Ready
+**Status**: Complete
 **Created**: 2026-05-10
 **Depends on**: None
 **Blocked by**: None
@@ -50,10 +50,10 @@ Add a `ReadOnly` property to the Editor. When `true`, all edit commands (typing,
 
 ## Definition of Done
 
-- [ ] Typing, paste, Backspace, Delete, Enter, Tab, Undo, Redo are all no-ops when `ReadOnly = true`
-- [ ] Navigation and selection still work when `ReadOnly = true`
-- [ ] ted demo opens a file in read-only mode via a flag and behaves correctly
-- [ ] Unit tests cover each blocked edit command and each allowed navigation/selection command
+- [x] Typing, paste, Backspace, Delete, Enter, Tab, Undo, Redo are all no-ops when `ReadOnly = true`
+- [x] Navigation and selection still work when `ReadOnly = true`
+- [x] ted demo opens a file in read-only mode via a flag and behaves correctly
+- [x] Unit tests cover each blocked edit command and each allowed navigation/selection command
 
 ## Out of Scope
 
@@ -64,3 +64,4 @@ Add a `ReadOnly` property to the Editor. When `true`, all edit commands (typing,
 
 - No dependencies — can be implemented at any time.
 - Simple guard-clause pattern: check `ReadOnly` at the top of each edit command handler.
+- Paste is covered for the existing ted paste path; the editor-level clipboard command surface lands in `clipboard`.

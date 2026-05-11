@@ -72,6 +72,18 @@ public class EditorSelectionLogicTests
     }
 
     [Fact]
+    public void ReplaceSelection_ReadOnly_Does_Not_Modify_Document ()
+    {
+        Views.Editor editor = new () { Document = new TextDocument ("hello world"), ReadOnly = true };
+        editor.SelectAll ();
+
+        editor.ReplaceSelection ("hi");
+
+        Assert.Equal ("hello world", editor.Document.Text);
+        Assert.True (editor.HasSelection);
+    }
+
+    [Fact]
     public void Selection_TextSegment_Reflects_Range ()
     {
         Views.Editor editor = new () { Document = new TextDocument ("hello") };
@@ -82,6 +94,20 @@ public class EditorSelectionLogicTests
         Assert.NotNull (sel);
         Assert.Equal (0, sel.StartOffset);
         Assert.Equal (5, sel.Length);
+    }
+
+    [Fact]
+    public void Selection_Tracks_Insertion_Before_Range ()
+    {
+        Views.Editor editor = new () { Document = new TextDocument ("abcdef") };
+        editor.SelectRange (2, 3);
+
+        editor.Document!.Insert (0, ">>");
+
+        Assert.True (editor.HasSelection);
+        Assert.Equal (4, editor.SelectionStart);
+        Assert.Equal (7, editor.SelectionEnd);
+        Assert.Equal ("cde", editor.SelectedText);
     }
 
     [Fact]

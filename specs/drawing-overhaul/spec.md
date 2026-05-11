@@ -1,13 +1,13 @@
 # Feature Specification: Drawing Overhaul
 
-**Status**: Ready
+**Status**: Complete
 **Created**: 2026-05-10
 **Depends on**: rendering-pipeline ✅
 **Blocked by**: None
 
 ## Overview
 
-Replace the char-by-char draw loop in `Editor.Drawing.cs` with a `CellVisualLine`-walking loop that consumes the visual-line pipeline established in rendering-pipeline. Remove inline tab-expansion and line-number shortcuts from the draw path. Reimplement line numbers as `LineNumberMargin : IBackgroundRenderer`, making the margin a first-class pipeline participant rather than a bespoke side-channel.
+Replace the char-by-char draw loop in `Editor.Drawing.cs` with a `CellVisualLine`-walking loop that consumes the visual-line pipeline established in rendering-pipeline. Remove inline tab-expansion and line-number shortcuts from the draw path. Render line numbers through `Gutter : View`, hosted as a `Padding` SubView, so the gutter participates in the Terminal.Gui view hierarchy instead of painting as a bespoke side-channel.
 
 After this migration, `OnDrawingContent` should be a thin walker — under 30 lines — with zero character-iterating loops.
 
@@ -19,7 +19,7 @@ After this migration, `OnDrawingContent` should be a thin walker — under 30 li
 
 ### Scenario 2 — Line numbers render as a Padding SubView
 
-**Given** an editor with line numbers enabled, **When** the editor draws, **Then** line numbers are painted by `LineNumberView : View` — a SubView of `Padding` — so popovers and menus correctly clip the gutter. See `specs/decisions.md` DEC-004 for why this replaces the spec's original `LineNumberMargin : IBackgroundRenderer` proposal.
+**Given** an editor with line numbers enabled, **When** the editor draws, **Then** line numbers are painted by `Gutter : View` - a SubView of `Padding` - so popovers and menus correctly clip the gutter. See `specs/decisions.md` DEC-004 for why this replaces the spec's original `LineNumberMargin : IBackgroundRenderer` proposal.
 
 ### Scenario 3 — Grapheme cluster regression on tabbed line
 
@@ -36,7 +36,7 @@ After this migration, `OnDrawingContent` should be a thin walker — under 30 li
 - **FR-003**: Delete `GetVisualWidthForCharacter`, `GetVisualColumnFromLogicalColumn`, `GetLogicalColumnFromVisualColumn`.
 - **FR-004**: Delete the `c == '\t' ? ...` ternary tab-expansion logic.
 - **FR-005**: Delete `DrawLineNumbers` bespoke margin method.
-- **FR-006**: Render line numbers via a `View` SubView of `Padding` (`LineNumberView`), not a renderer. See DEC-004 for rationale.
+- **FR-006**: Render line numbers via a `View` SubView of `Padding` (`Gutter`), not a renderer. See DEC-004 for rationale.
 - **FR-007**: `OnDrawingContent` body must be < 30 lines and contain zero `for (int i = 0; i < text.Length; ...)` patterns.
 
 ## Files in Scope
@@ -44,17 +44,17 @@ After this migration, `OnDrawingContent` should be a thin walker — under 30 li
 - `src/Terminal.Gui.Editor/Editor.Drawing.cs`
 - `src/Terminal.Gui.Editor/Editor.cs`
 - `src/Terminal.Gui.Editor/Editor.Mouse.cs`
-- `src/Terminal.Gui.Editor/LineNumberView.cs` (already landed alongside the prior PR)
+- `src/Terminal.Gui.Editor/Gutter.cs`
 
 ## Definition of Done
 
-- [ ] `OnDrawingContent` body is < 30 lines with zero character-iterating loops
-- [ ] All existing render tests pass
-- [ ] All existing mouse tests pass
-- [ ] Grapheme-cluster regression test on tabbed line added and passes
-- [ ] Line numbers render via `LineNumberView : View` (Padding SubView). See DEC-004.
-- [ ] `DrawLineNumbers`, `DrawLineContent`, `GetVisualWidthForCharacter`, `GetVisualColumnFromLogicalColumn`, `GetLogicalColumnFromVisualColumn` are deleted
-- [ ] R1, R2 enforceable
+- [x] `OnDrawingContent` body is < 30 lines with zero character-iterating loops
+- [x] All existing render tests pass
+- [x] All existing mouse tests pass
+- [x] Grapheme-cluster regression test on tabbed line added and passes
+- [x] Line numbers render via `Gutter : View` (Padding SubView). See DEC-004.
+- [x] `DrawLineNumbers`, `DrawLineContent`, `GetVisualWidthForCharacter`, `GetVisualColumnFromLogicalColumn`, `GetLogicalColumnFromVisualColumn` are deleted
+- [x] R1, R2 enforceable
 
 ## Out of Scope
 

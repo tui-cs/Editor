@@ -275,6 +275,14 @@ public class TedAppTests
     }
 
     [Fact]
+    public void Constructor_ReadOnly_Sets_Editor_ReadOnly ()
+    {
+        TedApp app = new (readOnly: true);
+
+        Assert.True (app.Editor.ReadOnly);
+    }
+
+    [Fact]
     public async Task Loc_StatusBar_Shortcut_Initially_Shows_Line_1_Column_1 ()
     {
         await using AppFixture<TedApp> fx = new (() => new TedApp ());

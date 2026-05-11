@@ -34,13 +34,18 @@ public partial class Editor
             return false;
         }
 
+        if (ReadOnly)
+        {
+            return true;
+        }
+
         if (HasSelection)
         {
             ReplaceSelection (rune.ToString ());
         }
         else
         {
-            _document!.Insert (_caretOffset, rune.ToString ());
+            _document!.Insert (CaretOffset, rune.ToString ());
         }
 
         return true;

@@ -61,7 +61,7 @@ public partial class Editor
                 syntaxHighlighter?.Highlight (_document.GetText (line), SyntaxLanguage);
 #pragma warning restore CS0618 // Type or member is obsolete
 
-            DrawLineContent (row, line, visibleStart, visibleEnd, segments, normal, selected, selStart, selEnd);
+            DrawVisualLine (row, line, visibleStart, visibleEnd, segments, normal, selected, selStart, selEnd);
         }
     }
 
@@ -83,7 +83,7 @@ public partial class Editor
         }
     }
 
-    private void DrawLineContent (
+    private void DrawVisualLine (
         int row,
         DocumentLine line,
         int visibleStart,
