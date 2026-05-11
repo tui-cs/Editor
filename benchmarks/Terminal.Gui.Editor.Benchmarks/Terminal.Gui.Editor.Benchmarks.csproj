@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>Terminal.Gui.Editor.Benchmarks</RootNamespace>
+    <IsPackable>false</IsPackable>
+    <!-- BenchmarkDotNet requires Release for meaningful results -->
+    <Optimize>true</Optimize>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="BenchmarkDotNet" Version="0.14.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Terminal.Gui.Editor\Terminal.Gui.Editor.csproj" />
+  </ItemGroup>
+
+</Project>
