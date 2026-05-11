@@ -8,6 +8,7 @@ on:
 
 permissions:
   contents: read
+  pull-requests: write
 
 jobs:
   build-and-test:
@@ -73,4 +74,16 @@ jobs:
 
       - name: Terminal.Gui.Editor.IntegrationTests
         run: dotnet run --project tests/Terminal.Gui.Editor.IntegrationTests --no-build
+
+      # Performance gate: run focused benchmarks on Linux only, compare to baseline.
+      # Fails on >3x regression; celebrates >20% improvement.
+      - name: Performance check
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          OUTPUT=$(bash benchmarks/compare-baseline.sh 3.0 0.8 2>&1) || PERF_FAILED=1
+          echo "$OUTPUT"
+          echo "$OUTPUT" >> "$GITHUB_STEP_SUMMARY"
+          if [ "${PERF_FAILED:-0}" -eq 1 ]; then
+            exit 1
+          fi
 
