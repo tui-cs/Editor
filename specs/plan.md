@@ -51,6 +51,7 @@ The textmate-grammars feature ships in the release **after** alpha.
 ```
 specs/                              # spec-kit structure
   constitution.md                   # architectural rules & principles
+  codex-autonomous-sprint.md        # current Codex-only autonomous runbook
   plan.md                          # this file — MLP roadmap
   public-api.md                    # Editor target API surface
   decisions.md                     # decision log (resolved + open)
@@ -98,7 +99,7 @@ The diagram shows **must-finish-before** edges. Features not shown are independe
    auto-indent          ── needs indentation
 ```
 
-### Maximally-parallel start state (post codex merge)
+### Ready start state (post codex merge)
 
 All of these can be picked up immediately: **folding, search, indentation, syntax-highlighting, drawing-overhaul, word-wrap, caret-anchors, read-only, clipboard**.
 
@@ -129,12 +130,14 @@ Each criterion is testable. This is the merge-to-`main` gate.
 | Performance regression vs `TextView` | Populate `EditorBenchmarks` during drawing-overhaul. |
 | Fork maintenance | `UPSTREAM.md` well-maintained; each AvaloniaEdit lift must append rows. |
 
-## How to Use This Plan (for a dispatching agent)
+## How to Use This Plan (Codex-only autonomous lane)
 
-1. Read `specs/constitution.md`. Internalize rules R1–R10. Reject sub-agent output that violates them.
-2. Pick the maximally-parallel start set from the status table above.
-3. For each item, give the sub-agent the `specs/<name>/spec.md` verbatim. Append: the constitution rules and a pointer to `CLAUDE.md`.
-4. When drawing-overhaul merges, the second wave (find-and-replace, word-wrap-toggle, folding-ui, auto-indent, syntax-colorizer) becomes parallel-eligible.
-5. Track each item's PR against the Definition of Done in its spec, not the agent's self-report.
-6. Update the status table in this file every time an item lands.
-7. When all DoD boxes are checked, propose the cut from `develop` to `main` and a `v*` tag.
+1. Read `specs/constitution.md`. Internalize rules R1–R10. Reject any implementation path that violates them.
+2. Use `specs/codex-autonomous-sprint.md` as the runbook.
+3. Pick one ready feature from the status table above, preferring dependency-unblocking work.
+4. Read that feature's `specs/<name>/spec.md` verbatim before editing.
+5. Open one PR per feature or tightly-coupled feature slice under `experiment/codex/`.
+6. Track each PR against the Definition of Done in its spec, not the agent's self-report.
+7. When drawing-overhaul merges, the second wave (find-and-replace, word-wrap-toggle, folding-ui, auto-indent, syntax-colorizer) becomes eligible.
+8. Update the status table in this file every time an item lands.
+9. When all DoD boxes are checked, propose the cut from `develop` to `main` and a `v*` tag.

@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
-# collect-run.sh — gather the artifacts of a run into specs/runs/<run-name>/.
-# Per spec §6: PR list, transcripts (best-effort), spend snapshot template,
-# and a stub comparison.md.
+# collect-run.sh — gather Codex autonomous sprint artifacts into
+# specs/runs/<run-name>/.
 
 set -euo pipefail
 
@@ -11,17 +10,16 @@ usage () {
   cat <<'EOF'
 Usage: ./scripts/collect-run.sh <run-name>
 
-  run-name: arbitrary slug — e.g. "test-2026-05-09" or "full-2026-06-01".
+  run-name: arbitrary slug — e.g. "codex-2026-05-11".
 
 Creates specs/runs/<run-name>/ in the operator's clone (the one this script
-runs from, NOT the per-agent clones), and populates it with:
+runs from, NOT the Codex clone), and populates it with:
 
-  - prs.json                   — PRs filtered by experiment branch prefixes
-  - <agent>-transcript.txt     — best-effort transcript dump (Claude/Codex)
-  - <agent>-final.md           — copy of the agent's self-report from $HOME/s/Terminal.Gui.Text/<agent>/
-  - spend.txt                  — empty template; you fill in $$ from each
-                                 provider's dashboard
-  - comparison.md              — empty template per spec §7
+  - prs.json                   — PRs filtered by experiment/codex/* branches
+  - codex-transcript.jsonl     — best-effort transcript dump
+  - codex-final.md             — copy of Codex's self-report, when present
+  - spend.txt                  — empty template; fill from OpenAI dashboard
+  - summary.md                 — empty run-summary template
 EOF
 }
 
@@ -34,113 +32,65 @@ REPO_ROOT="$(git rev-parse --show-toplevel)"
 OUT="$REPO_ROOT/specs/runs/$RUN"
 mkdir -p "$OUT"
 
-echo "==> Collecting PRs for prefixes experiment/{claude,codex}/* and copilot/*"
+echo "==> Collecting PRs for prefix experiment/codex/*"
 gh pr list --state all \
-  --search "head:experiment/claude head:experiment/codex head:copilot" \
+  --search "head:experiment/codex" \
   --json number,title,headRefName,author,state,createdAt,closedAt,mergedAt,additions,deletions,changedFiles,url \
   > "$OUT/prs.json" || true
 
-for AGENT in claude codex copilot; do
-  WORK="$HOME/s/Terminal.Gui.Text/$AGENT"
-  if [[ -f "$WORK/specs/runs/test-$AGENT-final.md" ]]; then
-    cp "$WORK/specs/runs/test-$AGENT-final.md" "$OUT/$AGENT-final.md"
-  elif [[ -f "$WORK/specs/runs/$AGENT-final.md" ]]; then
-    cp "$WORK/specs/runs/$AGENT-final.md" "$OUT/$AGENT-final.md"
-  fi
+WORK="$HOME/s/Terminal.Gui.Text/codex"
+if [[ -f "$WORK/specs/runs/codex-final.md" ]]; then
+  cp "$WORK/specs/runs/codex-final.md" "$OUT/codex-final.md"
+elif [[ -f "$WORK/specs/runs/$RUN/codex-final.md" ]]; then
+  cp "$WORK/specs/runs/$RUN/codex-final.md" "$OUT/codex-final.md"
+fi
 
-  case "$AGENT" in
-    claude)
-      # Claude transcripts live under ~/.claude/projects/<encoded-path>/transcript-*.jsonl.
-      # We just copy the most recent jsonl that mentions this clone.
-      latest=$(grep -lr "$WORK" "$HOME/.claude/projects" 2>/dev/null | xargs -r ls -t 2>/dev/null | head -1 || true)
-      if [[ -n "${latest:-}" ]]; then
-        cp "$latest" "$OUT/claude-transcript.jsonl" || true
-      fi
-      ;;
-    codex)
-      latest=$(ls -t "$HOME/.codex/sessions/"*.jsonl 2>/dev/null | head -1 || true)
-      if [[ -n "${latest:-}" ]]; then
-        cp "$latest" "$OUT/codex-transcript.jsonl" || true
-      fi
-      ;;
-    copilot)
-      # Copilot's transcript lives in GitHub Actions logs. Operator pulls these manually.
-      :
-      ;;
-  esac
-done
+latest=$(ls -t "$HOME/.codex/sessions/"*.jsonl 2>/dev/null | head -1 || true)
+if [[ -n "${latest:-}" ]]; then
+  cp "$latest" "$OUT/codex-transcript.jsonl" || true
+fi
 
 cat > "$OUT/spend.txt" <<'EOF'
-# Fill in from each provider's dashboard.
-# (No automated lookup — APIs differ across providers and break.)
+# Fill in from the OpenAI dashboard.
 
-claude:   USD ____ (start) → USD ____ (end) = USD ____
 codex:    USD ____ (start) → USD ____ (end) = USD ____
-copilot:  Copilot org seat ____ (no per-task billing surfaced in dashboard)
 
-wall-clock minutes per agent:
-  claude:   ____
+wall-clock minutes:
   codex:    ____
-  copilot:  ____
 EOF
 
-cat > "$OUT/comparison.md" <<'EOF'
-# Run comparison — <run-name>
+cat > "$OUT/summary.md" <<'EOF'
+# Codex run summary — <run-name>
 
-> Fill this in after collect-run.sh runs. Spec §7 / §12.3 describes the rubric.
+> Fill this in after collect-run.sh runs.
 
-## 1. Did the work-item ship?
+## 1. PRs Opened
 
-| Agent  | PR | CI | ted exercises tabs | Notes |
-|--------|----|----|--------------------|-------|
-| claude |    |    |                    |       |
-| codex  |    |    |                    |       |
-| copilot|    |    |                    |       |
+See `prs.json`.
 
-## 2. B1 dependency handling
+## 2. Features Completed
 
-Per spec §12.3, four possible responses: (a) refuse, (b) implement B1 first,
-(c) ship a stopgap and own it, (d) ship a stopgap and pretend.
+List each feature and the PR that implements it.
 
-| Agent  | Choice | Acknowledged? |
-|--------|--------|---------------|
-| claude |        |               |
-| codex  |        |               |
-| copilot|        |               |
+## 3. Validation
 
-## 3. R1–R10 adherence
+Record build, tests, format, cleanup, benchmark, and CI outcomes.
 
-| Rule | claude | codex | copilot |
-|------|--------|-------|---------|
-| R1 (no welding into OnDrawingContent) |  |  |  |
-| R2 (graphemes not chars) |  |  |  |
-| R3 (IndentationSize / ConvertTabsToSpaces / ShowTabs) |  |  |  |
-| R5 (block indent → one undo step) |  |  |  |
-| R9 (no unused public APIs) |  |  |  |
-| R10 (Accepted not Accepting) |  |  |  |
+## 4. Blockers
 
-## 4. Style hook compliance
+List human-review, dependency, CI, environment, or design blockers.
 
-Did the agent's commits trip the Stop hook? Did it commit the cleanup or
-fight it? Did `dotnet jb cleanupcode` produce a diff in CI?
+## 5. Risks
 
-## 5. Cost
+List known regressions, incomplete DoD items, or decisions still open.
+
+## 6. Cost
 
 See `spend.txt`.
 
-## 6. Recovery from review feedback
+## 7. Notes
 
-Pick one PR per agent, leave a non-trivial review comment, observe what each
-agent does. Note: did it understand? Did it fix? Did it argue?
-
-## 7. TG bugs filed
-
-Did any agent file an issue on `gui-cs/Terminal.Gui`? Was the failing unit
-test included as required (spec §12.2 final paragraph)?
-
-## 8. Surprises
-
-What did each agent do that you did not predict?
+Anything surprising or useful for the next run.
 EOF
 
 echo
