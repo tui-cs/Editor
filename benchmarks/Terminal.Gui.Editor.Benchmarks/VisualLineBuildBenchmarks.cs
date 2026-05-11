@@ -14,12 +14,12 @@ namespace Terminal.Gui.Editor.Benchmarks;
 public class VisualLineBuildBenchmarks
 {
     private VisualLineBuilder _builder = null!;
+    private TextDocument _emojiDoc = null!;
+    private TextDocument _longDoc = null!;
+    private TextDocument _mixedDoc = null!;
 
     private TextDocument _shortDoc = null!;
-    private TextDocument _longDoc = null!;
     private TextDocument _tabDoc = null!;
-    private TextDocument _emojiDoc = null!;
-    private TextDocument _mixedDoc = null!;
 
     [GlobalSetup]
     public void Setup ()

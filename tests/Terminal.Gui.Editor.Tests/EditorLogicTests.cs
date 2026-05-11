@@ -1,5 +1,6 @@
 // Claude - claude-opus-4-7
 
+using System.Drawing;
 using System.Reflection;
 using Terminal.Gui.Text.Document;
 using Terminal.Gui.Views;
@@ -87,7 +88,7 @@ public class EditorLogicTests
     {
         Views.Editor editor = new () { Document = new TextDocument ("hello world") };
         editor.CaretOffset = 5;
-        int fires = 0;
+        var fires = 0;
         editor.CaretChanged += (_, _) => fires++;
 
         editor.Document.Insert (0, ">>>");
@@ -101,7 +102,7 @@ public class EditorLogicTests
     {
         Views.Editor editor = new () { Document = new TextDocument ("hello") };
         editor.CaretOffset = 2;
-        int fires = 0;
+        var fires = 0;
         editor.CaretChanged += (_, _) => fires++;
 
         // Insert strictly after the caret — caret offset should not change.
@@ -116,7 +117,7 @@ public class EditorLogicTests
     {
         Views.Editor editor = new () { Document = new TextDocument ("hello world") };
         editor.CaretOffset = 4;
-        int fires = 0;
+        var fires = 0;
         editor.CaretChanged += (_, _) => fires++;
 
         editor.Document.Remove (2, 5); // straddles caret → snaps to 2
@@ -210,7 +211,7 @@ public class EditorLogicTests
     public void Caret_After_Tab_Uses_Visual_Columns_For_Viewport_Scrolling ()
     {
         Views.Editor editor = new () { Document = new TextDocument ("a\tb"), Width = 3, Height = 1 };
-        editor.Viewport = new (0, 0, 3, 1);
+        editor.Viewport = new Rectangle (0, 0, 3, 1);
         editor.CaretOffset = 2;
 
         Assert.Equal (2, editor.Viewport.X);
@@ -223,13 +224,13 @@ public class EditorLogicTests
         Views.Editor editor = new () { Document = doc };
         editor.CaretOffset = 3;
 
-        int caretFires = 0;
+        var caretFires = 0;
         editor.CaretChanged += (_, _) => caretFires++;
 
         editor.Dispose ();
 
         // After dispose, mutating the still-reachable document must not affect the disposed editor's state.
-        int caretBefore = editor.CaretOffset;
+        var caretBefore = editor.CaretOffset;
         doc.Insert (0, ">>>");
 
         Assert.Equal (caretBefore, editor.CaretOffset);
@@ -240,7 +241,7 @@ public class EditorLogicTests
     public void Changing_IndentationSize_Recomputes_Caret_Visibility ()
     {
         Views.Editor editor = new () { Document = new TextDocument ("\t"), Width = 4, Height = 1 };
-        editor.Viewport = new (0, 0, 4, 1);
+        editor.Viewport = new Rectangle (0, 0, 4, 1);
         editor.CaretOffset = 1;
         Assert.Equal (1, editor.Viewport.X);
 
@@ -266,7 +267,7 @@ public class EditorLogicTests
         ObsoleteAttribute? attr = prop.GetCustomAttribute<ObsoleteAttribute> ();
 
         Assert.NotNull (attr);
-        Assert.Contains ("28", attr!.Message ?? string.Empty);
+        Assert.Contains ("28", attr.Message ?? string.Empty);
     }
 
     [Fact]
@@ -278,6 +279,6 @@ public class EditorLogicTests
         ObsoleteAttribute? attr = prop.GetCustomAttribute<ObsoleteAttribute> ();
 
         Assert.NotNull (attr);
-        Assert.Contains ("28", attr!.Message ?? string.Empty);
+        Assert.Contains ("28", attr.Message ?? string.Empty);
     }
 }

@@ -57,7 +57,8 @@ public partial class Editor
 
             DocumentLine line = _document.GetLineByNumber (lineIndex + 1);
 #pragma warning disable CS0618 // Type or member is obsolete — see PrepareSyntaxHighlighter.
-            IReadOnlyList<StyledSegment>? segments = syntaxHighlighter?.Highlight (_document.GetText (line), SyntaxLanguage);
+            IReadOnlyList<StyledSegment>? segments =
+                syntaxHighlighter?.Highlight (_document.GetText (line), SyntaxLanguage);
 #pragma warning restore CS0618 // Type or member is obsolete
 
             DrawLineContent (row, line, visibleStart, visibleEnd, segments, normal, selected, selStart, selEnd);

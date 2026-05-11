@@ -2,7 +2,6 @@
 
 using System.Reflection;
 using Terminal.Gui.Text.Document;
-using Terminal.Gui.Views;
 using Terminal.Gui.Views.Rendering;
 using Xunit;
 

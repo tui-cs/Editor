@@ -17,13 +17,12 @@ public class EndToEndScrollBenchmarks
 
     private string _documentText = null!;
 
-    [Params (500, 5_000)]
-    public int LineCount { get; set; }
+    [Params (500, 5_000)] public int LineCount { get; set; }
 
     [GlobalSetup]
     public void Setup ()
     {
-        _documentText = GenerateDocument (LineCount, lineLength: 80);
+        _documentText = GenerateDocument (LineCount, 80);
     }
 
     /// <summary>
@@ -92,7 +91,7 @@ public class EndToEndScrollBenchmarks
     {
         // Use a smaller document for right-scroll — traversing char-by-char through
         // 5K lines would be millions of iterations.
-        using EditorHarness h = new (GenerateDocument (100, lineLength: 120), width: 40);
+        using EditorHarness h = new (GenerateDocument (100, 120), 40);
         var docLength = h.Editor.Document!.TextLength;
         var renders = 0;
 
@@ -113,7 +112,7 @@ public class EndToEndScrollBenchmarks
     [Benchmark (Description = "Arrow ← to start (100 lines)")]
     public int ScrollLeft_ToStart ()
     {
-        using EditorHarness h = new (GenerateDocument (100, lineLength: 120), width: 40);
+        using EditorHarness h = new (GenerateDocument (100, 120), 40);
         h.Editor.CaretOffset = h.Editor.Document!.TextLength;
         h.Render ();
         var renders = 0;

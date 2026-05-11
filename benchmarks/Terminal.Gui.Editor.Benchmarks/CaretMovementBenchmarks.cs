@@ -18,8 +18,7 @@ public class CaretMovementBenchmarks
 
     private string _documentText = null!;
 
-    [Params (1_000)]
-    public int LineCount { get; set; }
+    [Params (1_000)] public int LineCount { get; set; }
 
     [GlobalSetup]
     public void Setup ()
@@ -100,7 +99,7 @@ public class CaretMovementBenchmarks
     public int CaretRight_HorizontalScroll ()
     {
         // Single very long line in a narrow viewport to force many horizontal scrolls.
-        using EditorHarness h = new (new string ('A', 500), width: 40, height: 5);
+        using EditorHarness h = new (new string ('A', 500), 40, 5);
         var docLength = h.Editor.Document!.TextLength;
         var scrolls = 0;
 
@@ -126,7 +125,7 @@ public class CaretMovementBenchmarks
     [Benchmark (Description = "Caret ← horizontal scroll")]
     public int CaretLeft_HorizontalScroll ()
     {
-        using EditorHarness h = new (new string ('A', 500), width: 40, height: 5);
+        using EditorHarness h = new (new string ('A', 500), 40, 5);
         h.Editor.CaretOffset = h.Editor.Document!.TextLength;
         h.Render ();
         var scrolls = 0;
@@ -154,7 +153,7 @@ public class CaretMovementBenchmarks
     [Benchmark (Description = "Home/End oscillation (500 reps)")]
     public int HomeEndOscillation ()
     {
-        using EditorHarness h = new (new string ('B', 200), width: 40, height: 5);
+        using EditorHarness h = new (new string ('B', 200), 40, 5);
         var totalScrolls = 0;
 
         for (var i = 0; i < 500; i++)

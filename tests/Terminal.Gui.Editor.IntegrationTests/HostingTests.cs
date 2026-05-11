@@ -13,7 +13,7 @@ namespace Terminal.Gui.Editor.IntegrationTests;
 ///     collection in this assembly. <see cref="HostingTests" /> mutates process-global statics
 ///     (<see cref="Logging.Logger" /> and <see cref="Trace.EnabledCategories" />) that
 ///     Terminal.Gui itself reads during draw and lifecycle calls on other threads — running
-///     them in parallel with the rest of the suite is unsafe. <see cref="DisableParallelization" />
+///     them in parallel with the rest of the suite is unsafe. DisableParallelization
 ///     ensures no other collection runs while these tests are in flight.
 /// </summary>
 [CollectionDefinition (nameof (HostingTestsCollection), DisableParallelization = true)]

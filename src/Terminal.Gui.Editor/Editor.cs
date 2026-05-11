@@ -16,18 +16,17 @@ namespace Terminal.Gui.Views;
 /// </summary>
 public partial class Editor : View
 {
-    private readonly VisualLineBuilder _visualLineBuilder = new ();
-
     // Default-args CellVisualLine cache keyed by DocumentLine.LineNumber. Hit by caret math,
     // mouse hit-testing, indentation calculations, and the all-lines walk in UpdateContentSize —
     // i.e. every place that just wants visual-column geometry, not a per-frame styled build.
     // Invalidated in OnDocumentChanged (lines whose offset range touches the change) and on
     // wholesale config changes (Document swap, IndentationSize, ShowTabs).
     private readonly Dictionary<int, CellVisualLine> _defaultVisualLineCache = [];
+    private readonly VisualLineBuilder _visualLineBuilder = new ();
 
     private int _caretOffset;
     private TextDocument? _document;
-    private LineNumberView? _lineNumberView;
+    private Gutter? _gutter;
     private bool _showLineNumbers;
     private ISyntaxHighlighter? _syntaxHighlighter;
 
@@ -362,38 +361,38 @@ public partial class Editor : View
             Padding.Thickness = new Thickness (left, thickness.Top, thickness.Right, thickness.Bottom);
         }
 
-        SyncLineNumberView (left);
+        SyncGutter (left);
     }
 
-    private void SyncLineNumberView (int left)
+    private void SyncGutter (int left)
     {
         if (left > 0)
         {
-            if (_lineNumberView is null)
+            if (_gutter is null)
             {
-                // Hosting LineNumberView as a SubView of Padding (instead of painting in
+                // Hosting Gutter as a SubView of Padding (instead of painting in
                 // OnDrawComplete via the driver) keeps it inside the View hierarchy, so popovers
                 // and menus correctly clip it instead of being drawn over.
-                _lineNumberView = new LineNumberView (this)
+                _gutter = new Gutter (this)
                 {
                     X = 0,
                     Y = 0,
                     Width = left,
                     Height = Dim.Fill ()
                 };
-                Padding.GetOrCreateView ().Add (_lineNumberView);
+                Padding.GetOrCreateView ().Add (_gutter);
             }
             else
             {
-                _lineNumberView.Width = left;
-                _lineNumberView.SetNeedsDraw ();
+                _gutter.Width = left;
+                _gutter.SetNeedsDraw ();
             }
         }
-        else if (_lineNumberView is not null)
+        else if (_gutter is not null)
         {
-            Padding.GetOrCreateView ().Remove (_lineNumberView);
-            _lineNumberView.Dispose ();
-            _lineNumberView = null;
+            Padding.GetOrCreateView ().Remove (_gutter);
+            _gutter.Dispose ();
+            _gutter = null;
         }
     }
 
@@ -408,12 +407,7 @@ public partial class Editor : View
     {
         DocumentLine? line = _document?.GetLineByOffset (_caretOffset);
 
-        if (line is null)
-        {
-            return 0;
-        }
-
-        return GetOrBuildDefaultVisualLine (line).GetVisualColumn (_caretOffset - line.Offset);
+        return line is null ? 0 : GetOrBuildDefaultVisualLine (line).GetVisualColumn (_caretOffset - line.Offset);
     }
 
     private int GetCaretLineIndex ()
@@ -439,7 +433,7 @@ public partial class Editor : View
     ///     Builds (or returns the cached) <see cref="CellVisualLine" /> with default attributes / no
     ///     selection / no syntax segments. Used by every caller that needs visual-column geometry
     ///     but not styled cell content: caret math, mouse hit-testing, indentation, the all-lines
-    ///     walk in <see cref="UpdateContentSize" />, and <see cref="LineNumberView" />.
+    ///     walk in <see cref="UpdateContentSize" />, and <see cref="Gutter" />.
     /// </summary>
     private CellVisualLine GetOrBuildDefaultVisualLine (DocumentLine line)
     {
