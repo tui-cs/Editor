@@ -1,4 +1,5 @@
 using System.Drawing;
+using Terminal.Gui.Input;
 using Terminal.Gui.Text.Document;
 using Terminal.Gui.ViewBase;
 
@@ -66,6 +67,47 @@ public sealed class Gutter : View
             Move (0, row);
             AddStr (text);
         }
+
+        return true;
+    }
+
+    /// <inheritdoc />
+    protected override bool OnMouseEvent (Mouse mouse)
+    {
+        if (mouse.Position is not { } pos)
+        {
+            return false;
+        }
+
+        if (mouse.Flags.HasFlag (MouseFlags.LeftButtonPressed) && mouse.Flags.HasFlag (MouseFlags.PositionReport))
+        {
+            if (_selectionAnchorLineNumber is not { } anchor)
+            {
+                anchor = _editor.ViewRowToLineNumber (pos.Y);
+                _selectionAnchorLineNumber = anchor;
+            }
+
+            _editor.SelectLines (anchor, _editor.ViewRowToLineNumber (pos.Y));
+
+            return true;
+        }
+
+        if (mouse.Flags.HasFlag (MouseFlags.LeftButtonPressed))
+        {
+            _selectionAnchorLineNumber = _editor.ViewRowToLineNumber (pos.Y);
+            _editor.SelectLineAtViewRow (pos.Y);
+            App?.Mouse.GrabMouse (this);
+
+            return true;
+        }
+
+        if (!mouse.Flags.HasFlag (MouseFlags.LeftButtonReleased))
+        {
+            return false;
+        }
+
+        _selectionAnchorLineNumber = null;
+        App?.Mouse.UngrabMouse ();
 
         return true;
     }
