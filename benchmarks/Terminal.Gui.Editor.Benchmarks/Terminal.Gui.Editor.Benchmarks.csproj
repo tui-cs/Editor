@@ -14,6 +14,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Terminal.Gui.Editor\Terminal.Gui.Editor.csproj" />
+    <PackageReference Include="Terminal.Gui" Version="$(TerminalGuiVersion)" />
   </ItemGroup>
 
 </Project>
