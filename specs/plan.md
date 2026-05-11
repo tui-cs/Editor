@@ -26,6 +26,7 @@ The textmate-grammars feature ships in the release **after** alpha.
 - **drawing-overhaul — Drawing overhaul** ✅: `OnDrawingContent` is a thin `CellVisualLine` walker, old char-iteration helpers are removed, visual-line draw caching is in place, and line numbers render through `Gutter : View` as a Padding SubView.
 - **caret-anchors — Anchor-backed caret & selection** ✅: `CaretOffset` is backed by a `TextAnchor` with `AnchorMovementType.AfterInsertion`; selection uses an anchor plus the caret anchor; manual document-change offset arithmetic is removed.
 - **read-only — Read-only mode** ✅: `Editor.ReadOnly` blocks edit commands, replacement APIs, undo/redo, tab indentation, and ted paste/cut/undo/redo paths while leaving navigation and selection active.
+- **clipboard — Cut / copy / paste** ✅: Editor-level Ctrl+C/X/V commands use Terminal.Gui's per-application `Clipboard`, operate on selection or current line, paste multi-line text, and group cut/paste changes into one undo step.
 - **ted demo**: file menu, `FindReplaceDialog`, theme dropdown, tab controls, status bar, line-numbers toggle.
 
 ### Remaining (per-feature specs in `specs/<name>/spec.md`)
@@ -38,7 +39,6 @@ The textmate-grammars feature ships in the release **after** alpha.
 | [syntax-highlighting](syntax-highlighting/spec.md) | Ready | — |
 | [word-wrap](word-wrap/spec.md) | Ready | — |
 | [multi-caret](multi-caret/spec.md) | Ready | — |
-| [clipboard](clipboard/spec.md) | Ready | — |
 | [find-and-replace](find-and-replace/spec.md) | Blocked | search |
 | [word-wrap-toggle](word-wrap-toggle/spec.md) | Blocked | word-wrap |
 | [folding-ui](folding-ui/spec.md) | Blocked | folding |
@@ -101,7 +101,7 @@ The diagram shows **must-finish-before** edges. Features not shown are independe
 
 ### Ready start state (post drawing-overhaul merge)
 
-All of these can be picked up immediately: **folding, search, indentation, syntax-highlighting, word-wrap, multi-caret, clipboard**.
+All of these can be picked up immediately: **folding, search, indentation, syntax-highlighting, word-wrap, multi-caret**.
 
 syntax-highlighting is the remaining dependency before syntax-colorizer can start.
 

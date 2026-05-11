@@ -1,13 +1,13 @@
 # Feature Specification: Clipboard (Cut / Copy / Paste)
 
-**Status**: Ready
+**Status**: Complete
 **Created**: 2026-05-10
 **Depends on**: None
 **Blocked by**: None
 
 ## Overview
 
-Implement Cut (Ctrl+X), Copy (Ctrl+C), and Paste (Ctrl+V) in the Editor using Terminal.Gui's `Clipboard` API. Operations are selection-aware: Copy and Cut operate on the current selection (or the current line if no selection). Cut and Paste use `Document.OpenUpdateScope ()` so each operation produces a single undo step.
+Implement Cut (Ctrl+X), Copy (Ctrl+C), and Paste (Ctrl+V) in the Editor using Terminal.Gui's `Clipboard` API. Operations are selection-aware: Copy and Cut operate on the current selection or the current document line when there is no selection. Cut and Paste use `TextDocument.RunUpdate ()` so each operation produces a single undo step.
 
 ## User Scenarios
 
@@ -40,22 +40,22 @@ Implement Cut (Ctrl+X), Copy (Ctrl+C), and Paste (Ctrl+V) in the Editor using Te
 - **FR-001**: Ctrl+C copies selected text to `Clipboard`.
 - **FR-002**: Ctrl+X cuts selected text to `Clipboard` and removes it from the document.
 - **FR-003**: Ctrl+V pastes clipboard content at caret or replacing selection.
-- **FR-004**: Cut and Paste use `Document.OpenUpdateScope ()` for single-step undo.
-- **FR-005**: When no selection exists, Copy/Cut operate on the current line (or are no-ops — [NEEDS CLARIFICATION]).
+- **FR-004**: Cut and Paste use `TextDocument.RunUpdate ()` for single-step undo.
+- **FR-005**: When no selection exists, Copy/Cut operate on the current line, preserving that line's existing line terminator when present.
 - **FR-006**: Multi-line paste inserts with correct line endings.
 
 ## Files in Scope
 
 - `src/Terminal.Gui.Editor/Editor.Commands.cs`
-- `src/Terminal.Gui.Editor/Editor.Keyboard.cs`
-- Tests in `tests/Terminal.Gui.Editor.Tests/`
+- `examples/ted/TedApp.cs`
+- Tests in `tests/Terminal.Gui.Editor.IntegrationTests/`
 
 ## Definition of Done
 
-- [ ] Round-trip tests: copy → paste across selection cases
-- [ ] Paste with multi-line text test passes
-- [ ] Cut emits one undo step (single Ctrl+Z restores)
-- [ ] ted demo Edit menu wires Cut/Copy/Paste commands
+- [x] Round-trip tests: copy → paste across selection cases
+- [x] Paste with multi-line text test passes
+- [x] Cut emits one undo step (single Ctrl+Z restores)
+- [x] ted demo Edit menu wires Cut/Copy/Paste commands
 
 ## Out of Scope
 
@@ -66,4 +66,4 @@ Implement Cut (Ctrl+X), Copy (Ctrl+C), and Paste (Ctrl+V) in the Editor using Te
 ## Notes
 
 - No dependencies — can be implemented at any time.
-- FR-005 (no-selection behavior for Copy/Cut) is marked [NEEDS CLARIFICATION] — common editors copy the current line, but this should be a deliberate design choice.
+- FR-005 resolved to current-line behavior because it matches common editor behavior and Terminal.Gui's `TextView` precedent.

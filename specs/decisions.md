@@ -46,6 +46,16 @@ Decisions are recorded here when an open question from the plan is resolved. Eac
 
 ---
 
+### DEC-005: Clipboard no-selection behavior
+
+**Decision**: Copy and Cut with no active selection operate on the current document line, preserving that line's existing line terminator when present.
+
+**Rationale**: This matches common editor behavior and Terminal.Gui's `TextView` precedent, and makes the command useful without requiring a pre-existing selection.
+
+**Date**: 2026-05-11
+
+---
+
 ## Open
 
 ### OPEN-001: Independent `Terminal.Gui.Text` NuGet from day one

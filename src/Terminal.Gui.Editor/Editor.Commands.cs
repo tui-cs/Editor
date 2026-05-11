@@ -1,3 +1,4 @@
+using Terminal.Gui.App;
 using Terminal.Gui.Input;
 using Terminal.Gui.Text.Document;
 using Terminal.Gui.ViewBase;
@@ -9,9 +10,9 @@ public partial class Editor
     /// <summary>
     ///     Editor-specific default key bindings layered on top of <see cref="View.DefaultKeyBindings" />.
     ///     The base layer already maps cursor / Home / End / PageUp / PageDown (and their Shift variants)
-    ///     to the corresponding movement and *Extend <see cref="Command" />s, plus Ctrl+A → SelectAll;
-    ///     this dictionary covers what's editor-specific (Enter, Backspace/Delete, Ctrl+Z / Ctrl+Y, the
-    ///     Ctrl+Home/End whole-document binds).
+    ///     to the corresponding movement and *Extend <see cref="Command" />s, plus Ctrl+A → SelectAll
+    ///     and Ctrl+C/X/V clipboard binds; this dictionary covers what's editor-specific (Enter,
+    ///     Backspace/Delete, Ctrl+Z / Ctrl+Y, the Ctrl+Home/End whole-document binds).
     /// </summary>
     /// <remarks>
     ///     Process-wide static. Do not mutate from parallel tests — see Terminal.Gui's same convention
@@ -79,6 +80,9 @@ public partial class Editor
 
             return true;
         });
+        AddCommand (Command.Copy, Copy);
+        AddCommand (Command.Cut, Cut);
+        AddCommand (Command.Paste, Paste);
 
         // Editing — selection-aware
         AddCommand (Command.NewLine, () => InsertOrReplace ("\n"));
@@ -168,6 +172,116 @@ public partial class Editor
         SetNeedsDraw ();
 
         return true;
+    }
+
+    private bool? Copy ()
+    {
+        IClipboard? clipboard = App?.Clipboard;
+
+        if (clipboard is null || _document is null)
+        {
+            return true;
+        }
+
+        clipboard.TrySetClipboardData (GetSelectionOrCurrentLineText ());
+
+        return true;
+    }
+
+    private bool? Cut ()
+    {
+        if (ReadOnly)
+        {
+            return true;
+        }
+
+        IClipboard? clipboard = App?.Clipboard;
+
+        if (clipboard is null || _document is null)
+        {
+            return true;
+        }
+
+        (int start, int length) range = GetSelectionOrCurrentLineRange ();
+        string text = _document.GetText (range.start, range.length);
+
+        if (!clipboard.TrySetClipboardData (text))
+        {
+            return true;
+        }
+
+        if (range.length == 0)
+        {
+            return true;
+        }
+
+        using (_document.RunUpdate ())
+        {
+            if (HasSelection)
+            {
+                ReplaceSelection (string.Empty);
+            }
+            else
+            {
+                _document.Remove (range.start, range.length);
+                SetCaretOffset (range.start, true);
+            }
+        }
+
+        return true;
+    }
+
+    private bool? Paste ()
+    {
+        if (ReadOnly)
+        {
+            return true;
+        }
+
+        IClipboard? clipboard = App?.Clipboard;
+
+        if (clipboard is null || _document is null || !clipboard.TryGetClipboardData (out string contents))
+        {
+            return true;
+        }
+
+        if (contents.Length == 0)
+        {
+            return true;
+        }
+
+        using (_document.RunUpdate ())
+        {
+            if (HasSelection)
+            {
+                ReplaceSelection (contents);
+            }
+            else
+            {
+                _document.Insert (CaretOffset, contents);
+            }
+        }
+
+        return true;
+    }
+
+    private string GetSelectionOrCurrentLineText ()
+    {
+        (int start, int length) range = GetSelectionOrCurrentLineRange ();
+
+        return _document!.GetText (range.start, range.length);
+    }
+
+    private (int start, int length) GetSelectionOrCurrentLineRange ()
+    {
+        if (HasSelection)
+        {
+            return (SelectionStart, SelectionLength);
+        }
+
+        DocumentLine line = _document!.GetLineByOffset (CaretOffset);
+
+        return (line.Offset, line.TotalLength);
     }
 
     private bool? InsertOrReplace (string text)

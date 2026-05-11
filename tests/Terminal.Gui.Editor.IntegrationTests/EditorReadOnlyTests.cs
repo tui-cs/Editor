@@ -1,5 +1,6 @@
 // Codex - GPT-5
 
+using Terminal.Gui.Drivers;
 using Terminal.Gui.Editor.IntegrationTests.Testing;
 using Terminal.Gui.Input;
 using Terminal.Gui.Testing;
@@ -64,6 +65,31 @@ public class EditorReadOnlyTests
 
         Assert.Equal ("abc", fx.Top.Editor.Document!.Text);
         Assert.Equal (1, fx.Top.Editor.CaretOffset);
+    }
+
+    [Fact]
+    public async Task Paste_Is_NoOp ()
+    {
+        await using AppFixture<EditorTestHost> fx = CreateReadOnlyHost ("abc", 1);
+        fx.Driver.Clipboard = new FakeClipboard ();
+        Assert.True (fx.App.Clipboard!.TrySetClipboardData ("XYZ"));
+
+        fx.Injector.InjectKey (Key.V.WithCtrl, Direct);
+
+        Assert.Equal ("abc", fx.Top.Editor.Document!.Text);
+        Assert.Equal (1, fx.Top.Editor.CaretOffset);
+    }
+
+    [Fact]
+    public async Task Cut_Is_NoOp ()
+    {
+        await using AppFixture<EditorTestHost> fx = CreateReadOnlyHost ("abc", 0);
+        fx.Top.Editor.SelectRange (0, 1);
+
+        fx.Injector.InjectKey (Key.X.WithCtrl, Direct);
+
+        Assert.Equal ("abc", fx.Top.Editor.Document!.Text);
+        Assert.True (fx.Top.Editor.HasSelection);
     }
 
     [Fact]

@@ -343,47 +343,17 @@ public sealed class TedApp : Window
 
     private void Paste ()
     {
-        if (Editor.ReadOnly)
-        {
-            return;
-        }
-
-        IClipboard? clipboard = App?.Clipboard;
-
-        if (clipboard is null || !clipboard.TryGetClipboardData (out string contents))
-        {
-            return;
-        }
-
-        if (Editor.HasSelection)
-        {
-            Editor.ReplaceSelection (contents);
-        }
-        else
-        {
-            Editor.Document?.Insert (Editor.CaretOffset, contents);
-        }
+        Editor.InvokeCommand (Command.Paste);
     }
 
     private void Copy ()
     {
-        if (!Editor.HasSelection)
-        {
-            return;
-        }
-
-        App?.Clipboard?.TrySetClipboardData (Editor.SelectedText);
+        Editor.InvokeCommand (Command.Copy);
     }
 
     private void Cut ()
     {
-        if (Editor.ReadOnly || !Editor.HasSelection)
-        {
-            return;
-        }
-
-        Copy ();
-        Editor.ReplaceSelection (string.Empty);
+        Editor.InvokeCommand (Command.Cut);
     }
 
     private void Undo ()
