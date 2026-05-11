@@ -97,6 +97,23 @@ public class TedAppTests
     }
 
     [Fact]
+    public void SaveFile_MarksDocumentUnmodified ()
+    {
+        TedApp app = new ();
+        app.ShowOpenDialog = () => "/tmp/ted-save.txt";
+        app.ReadAllText = _ => "before";
+        Assert.True (app.OpenFile ());
+        app.Editor.Document!.Text = "after";
+        app.WriteAllText = (_, _) => { };
+
+        Assert.True (app.IsDocumentModified);
+
+        Assert.True (app.SaveFile ());
+
+        Assert.False (app.IsDocumentModified);
+    }
+
+    [Fact]
     public void Open_Save_RoundTrip_Preserves_Tab_Characters ()
     {
         var filePath = Path.Combine (Path.GetTempPath (), $"ted-tabs-{Guid.NewGuid ():N}.txt");
@@ -152,6 +169,49 @@ public class TedAppTests
         {
             File.Delete (filePath);
         }
+    }
+
+    [Fact]
+    public void QuitFile_ModifiedDocument_CancelChoice_DoesNotQuit ()
+    {
+        bool prompted = false;
+        TedApp app = new ();
+        app.Editor.Document!.Text = "dirty";
+        app.ShowSaveChangesDialog = () =>
+        {
+            prompted = true;
+
+            return SaveChangesChoice.Cancel;
+        };
+
+        Assert.False (app.QuitFile ());
+
+        Assert.True (prompted);
+        Assert.True (app.IsDocumentModified);
+    }
+
+    [Fact]
+    public async Task QuitFile_ModifiedDocument_SaveChoice_SavesBeforeQuitting ()
+    {
+        await using AppFixture<TedApp> fx = new (() => new TedApp ());
+        string? savedPath = null;
+        string? savedText = null;
+        fx.Top.ShowOpenDialog = () => "/tmp/ted-save-on-quit.txt";
+        fx.Top.ReadAllText = _ => "before";
+        Assert.True (fx.Top.OpenFile ());
+        fx.Top.Editor.Document!.Text = "after";
+        fx.Top.ShowSaveChangesDialog = () => SaveChangesChoice.Save;
+        fx.Top.WriteAllText = (path, text) =>
+        {
+            savedPath = path;
+            savedText = text;
+        };
+
+        Assert.True (fx.Top.QuitFile ());
+
+        Assert.Equal ("/tmp/ted-save-on-quit.txt", savedPath);
+        Assert.Equal ("after", savedText);
+        Assert.False (fx.Top.IsDocumentModified);
     }
 
     [Fact]
