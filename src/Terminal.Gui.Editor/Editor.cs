@@ -16,6 +16,7 @@ namespace Terminal.Gui.Views;
 /// </summary>
 public partial class Editor : View
 {
+    private readonly Dictionary<DocumentLine, CachedVisualLine> _visualLineCache = [];
     private readonly VisualLineBuilder _visualLineBuilder = new ();
     private int _caretOffset;
     private TextDocument? _document;
@@ -58,6 +59,7 @@ public partial class Editor : View
 
             _document = value;
             _document.Changed += OnDocumentChanged;
+            _visualLineCache.Clear ();
 
             _caretOffset = Math.Clamp (_caretOffset, 0, _document.TextLength);
             _virtualCaretColumn = GetCaretColumn ();
@@ -129,6 +131,7 @@ public partial class Editor : View
 
             _syntaxHighlighter = value;
             _syntaxHighlighter?.ResetState ();
+            _visualLineCache.Clear ();
             SetNeedsDraw ();
         }
     }
@@ -155,6 +158,7 @@ public partial class Editor : View
 
             field = value;
             _syntaxHighlighter?.ResetState ();
+            _visualLineCache.Clear ();
             SetNeedsDraw ();
         }
     } = "csharp";
@@ -173,6 +177,7 @@ public partial class Editor : View
             }
 
             field = value;
+            _visualLineCache.Clear ();
             _virtualCaretColumn = GetCaretColumn ();
             UpdateContentSize ();
             EnsureCaretVisible ();
@@ -195,6 +200,7 @@ public partial class Editor : View
             }
 
             field = value;
+            _visualLineCache.Clear ();
             SetNeedsDraw ();
         }
     }
@@ -250,6 +256,8 @@ public partial class Editor : View
 
     private void OnDocumentChanged (object? sender, DocumentChangeEventArgs e)
     {
+        InvalidateVisualLineCache (e);
+
         // Content-size has to refresh first so EnsureCaretVisible inside SetCaretOffset clamps the
         // viewport against the new line count.
         UpdateContentSize ();
@@ -396,19 +404,73 @@ public partial class Editor : View
         int selectionStart = 0,
         int selectionEnd = 0)
     {
+        bool canUseCache = CanUseVisualLineCache (styledSegments, selectionStart, selectionEnd);
+        Attribute resolvedNormal = normalAttribute ?? Attribute.Default;
+        Attribute resolvedSelected = selectedAttribute ?? Attribute.Default;
+
+        if (canUseCache
+            && _visualLineCache.TryGetValue (line, out CachedVisualLine? cached)
+            && cached.LineNumber == line.LineNumber
+            && cached.NormalAttribute == resolvedNormal
+            && cached.SelectedAttribute == resolvedSelected)
+        {
+            return cached.Line;
+        }
+
         VisualLineBuildContext context = new (
             _document!,
             IndentationSize,
             ShowTabs,
-            normalAttribute ?? Attribute.Default,
-            selectedAttribute ?? Attribute.Default,
+            resolvedNormal,
+            resolvedSelected,
             styledSegments,
             selectionStart,
             selectionEnd,
             LineTransformers);
 
-        return _visualLineBuilder.Build (line, context);
+        CellVisualLine visualLine = _visualLineBuilder.Build (line, context);
+
+        if (canUseCache)
+        {
+            _visualLineCache[line] = new (visualLine, line.LineNumber, resolvedNormal, resolvedSelected);
+        }
+
+        return visualLine;
     }
+
+    private bool CanUseVisualLineCache (IReadOnlyList<StyledSegment>? styledSegments, int selectionStart, int selectionEnd)
+    {
+        return styledSegments is null
+               && selectionStart >= selectionEnd
+               && LineTransformers.Count == 0;
+    }
+
+    private void InvalidateVisualLineCache (DocumentChangeEventArgs e)
+    {
+        if (_document is null || _visualLineCache.Count == 0 || _document.LineCount == 0)
+        {
+            return;
+        }
+
+        int startOffset = Math.Clamp (e.Offset, 0, _document.TextLength);
+        int firstAffectedLineNumber = _document.GetLineByOffset (startOffset).LineNumber;
+        List<DocumentLine> linesToRemove = [];
+
+        foreach (KeyValuePair<DocumentLine, CachedVisualLine> entry in _visualLineCache)
+        {
+            if (entry.Value.LineNumber >= firstAffectedLineNumber)
+            {
+                linesToRemove.Add (entry.Key);
+            }
+        }
+
+        foreach (DocumentLine line in linesToRemove)
+        {
+            _visualLineCache.Remove (line);
+        }
+    }
+
+    private sealed record CachedVisualLine (CellVisualLine Line, int LineNumber, Attribute NormalAttribute, Attribute SelectedAttribute);
 
     private void EnsureCaretVisible ()
     {

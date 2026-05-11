@@ -3,6 +3,7 @@
 using System.Reflection;
 using Terminal.Gui.Text.Document;
 using Terminal.Gui.Views;
+using Terminal.Gui.Views.Rendering;
 using Xunit;
 
 namespace Terminal.Gui.Editor.Tests;
@@ -69,6 +70,43 @@ public class EditorLogicTests
         // Mutating the replacement still drives the editor's caret arithmetic.
         replacement.Insert (0, "y");
         Assert.Equal (1, editor.CaretOffset);
+    }
+
+    [Fact]
+    public void BuildVisualLine_Reuses_Cache_For_Unchanged_Line ()
+    {
+        Views.Editor editor = new () { Document = new TextDocument ("alpha\nbeta") };
+        DocumentLine line = editor.Document.GetLineByNumber (1);
+
+        CellVisualLine first = InvokeBuildVisualLine (editor, line);
+        CellVisualLine second = InvokeBuildVisualLine (editor, line);
+
+        Assert.Same (first, second);
+    }
+
+    [Fact]
+    public void BuildVisualLine_Invalidates_Changed_And_Following_Lines ()
+    {
+        Views.Editor editor = new () { Document = new TextDocument ("alpha\nbeta\ngamma") };
+        DocumentLine line1 = editor.Document.GetLineByNumber (1);
+        DocumentLine line2 = editor.Document.GetLineByNumber (2);
+        DocumentLine line3 = editor.Document.GetLineByNumber (3);
+        CellVisualLine firstLine1 = InvokeBuildVisualLine (editor, line1);
+        CellVisualLine firstLine2 = InvokeBuildVisualLine (editor, line2);
+        CellVisualLine firstLine3 = InvokeBuildVisualLine (editor, line3);
+
+        editor.Document.Insert (line2.Offset, "x");
+
+        DocumentLine line1After = editor.Document.GetLineByNumber (1);
+        DocumentLine line2After = editor.Document.GetLineByNumber (2);
+        DocumentLine line3After = editor.Document.GetLineByNumber (3);
+        CellVisualLine secondLine1 = InvokeBuildVisualLine (editor, line1After);
+        CellVisualLine secondLine2 = InvokeBuildVisualLine (editor, line2After);
+        CellVisualLine secondLine3 = InvokeBuildVisualLine (editor, line3After);
+
+        Assert.Same (firstLine1, secondLine1);
+        Assert.NotSame (firstLine2, secondLine2);
+        Assert.NotSame (firstLine3, secondLine3);
     }
 
     [Fact]
@@ -279,5 +317,13 @@ public class EditorLogicTests
 
         Assert.NotNull (attr);
         Assert.Contains ("28", attr!.Message ?? string.Empty);
+    }
+
+    private static CellVisualLine InvokeBuildVisualLine (Views.Editor editor, DocumentLine line)
+    {
+        MethodInfo method = typeof (Views.Editor).GetMethod ("BuildVisualLine", BindingFlags.Instance | BindingFlags.NonPublic)!;
+        object? result = method.Invoke (editor, [line, null, null, null, 0, 0]);
+
+        return Assert.IsType<CellVisualLine> (result);
     }
 }
