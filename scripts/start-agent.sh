@@ -34,8 +34,15 @@ fi
 
 cd "$WORK"
 git fetch origin
-git checkout develop
-git pull --ff-only
+
+INTEGRATION_BRANCH="experiment/codex/develop"
+if git show-ref --verify --quiet "refs/remotes/origin/$INTEGRATION_BRANCH"; then
+  git switch "$INTEGRATION_BRANCH" 2>/dev/null || git switch -c "$INTEGRATION_BRANCH" "origin/$INTEGRATION_BRANCH"
+  git pull --ff-only origin "$INTEGRATION_BRANCH"
+else
+  git switch -c "$INTEGRATION_BRANCH" origin/develop
+  git push -u origin "$INTEGRATION_BRANCH"
+fi
 
 PROMPT=$(cat <<EOF
 You are the Codex agent in the Codex-only autonomous sprint described in
@@ -50,12 +57,16 @@ Required reading before you start:
   - The relevant \`specs/<feature>/spec.md\` before implementing each feature.
 
 How to work:
-  1. Work from the current \`develop\` branch and pull latest before each new feature branch.
+  1. Work from \`experiment/codex/develop\`, the Codex shadow develop branch.
   2. Choose work from \`specs/plan.md\`, preferring dependency-unblocking features.
-  3. Open one PR per feature or tightly-coupled feature slice.
-  4. Use branch prefix \`experiment/codex/\`.
-  5. Do not merge your own PRs.
-  6. When you stop, write \`specs/runs/codex-final.md\` summarizing PRs opened,
+  3. Create feature branches from \`experiment/codex/develop\` under \`experiment/codex/<feature>\`.
+  4. Open one PR per feature or tightly-coupled feature slice, targeting \`experiment/codex/develop\`.
+  5. After a feature branch satisfies its spec and validation, merge, rebase, or cherry-pick it
+     into \`experiment/codex/develop\` and push the updated integration branch.
+  6. Periodically fetch \`origin/develop\` and integrate it into \`experiment/codex/develop\`.
+     If a conflict is not obviously resolvable, stop and document the blocker.
+  7. Do not push to or merge into \`develop\`.
+  8. When you stop, write \`specs/runs/codex-final.md\` summarizing PRs opened,
      features completed, blockers, validation, risks, and approximate spend/tokens if available.
 
 Do not use Claude Code or GitHub Copilot Coding Agent. This is a single Codex lane.

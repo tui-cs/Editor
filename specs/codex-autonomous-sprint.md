@@ -10,9 +10,10 @@ Ship the `Editor` MLP defined in `specs/plan.md` using Codex only.
 
 Codex should:
 
-- Work from the current `develop` branch.
+- Create and maintain `experiment/codex/develop` as its shadow develop branch.
 - Read `specs/constitution.md`, `specs/plan.md`, `specs/public-api.md`, `specs/decisions.md`, and the relevant `specs/<feature>/spec.md` before changing code.
 - Open one PR per feature or tightly-coupled feature slice.
+- Merge or replay completed Codex feature work into `experiment/codex/develop`.
 - Keep PRs reviewable, dependency-aware, and aligned with the feature specs' Definition of Done.
 - Stop with a written report when it finishes, gets blocked, runs out of budget, or the operator stops the session.
 
@@ -23,6 +24,7 @@ Codex should:
 - No mirrored per-agent issue sets.
 - No side-by-side agent comparison rubric.
 - No direct pushes to `develop`.
+- No direct merges into `develop`.
 
 ## 3. Topology
 
@@ -32,17 +34,30 @@ Codex should:
       $HOME/s/Terminal.Gui.Text/operator/  # normal human clone
       $HOME/s/Terminal.Gui.Text/codex/     # Codex autonomous clone
 
-                       pushes branches
-                            |
-                            v
+                         pushes branches
+                              |
+                              v
                  github.com/gui-cs/Text
 
-      experiment/codex/<feature>  -> PRs against develop
+      experiment/codex/develop    # Codex shadow develop, final-check branch
+      experiment/codex/<feature>  # feature branches, integrated into shadow develop
 ```
 
 Codex gets its own clone so build artifacts, tool state, dirty files, and Codex session files do not collide with the operator's checkout.
 
-## 4. Prerequisites
+## 4. Branch Model
+
+`experiment/codex/develop` is the Codex integration branch. It starts from `origin/develop`, stays as close to `develop` as possible, and is the branch the operator uses for final checks.
+
+Codex may create as many feature branches as useful under `experiment/codex/<feature>`. Feature branches should branch from `experiment/codex/develop`, not directly from `develop`, once the integration branch exists.
+
+When a feature branch satisfies its spec and local validation, Codex may merge, rebase, or cherry-pick that work into `experiment/codex/develop` and push the updated integration branch. Codex may open feature PRs for review visibility, but the required final artifact is the updated `experiment/codex/develop` branch.
+
+Codex must periodically fetch `origin/develop` and integrate it into `experiment/codex/develop`. If that creates non-trivial conflicts, Codex should resolve them only when the correct resolution is clear; otherwise it should stop and document the blocker.
+
+Codex must never push to `develop`. When the sprint is complete, the operator can run final checks on `experiment/codex/develop` and decide whether to open or merge a final PR into `develop`.
+
+## 5. Prerequisites
 
 Install once on the host:
 
@@ -55,7 +70,7 @@ gh auth login
 
 `gh auth status` in the Codex clone must show an identity that can push branches and open PRs on `gui-cs/Text`.
 
-## 5. Kickoff
+## 6. Kickoff
 
 Start the Codex autonomous lane:
 
@@ -66,9 +81,9 @@ tmux attach -t codex-autonomy
 
 The launcher runs `scripts/start-agent.sh codex`, which builds the kickoff prompt from this document.
 
-Codex starts from `develop`, pulls latest, creates work branches under `experiment/codex/`, and opens PRs against `develop`.
+The launcher creates or updates the local `experiment/codex/develop` checkout and pushes the remote integration branch if it does not already exist.
 
-## 6. Work Selection
+## 7. Work Selection
 
 Codex should use the dependency table in `specs/plan.md`.
 
@@ -95,12 +110,12 @@ Prefer work that unblocks other work:
 5. `folding` because it unblocks `folding-ui`.
 6. Independent UX/product features (`read-only`, `clipboard`, `word-wrap`) when they are low-risk or improve ted materially.
 
-## 7. PR Rules
+## 8. PR And Integration Rules
 
-Each PR should:
+Each feature PR should:
 
 - Use branch prefix `experiment/codex/`.
-- Target `develop`.
+- Target `experiment/codex/develop` unless the operator explicitly asks for a final PR to `develop`.
 - Reference the feature spec it implements.
 - Include focused tests in the right test project per R7.
 - Update `specs/public-api.md` for new public `Editor` API.
@@ -108,9 +123,19 @@ Each PR should:
 - Update `specs/plan.md` status only when the PR fully satisfies that feature's Definition of Done.
 - Include validation commands and results in the PR body.
 
-Codex should not merge its own PRs. The operator reviews and merges in dependency order.
+Codex may integrate its own feature branches into `experiment/codex/develop` after validation. It must not merge into `develop`.
 
-## 8. Terminal.Gui Bugs
+## 9. Final Checks
+
+The final-check branch is:
+
+```sh
+experiment/codex/develop
+```
+
+The operator should run final checks from that branch, compare it against `origin/develop`, and decide whether to open or merge a final PR into `develop`.
+
+## 10. Terminal.Gui Bugs
 
 `TG.Text` is part of TG, so suspected Terminal.Gui bugs are handled with a high bar.
 
@@ -122,12 +147,13 @@ When Codex suspects a Terminal.Gui bug:
 
 If Codex cannot write the failing test, it should work around the issue locally, document the workaround in its final report, and move on.
 
-## 9. Observability
+## 11. Observability
 
 Collect at the end of a run:
 
 - Codex transcript from `~/.codex/sessions/`.
 - PR list for `experiment/codex/*`.
+- Integration branch diff and commit list for `origin/develop...origin/experiment/codex/develop`.
 - Codex final report from `specs/runs/codex-final.md` or `specs/runs/<run-name>/codex-final.md`.
 - OpenAI dashboard spend snapshot.
 - Validation summary and unresolved blockers.
@@ -138,7 +164,7 @@ Use:
 ./scripts/collect-run.sh <run-name>
 ```
 
-## 10. Stop Conditions
+## 12. Stop Conditions
 
 Stop the run when one of these is true:
 
