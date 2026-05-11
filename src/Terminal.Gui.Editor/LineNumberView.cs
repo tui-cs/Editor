@@ -29,7 +29,6 @@ public sealed class LineNumberView : View
         CanFocus = false;
     }
 
-
     /// <inheritdoc />
     protected override bool OnDrawingContent (DrawContext? context)
     {
@@ -113,5 +112,4 @@ public sealed class LineNumberView : View
 
         return false;
     }
-
 }
