@@ -215,6 +215,50 @@ public class TedAppTests
     }
 
     [Fact]
+    public async Task Loc_StatusBar_Shortcut_Initially_Shows_Line_1_Column_1 ()
+    {
+        await using AppFixture<TedApp> fx = new (() => new TedApp ());
+
+        Assert.Equal ("1, 1", fx.Top.LocShortcut.Text);
+    }
+
+    [Fact]
+    public async Task Loc_StatusBar_Shortcut_Tracks_Caret_Movement ()
+    {
+        await using AppFixture<TedApp> fx = new (() =>
+        {
+            TedApp app = new ();
+            app.Editor.Document!.Text = "alpha\nbeta\ngamma";
+
+            return app;
+        });
+
+        // Caret at offset 8 → "beta": line 2, column 3 ('t').
+        fx.Top.Editor.CaretOffset = 8;
+
+        Assert.Equal ("2, 3", fx.Top.LocShortcut.Text);
+    }
+
+    [Fact]
+    public async Task Loc_StatusBar_Shortcut_Updates_When_Document_Edit_Shifts_Caret ()
+    {
+        await using AppFixture<TedApp> fx = new (() =>
+        {
+            TedApp app = new ();
+            app.Editor.Document!.Text = "abc";
+
+            return app;
+        });
+
+        fx.Top.Editor.CaretOffset = 1;
+
+        // Inserting before the caret shifts it to the right; the loc shortcut must follow.
+        fx.Top.Editor.Document!.Insert (0, ">>>");
+
+        Assert.Equal ("1, 5", fx.Top.LocShortcut.Text);
+    }
+
+    [Fact]
     public async Task FileMenu_OpensViaKeyboard_AltF ()
     {
         await using AppFixture<TedApp> fx = new (() => new TedApp ());

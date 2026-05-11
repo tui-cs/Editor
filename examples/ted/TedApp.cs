@@ -17,6 +17,7 @@ namespace Ted;
 public sealed class TedApp : Window
 {
     private readonly Shortcut _fileNameShortcut;
+    private readonly Shortcut _locShortcut;
 
     /// <summary>Initializes a new <see cref="TedApp" />.</summary>
     public TedApp ()
@@ -135,7 +136,7 @@ public sealed class TedApp : Window
                 new Shortcut { Title = "Themes", CommandView = ThemeDropDown },
                 new Shortcut { Text = "Indent", CommandView = IndentationSizeUpDown, MouseHighlightStates = MouseState.None },
                 new Shortcut { CommandView = ShowTabsCheckBox },
-                new Shortcut (Key.Empty, "x, y", null, "Loc") { MouseHighlightStates = MouseState.None },
+                _locShortcut = new Shortcut (Key.Empty, FormatLoc (1, 1), null, "Loc") { MouseHighlightStates = MouseState.None },
                 _fileNameShortcut = new Shortcut (Key.Empty, "<untitled>", Open)
                 {
                     MouseHighlightStates = MouseState.None
@@ -192,6 +193,11 @@ public sealed class TedApp : Window
         Editor.Height = Dim.Fill (statusBar);
 
         Add (menu, Editor, statusBar);
+
+        // Editor.CaretChanged covers both user-driven movement and document edits that shift the
+        // caret (insert/remove). Initial render seeds the value before any movement happens.
+        Editor.CaretChanged += (_, _) => UpdateLocShortcut ();
+        UpdateLocShortcut ();
     }
 
 
@@ -206,6 +212,13 @@ public sealed class TedApp : Window
 
     /// <summary>The status-bar checkbox that toggles visible tab glyphs.</summary>
     public CheckBox ShowTabsCheckBox { get; }
+
+    /// <summary>
+    ///     The status-bar shortcut that mirrors the editor's caret position. Both line and column are
+    ///     1-based. Updated whenever <see cref="Views.Editor.CaretChanged" /> fires (user-driven movement
+    ///     and document edits that shift the caret).
+    /// </summary>
+    public Shortcut LocShortcut => _locShortcut;
 
     /// <summary>The path currently associated with <see cref="Editor" />, or <see langword="null" /> for an untitled buffer.</summary>
     public string? CurrentFilePath { get; private set; }
@@ -359,6 +372,28 @@ public sealed class TedApp : Window
         _fileNameShortcut.Text = CurrentFilePath is null ? "<untitled>" : Path.GetFileName (CurrentFilePath);
         _fileNameShortcut.HelpText = CurrentFilePath ?? "No file";
         _fileNameShortcut.SetNeedsDraw ();
+    }
+
+    private void UpdateLocShortcut ()
+    {
+        TextDocument? document = Editor.Document;
+
+        if (document is null)
+        {
+            _locShortcut.Text = FormatLoc (1, 1);
+        }
+        else
+        {
+            DocumentLine line = document.GetLineByOffset (Editor.CaretOffset);
+            _locShortcut.Text = FormatLoc (line.LineNumber, Editor.CaretOffset - line.Offset + 1);
+        }
+
+        _locShortcut.SetNeedsDraw ();
+    }
+
+    private static string FormatLoc (int line, int column)
+    {
+        return $"{line}, {column}";
     }
 
     private void New ()
