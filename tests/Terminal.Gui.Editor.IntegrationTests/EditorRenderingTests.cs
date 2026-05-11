@@ -1,13 +1,13 @@
 // Claude - claude-opus-4-7
 
+using System.Drawing;
 using Terminal.Gui.Drawing;
 using Terminal.Gui.Editor.IntegrationTests.Testing;
-using Terminal.Gui.Text;
-using Attribute = Terminal.Gui.Drawing.Attribute;
 using Terminal.Gui.Input;
 using Terminal.Gui.Testing;
-using TextMateSharp.Grammars;
+using Terminal.Gui.Text;
 using Xunit;
+using Attribute = Terminal.Gui.Drawing.Attribute;
 
 namespace Terminal.Gui.Editor.IntegrationTests;
 
@@ -26,7 +26,7 @@ public class EditorRenderingTests
     [Fact]
     public async Task Unselected_Text_Uses_Normal_Role_Not_Editable ()
     {
-        await using AppFixture<EditorTestHost> fx = new (() => new ("Hello"));
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("Hello"));
         fx.Render ();
 
         Attribute normal = fx.Top.Editor.GetAttributeForRole (VisualRole.Normal);
@@ -45,7 +45,7 @@ public class EditorRenderingTests
     [Fact]
     public async Task Selected_Text_Uses_Active_Role ()
     {
-        await using AppFixture<EditorTestHost> fx = new (() => new ("Hello"));
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("Hello"));
         fx.Top.Editor.SetFocus ();
         fx.Top.Editor.CaretOffset = 0;
 
@@ -63,7 +63,7 @@ public class EditorRenderingTests
     [Fact]
     public async Task Unselected_Tail_After_Selection_Uses_Normal_Role ()
     {
-        await using AppFixture<EditorTestHost> fx = new (() => new ("Hello"));
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("Hello"));
         fx.Top.Editor.SetFocus ();
         fx.Top.Editor.CaretOffset = 0;
 
@@ -105,9 +105,9 @@ public class EditorRenderingTests
     [Fact]
     public async Task LineNumbers_Follow_Vertical_Scroll ()
     {
-        string[] lines = new string[50];
+        var lines = new string[50];
 
-        for (int i = 0; i < lines.Length; i++)
+        for (var i = 0; i < lines.Length; i++)
         {
             lines[i] = $"line-{i:00}";
         }
@@ -120,9 +120,9 @@ public class EditorRenderingTests
             return host;
         });
 
-        int offset = 0;
+        var offset = 0;
 
-        for (int i = 0; i < 40; i++)
+        for (var i = 0; i < 40; i++)
         {
             offset += lines[i].Length + 1;
         }
@@ -131,7 +131,7 @@ public class EditorRenderingTests
         fx.Top.Editor.CaretOffset = offset;
         fx.Render ();
 
-        int row = 40 - fx.Top.Editor.Viewport.Y;
+        var row = 40 - fx.Top.Editor.Viewport.Y;
 
         Assert.Equal (3, fx.Top.Editor.Padding.Thickness.Left);
         Assert.Equal ("4", fx.Driver.Contents![row, 0].Grapheme);
@@ -187,15 +187,15 @@ public class EditorRenderingTests
     {
         const string text = "public class C";
 
-        await using AppFixture<EditorTestHost> fx = new (() => new (text));
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost (text));
         // Editor.SyntaxHighlighter is [Obsolete] (issue #32); these tests still exercise it
         // because it's the live behavior until the visual-line pipeline lands (issue #28).
 #pragma warning disable CS0618 // Type or member is obsolete
-        fx.Top.Editor.SyntaxHighlighter = new TextMateSyntaxHighlighter (ThemeName.DarkPlus);
+        fx.Top.Editor.SyntaxHighlighter = new TextMateSyntaxHighlighter ();
 #pragma warning restore CS0618 // Type or member is obsolete
         fx.Render ();
 
-        TextMateSyntaxHighlighter highlighter = new (ThemeName.DarkPlus);
+        TextMateSyntaxHighlighter highlighter = new ();
         Attribute expected = highlighter.Highlight (text, "csharp")[0].Attribute!.Value;
 
         Cell cell = fx.Driver.Contents![0, 0];
@@ -207,9 +207,9 @@ public class EditorRenderingTests
     [Fact]
     public async Task Selection_Overrides_Syntax_Highlighting ()
     {
-        await using AppFixture<EditorTestHost> fx = new (() => new ("public class C"));
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("public class C"));
 #pragma warning disable CS0618 // Type or member is obsolete — see note in Syntax_Highlighting_Uses_TextMate_Token_Attributes.
-        fx.Top.Editor.SyntaxHighlighter = new TextMateSyntaxHighlighter (ThemeName.DarkPlus);
+        fx.Top.Editor.SyntaxHighlighter = new TextMateSyntaxHighlighter ();
 #pragma warning restore CS0618 // Type or member is obsolete
         fx.Top.Editor.SetFocus ();
         fx.Top.Editor.CaretOffset = 0;
@@ -224,9 +224,32 @@ public class EditorRenderingTests
     }
 
     [Fact]
+    public async Task Tab_Then_Emoji_Renders_At_Correct_Cells ()
+    {
+        // drawing-overhaul Scenario 3 regression: `\tHello 🌍` must render with the tab expanded
+        // to the next tab stop, "Hello" as five normal cells, and the globe emoji at columns
+        // [tab-stop + 6, +7] as a two-cell wide grapheme.
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("\tHello 🌍"));
+        fx.Render ();
+
+        // Default IndentationSize is 4, so the tab expands to columns 0..3.
+        Assert.Equal (" ", fx.Driver.Contents![0, 0].Grapheme);
+        Assert.Equal (" ", fx.Driver.Contents![0, 3].Grapheme);
+
+        Assert.Equal ("H", fx.Driver.Contents![0, 4].Grapheme);
+        Assert.Equal ("e", fx.Driver.Contents![0, 5].Grapheme);
+        Assert.Equal ("l", fx.Driver.Contents![0, 6].Grapheme);
+        Assert.Equal ("l", fx.Driver.Contents![0, 7].Grapheme);
+        Assert.Equal ("o", fx.Driver.Contents![0, 8].Grapheme);
+        Assert.Equal (" ", fx.Driver.Contents![0, 9].Grapheme);
+
+        Assert.Equal ("🌍", fx.Driver.Contents![0, 10].Grapheme);
+    }
+
+    [Fact]
     public async Task Tabs_Render_As_Spaces_Using_Default_IndentationSize ()
     {
-        await using AppFixture<EditorTestHost> fx = new (() => new ("a\tb"));
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("a\tb"));
         fx.Render ();
 
         Assert.Equal ("a", fx.Driver.Contents![0, 0].Grapheme);
@@ -239,7 +262,7 @@ public class EditorRenderingTests
     [Fact]
     public async Task Tabs_Render_As_Spaces_Using_Configured_IndentationSize ()
     {
-        await using AppFixture<EditorTestHost> fx = new (() => new ("a\tb"));
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("a\tb"));
         fx.Top.Editor.IndentationSize = 2;
         fx.Render ();
 
@@ -251,7 +274,7 @@ public class EditorRenderingTests
     [Fact]
     public async Task ShowTabs_Renders_Glyph_At_First_Tab_Cell ()
     {
-        await using AppFixture<EditorTestHost> fx = new (() => new ("a\tb"));
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("a\tb"));
         fx.Top.Editor.ShowTabs = true;
         fx.Render ();
 
@@ -267,7 +290,7 @@ public class EditorRenderingTests
     {
         const string emoji = "👩‍💻";
 
-        await using AppFixture<EditorTestHost> fx = new (() => new ($"a\t{emoji}b"));
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ($"a\t{emoji}b"));
         fx.Render ();
 
         var emojiColumn = 4;
@@ -286,7 +309,7 @@ public class EditorRenderingTests
         // exceeded visibleEnd — leaving column 3 blank.
         const string emoji = "\U0001f4a5"; // 💥 — 2 cells wide
 
-        await using AppFixture<EditorTestHost> fx = new (() => new ($"abc{emoji}"), width: 4, height: 1);
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ($"abc{emoji}"), 4, 1);
         fx.Render ();
 
         Assert.Equal ("a", fx.Driver.Contents![0, 0].Grapheme);
@@ -298,11 +321,11 @@ public class EditorRenderingTests
     [Fact]
     public async Task Cursor_Position_After_Tab_Uses_Expanded_Tab_Columns ()
     {
-        await using AppFixture<EditorTestHost> fx = new (() => new ("a\tb"));
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("a\tb"));
         fx.Top.Editor.SetFocus ();
         fx.Top.Editor.CaretOffset = 2;
         fx.Render ();
 
-        Assert.Equal (new (4, 0), fx.Top.Editor.Cursor.Position);
+        Assert.Equal (new Point (4, 0), fx.Top.Editor.Cursor.Position);
     }
 }

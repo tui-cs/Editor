@@ -3,16 +3,11 @@ using Terminal.Gui.Text.Document;
 namespace Terminal.Gui.Views.Rendering;
 
 /// <summary>A single document line projected into terminal-cell elements.</summary>
-public sealed class CellVisualLine
+public sealed class CellVisualLine (DocumentLine documentLine)
 {
     private readonly List<CellVisualLineElement> _elements = [];
 
-    public CellVisualLine (DocumentLine documentLine)
-    {
-        DocumentLine = documentLine;
-    }
-
-    public DocumentLine DocumentLine { get; }
+    public DocumentLine DocumentLine { get; } = documentLine;
 
     public IReadOnlyList<CellVisualLineElement> Elements => _elements;
 

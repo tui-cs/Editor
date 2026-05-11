@@ -198,7 +198,7 @@ public partial class Editor
         }
 
         DocumentLine line = _document!.GetLineByOffset (offset);
-        var visualColumn = GetVisualColumnFromLogicalColumn (line, offset - line.Offset);
+        var visualColumn = GetOrBuildDefaultVisualLine (line).GetVisualColumn (offset - line.Offset);
         var spaces = VisualLineBuilder.GetTabExpansionWidth (visualColumn, IndentationSize);
 
         return new string (' ', spaces);

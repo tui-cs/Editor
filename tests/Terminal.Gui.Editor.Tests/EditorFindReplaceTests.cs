@@ -19,7 +19,7 @@ public class EditorFindReplaceTests
     {
         Views.Editor editor = new () { Document = new TextDocument ("foo bar foo baz foo") };
 
-        int n = editor.ReplaceAll ("foo", "qux");
+        var n = editor.ReplaceAll ("foo", "qux");
 
         Assert.Equal (3, n);
         Assert.Equal ("qux bar qux baz qux", editor.Document!.Text);
@@ -33,7 +33,7 @@ public class EditorFindReplaceTests
         TextDocument doc = new ("foo foo foo foo foo");
         Views.Editor editor = new () { Document = doc };
 
-        int n = editor.ReplaceAll ("foo", "qux");
+        var n = editor.ReplaceAll ("foo", "qux");
         Assert.Equal (5, n);
         Assert.Equal ("qux qux qux qux qux", doc.Text);
 
@@ -49,7 +49,7 @@ public class EditorFindReplaceTests
         TextDocument doc = new ("hello world");
         Views.Editor editor = new () { Document = doc };
 
-        int n = editor.ReplaceAll ("xyz", "abc");
+        var n = editor.ReplaceAll ("xyz", "abc");
 
         Assert.Equal (0, n);
         Assert.Equal ("hello world", doc.Text);
@@ -69,7 +69,7 @@ public class EditorFindReplaceTests
         Views.Editor editor = new () { Document = new TextDocument ("foo bar foo") };
         editor.CaretOffset = 0;
 
-        bool found = editor.FindNext ("foo");
+        var found = editor.FindNext ("foo");
 
         Assert.True (found);
         Assert.Equal (0, editor.SelectionStart);
@@ -82,7 +82,7 @@ public class EditorFindReplaceTests
         Views.Editor editor = new () { Document = new TextDocument ("foo bar foo") };
         editor.CaretOffset = editor.Document!.TextLength;
 
-        bool found = editor.FindNext ("foo");
+        var found = editor.FindNext ("foo");
 
         Assert.True (found);
         Assert.Equal (0, editor.SelectionStart);

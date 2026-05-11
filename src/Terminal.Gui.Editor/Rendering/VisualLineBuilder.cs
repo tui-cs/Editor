@@ -1,5 +1,4 @@
 using Terminal.Gui.Drawing;
-using Terminal.Gui.Text;
 using Terminal.Gui.Text.Document;
 using Attribute = Terminal.Gui.Drawing.Attribute;
 
@@ -10,14 +9,14 @@ public sealed class VisualLineBuilder
 {
     public CellVisualLine Build (DocumentLine documentLine, VisualLineBuildContext context)
     {
-        string text = context.Document.GetText (documentLine);
+        var text = context.Document.GetText (documentLine);
         CellVisualLine visualLine = new (documentLine);
         var logicalColumn = 0;
         var visualColumn = 0;
         var segmentIndex = 0;
         var segmentEnd = GetSegmentEnd (context.StyledSegments, segmentIndex);
 
-        foreach (string grapheme in GraphemeHelper.GetGraphemes (text))
+        foreach (var grapheme in GraphemeHelper.GetGraphemes (text))
         {
             while (context.StyledSegments is { Count: > 0 }
                    && logicalColumn >= segmentEnd
@@ -41,7 +40,8 @@ public sealed class VisualLineBuilder
             if (grapheme == "\t")
             {
                 var width = GetTabExpansionWidth (visualColumn, context.IndentationSize);
-                visualLine.AddElement (new TabElement (documentOffset, visualColumn, width, context.ShowTabs, attribute));
+                visualLine.AddElement (
+                    new TabElement (documentOffset, visualColumn, width, context.ShowTabs, attribute));
                 visualColumn += width;
             }
             else

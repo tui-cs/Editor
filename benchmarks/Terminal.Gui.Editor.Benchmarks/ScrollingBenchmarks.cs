@@ -13,8 +13,8 @@ namespace Terminal.Gui.Editor.Benchmarks;
 [ShortRunJob]
 public class ScrollingBenchmarks
 {
-    private TextDocument _document = null!;
     private VisualLineBuilder _builder = null!;
+    private TextDocument _document = null!;
 
     /// <summary>Number of lines in the synthetic document.</summary>
     [Params (100, 1_000, 10_000)]

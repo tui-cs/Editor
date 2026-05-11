@@ -27,7 +27,7 @@ public sealed class TedApp : Window
 
         // Editor first so menu/status-bar shortcuts can pull their hotkeys directly from
         // Editor's KeyBindings (any commands the editor doesn't claim fall back to Application).
-        Editor = new Editor ()
+        Editor = new Editor
         {
             ShowLineNumbers = true,
             ConvertTabsToSpaces = true,
@@ -135,9 +135,11 @@ public sealed class TedApp : Window
             new ([
                 new Shortcut (KeyFor (Command.Quit), "Quit", Quit),
                 new Shortcut { Title = "Themes", CommandView = ThemeDropDown },
-                new Shortcut { Text = "Indent", CommandView = IndentationSizeUpDown, MouseHighlightStates = MouseState.None },
+                new Shortcut
+                    { Text = "Indent", CommandView = IndentationSizeUpDown, MouseHighlightStates = MouseState.None },
                 new Shortcut { CommandView = ShowTabsCheckBox },
-                _locShortcut = new Shortcut (Key.Empty, FormatLoc (1, 1), null, "Loc") { MouseHighlightStates = MouseState.None },
+                _locShortcut = new Shortcut (Key.Empty, FormatLoc (1, 1), null, "Loc")
+                    { MouseHighlightStates = MouseState.None },
                 _fileNameShortcut = new Shortcut (Key.Empty, "<untitled>", Open)
                 {
                     MouseHighlightStates = MouseState.None
@@ -216,7 +218,7 @@ public sealed class TedApp : Window
 
     /// <summary>
     ///     The status-bar shortcut that mirrors the editor's caret position. Both line and column are
-    ///     1-based. Updated whenever <see cref="Views.Editor.CaretChanged" /> fires (user-driven movement
+    ///     1-based. Updated whenever <see cref="Editor.CaretChanged" /> fires (user-driven movement
     ///     and document edits that shift the caret).
     /// </summary>
     public Shortcut LocShortcut => _locShortcut;
@@ -366,7 +368,7 @@ public sealed class TedApp : Window
             throw new InvalidOperationException ("ted must be running before showing the save-changes dialog.");
         }
 
-        int? result = MessageBox.Query (
+        var result = MessageBox.Query (
             App,
             "Save changes?",
             "The document has unsaved changes. Save before quitting?",

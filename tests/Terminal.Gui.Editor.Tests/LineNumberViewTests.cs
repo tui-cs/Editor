@@ -8,11 +8,11 @@ using Xunit;
 namespace Terminal.Gui.Editor.Tests;
 
 /// <summary>
-///     Tests for <see cref="LineNumberView" /> life-cycle and the <see cref="Views.Editor" />
+///     Tests for <see cref="Gutter" /> life-cycle and the <see cref="Views.Editor" />
 ///     wiring that hosts it as a SubView of <see cref="Padding" />. Rendering / clipping behavior
 ///     that needs a driver lives in the IntegrationTests project.
 /// </summary>
-public class LineNumberViewTests
+public class GutterTests
 {
     [Fact]
     public void Disabled_By_Default ()
@@ -24,7 +24,7 @@ public class LineNumberViewTests
     }
 
     [Fact]
-    public void Enabled_Adds_LineNumberView_As_PaddingSubView ()
+    public void Enabled_Adds_Gutter_As_PaddingSubView ()
     {
         Views.Editor editor = new () { Document = new TextDocument ("a\nb") };
 
@@ -32,11 +32,11 @@ public class LineNumberViewTests
 
         IReadOnlyCollection<View> subViews = PaddingSubViewsOf (editor);
         Assert.Single (subViews);
-        Assert.IsType<LineNumberView> (subViews.Single ());
+        Assert.IsType<Gutter> (subViews.Single ());
     }
 
     [Fact]
-    public void Disabling_Removes_LineNumberView_From_Padding ()
+    public void Disabling_Removes_Gutter_From_Padding ()
     {
         Views.Editor editor = new () { Document = new TextDocument ("a\nb") };
         editor.ShowLineNumbers = true;
@@ -69,12 +69,12 @@ public class LineNumberViewTests
         Views.Editor editor = new () { Document = new TextDocument (string.Join ('\n', Enumerable.Range (1, 9))) };
         editor.ShowLineNumbers = true;
 
-        LineNumberView view = (LineNumberView)PaddingSubViewsOf (editor).Single ();
+        Gutter view = (Gutter)PaddingSubViewsOf (editor).Single ();
         Assert.Equal (Dim.Absolute (2), view.Width);
 
         editor.Document!.Insert (editor.Document.TextLength, "\n10");
 
-        // Padding widened from 2 to 3; the LineNumberView's width should match.
+        // Padding widened from 2 to 3; the Gutter's width should match.
         Assert.Equal (3, editor.Padding.Thickness.Left);
         Assert.Equal (Dim.Absolute (3), view.Width);
     }
@@ -82,14 +82,14 @@ public class LineNumberViewTests
     [Fact]
     public void Constructor_Throws_On_Null_Editor ()
     {
-        Assert.Throws<ArgumentNullException> (() => new LineNumberView (null!));
+        Assert.Throws<ArgumentNullException> (() => new Gutter (null!));
     }
 
     [Fact]
-    public void LineNumberView_CanFocus_Is_False ()
+    public void Gutter_CanFocus_Is_False ()
     {
         Views.Editor editor = new () { Document = new TextDocument ("a") };
-        LineNumberView view = new (editor);
+        Gutter view = new (editor);
 
         Assert.False (view.CanFocus);
     }

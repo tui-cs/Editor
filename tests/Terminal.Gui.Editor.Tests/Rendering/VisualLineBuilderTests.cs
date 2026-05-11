@@ -1,10 +1,9 @@
 // Codex - GPT-5
 
-using Terminal.Gui.Drawing;
 using Terminal.Gui.Text.Document;
 using Terminal.Gui.Views.Rendering;
-using Attribute = Terminal.Gui.Drawing.Attribute;
 using Xunit;
+using Attribute = Terminal.Gui.Drawing.Attribute;
 
 namespace Terminal.Gui.Editor.Tests.Rendering;
 
@@ -74,20 +73,11 @@ public class VisualLineBuilderTests
         return new VisualLineBuilder ().Build (documentLine, context);
     }
 
-    private sealed class RecordingTransformer : IVisualLineTransformer
+    private sealed class RecordingTransformer (List<int> calls, int value) : IVisualLineTransformer
     {
-        private readonly List<int> _calls;
-        private readonly int _value;
-
-        public RecordingTransformer (List<int> calls, int value)
-        {
-            _calls = calls;
-            _value = value;
-        }
-
         public void Transform (CellVisualLine line)
         {
-            _calls.Add (_value);
+            calls.Add (value);
         }
     }
 }
