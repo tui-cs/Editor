@@ -174,7 +174,7 @@ public class TedAppTests
     [Fact]
     public void QuitFile_ModifiedDocument_CancelChoice_DoesNotQuit ()
     {
-        bool prompted = false;
+        var prompted = false;
         TedApp app = new ();
         app.Editor.Document!.Text = "dirty";
         app.ShowSaveChangesDialog = () =>

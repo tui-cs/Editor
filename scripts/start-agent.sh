@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# start-agent.sh — launch one agent in the foreground (intended to run inside a
+# start-agent.sh — launch Codex in the foreground (intended to run inside a
 # tmux window). The kick-off prompt is generated here so it stays consistent
-# across runs and matches specs/10-autonomous-three-agent.md §12.2.
+# with specs/codex-autonomous-sprint.md.
 
 set -euo pipefail
 
@@ -9,16 +9,10 @@ AGENT="${1:-}"
 
 usage () {
   cat <<'EOF'
-Usage: ./scripts/start-agent.sh <agent>
+Usage: ./scripts/start-agent.sh codex
 
-  agent: claude | codex
-
-(copilot is dispatched by assigning its label-tagged issue on github.com — no
-local process to launch.)
-
-Reads the assigned issue from gh and feeds the kick-off prompt into the
-agent's CLI in the agent's clone ($HOME/s/Terminal.Gui.Text/<agent>/). The prompt is the test-run
-prompt from spec §12.2.
+Feeds the Codex autonomous-sprint kickoff prompt into the Codex CLI in
+$HOME/s/Terminal.Gui.Text/codex/.
 EOF
 }
 
@@ -28,15 +22,8 @@ if [[ "${AGENT:-}" == "" || "${AGENT}" == "--help" || "${AGENT}" == "-h" ]]; the
 fi
 
 case "$AGENT" in
-  claude|codex) : ;;
-  copilot)
-    cat <<'EOF'
-Copilot has no local kick-off. Open the agent:copilot issue on
-github.com and click "Assign Copilot" — Copilot's job runs in GitHub Actions.
-EOF
-    exit 0
-    ;;
-  *) echo "error: agent must be claude | codex | copilot" >&2; exit 1 ;;
+  codex) : ;;
+  *) echo "error: agent must be codex" >&2; exit 1 ;;
 esac
 
 WORK="$HOME/s/Terminal.Gui.Text/$AGENT"
@@ -47,39 +34,46 @@ fi
 
 cd "$WORK"
 git fetch origin
-git checkout develop
-git pull --ff-only
 
-# The kick-off prompt. Identical body across agents — only the branch name
-# and final-report path vary, both keyed on $AGENT.
+INTEGRATION_BRANCH="experiment/codex/develop"
+if git show-ref --verify --quiet "refs/remotes/origin/$INTEGRATION_BRANCH"; then
+  git switch "$INTEGRATION_BRANCH" 2>/dev/null || git switch -c "$INTEGRATION_BRANCH" "origin/$INTEGRATION_BRANCH"
+  git pull --ff-only origin "$INTEGRATION_BRANCH"
+else
+  git switch -c "$INTEGRATION_BRANCH" origin/develop
+  git push -u origin "$INTEGRATION_BRANCH"
+fi
+
 PROMPT=$(cat <<EOF
-You are the $AGENT agent in the three-agent autonomy experiment described in
-\`specs/10-autonomous-three-agent.md\`. Your task is the issue on this repo
-labeled \`agent:$AGENT\` and \`experiment\`.
+You are the Codex agent in the Codex-only autonomous sprint described in
+\`specs/codex-autonomous-sprint.md\`.
 
 Required reading before you start:
-  - The issue body (use \`gh issue list --label agent:$AGENT --label experiment --json number,title,body\`).
-  - \`specs/00-plan.md\` — especially §0, §4 (R1–R10), §8 D1, §9.
+  - \`specs/codex-autonomous-sprint.md\`.
+  - \`specs/constitution.md\` — especially tenets and R1–R10.
+  - \`specs/plan.md\` — roadmap, dependency table, and MLP Definition of Done.
+  - \`specs/public-api.md\` and \`specs/decisions.md\`.
   - \`CLAUDE.md\` — coding standards.
-  - Issue #37 — the full tab-handling spec your assigned issue points at.
+  - The relevant \`specs/<feature>/spec.md\` before implementing each feature.
 
 How to work:
-  1. Open exactly one PR against \`develop\`. Branch name: \`experiment/$AGENT/d1-tabs\`.
-  2. When you stop, write \`specs/runs/test-$AGENT-final.md\` summarizing: what you did,
-     what you skipped, why, total tokens spent, and what you would do differently.
-  3. Stop only when the PR is open and CI is either green or you have decided you
-     cannot make it green.
+  1. Work from \`experiment/codex/develop\`, the Codex shadow develop branch.
+  2. Choose work from \`specs/plan.md\`, preferring dependency-unblocking features.
+  3. Create feature branches from \`experiment/codex/develop\` under \`experiment/codex/<feature>\`.
+  4. Open one PR per feature or tightly-coupled feature slice, targeting \`experiment/codex/develop\`.
+  5. After a feature branch satisfies its spec and validation, merge, rebase, or cherry-pick it
+     into \`experiment/codex/develop\` and push the updated integration branch.
+  6. Periodically fetch \`origin/develop\` and integrate it into \`experiment/codex/develop\`.
+     If a conflict is not obviously resolvable, stop and document the blocker.
+  7. Do not push to or merge into \`develop\`.
+  8. When you stop, write \`specs/runs/codex-final.md\` summarizing PRs opened,
+     features completed, blockers, validation, risks, and approximate spend/tokens if available.
 
-Do not edit: \`specs/00-plan.md\`, \`CLAUDE.md\`, \`.claude/\`, \`.config/\`,
-\`.github/\`, \`third_party/\`, or \`scripts/\`. If you think one of those needs
-changing, write the proposal into your final report instead.
+Do not use Claude Code or GitHub Copilot Coding Agent. This is a single Codex lane.
 
-Do not pre-decide the B1 dependency. §8 D1 says D1 depends on B1 (the
-VisualLineBuilder pipeline) and that without B1 the implementation should be
-rejected. You can: (a) refuse to ship until B1 lands, (b) implement B1 first
-and then D1, (c) ship a stopgap and explicitly own the R1/R2 violation in your
-PR description, or (d) ship a stopgap and pretend it's fine. Pick one. Your
-choice is part of the experiment.
+Do not edit: \`.claude/\`, \`.config/\`, \`third_party/\`, or \`scripts/\`.
+If you think one of those needs changing, write the proposal into your final report instead.
+Spec files may be updated when required by R8, resolved decisions, or feature status changes.
 
 A full clone of Terminal.Gui is at \`../Terminal.Gui\` (absolute path:
 \`$HOME/s/Terminal.Gui.Text/Terminal.Gui\`, \`develop\` branch). **Before using it,
@@ -96,20 +90,13 @@ around it locally, note the workaround in your final report, and move on.
 EOF
 )
 
-echo "==> Starting $AGENT in $WORK"
+echo "==> Starting Codex in $WORK"
 echo "    (Ctrl+C inside the agent to stop. Detach the tmux pane with Ctrl+B D.)"
 echo
 
-case "$AGENT" in
-  claude)
-    exec claude --dangerously-skip-permissions "$PROMPT"
-    ;;
-  codex)
-    # Codex reads its agent file from AGENTS.md. Mirror CLAUDE.md so the
-    # experiment input stays identical.
-    if [[ ! -f AGENTS.md ]]; then
-      ln -s CLAUDE.md AGENTS.md
-    fi
-    exec codex --dangerously-bypass-approvals-and-sandbox "$PROMPT"
-    ;;
-esac
+# Codex reads its agent file from AGENTS.md.
+if [[ ! -f AGENTS.md ]]; then
+  ln -s CLAUDE.md AGENTS.md
+fi
+
+exec codex --dangerously-bypass-approvals-and-sandbox "$PROMPT"

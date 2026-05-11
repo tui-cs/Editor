@@ -75,12 +75,12 @@ public partial class Editor
             return true;
         }
 
+        // Release: end the drag-grab so other views start receiving events again.
         if (!mouse.Flags.HasFlag (MouseFlags.LeftButtonReleased))
         {
             return false;
         }
 
-        // Release: end the drag-grab so other views start receiving events again.
         App?.Mouse.UngrabMouse ();
 
         return true;
@@ -100,7 +100,7 @@ public partial class Editor
         var lineIndex = Math.Clamp (Viewport.Y + viewPos.Y, 0, _document.LineCount - 1);
         DocumentLine line = _document.GetLineByNumber (lineIndex + 1);
         var col = Math.Max (0, Viewport.X + viewPos.X);
-        var colInLine = GetLogicalColumnFromVisualColumn (line, col);
+        var colInLine = GetOrBuildDefaultVisualLine (line).GetRelativeOffset (col);
 
         return line.Offset + colInLine;
     }

@@ -17,9 +17,9 @@ After this migration, `OnDrawingContent` should be a thin walker — under 30 li
 
 **Given** a document with mixed content (text, tabs, grapheme clusters), **When** the editor draws, **Then** it iterates `CellVisualLine` elements rather than raw characters.
 
-### Scenario 2 — Line numbers render via background renderer
+### Scenario 2 — Line numbers render as a Padding SubView
 
-**Given** an editor with line numbers enabled, **When** the editor draws, **Then** line numbers are painted by `LineNumberMargin : IBackgroundRenderer`, not by a dedicated `DrawLineNumbers` method.
+**Given** an editor with line numbers enabled, **When** the editor draws, **Then** line numbers are painted by `LineNumberView : View` — a SubView of `Padding` — so popovers and menus correctly clip the gutter. See `specs/decisions.md` DEC-004 for why this replaces the spec's original `LineNumberMargin : IBackgroundRenderer` proposal.
 
 ### Scenario 3 — Grapheme cluster regression on tabbed line
 
@@ -36,7 +36,7 @@ After this migration, `OnDrawingContent` should be a thin walker — under 30 li
 - **FR-003**: Delete `GetVisualWidthForCharacter`, `GetVisualColumnFromLogicalColumn`, `GetLogicalColumnFromVisualColumn`.
 - **FR-004**: Delete the `c == '\t' ? ...` ternary tab-expansion logic.
 - **FR-005**: Delete `DrawLineNumbers` bespoke margin method.
-- **FR-006**: Implement `LineNumberMargin : IBackgroundRenderer` in `Rendering/LineNumberMargin.cs`.
+- **FR-006**: Render line numbers via a `View` SubView of `Padding` (`LineNumberView`), not a renderer. See DEC-004 for rationale.
 - **FR-007**: `OnDrawingContent` body must be < 30 lines and contain zero `for (int i = 0; i < text.Length; ...)` patterns.
 
 ## Files in Scope
@@ -44,7 +44,7 @@ After this migration, `OnDrawingContent` should be a thin walker — under 30 li
 - `src/Terminal.Gui.Editor/Editor.Drawing.cs`
 - `src/Terminal.Gui.Editor/Editor.cs`
 - `src/Terminal.Gui.Editor/Editor.Mouse.cs`
-- `src/Terminal.Gui.Editor/Rendering/LineNumberMargin.cs` (new)
+- `src/Terminal.Gui.Editor/LineNumberView.cs` (already landed alongside the prior PR)
 
 ## Definition of Done
 
@@ -52,7 +52,7 @@ After this migration, `OnDrawingContent` should be a thin walker — under 30 li
 - [ ] All existing render tests pass
 - [ ] All existing mouse tests pass
 - [ ] Grapheme-cluster regression test on tabbed line added and passes
-- [ ] Line numbers render via `LineNumberMargin : IBackgroundRenderer`
+- [ ] Line numbers render via `LineNumberView : View` (Padding SubView). See DEC-004.
 - [ ] `DrawLineNumbers`, `DrawLineContent`, `GetVisualWidthForCharacter`, `GetVisualColumnFromLogicalColumn`, `GetLogicalColumnFromVisualColumn` are deleted
 - [ ] R1, R2 enforceable
 

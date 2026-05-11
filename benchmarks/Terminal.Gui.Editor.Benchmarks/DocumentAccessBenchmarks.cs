@@ -13,8 +13,7 @@ public class DocumentAccessBenchmarks
 {
     private TextDocument _document = null!;
 
-    [Params (1_000, 10_000, 100_000)]
-    public int LineCount { get; set; }
+    [Params (1_000, 10_000, 100_000)] public int LineCount { get; set; }
 
     [GlobalSetup]
     public void Setup ()
@@ -91,7 +90,7 @@ public class DocumentAccessBenchmarks
         for (var i = 0; i < 50 && start + i <= _document.LineCount; i++)
         {
             DocumentLine line = _document.GetLineByNumber (start + i);
-            string text = _document.GetText (line);
+            var text = _document.GetText (line);
             total += text.Length;
         }
 

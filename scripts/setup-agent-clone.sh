@@ -1,11 +1,6 @@
 #!/usr/bin/env bash
-# setup-agent-clone.sh — clone gui-cs/Text into $HOME/s/Terminal.Gui.Text/<agent>/, restore tools,
-# and verify the per-agent gh auth posture.
-#
-# Per spec §3: each agent runs in its own clone (not a worktree) with its own
-# gh identity (machine user + PAT) so a `gh pr create` from one tree can never
-# push under another agent's branch. This script only verifies that posture —
-# it does not create machine users or PATs for you.
+# setup-agent-clone.sh — clone gui-cs/Text into $HOME/s/Terminal.Gui.Text/codex/,
+# restore tools, and verify GitHub auth for Codex PR creation.
 
 set -euo pipefail
 
@@ -13,16 +8,10 @@ AGENT="${1:-}"
 
 usage () {
   cat <<'EOF'
-Usage: ./scripts/setup-agent-clone.sh <agent>
+Usage: ./scripts/setup-agent-clone.sh codex
 
-  agent: claude | codex | copilot
-
-Idempotent. Clones gui-cs/Text into $HOME/s/Terminal.Gui.Text/<agent>/ if not already there,
-runs `dotnet tool restore`, and verifies the gh auth identity for that
-clone is distinct from the other agents'.
-
-Copilot agent: this just creates a clone for human inspection of Copilot's
-PRs. Copilot itself runs on github.com — no local process.
+Idempotent. Clones gui-cs/Text into $HOME/s/Terminal.Gui.Text/codex/ if not
+already there, runs `dotnet tool restore`, and reports the active gh identity.
 EOF
 }
 
@@ -32,8 +21,8 @@ if [[ "${AGENT:-}" == "" || "${AGENT}" == "--help" || "${AGENT}" == "-h" ]]; the
 fi
 
 case "$AGENT" in
-  claude|codex|copilot) : ;;
-  *) echo "error: agent must be one of: claude | codex | copilot" >&2; exit 1 ;;
+  codex) : ;;
+  *) echo "error: agent must be codex" >&2; exit 1 ;;
 esac
 
 WORK="$HOME/s/Terminal.Gui.Text/$AGENT"
@@ -55,30 +44,21 @@ echo "==> Restoring dotnet tools (jb, etc.)"
 dotnet tool restore
 
 echo "==> Verifying gh auth identity for this clone"
-# `gh auth status` reports the active identity. We want each clone to have a
-# *different* identity so PRs created from this clone are unambiguously this
-# agent's. The operator is responsible for `gh auth login` in each clone with
-# the right PAT — we just sanity-check the result.
 identity="$(gh auth status 2>&1 | awk -F 'account ' '/Logged in to github.com/ {print $2}' | head -1)"
 if [[ -z "${identity:-}" ]]; then
   cat >&2 <<EOF
 warning: no gh auth identity detected for $WORK.
         Run: cd $WORK && gh auth login
-        Use a distinct machine user / PAT for each agent (spec §3).
 EOF
 else
   echo "    Active gh identity: $identity"
 fi
 
-echo "==> Setting per-clone git author (for unambiguous commit attribution)"
-if [[ "$AGENT" != "copilot" ]]; then
-  git config user.name "${AGENT}-agent"
-  git config user.email "${AGENT}-agent@experiment"
-  echo "    user.name = $(git config user.name)"
-  echo "    user.email = $(git config user.email)"
-else
-  echo "    copilot: Copilot sets its own commit author — skipping."
-fi
+echo "==> Setting Codex git author"
+git config user.name "codex-agent"
+git config user.email "codex-agent@experiment"
+echo "    user.name = $(git config user.name)"
+echo "    user.email = $(git config user.email)"
 
 echo
 echo "Agent clone ready: $WORK"

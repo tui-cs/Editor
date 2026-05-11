@@ -2,6 +2,7 @@ using Terminal.Gui.App;
 using Terminal.Gui.Drawing;
 using Terminal.Gui.Drivers;
 using Terminal.Gui.Testing;
+using Terminal.Gui.Text.Document;
 using Terminal.Gui.ViewBase;
 using Terminal.Gui.Views;
 
@@ -15,8 +16,8 @@ namespace Terminal.Gui.Editor.Benchmarks;
 /// </summary>
 internal sealed class EditorHarness : IDisposable
 {
-    private readonly SessionToken? _session;
     private readonly EditorHost _host;
+    private readonly SessionToken? _session;
 
     public EditorHarness (string text, int width = 80, int height = 24)
     {
@@ -38,11 +39,6 @@ internal sealed class EditorHarness : IDisposable
 
     public IInputInjector Injector => App.GetInputInjector ();
 
-    public void Render ()
-    {
-        App.LayoutAndDraw (true);
-    }
-
     public void Dispose ()
     {
         if (_session is not null)
@@ -54,14 +50,19 @@ internal sealed class EditorHarness : IDisposable
         App.Dispose ();
     }
 
+    public void Render ()
+    {
+        App.LayoutAndDraw (true);
+    }
+
     private sealed class EditorHost : Window
     {
         public EditorHost (string text)
         {
             BorderStyle = LineStyle.None;
-            Editor = new ()
+            Editor = new Views.Editor
             {
-                Document = new (text),
+                Document = new TextDocument (text),
                 X = 0,
                 Y = 0,
                 Width = Dim.Fill (),

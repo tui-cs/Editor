@@ -1,7 +1,7 @@
 // Claude - claude-opus-4-7
+
 using Terminal.Gui.Input;
 using Terminal.Gui.Text.Document;
-using Terminal.Gui.Views;
 using Xunit;
 
 namespace Terminal.Gui.Editor.Tests;
@@ -80,7 +80,7 @@ public class EditorSelectionLogicTests
         TextSegment? sel = editor.Selection;
 
         Assert.NotNull (sel);
-        Assert.Equal (0, sel!.StartOffset);
+        Assert.Equal (0, sel.StartOffset);
         Assert.Equal (5, sel.Length);
     }
 
@@ -88,7 +88,7 @@ public class EditorSelectionLogicTests
     public void SelectionChanged_Fires_On_SelectAll_And_Clear ()
     {
         Views.Editor editor = new () { Document = new TextDocument ("abc") };
-        int fires = 0;
+        var fires = 0;
         editor.SelectionChanged += (_, _) => fires++;
 
         editor.SelectAll ();
@@ -105,7 +105,7 @@ public class EditorSelectionLogicTests
     public void SelectionChanged_Does_Not_Fire_For_SelectAll_On_Empty_Document ()
     {
         Views.Editor editor = new () { Document = new TextDocument (string.Empty) };
-        int fires = 0;
+        var fires = 0;
         editor.SelectionChanged += (_, _) => fires++;
 
         editor.SelectAll ();
@@ -119,7 +119,7 @@ public class EditorSelectionLogicTests
     {
         Views.Editor editor = new () { Document = new TextDocument ("abc") };
         editor.CaretOffset = 3; // already at end
-        int fires = 0;
+        var fires = 0;
         editor.SelectionChanged += (_, _) => fires++;
 
         // Extend right by one character but caret can't move — must not raise SelectionChanged.
@@ -134,7 +134,7 @@ public class EditorSelectionLogicTests
     {
         Views.Editor editor = new () { Document = new TextDocument ("abc") };
         editor.CaretOffset = 0;
-        int fires = 0;
+        var fires = 0;
         editor.SelectionChanged += (_, _) => fires++;
 
         // Single-line doc, so extending up has nowhere to go.

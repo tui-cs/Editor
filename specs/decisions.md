@@ -26,6 +26,16 @@ Decisions are recorded here when an open question from the plan is resolved. Eac
 
 ---
 
+### DEC-004: Line-number gutter implementation
+
+**Decision**: Line numbers render via `LineNumberView : View` hosted in `Padding.GetOrCreateView().Add(...)`, **not** `LineNumberMargin : IBackgroundRenderer` as proposed by drawing-overhaul FR-006.
+
+**Rationale**: `IBackgroundRenderer.Draw(view, line, row, viewport)` paints inside the editor's content viewport — its `viewport` argument doesn't reach into `Padding`, which is where the gutter lives. The original `OnDrawComplete`-driven implementation overdrew popovers/menus exactly because it bypassed the View hierarchy; an `IBackgroundRenderer` would repeat that mistake. Hosting `LineNumberView` as a Padding SubView puts the gutter inside the View tree, so popovers clip it correctly and the layout system handles its frame. `IBackgroundRenderer` remains the right vehicle for selection highlight, current-line highlight, and search-hit highlight — all of which paint inside the viewport.
+
+**Date**: 2026-05-11
+
+---
+
 ### DEC-003: Tab handling architecture
 
 **Decision**: Tab handling (tab-handling) requires the visual-line pipeline (rendering-pipeline). The codex branch implemented both together. `TabElement` renders tabs through the pipeline, not via inline char-by-char expansion.

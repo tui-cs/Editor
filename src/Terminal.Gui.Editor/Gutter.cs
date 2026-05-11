@@ -1,27 +1,25 @@
 using System.Drawing;
-using Terminal.Gui.Drawing;
-using Terminal.Gui.Input;
 using Terminal.Gui.Text.Document;
 using Terminal.Gui.ViewBase;
 
 namespace Terminal.Gui.Views;
 
 /// <summary>
-///     Renders one-based line numbers for an associated <see cref="Editor" />. Hosted as a SubView
+///     Renders line number and folding UI for an associated <see cref="Editor" />. Hosted as a SubView
 ///     of the <see cref="Editor" />'s <see cref="Padding" /> so it participates in the View hierarchy
 ///     and is correctly clipped beneath popovers, menus, and other overlay surfaces.
 /// </summary>
 /// <remarks>
 ///     The view tracks its parent <see cref="Editor" />'s viewport and document changes, redrawing
-///     itself when either changes. It does not handle input.
+///     itself when either changes.
 /// </remarks>
-public sealed class LineNumberView : View
+public sealed class Gutter : View
 {
     private readonly Editor _editor;
     private int? _selectionAnchorLineNumber;
 
-    /// <summary>Initializes a new <see cref="LineNumberView" /> for <paramref name="editor" />.</summary>
-    public LineNumberView (Editor editor)
+    /// <summary>Initializes a new <see cref="Gutter" /> for <paramref name="editor" />.</summary>
+    public Gutter (Editor editor)
     {
         ArgumentNullException.ThrowIfNull (editor);
 
@@ -70,46 +68,5 @@ public sealed class LineNumberView : View
         }
 
         return true;
-    }
-
-    /// <inheritdoc />
-    protected override bool OnMouseEvent (Mouse mouse)
-    {
-        if (mouse.Position is not { } pos)
-        {
-            return false;
-        }
-
-        if (mouse.Flags.HasFlag (MouseFlags.LeftButtonPressed) && mouse.Flags.HasFlag (MouseFlags.PositionReport))
-        {
-            if (_selectionAnchorLineNumber is not { } anchor)
-            {
-                anchor = _editor.ViewRowToLineNumber (pos.Y);
-                _selectionAnchorLineNumber = anchor;
-            }
-
-            _editor.SelectLines (anchor, _editor.ViewRowToLineNumber (pos.Y));
-
-            return true;
-        }
-
-        if (mouse.Flags.HasFlag (MouseFlags.LeftButtonPressed))
-        {
-            _selectionAnchorLineNumber = _editor.ViewRowToLineNumber (pos.Y);
-            _editor.SelectLineAtViewRow (pos.Y);
-            App?.Mouse.GrabMouse (this);
-
-            return true;
-        }
-
-        if (mouse.Flags.HasFlag (MouseFlags.LeftButtonReleased))
-        {
-            _selectionAnchorLineNumber = null;
-            App?.Mouse.UngrabMouse ();
-
-            return true;
-        }
-
-        return false;
     }
 }

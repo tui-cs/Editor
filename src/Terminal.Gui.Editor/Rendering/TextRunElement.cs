@@ -1,4 +1,5 @@
 using System.Drawing;
+using Terminal.Gui.Drawing;
 using Terminal.Gui.Text;
 using Terminal.Gui.ViewBase;
 using Attribute = Terminal.Gui.Drawing.Attribute;
@@ -6,19 +7,16 @@ using Attribute = Terminal.Gui.Drawing.Attribute;
 namespace Terminal.Gui.Views.Rendering;
 
 /// <summary>A grapheme cluster rendered as document text.</summary>
-public sealed class TextRunElement : CellVisualLineElement
+public sealed class TextRunElement (
+    int documentOffset,
+    int documentLength,
+    int visualColumn,
+    string text,
+    Attribute attribute)
+    : CellVisualLineElement (documentOffset, documentLength, visualColumn, Math.Max (0, text.GetColumns ()),
+        attribute)
 {
-    public TextRunElement (
-        int documentOffset,
-        int documentLength,
-        int visualColumn,
-        string text,
-        Attribute attribute) : base (documentOffset, documentLength, visualColumn, Math.Max (0, text.GetColumns ()), attribute)
-    {
-        Text = text;
-    }
-
-    public string Text { get; }
+    public string Text { get; } = text;
 
     public override void Draw (View host, int x, int y, int visibleStart, int visibleEnd)
     {
@@ -53,7 +51,7 @@ public sealed class TextRunElement : CellVisualLineElement
             return;
         }
 
-        contents[screen.Y, screen.X] = new ()
+        contents[screen.Y, screen.X] = new Cell
         {
             Attribute = Attribute,
             Grapheme = Text,

@@ -4,36 +4,27 @@ using Attribute = Terminal.Gui.Drawing.Attribute;
 namespace Terminal.Gui.Views.Rendering;
 
 /// <summary>A drawable span in a terminal-cell visual line.</summary>
-public abstract class CellVisualLineElement
+public abstract class CellVisualLineElement (
+    int documentOffset,
+    int documentLength,
+    int visualColumn,
+    int visualLength,
+    Attribute attribute)
 {
-    protected CellVisualLineElement (
-        int documentOffset,
-        int documentLength,
-        int visualColumn,
-        int visualLength,
-        Attribute attribute)
-    {
-        DocumentOffset = documentOffset;
-        DocumentLength = documentLength;
-        VisualColumn = visualColumn;
-        VisualLength = visualLength;
-        Attribute = attribute;
-    }
+    public int DocumentOffset { get; } = documentOffset;
 
-    public int DocumentOffset { get; }
-
-    public int DocumentLength { get; }
+    public int DocumentLength { get; } = documentLength;
 
     public int DocumentEndOffset => DocumentOffset + DocumentLength;
 
-    public int VisualColumn { get; }
+    public int VisualColumn { get; } = visualColumn;
 
-    public int VisualLength { get; }
+    public int VisualLength { get; } = visualLength;
 
     public int VisualEndColumn => VisualColumn + VisualLength;
 
     /// <summary>Mutable: visual-line transformers may override this before draw.</summary>
-    public Attribute Attribute { get; set; }
+    public Attribute Attribute { get; set; } = attribute;
 
     public abstract void Draw (View host, int x, int y, int visibleStart, int visibleEnd);
 }
