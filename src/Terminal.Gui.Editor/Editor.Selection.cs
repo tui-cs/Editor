@@ -190,9 +190,9 @@ public partial class Editor
         var originalOffset = Math.Clamp (offset, 0, _document.TextLength);
         var wordOffset = originalOffset;
 
-        if (wordOffset == _document.TextLength || !IsWordCharAt (wordOffset))
+        if (wordOffset == _document.TextLength || !IsIdentifierWordCharAt (wordOffset))
         {
-            if (wordOffset == 0 || !IsWordCharAt (wordOffset - 1))
+            if (wordOffset == 0 || !IsIdentifierWordCharAt (wordOffset - 1))
             {
                 ClearSelection ();
                 CaretOffset = originalOffset;
@@ -205,14 +205,14 @@ public partial class Editor
 
         var start = wordOffset;
 
-        while (start > 0 && IsWordCharAt (start - 1))
+        while (start > 0 && IsIdentifierWordCharAt (start - 1))
         {
             start--;
         }
 
         var end = wordOffset + 1;
 
-        while (end < _document.TextLength && IsWordCharAt (end))
+        while (end < _document.TextLength && IsIdentifierWordCharAt (end))
         {
             end++;
         }
@@ -266,7 +266,7 @@ public partial class Editor
         return Math.Clamp (Viewport.Y + row + 1, 1, _document.LineCount);
     }
 
-    private bool IsWordCharAt (int offset)
+    private bool IsIdentifierWordCharAt (int offset)
     {
         char ch = _document!.GetCharAt (offset);
 

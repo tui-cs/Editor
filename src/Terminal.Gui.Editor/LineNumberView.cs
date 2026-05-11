@@ -80,7 +80,7 @@ public sealed class LineNumberView : View
             return false;
         }
 
-        if (mouse.Flags.FastHasFlags (MouseFlags.LeftButtonPressed | MouseFlags.PositionReport))
+        if (mouse.Flags.HasFlag (MouseFlags.LeftButtonPressed) && mouse.Flags.HasFlag (MouseFlags.PositionReport))
         {
             if (_selectionAnchorLineNumber is not { } anchor)
             {

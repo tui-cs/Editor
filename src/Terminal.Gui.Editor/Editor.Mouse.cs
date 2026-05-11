@@ -75,15 +75,15 @@ public partial class Editor
             return true;
         }
 
-        // Release: end the drag-grab so other views start receiving events again.
-        if (mouse.Flags.HasFlag (MouseFlags.LeftButtonReleased))
+        if (!mouse.Flags.HasFlag (MouseFlags.LeftButtonReleased))
         {
-            App?.Mouse.UngrabMouse ();
-
-            return true;
+            return false;
         }
 
-        return false;
+        // Release: end the drag-grab so other views start receiving events again.
+        App?.Mouse.UngrabMouse ();
+
+        return true;
     }
 
     /// <summary>
