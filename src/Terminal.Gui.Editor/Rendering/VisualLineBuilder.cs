@@ -11,6 +11,80 @@ public sealed class VisualLineBuilder
     {
         var text = context.Document.GetText (documentLine);
         CellVisualLine visualLine = new (documentLine);
+
+        if (IsAsciiOnly (text))
+        {
+            BuildAsciiFastPath (documentLine, context, text, visualLine);
+        }
+        else
+        {
+            BuildGraphemePath (documentLine, context, text, visualLine);
+        }
+
+        foreach (IVisualLineTransformer transformer in context.LineTransformers)
+        {
+            transformer.Transform (visualLine);
+        }
+
+        return visualLine;
+    }
+
+    /// <summary>
+    ///     Fast path for pure-ASCII lines. Avoids <c>GraphemeHelper.GetGraphemes</c>
+    ///     allocation — each byte is one grapheme, one column (tabs expand as usual).
+    /// </summary>
+    private static void BuildAsciiFastPath (
+        DocumentLine documentLine,
+        VisualLineBuildContext context,
+        string text,
+        CellVisualLine visualLine)
+    {
+        var segmentIndex = 0;
+        var segmentEnd = GetSegmentEnd (context.StyledSegments, segmentIndex);
+        var visualColumn = 0;
+
+        for (var i = 0; i < text.Length; i++)
+        {
+            while (context.StyledSegments is { Count: > 0 }
+                   && i >= segmentEnd
+                   && segmentIndex + 1 < context.StyledSegments.Count)
+            {
+                segmentIndex++;
+                segmentEnd += context.StyledSegments[segmentIndex].Text.Length;
+            }
+
+            Attribute attribute = GetAttribute (context, segmentIndex);
+            var documentOffset = documentLine.Offset + i;
+
+            if (context.HasSelection
+                && documentOffset < context.SelectionEnd
+                && documentOffset + 1 > context.SelectionStart)
+            {
+                attribute = context.SelectedAttribute;
+            }
+
+            if (text[i] == '\t')
+            {
+                var width = GetTabExpansionWidth (visualColumn, context.IndentationSize);
+                visualLine.AddElement (
+                    new TabElement (documentOffset, visualColumn, width, context.ShowTabs, attribute));
+                visualColumn += width;
+            }
+            else
+            {
+                TextRunElement element = new (documentOffset, 1, visualColumn, text.Substring (i, 1), attribute);
+                visualLine.AddElement (element);
+                visualColumn += 1;
+            }
+        }
+    }
+
+    private static void BuildGraphemePath (
+        DocumentLine documentLine,
+        VisualLineBuildContext context,
+        string text,
+        CellVisualLine visualLine)
+    {
         var logicalColumn = 0;
         var visualColumn = 0;
         var segmentIndex = 0;
@@ -53,13 +127,20 @@ public sealed class VisualLineBuilder
 
             logicalColumn += documentLength;
         }
+    }
 
-        foreach (IVisualLineTransformer transformer in context.LineTransformers)
+    /// <summary>Checks if all characters are ASCII (no multi-byte graphemes, no surrogates).</summary>
+    private static bool IsAsciiOnly (string text)
+    {
+        foreach (var c in text)
         {
-            transformer.Transform (visualLine);
+            if (c > 127)
+            {
+                return false;
+            }
         }
 
-        return visualLine;
+        return true;
     }
 
     public static int GetTabExpansionWidth (int visualColumn, int indentationSize)
