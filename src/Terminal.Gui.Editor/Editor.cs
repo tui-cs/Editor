@@ -396,9 +396,8 @@ public partial class Editor : View
         {
             // The max-holder was touched or lines were removed — check affected lines first,
             // and only fall back to full recompute if the old max shrank.
-            var newMax = _maxVisualWidth;
+            var newMax = 0;
             var newMaxLine = _maxWidthLineNumber;
-            var needsFullRecompute = false;
 
             // Scan from firstAffected through the new lines that were inserted.
             var scanEnd = Math.Min (firstAffected.LineNumber + newlineCount, _document.LineCount);
@@ -415,20 +414,17 @@ public partial class Editor : View
                 }
             }
 
-            if (newMaxLine == _maxWidthLineNumber && newMax < _maxVisualWidth)
+            if (newMax >= _maxVisualWidth)
             {
-                // The old widest line got narrower — must do full recompute.
-                needsFullRecompute = true;
-            }
-
-            if (needsFullRecompute)
-            {
-                _maxWidthDirty = true;
+                // The affected region has a line at least as wide — it's the new max.
+                _maxVisualWidth = newMax;
+                _maxWidthLineNumber = newMaxLine;
             }
             else
             {
-                _maxVisualWidth = newMax;
-                _maxWidthLineNumber = newMaxLine;
+                // The old widest line shrank and no scanned line is as wide — some unscanned
+                // line may be the new widest. Fall back to full recompute.
+                _maxWidthDirty = true;
             }
 
             return;
@@ -473,8 +469,11 @@ public partial class Editor : View
 
         if (affectedLineIndex < _highlighterPreparedUpToLine)
         {
-            // Edit was before/within the prepared region — must re-prepare from that point.
-            _highlighterPreparedUpToLine = -1;
+            // Edit was before/within the prepared region — must re-prepare from line 0.
+            // Setting to 0 (not -1) so PrepareSyntaxHighlighter's comparison triggers a
+            // ResetState() call on the next draw frame.
+            _highlighterPreparedUpToLine = 0;
+            _highlighterPreparedInstance = null;
         }
     }
 
@@ -495,33 +494,36 @@ public partial class Editor : View
         var removedNewlines = removedText.Count (c => c == '\n');
         var lineDelta = insertedNewlines - removedNewlines;
 
-        RekeyCache (_defaultVisualLineCache, threshold, lineDelta);
-        RekeyCache (_drawVisualLineCache, threshold, lineDelta);
+        RekeyCache (_defaultVisualLineCache, threshold, lineDelta, removedNewlines);
+        RekeyCache (_drawVisualLineCache, threshold, lineDelta, removedNewlines);
 
-        static void RekeyCache<TValue> (Dictionary<int, TValue> cache, int threshold, int lineDelta)
+        static void RekeyCache<TValue> (Dictionary<int, TValue> cache, int threshold, int lineDelta, int removedNewlines)
         {
             if (cache.Count == 0)
             {
                 return;
             }
 
-            // Collect entries: invalidate the edited line itself, rekey downstream.
+            // On newline removal, lines in [threshold, threshold + removedNewlines] were merged
+            // and their cached content is stale — invalidate, don't rekey.
+            var invalidateEnd = threshold + removedNewlines;
+
+            // Collect entries: invalidate the edited line(s), rekey downstream.
             List<KeyValuePair<int, TValue>>? toRekey = null;
             List<int>? toRemove = null;
 
             foreach (KeyValuePair<int, TValue> kvp in cache)
             {
-                if (kvp.Key == threshold)
+                if (kvp.Key >= threshold && kvp.Key <= invalidateEnd)
                 {
-                    // The edited line — its content changed, must invalidate.
+                    // The edited/merged line(s) — content changed, must invalidate.
                     (toRemove ??= []).Add (kvp.Key);
                 }
-                else if (kvp.Key > threshold)
+                else if (kvp.Key > invalidateEnd)
                 {
                     if (lineDelta == 0)
                     {
                         // No newline change — downstream entries are still valid as-is.
-                        // (Only the edited line itself needs invalidation, handled above.)
                     }
                     else
                     {
