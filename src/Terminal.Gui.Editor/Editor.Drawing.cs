@@ -54,14 +54,11 @@ public partial class Editor
         Attribute fillAttr = new (normal.Foreground, bg);
         SetAttribute (fillAttr);
 
+        var spaces = new string (' ', viewport.Width);
+
         for (var row = 0; row < viewport.Height; row++)
         {
-            Move (0, row);
-
-            for (var col = 0; col < viewport.Width; col++)
-            {
-                AddRune (' ');
-            }
+            AddStr (0, row, spaces);
         }
     }
 
