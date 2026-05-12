@@ -287,7 +287,7 @@ public class TedAppTests
     {
         await using AppFixture<TedApp> fx = new (() => new TedApp ());
 
-        Assert.Equal ("1, 1", fx.Top.LocShortcut.Text);
+        Assert.Equal ("Ln: 1, Ch: 1", fx.Top.LocShortcut.Title);
     }
 
     [Fact]
@@ -304,7 +304,7 @@ public class TedAppTests
         // Caret at offset 8 → "beta": line 2, column 3 ('t').
         fx.Top.Editor.CaretOffset = 8;
 
-        Assert.Equal ("2, 3", fx.Top.LocShortcut.Text);
+        Assert.Equal ("Ln: 2, Ch: 3", fx.Top.LocShortcut.Title);
     }
 
     [Fact]
@@ -323,7 +323,7 @@ public class TedAppTests
         // Inserting before the caret shifts it to the right; the loc shortcut must follow.
         fx.Top.Editor.Document!.Insert (0, ">>>");
 
-        Assert.Equal ("1, 5", fx.Top.LocShortcut.Text);
+        Assert.Equal ("Ln: 1, Ch: 5", fx.Top.LocShortcut.Title);
     }
 
     [Fact]

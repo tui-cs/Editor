@@ -65,6 +65,11 @@ public partial class Editor
         }
     }
 
+    // Syntax highlighter state optimization: tracks how far we've prepared so incremental
+    // scrolling doesn't re-highlight from line 0 every frame.
+    private int _highlighterPreparedUpToLine = -1;
+    private ISyntaxHighlighter? _highlighterPreparedInstance;
+
     private void PrepareSyntaxHighlighter (ISyntaxHighlighter? syntaxHighlighter, int firstVisibleLineIndex)
     {
         if (syntaxHighlighter is null || _document is null)
@@ -72,15 +77,25 @@ public partial class Editor
             return;
         }
 
-        syntaxHighlighter.ResetState ();
+        // If the highlighter instance changed or viewport scrolled backward, reset from scratch.
+        if (!ReferenceEquals (syntaxHighlighter, _highlighterPreparedInstance)
+            || firstVisibleLineIndex < _highlighterPreparedUpToLine)
+        {
+            syntaxHighlighter.ResetState ();
+            _highlighterPreparedInstance = syntaxHighlighter;
+            _highlighterPreparedUpToLine = 0;
+        }
 
-        for (var lineIndex = 0; lineIndex < firstVisibleLineIndex && lineIndex < _document.LineCount; lineIndex++)
+        // Incrementally highlight from where we left off to the first visible line.
+        for (var lineIndex = _highlighterPreparedUpToLine; lineIndex < firstVisibleLineIndex && lineIndex < _document.LineCount; lineIndex++)
         {
             DocumentLine line = _document.GetLineByNumber (lineIndex + 1);
 #pragma warning disable CS0618 // Type or member is obsolete — see note in OnDrawingContent.
             syntaxHighlighter.Highlight (_document.GetText (line), SyntaxLanguage);
 #pragma warning restore CS0618 // Type or member is obsolete
         }
+
+        _highlighterPreparedUpToLine = firstVisibleLineIndex;
     }
 
     private void DrawVisualLine (
@@ -106,6 +121,18 @@ public partial class Editor
 
         foreach (CellVisualLineElement element in visualLine.Elements)
         {
+            // Elements are ordered by visual column. Once we pass the visible end,
+            // all remaining elements are off-screen — skip them entirely.
+            if (element.VisualColumn >= visibleEnd)
+            {
+                break;
+            }
+
+            if (element.VisualEndColumn <= visibleStart)
+            {
+                continue;
+            }
+
             element.Draw (this, 0, row, visibleStart, visibleEnd);
         }
     }

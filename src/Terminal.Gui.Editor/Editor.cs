@@ -34,6 +34,14 @@ public partial class Editor : View
     private readonly Dictionary<int, DrawCacheEntry> _drawVisualLineCache = [];
     private readonly VisualLineBuilder _visualLineBuilder = new ();
 
+    // Incremental max-width tracking: avoids the O(N) all-lines walk that UpdateContentSize
+    // used to do on every edit. _maxVisualWidth is the widest visual line seen; _maxWidthLineNumber
+    // tracks which line holds it so we can detect when that line is edited. _maxWidthDirty forces
+    // a full recompute (e.g. on Document swap or IndentationSize change).
+    private int _maxVisualWidth;
+    private int _maxWidthLineNumber;
+    private bool _maxWidthDirty = true;
+
     private TextAnchor? _caretAnchor;
     private TextDocument? _document;
     private Gutter? _gutter;
@@ -84,6 +92,7 @@ public partial class Editor : View
             _lastKnownCaretOffset = caretOffset;
             _selectionAnchor = null;
             ClearVisualLineCaches ();
+            _maxWidthDirty = true;
 
             _virtualCaretColumn = GetCaretColumn ();
             UpdateContentSize ();
@@ -211,6 +220,7 @@ public partial class Editor : View
 
             field = value;
             ClearVisualLineCaches ();
+            _maxWidthDirty = true;
             _virtualCaretColumn = GetCaretColumn ();
             UpdateContentSize ();
             EnsureCaretVisible ();
@@ -299,6 +309,8 @@ public partial class Editor : View
         // line numbers downstream may also have shifted, so clear everything from that line on.
         // Cheap: usually one or a handful of entries; correctness > saving a few cache hits.
         InvalidateVisualLineCaches (e);
+        InvalidateHighlighterState (e);
+        UpdateMaxWidthIncremental (e);
         UpdateContentSize ();
         UpdateLineNumberPadding ();
 
@@ -323,26 +335,146 @@ public partial class Editor : View
             return;
         }
 
-        var maxWidth = 0;
+        if (_maxWidthDirty)
+        {
+            RecomputeMaxWidth ();
+        }
+
+        // +1 column lets the caret sit just past the end-of-line.
+        SetContentSize (new Size (_maxVisualWidth + 1, _document.LineCount));
+    }
+
+    /// <summary>Full O(N) recompute — only called on Document swap, IndentationSize change, etc.</summary>
+    private void RecomputeMaxWidth ()
+    {
+        _maxVisualWidth = 0;
+        _maxWidthLineNumber = 0;
+
+        if (_document is null)
+        {
+            _maxWidthDirty = false;
+
+            return;
+        }
 
         foreach (DocumentLine line in _document.Lines)
         {
             var width = GetOrBuildDefaultVisualLine (line).VisualLength;
 
-            if (width > maxWidth)
+            if (width > _maxVisualWidth)
             {
-                maxWidth = width;
+                _maxVisualWidth = width;
+                _maxWidthLineNumber = line.LineNumber;
             }
         }
 
-        // +1 column lets the caret sit just past the end-of-line.
-        SetContentSize (new Size (maxWidth + 1, _document.LineCount));
+        _maxWidthDirty = false;
+    }
+
+    /// <summary>
+    ///     Incrementally updates max width after a document change. Only recomputes the affected
+    ///     lines. If the edited line was the widest, does a full recompute since the max may have shrunk.
+    /// </summary>
+    private void UpdateMaxWidthIncremental (DocumentChangeEventArgs e)
+    {
+        if (_document is null)
+        {
+            return;
+        }
+
+        // Find which lines are affected by the change.
+        DocumentLine firstAffected = _document.GetLineByOffset (Math.Min (e.Offset, _document.TextLength));
+        var insertedText = e.InsertedText?.Text ?? "";
+        var newlineCount = insertedText.Count (c => c == '\n');
+        var removedText = e.RemovedText?.Text ?? "";
+        var removedNewlines = removedText.Count (c => c == '\n');
+
+        // If the widest line was deleted or its content changed, we must recompute.
+        if (_maxWidthLineNumber >= firstAffected.LineNumber
+            && (_maxWidthLineNumber <= firstAffected.LineNumber + Math.Max (removedNewlines, 0)
+                || removedNewlines > 0))
+        {
+            // The max-holder was touched or lines were removed — check affected lines first,
+            // and only fall back to full recompute if the old max shrank.
+            var newMax = 0;
+            var newMaxLine = _maxWidthLineNumber;
+
+            // Scan from firstAffected through the new lines that were inserted.
+            var scanEnd = Math.Min (firstAffected.LineNumber + newlineCount, _document.LineCount);
+
+            for (var lineNum = firstAffected.LineNumber; lineNum <= scanEnd; lineNum++)
+            {
+                DocumentLine line = _document.GetLineByNumber (lineNum);
+                var width = GetOrBuildDefaultVisualLine (line).VisualLength;
+
+                if (width >= newMax)
+                {
+                    newMax = width;
+                    newMaxLine = lineNum;
+                }
+            }
+
+            if (newMax >= _maxVisualWidth)
+            {
+                // The affected region has a line at least as wide — it's the new max.
+                _maxVisualWidth = newMax;
+                _maxWidthLineNumber = newMaxLine;
+            }
+            else
+            {
+                // The old widest line shrank and no scanned line is as wide — some unscanned
+                // line may be the new widest. Fall back to full recompute.
+                _maxWidthDirty = true;
+            }
+
+            return;
+        }
+
+        // The change didn't touch the widest line. Just check affected lines for a new max.
+        var endLine = Math.Min (firstAffected.LineNumber + newlineCount, _document.LineCount);
+
+        for (var lineNum = firstAffected.LineNumber; lineNum <= endLine; lineNum++)
+        {
+            DocumentLine line = _document.GetLineByNumber (lineNum);
+            var width = GetOrBuildDefaultVisualLine (line).VisualLength;
+
+            if (width > _maxVisualWidth)
+            {
+                _maxVisualWidth = width;
+                _maxWidthLineNumber = lineNum;
+            }
+        }
     }
 
     private void ClearVisualLineCaches ()
     {
         _defaultVisualLineCache.Clear ();
         _drawVisualLineCache.Clear ();
+    }
+
+    /// <summary>
+    ///     Resets the incremental highlighter state when a document change occurs at or before
+    ///     the prepared-up-to line. Edits after the prepared region don't affect tokenizer state
+    ///     for lines that have already been processed.
+    /// </summary>
+    private void InvalidateHighlighterState (DocumentChangeEventArgs e)
+    {
+        if (_highlighterPreparedUpToLine < 0 || _document is null)
+        {
+            return;
+        }
+
+        DocumentLine affectedLine = _document.GetLineByOffset (Math.Min (e.Offset, _document.TextLength));
+        var affectedLineIndex = affectedLine.LineNumber - 1;
+
+        if (affectedLineIndex < _highlighterPreparedUpToLine)
+        {
+            // Edit was before/within the prepared region — must re-prepare from line 0.
+            // Setting to 0 (not -1) so PrepareSyntaxHighlighter's comparison triggers a
+            // ResetState() call on the next draw frame.
+            _highlighterPreparedUpToLine = 0;
+            _highlighterPreparedInstance = null;
+        }
     }
 
     private void InvalidateVisualLineCaches (DocumentChangeEventArgs e)
@@ -352,41 +484,75 @@ public partial class Editor : View
             return;
         }
 
-        // The change starts at e.Offset; anything before that line is unaffected. The cheapest
-        // sound invalidation is "drop entries for line numbers ≥ the changed line's number" —
-        // newline insert/delete renumbers everything downstream, so per-line keys past the edit
-        // are stale even if their content is untouched.
         DocumentLine firstAffected = _document.GetLineByOffset (Math.Min (e.Offset, _document.TextLength));
         var threshold = firstAffected.LineNumber;
 
-        RemoveFromCache (_defaultVisualLineCache, threshold);
-        RemoveFromCache (_drawVisualLineCache, threshold);
+        // Count net newline delta: downstream line numbers shift by this amount.
+        var insertedText = e.InsertedText?.Text ?? "";
+        var insertedNewlines = insertedText.Count (c => c == '\n');
+        var removedText = e.RemovedText?.Text ?? "";
+        var removedNewlines = removedText.Count (c => c == '\n');
+        var lineDelta = insertedNewlines - removedNewlines;
 
-        static void RemoveFromCache<TValue> (Dictionary<int, TValue> cache, int threshold)
+        RekeyCache (_defaultVisualLineCache, threshold, lineDelta, removedNewlines);
+        RekeyCache (_drawVisualLineCache, threshold, lineDelta, removedNewlines);
+
+        static void RekeyCache<TValue> (Dictionary<int, TValue> cache, int threshold, int lineDelta, int removedNewlines)
         {
             if (cache.Count == 0)
             {
                 return;
             }
 
+            // On newline removal, lines in [threshold, threshold + removedNewlines] were merged
+            // and their cached content is stale — invalidate, don't rekey.
+            var invalidateEnd = threshold + removedNewlines;
+
+            // Collect entries: invalidate the edited line(s), rekey downstream.
+            List<KeyValuePair<int, TValue>>? toRekey = null;
             List<int>? toRemove = null;
 
-            foreach (var lineNumber in cache.Keys)
+            foreach (KeyValuePair<int, TValue> kvp in cache)
             {
-                if (lineNumber >= threshold)
+                if (kvp.Key >= threshold && kvp.Key <= invalidateEnd)
                 {
-                    (toRemove ??= []).Add (lineNumber);
+                    // The edited/merged line(s) — content changed, must invalidate.
+                    (toRemove ??= []).Add (kvp.Key);
+                }
+                else if (kvp.Key > invalidateEnd)
+                {
+                    if (lineDelta == 0)
+                    {
+                        // No newline change — downstream entries are still valid as-is.
+                    }
+                    else
+                    {
+                        // Line numbers shifted — remove old key, re-add with shifted key.
+                        (toRemove ??= []).Add (kvp.Key);
+                        (toRekey ??= []).Add (kvp);
+                    }
                 }
             }
 
-            if (toRemove is null)
+            if (toRemove is not null)
             {
-                return;
+                foreach (var key in toRemove)
+                {
+                    cache.Remove (key);
+                }
             }
 
-            foreach (var lineNumber in toRemove)
+            if (toRekey is not null)
             {
-                cache.Remove (lineNumber);
+                foreach (KeyValuePair<int, TValue> kvp in toRekey)
+                {
+                    var newKey = kvp.Key + lineDelta;
+
+                    if (newKey > 0)
+                    {
+                        cache[newKey] = kvp.Value;
+                    }
+                }
             }
         }
     }
