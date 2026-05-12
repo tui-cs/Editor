@@ -277,7 +277,7 @@ public class TedAppTests
     [Fact]
     public void Constructor_ReadOnly_Sets_Editor_ReadOnly ()
     {
-        TedApp app = new (readOnly: true);
+        TedApp app = new (true);
 
         Assert.True (app.Editor.ReadOnly);
     }

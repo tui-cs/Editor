@@ -1,5 +1,6 @@
 // Claude - claude-opus-4-7
 
+using System.Text;
 using System.Text.RegularExpressions;
 using Xunit;
 
@@ -28,7 +29,7 @@ public class EditorDrawingArchitectureTests
 
         // The classic R2 violation. Allow `for (var lineIndex = ...)` and similar over LINES; only
         // ban iteration whose bound is something `.Length` (text/string/char span).
-        var charIteration = new Regex (
+        Regex charIteration = new (
             @"for\s*\(\s*(?:var|int)\s+\w+\s*=\s*0\s*;\s*\w+\s*<\s*[\w.]+\.Length\s*;");
 
         Assert.False (
@@ -69,7 +70,7 @@ public class EditorDrawingArchitectureTests
     private static string ReadAllEditorSources ()
     {
         var dir = Path.GetDirectoryName (LocateSource ("Editor.cs"))!;
-        var sb = new System.Text.StringBuilder ();
+        StringBuilder sb = new ();
 
         foreach (var path in Directory.EnumerateFiles (dir, "Editor*.cs", SearchOption.TopDirectoryOnly))
         {
@@ -107,7 +108,7 @@ public class EditorDrawingArchitectureTests
     /// </summary>
     private static string ExtractMethodBody (string source, string methodName)
     {
-        var signature = new Regex (
+        Regex signature = new (
             $@"^\s*(?:protected|public|private|internal)[\w\s\?]*\b{Regex.Escape (methodName)}\s*\([^)]*\)\s*$",
             RegexOptions.Multiline);
 

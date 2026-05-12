@@ -16,15 +16,17 @@ namespace Terminal.Gui.Editor.Benchmarks;
 [ShortRunJob]
 public class FindBenchmarks
 {
+    private const string Needle = "FINDME";
     private TextDocument _document = null!;
     private ISearchStrategy _strategy = null!;
-    private const string Needle = "FINDME";
 
     /// <summary>Approximate document size in characters.</summary>
-    [Params (100_000)] public int DocSize { get; set; }
+    [Params (100_000)]
+    public int DocSize { get; set; }
 
     /// <summary>Number of matches sprinkled through the document.</summary>
-    [Params (10, 100, 1_000)] public int MatchCount { get; set; }
+    [Params (10, 100, 1_000)]
+    public int MatchCount { get; set; }
 
     [GlobalSetup]
     public void Setup ()
@@ -36,7 +38,7 @@ public class FindBenchmarks
         filler.Fill ('x');
         var fillerStr = new string (filler);
 
-        using var sw = new StringWriter ();
+        using StringWriter sw = new ();
 
         for (var i = 0; i < MatchCount; i++)
         {
@@ -53,10 +55,13 @@ public class FindBenchmarks
         }
 
         _document = new TextDocument (sw.ToString ());
-        _strategy = SearchStrategyFactory.Create (Needle, ignoreCase: false, matchWholeWords: false, SearchMode.Normal);
+        _strategy = SearchStrategyFactory.Create (Needle, false, false, SearchMode.Normal);
     }
 
-    /// <summary>FindNext via the new <see cref="ISearchStrategy" /> seam — one search call, as the find dialog would invoke per keystroke.</summary>
+    /// <summary>
+    ///     FindNext via the new <see cref="ISearchStrategy" /> seam — one search call, as the find dialog would invoke
+    ///     per keystroke.
+    /// </summary>
     [Benchmark (Description = "FindNext — new (ISearchStrategy)")]
     public int FindNext_New ()
     {

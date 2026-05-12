@@ -1,5 +1,5 @@
-using Terminal.Gui.Input;
 using Terminal.Gui.Document;
+using Terminal.Gui.Input;
 using Terminal.Gui.ViewBase;
 
 namespace Terminal.Gui.Views;

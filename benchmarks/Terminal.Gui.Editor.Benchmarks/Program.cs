@@ -1,6 +1,6 @@
 using System.Diagnostics;
+using System.Text.RegularExpressions;
 using BenchmarkDotNet.Running;
-using Terminal.Gui.Editor.Benchmarks;
 using Terminal.Gui.Document;
 using Terminal.Gui.Document.Search;
 
@@ -37,8 +37,8 @@ static void QuickFindBench ()
 
     foreach (var matchCount in matchCounts)
     {
-        var doc = BuildDoc (needle, docSize, matchCount);
-        var strategy = SearchStrategyFactory.Create (needle, ignoreCase: false, matchWholeWords: false, SearchMode.Normal);
+        TextDocument doc = BuildDoc (needle, docSize, matchCount);
+        ISearchStrategy strategy = SearchStrategyFactory.Create (needle, false, false, SearchMode.Normal);
 
         // Warm both paths.
         ReplaceAllNew (doc, strategy);
@@ -47,9 +47,12 @@ static void QuickFindBench ()
         var (newMean, newMin, newAlloc) = TimeIt (iterations, () => ReplaceAllNew (doc, strategy));
         var (oldMean, oldMin, oldAlloc) = TimeIt (iterations, () => ReplaceAllOld (doc, needle));
 
-        Console.WriteLine ($"{matchCount,10}  {"new (FindAll + reverse)",-32}  {newMean,10:F3}  {newMin,10:F3}  {newAlloc / 1024.0,18:F1}");
-        Console.WriteLine ($"{matchCount,10}  {"old (N × IndexOf)",-32}  {oldMean,10:F3}  {oldMin,10:F3}  {oldAlloc / 1024.0,18:F1}");
-        Console.WriteLine ($"{"",10}  {"  ratio (new/old)",-32}  {newMean / oldMean,10:F2}x  {"",10}  {(double)newAlloc / oldAlloc,18:F2}x");
+        Console.WriteLine (
+            $"{matchCount,10}  {"new (FindAll + reverse)",-32}  {newMean,10:F3}  {newMin,10:F3}  {newAlloc / 1024.0,18:F1}");
+        Console.WriteLine (
+            $"{matchCount,10}  {"old (N × IndexOf)",-32}  {oldMean,10:F3}  {oldMin,10:F3}  {oldAlloc / 1024.0,18:F1}");
+        Console.WriteLine (
+            $"{"",10}  {"  ratio (new/old)",-32}  {newMean / oldMean,10:F2}x  {"",10}  {(double)newAlloc / oldAlloc,18:F2}x");
         Console.WriteLine ();
     }
 }
@@ -73,11 +76,11 @@ static void QuickIncrementalFindBench ()
 
     foreach (var matchCount in matchCounts)
     {
-        var doc = BuildDoc (needle, docSize, matchCount);
-        var strategy = SearchStrategyFactory.Create (needle, ignoreCase: false, matchWholeWords: false, SearchMode.Normal);
-        var pattern = new System.Text.RegularExpressions.Regex (
-                                                                System.Text.RegularExpressions.Regex.Escape (needle),
-                                                                System.Text.RegularExpressions.RegexOptions.Multiline);
+        TextDocument doc = BuildDoc (needle, docSize, matchCount);
+        ISearchStrategy strategy = SearchStrategyFactory.Create (needle, false, false, SearchMode.Normal);
+        Regex pattern = new (
+            Regex.Escape (needle),
+            RegexOptions.Multiline);
 
         // Warm.
         WalkNew (doc, strategy);
@@ -86,8 +89,10 @@ static void QuickIncrementalFindBench ()
         var (newTotal, newCalls) = TimeWalk (() => WalkNew (doc, strategy));
         var (oldTotal, oldCalls) = TimeWalk (() => WalkOldSim (doc, pattern, needle.Length));
 
-        Console.WriteLine ($"{matchCount,10}  {"new (Regex.Match from offset)",-44}  {newTotal,12:F2}  {newTotal * 1000.0 / Math.Max (1, newCalls),14:F2}");
-        Console.WriteLine ($"{matchCount,10}  {"old sim (Regex.Matches from 0 + post-filter)",-44}  {oldTotal,12:F2}  {oldTotal * 1000.0 / Math.Max (1, oldCalls),14:F2}");
+        Console.WriteLine (
+            $"{matchCount,10}  {"new (Regex.Match from offset)",-44}  {newTotal,12:F2}  {newTotal * 1000.0 / Math.Max (1, newCalls),14:F2}");
+        Console.WriteLine (
+            $"{matchCount,10}  {"old sim (Regex.Matches from 0 + post-filter)",-44}  {oldTotal,12:F2}  {oldTotal * 1000.0 / Math.Max (1, oldCalls),14:F2}");
         Console.WriteLine ($"{"",10}  {"  ratio new/old",-44}  {newTotal / oldTotal,12:F3}x");
         Console.WriteLine ();
     }
@@ -118,7 +123,7 @@ static int WalkNew (TextDocument doc, ISearchStrategy strategy)
 ///     starting at index 0 every call, post-filtered by offset. This is what
 ///     <c>RegexSearchStrategy.FindAll</c> did before #82.
 /// </summary>
-static int WalkOldSim (TextDocument doc, System.Text.RegularExpressions.Regex pattern, int needleLen)
+static int WalkOldSim (TextDocument doc, Regex pattern, int needleLen)
 {
     var calls = 0;
     var offset = 0;
@@ -128,7 +133,7 @@ static int WalkOldSim (TextDocument doc, System.Text.RegularExpressions.Regex pa
         var text = doc.Text;
         var matchOffset = -1;
 
-        foreach (System.Text.RegularExpressions.Match m in pattern.Matches (text))
+        foreach (Match m in pattern.Matches (text))
         {
             if (m.Index >= offset)
             {
@@ -154,7 +159,7 @@ static (double totalMs, int calls) TimeWalk (Func<int> walk)
     GC.Collect ();
     GC.WaitForPendingFinalizers ();
     GC.Collect ();
-    var sw = Stopwatch.StartNew ();
+    Stopwatch sw = Stopwatch.StartNew ();
     var calls = walk ();
     sw.Stop ();
 
@@ -165,7 +170,7 @@ static TextDocument BuildDoc (string needle, int docSize, int matchCount)
 {
     var gap = Math.Max (1, (docSize - matchCount * needle.Length) / Math.Max (1, matchCount));
     var filler = new string ('x', Math.Min (gap, 4096));
-    using var sw = new StringWriter ();
+    using StringWriter sw = new ();
 
     for (var i = 0; i < matchCount; i++)
     {
@@ -186,19 +191,19 @@ static TextDocument BuildDoc (string needle, int docSize, int matchCount)
 
 static int ReplaceAllNew (TextDocument source, ISearchStrategy strategy)
 {
-    var doc = new TextDocument (source.Text);
-    var matches = strategy.FindAll (doc, 0, doc.TextLength).ToList ();
+    TextDocument doc = new (source.Text);
+    List<ISearchResult> matches = strategy.FindAll (doc, 0, doc.TextLength).ToList ();
 
     if (matches.Count == 0)
     {
         return 0;
     }
 
-    using var scope = doc.RunUpdate ();
+    using IDisposable scope = doc.RunUpdate ();
 
     for (var i = matches.Count - 1; i >= 0; i--)
     {
-        var m = matches[i];
+        ISearchResult m = matches[i];
         doc.Replace (m.Offset, m.Length, m.ReplaceWith ("X"));
     }
 
@@ -207,10 +212,10 @@ static int ReplaceAllNew (TextDocument source, ISearchStrategy strategy)
 
 static int ReplaceAllOld (TextDocument source, string needle)
 {
-    var doc = new TextDocument (source.Text);
+    TextDocument doc = new (source.Text);
     var count = 0;
     var searchOffset = 0;
-    using var scope = doc.RunUpdate ();
+    using IDisposable scope = doc.RunUpdate ();
 
     while (searchOffset < doc.TextLength)
     {
@@ -242,7 +247,7 @@ static (double meanMs, double minMs, long allocBytes) TimeIt (int iterations, Ac
 
     for (var i = 0; i < iterations; i++)
     {
-        var sw = Stopwatch.StartNew ();
+        Stopwatch sw = Stopwatch.StartNew ();
         body ();
         sw.Stop ();
         times[i] = sw.Elapsed.TotalMilliseconds;

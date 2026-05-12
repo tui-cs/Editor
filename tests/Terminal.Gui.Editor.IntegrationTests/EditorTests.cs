@@ -90,13 +90,13 @@ public class EditorTests
 
         fx.Injector.InjectKey (Key.CursorDown, Direct);
 
-        int afterFirstDown = fx.Top.Editor.CaretOffset;
+        var afterFirstDown = fx.Top.Editor.CaretOffset;
         Assert.Equal ("abcde\n\t".Length, afterFirstDown);
 
         fx.Injector.InjectKey (Key.CursorDown, Direct);
 
-        int afterSecondDown = fx.Top.Editor.CaretOffset;
-        int line3Start = "abcde\n\t\n".Length;
+        var afterSecondDown = fx.Top.Editor.CaretOffset;
+        var line3Start = "abcde\n\t\n".Length;
         Assert.Equal (line3Start + 3, afterSecondDown);
     }
 
@@ -112,27 +112,27 @@ public class EditorTests
         const string Short2 = "xy";
         const string LongBottom = "0123456789ABCDEF";
 
-        string text = string.Join ("\n", LongTop, Short1, Empty, Short2, LongBottom);
+        var text = string.Join ("\n", LongTop, Short1, Empty, Short2, LongBottom);
 
         await using AppFixture<EditorTestHost> fx = new (() => new (text));
         fx.Top.Editor.SetFocus ();
         fx.Top.Editor.CaretOffset = 12; // column 12 on the top long line
 
         fx.Injector.InjectKey (Key.CursorDown, Direct);
-        int afterDown1 = fx.Top.Editor.CaretOffset;
+        var afterDown1 = fx.Top.Editor.CaretOffset;
         Assert.Equal ((LongTop + "\n" + Short1).Length, afterDown1); // snaps to end of "abc"
 
         fx.Injector.InjectKey (Key.CursorDown, Direct);
-        int afterDown2 = fx.Top.Editor.CaretOffset;
+        var afterDown2 = fx.Top.Editor.CaretOffset;
         Assert.Equal ((LongTop + "\n" + Short1 + "\n").Length, afterDown2); // empty line, col 0
 
         fx.Injector.InjectKey (Key.CursorDown, Direct);
-        int afterDown3 = fx.Top.Editor.CaretOffset;
+        var afterDown3 = fx.Top.Editor.CaretOffset;
         Assert.Equal ((LongTop + "\n" + Short1 + "\n" + Empty + "\n" + Short2).Length, afterDown3); // end of "xy"
 
         fx.Injector.InjectKey (Key.CursorDown, Direct);
-        int afterDown4 = fx.Top.Editor.CaretOffset;
-        int longBottomStart = (LongTop + "\n" + Short1 + "\n" + Empty + "\n" + Short2 + "\n").Length;
+        var afterDown4 = fx.Top.Editor.CaretOffset;
+        var longBottomStart = (LongTop + "\n" + Short1 + "\n" + Empty + "\n" + Short2 + "\n").Length;
         Assert.Equal (longBottomStart + 12, afterDown4); // sticky col 12 restored on the long line
     }
 
@@ -280,8 +280,8 @@ public class EditorTests
     [Fact]
     public async Task MouseWheel_Scrolls_LongDocument ()
     {
-        string[] lines = new string[50];
-        for (int i = 0; i < 50; i++)
+        var lines = new string[50];
+        for (var i = 0; i < 50; i++)
         {
             lines[i] = $"line-{i:00}";
         }

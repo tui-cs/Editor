@@ -17,79 +17,77 @@
 // OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 // DEALINGS IN THE SOFTWARE.
 
-using Xunit;
-
 
 using Terminal.Gui.Document;
-using Terminal.Gui.Document.Utils;
-namespace Terminal.Gui.Editor.Tests.Document
+using Xunit;
+
+namespace Terminal.Gui.Editor.Tests.Document;
+
+public class UndoStackTests
 {
-	public class UndoStackTests
-	{
-		[Fact]
-		public void ContinueUndoGroup()
-		{
-			var doc = new TextDocument();
-			doc.Insert(0, "a");
-			doc.UndoStack.StartContinuedUndoGroup();
-			doc.Insert(1, "b");
-			doc.UndoStack.EndUndoGroup();
-			doc.UndoStack.Undo();
-			Assert.Equal("", doc.Text);
-		}
-		
-		[Fact]
-		public void ContinueEmptyUndoGroup()
-		{
-			var doc = new TextDocument();
-			doc.Insert(0, "a");
-			doc.UndoStack.StartUndoGroup();
-			doc.UndoStack.EndUndoGroup();
-			doc.UndoStack.StartContinuedUndoGroup();
-			doc.Insert(1, "b");
-			doc.UndoStack.EndUndoGroup();
-			doc.UndoStack.Undo();
-			Assert.Equal("a", doc.Text);
-		}
-		
-		[Fact]
-		public void ContinueEmptyUndoGroup_WithOptionalEntries()
-		{
-			var doc = new TextDocument();
-			doc.Insert(0, "a");
-			doc.UndoStack.StartUndoGroup();
-			doc.UndoStack.PushOptional(new StubUndoableAction());
-			doc.UndoStack.EndUndoGroup();
-			doc.UndoStack.StartContinuedUndoGroup();
-			doc.Insert(1, "b");
-			doc.UndoStack.EndUndoGroup();
-			doc.UndoStack.Undo();
-			Assert.Equal("a", doc.Text);
-		}
-		
-		[Fact]
-		public void EmptyContinuationGroup()
-		{
-			var doc = new TextDocument();
-			doc.Insert(0, "a");
-			doc.UndoStack.StartContinuedUndoGroup();
-			doc.UndoStack.EndUndoGroup();
-			doc.UndoStack.StartContinuedUndoGroup();
-			doc.Insert(1, "b");
-			doc.UndoStack.EndUndoGroup();
-			doc.UndoStack.Undo();
-			Assert.Equal("", doc.Text);
-		}
-		
-		class StubUndoableAction : IUndoableOperation
-		{
-			public void Undo()
-			{
-			}
-			
-			public void Redo()
-			{
-			}
-		}
-	}
+    [Fact]
+    public void ContinueUndoGroup ()
+    {
+        TextDocument doc = new ();
+        doc.Insert (0, "a");
+        doc.UndoStack.StartContinuedUndoGroup ();
+        doc.Insert (1, "b");
+        doc.UndoStack.EndUndoGroup ();
+        doc.UndoStack.Undo ();
+        Assert.Equal ("", doc.Text);
+    }
+
+    [Fact]
+    public void ContinueEmptyUndoGroup ()
+    {
+        TextDocument doc = new ();
+        doc.Insert (0, "a");
+        doc.UndoStack.StartUndoGroup ();
+        doc.UndoStack.EndUndoGroup ();
+        doc.UndoStack.StartContinuedUndoGroup ();
+        doc.Insert (1, "b");
+        doc.UndoStack.EndUndoGroup ();
+        doc.UndoStack.Undo ();
+        Assert.Equal ("a", doc.Text);
+    }
+
+    [Fact]
+    public void ContinueEmptyUndoGroup_WithOptionalEntries ()
+    {
+        TextDocument doc = new ();
+        doc.Insert (0, "a");
+        doc.UndoStack.StartUndoGroup ();
+        doc.UndoStack.PushOptional (new StubUndoableAction ());
+        doc.UndoStack.EndUndoGroup ();
+        doc.UndoStack.StartContinuedUndoGroup ();
+        doc.Insert (1, "b");
+        doc.UndoStack.EndUndoGroup ();
+        doc.UndoStack.Undo ();
+        Assert.Equal ("a", doc.Text);
+    }
+
+    [Fact]
+    public void EmptyContinuationGroup ()
+    {
+        TextDocument doc = new ();
+        doc.Insert (0, "a");
+        doc.UndoStack.StartContinuedUndoGroup ();
+        doc.UndoStack.EndUndoGroup ();
+        doc.UndoStack.StartContinuedUndoGroup ();
+        doc.Insert (1, "b");
+        doc.UndoStack.EndUndoGroup ();
+        doc.UndoStack.Undo ();
+        Assert.Equal ("", doc.Text);
+    }
+
+    private class StubUndoableAction : IUndoableOperation
+    {
+        public void Undo ()
+        {
+        }
+
+        public void Redo ()
+        {
+        }
+    }
 }

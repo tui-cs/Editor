@@ -1,7 +1,7 @@
 // Claude - claude-opus-4-7
 
-using Terminal.Gui.Input;
 using Terminal.Gui.Document;
+using Terminal.Gui.Input;
 using Xunit;
 
 namespace Terminal.Gui.Editor.Tests;

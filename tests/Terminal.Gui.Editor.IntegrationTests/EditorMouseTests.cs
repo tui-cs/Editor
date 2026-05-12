@@ -1,4 +1,5 @@
 // Claude - claude-opus-4-7
+
 using System.Drawing;
 using Terminal.Gui.Editor.IntegrationTests.Testing;
 using Terminal.Gui.Input;
@@ -174,7 +175,7 @@ public class EditorMouseTests
         await using AppFixture<EditorTestHost> fx = new (() => new ("hello world"));
         fx.Top.Editor.SetFocus ();
         fx.Top.Editor.CaretOffset = 5;
-        int fires = 0;
+        var fires = 0;
         fx.Top.Editor.SelectionChanged += (_, _) => fires++;
 
         // Shift+click at the same column as the existing caret — neither caret nor selection

@@ -30,6 +30,8 @@ public partial class Editor
     /// <summary>The selected document text, or an empty string when there is no selection.</summary>
     public string SelectedText => HasSelection ? _document!.GetText (SelectionStart, SelectionLength) : string.Empty;
 
+    private int SelectionAnchorOffset => _selectionAnchor is { IsDeleted: false } anchor ? anchor.Offset : CaretOffset;
+
     /// <summary>Raised whenever the selection range changes (created, extended, cleared).</summary>
     public event EventHandler? SelectionChanged;
 
@@ -62,7 +64,7 @@ public partial class Editor
         }
 
         var start = Math.Clamp (startOffset, 0, _document.TextLength);
-        var end = (int)Math.Clamp ((long)start + Math.Max (0L, length), 0L, _document.TextLength);
+        var end = (int)Math.Clamp (start + Math.Max (0L, length), 0L, _document.TextLength);
 
         (int start, int end) before = SelectionTuple ();
         _selectionAnchor = start == end ? null : CreateSelectionAnchor (start);
@@ -271,12 +273,10 @@ public partial class Editor
 
     private bool IsIdentifierWordCharAt (int offset)
     {
-        char ch = _document!.GetCharAt (offset);
+        var ch = _document!.GetCharAt (offset);
 
         return char.IsLetterOrDigit (ch) || ch == '_';
     }
-
-    private int SelectionAnchorOffset => _selectionAnchor is { IsDeleted: false } anchor ? anchor.Offset : CaretOffset;
 
     private TextAnchor CreateSelectionAnchor (int offset)
     {

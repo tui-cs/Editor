@@ -1,6 +1,5 @@
 // Claude - claude-opus-4-7
 
-using System.Linq;
 using Terminal.Gui.Document;
 using Terminal.Gui.Document.Search;
 using Xunit;
@@ -12,7 +11,7 @@ public class SearchStrategyTests
     [Fact]
     public void CaseSensitive_FindsOnlyExactCase ()
     {
-        ISearchStrategy strategy = SearchStrategyFactory.Create ("Hello", ignoreCase: false, matchWholeWords: false, SearchMode.Normal);
+        ISearchStrategy strategy = SearchStrategyFactory.Create ("Hello", false, false, SearchMode.Normal);
         TextDocument document = new ("Hello hello HELLO");
 
         ISearchResult[] results = strategy.FindAll (document, 0, document.TextLength).ToArray ();
@@ -25,7 +24,7 @@ public class SearchStrategyTests
     [Fact]
     public void CaseInsensitive_FindsAllVariants ()
     {
-        ISearchStrategy strategy = SearchStrategyFactory.Create ("hello", ignoreCase: true, matchWholeWords: false, SearchMode.Normal);
+        ISearchStrategy strategy = SearchStrategyFactory.Create ("hello", true, false, SearchMode.Normal);
         TextDocument document = new ("Hello hello HELLO");
 
         ISearchResult[] results = strategy.FindAll (document, 0, document.TextLength).ToArray ();
@@ -39,7 +38,7 @@ public class SearchStrategyTests
     [Fact]
     public void WholeWord_ExcludesSubstringMatches ()
     {
-        ISearchStrategy strategy = SearchStrategyFactory.Create ("cat", ignoreCase: false, matchWholeWords: true, SearchMode.Normal);
+        ISearchStrategy strategy = SearchStrategyFactory.Create ("cat", false, true, SearchMode.Normal);
         TextDocument document = new ("cat catalog scatter");
 
         ISearchResult[] results = strategy.FindAll (document, 0, document.TextLength).ToArray ();
@@ -51,7 +50,7 @@ public class SearchStrategyTests
     [Fact]
     public void Regex_MatchesPattern ()
     {
-        ISearchStrategy strategy = SearchStrategyFactory.Create (@"\d+", ignoreCase: false, matchWholeWords: false, SearchMode.RegEx);
+        ISearchStrategy strategy = SearchStrategyFactory.Create (@"\d+", false, false, SearchMode.RegEx);
         TextDocument document = new ("abc 123 def 456");
 
         ISearchResult[] results = strategy.FindAll (document, 0, document.TextLength).ToArray ();
@@ -66,7 +65,7 @@ public class SearchStrategyTests
     [Fact]
     public void Regex_MatchesAcrossLineBoundary ()
     {
-        ISearchStrategy strategy = SearchStrategyFactory.Create (@"end[\r\n]+start", ignoreCase: false, matchWholeWords: false, SearchMode.RegEx);
+        ISearchStrategy strategy = SearchStrategyFactory.Create (@"end[\r\n]+start", false, false, SearchMode.RegEx);
         TextDocument document = new ("the end\nstart of");
 
         ISearchResult result = strategy.FindNext (document, 0, document.TextLength);
@@ -82,7 +81,7 @@ public class SearchStrategyTests
         // SearchResult inherits from TextSegment; the consumer (find-and-replace) is expected to
         // attach results to a TextSegmentCollection bound to the document so that offsets shift
         // automatically as the document is edited. Verify the result type cooperates.
-        ISearchStrategy strategy = SearchStrategyFactory.Create ("world", ignoreCase: false, matchWholeWords: false, SearchMode.Normal);
+        ISearchStrategy strategy = SearchStrategyFactory.Create ("world", false, false, SearchMode.Normal);
         TextDocument document = new ("hello world");
 
         ISearchResult result = strategy.FindNext (document, 0, document.TextLength);
@@ -102,7 +101,7 @@ public class SearchStrategyTests
     [Fact]
     public void Wildcard_TranslatesGlobToRegex ()
     {
-        ISearchStrategy strategy = SearchStrategyFactory.Create ("f*o", ignoreCase: false, matchWholeWords: false, SearchMode.Wildcard);
+        ISearchStrategy strategy = SearchStrategyFactory.Create ("f*o", false, false, SearchMode.Wildcard);
         TextDocument document = new ("foo bar fizzo baz");
 
         ISearchResult[] results = strategy.FindAll (document, 0, document.TextLength).ToArray ();
@@ -115,7 +114,7 @@ public class SearchStrategyTests
     [Fact]
     public void ReplaceWith_SupportsBackreferences ()
     {
-        ISearchStrategy strategy = SearchStrategyFactory.Create (@"(\w+)=(\d+)", ignoreCase: false, matchWholeWords: false, SearchMode.RegEx);
+        ISearchStrategy strategy = SearchStrategyFactory.Create (@"(\w+)=(\d+)", false, false, SearchMode.RegEx);
         TextDocument document = new ("count=42");
 
         ISearchResult result = strategy.FindNext (document, 0, document.TextLength);
@@ -127,8 +126,8 @@ public class SearchStrategyTests
     [Fact]
     public void Equals_ReturnsTrueForSamePatternAndOptions ()
     {
-        ISearchStrategy a = SearchStrategyFactory.Create ("foo", ignoreCase: false, matchWholeWords: false, SearchMode.Normal);
-        ISearchStrategy b = SearchStrategyFactory.Create ("foo", ignoreCase: false, matchWholeWords: false, SearchMode.Normal);
+        ISearchStrategy a = SearchStrategyFactory.Create ("foo", false, false, SearchMode.Normal);
+        ISearchStrategy b = SearchStrategyFactory.Create ("foo", false, false, SearchMode.Normal);
 
         Assert.True (a.Equals (b));
     }
@@ -136,8 +135,8 @@ public class SearchStrategyTests
     [Fact]
     public void Equals_ReturnsFalseForDifferentCaseSensitivity ()
     {
-        ISearchStrategy a = SearchStrategyFactory.Create ("foo", ignoreCase: false, matchWholeWords: false, SearchMode.Normal);
-        ISearchStrategy b = SearchStrategyFactory.Create ("foo", ignoreCase: true, matchWholeWords: false, SearchMode.Normal);
+        ISearchStrategy a = SearchStrategyFactory.Create ("foo", false, false, SearchMode.Normal);
+        ISearchStrategy b = SearchStrategyFactory.Create ("foo", true, false, SearchMode.Normal);
 
         Assert.False (a.Equals (b));
     }
@@ -148,8 +147,8 @@ public class SearchStrategyTests
         // Pins the Terminal.Gui correctness deviation from upstream — upstream's Equals omits
         // _matchWholeWords, so this assertion would fail without the fork patch. Re-sync from
         // AvaloniaEdit must re-apply the deviation; this test catches a regression.
-        ISearchStrategy a = SearchStrategyFactory.Create ("foo", ignoreCase: false, matchWholeWords: false, SearchMode.Normal);
-        ISearchStrategy b = SearchStrategyFactory.Create ("foo", ignoreCase: false, matchWholeWords: true, SearchMode.Normal);
+        ISearchStrategy a = SearchStrategyFactory.Create ("foo", false, false, SearchMode.Normal);
+        ISearchStrategy b = SearchStrategyFactory.Create ("foo", false, true, SearchMode.Normal);
 
         Assert.False (a.Equals (b));
     }
@@ -157,8 +156,8 @@ public class SearchStrategyTests
     [Fact]
     public void InvalidRegex_ThrowsSearchPatternException ()
     {
-        Assert.Throws<SearchPatternException> (
-                                               () => SearchStrategyFactory.Create ("(", ignoreCase: false, matchWholeWords: false, SearchMode.RegEx));
+        Assert.Throws<SearchPatternException> (() =>
+            SearchStrategyFactory.Create ("(", false, false, SearchMode.RegEx));
     }
 
     [Fact]
@@ -168,8 +167,8 @@ public class SearchStrategyTests
         // empty pattern and compiles to a regex that matches at every position
         // (TextLength+1 zero-length results), a DoS in FindAll/ReplaceAll. Re-sync must
         // re-apply the guard.
-        Assert.Throws<ArgumentException> (
-                                          () => SearchStrategyFactory.Create (string.Empty, ignoreCase: false, matchWholeWords: false, SearchMode.Normal));
+        Assert.Throws<ArgumentException> (() =>
+            SearchStrategyFactory.Create (string.Empty, false, false, SearchMode.Normal));
     }
 
     [Fact]
@@ -177,7 +176,7 @@ public class SearchStrategyTests
     {
         // Whitespace is a legitimate search pattern — the empty-pattern guard must not
         // accidentally reject " " or "\t".
-        ISearchStrategy strategy = SearchStrategyFactory.Create (" ", ignoreCase: false, matchWholeWords: false, SearchMode.Normal);
+        ISearchStrategy strategy = SearchStrategyFactory.Create (" ", false, false, SearchMode.Normal);
         TextDocument document = new ("a b c");
 
         ISearchResult[] results = strategy.FindAll (document, 0, document.TextLength).ToArray ();
@@ -192,7 +191,7 @@ public class SearchStrategyTests
         // instead of Matches(text) over the whole document with post-filtering. The observable
         // surface should be identical to the upstream behavior (same match offsets and order);
         // the benchmark catches the perf win separately.
-        ISearchStrategy strategy = SearchStrategyFactory.Create ("foo", ignoreCase: false, matchWholeWords: false, SearchMode.Normal);
+        ISearchStrategy strategy = SearchStrategyFactory.Create ("foo", false, false, SearchMode.Normal);
         TextDocument document = new ("foo bar foo baz foo");
 
         ISearchResult result = strategy.FindNext (document, 4, document.TextLength - 4);
@@ -208,7 +207,7 @@ public class SearchStrategyTests
         // in #82 starts the regex engine at `offset` — verify that `^` still anchors correctly
         // when `offset` lands immediately after a newline, and does NOT anchor when `offset`
         // lands mid-line.
-        ISearchStrategy strategy = SearchStrategyFactory.Create (@"^line", ignoreCase: false, matchWholeWords: false, SearchMode.RegEx);
+        ISearchStrategy strategy = SearchStrategyFactory.Create (@"^line", false, false, SearchMode.RegEx);
         TextDocument document = new ("line1\nline2\nline3");
 
         // Whole document: all three "line" prefixes match.
@@ -238,7 +237,7 @@ public class SearchStrategyTests
         // empty-pattern guard in SearchStrategyFactory.Create blocks the truly degenerate "" case;
         // this test pins the next-most-degenerate case. .NET's Regex.NextMatch() auto-advances by
         // one position for zero-length matches so we don't spin.
-        ISearchStrategy strategy = SearchStrategyFactory.Create (@"\b", ignoreCase: false, matchWholeWords: false, SearchMode.RegEx);
+        ISearchStrategy strategy = SearchStrategyFactory.Create (@"\b", false, false, SearchMode.RegEx);
         TextDocument document = new ("ab cd");
 
         // Word boundaries at offsets 0, 2, 3, 5. Stops eventually instead of looping.
@@ -251,7 +250,7 @@ public class SearchStrategyTests
     [Fact]
     public void Range_RestrictsResultsToWindow ()
     {
-        ISearchStrategy strategy = SearchStrategyFactory.Create ("x", ignoreCase: false, matchWholeWords: false, SearchMode.Normal);
+        ISearchStrategy strategy = SearchStrategyFactory.Create ("x", false, false, SearchMode.Normal);
         TextDocument document = new ("x__x__x");
 
         ISearchResult[] results = strategy.FindAll (document, 1, 5).ToArray ();
