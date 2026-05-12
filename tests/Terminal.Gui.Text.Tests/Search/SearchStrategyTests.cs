@@ -186,6 +186,69 @@ public class SearchStrategyTests
     }
 
     [Fact]
+    public void FindNext_AtNonZeroOffset_ReturnsFirstMatchAtOrAfterOffset ()
+    {
+        // Pins gui-cs/Text#82 — FindAll now drives the regex via Regex.Match(text, startat)
+        // instead of Matches(text) over the whole document with post-filtering. The observable
+        // surface should be identical to the upstream behavior (same match offsets and order);
+        // the benchmark catches the perf win separately.
+        ISearchStrategy strategy = SearchStrategyFactory.Create ("foo", ignoreCase: false, matchWholeWords: false, SearchMode.Normal);
+        TextDocument document = new ("foo bar foo baz foo");
+
+        ISearchResult result = strategy.FindNext (document, 4, document.TextLength - 4);
+
+        Assert.NotNull (result);
+        Assert.Equal (8, result.Offset);
+    }
+
+    [Fact]
+    public void FindNext_MultilineAnchor_OnlyMatchesAtLineStart ()
+    {
+        // RegexOptions.Multiline is always on (SearchStrategyFactory sets it). The deviation
+        // in #82 starts the regex engine at `offset` — verify that `^` still anchors correctly
+        // when `offset` lands immediately after a newline, and does NOT anchor when `offset`
+        // lands mid-line.
+        ISearchStrategy strategy = SearchStrategyFactory.Create (@"^line", ignoreCase: false, matchWholeWords: false, SearchMode.RegEx);
+        TextDocument document = new ("line1\nline2\nline3");
+
+        // Whole document: all three "line" prefixes match.
+        ISearchResult[] all = strategy.FindAll (document, 0, document.TextLength).ToArray ();
+        Assert.Equal (3, all.Length);
+        Assert.Equal (0, all[0].Offset);
+        Assert.Equal (6, all[1].Offset);
+        Assert.Equal (12, all[2].Offset);
+
+        // Starting at offset 6 (just after the first \n): `^` anchors at 6; matches "line2" + "line3".
+        ISearchResult[] fromSix = strategy.FindAll (document, 6, document.TextLength - 6).ToArray ();
+        Assert.Equal (2, fromSix.Length);
+        Assert.Equal (6, fromSix[0].Offset);
+        Assert.Equal (12, fromSix[1].Offset);
+
+        // Starting at offset 7 (mid-line, char 'i' of "line2"): `^` does NOT anchor at 7 because
+        // text[6] is not a newline. Engine scans forward to next `^` (after the second \n) → 12.
+        ISearchResult[] fromSeven = strategy.FindAll (document, 7, document.TextLength - 7).ToArray ();
+        Assert.Single (fromSeven);
+        Assert.Equal (12, fromSeven[0].Offset);
+    }
+
+    [Fact]
+    public void FindAll_ZeroLengthMatchPattern_DoesNotInfiniteLoop ()
+    {
+        // Sanity: a pattern that produces zero-length matches (e.g. `\b` word-boundary). The
+        // empty-pattern guard in SearchStrategyFactory.Create blocks the truly degenerate "" case;
+        // this test pins the next-most-degenerate case. .NET's Regex.NextMatch() auto-advances by
+        // one position for zero-length matches so we don't spin.
+        ISearchStrategy strategy = SearchStrategyFactory.Create (@"\b", ignoreCase: false, matchWholeWords: false, SearchMode.RegEx);
+        TextDocument document = new ("ab cd");
+
+        // Word boundaries at offsets 0, 2, 3, 5. Stops eventually instead of looping.
+        ISearchResult[] results = strategy.FindAll (document, 0, document.TextLength).Take (10).ToArray ();
+
+        Assert.Equal (4, results.Length);
+        Assert.All (results, r => Assert.Equal (0, r.Length));
+    }
+
+    [Fact]
     public void Range_RestrictsResultsToWindow ()
     {
         ISearchStrategy strategy = SearchStrategyFactory.Create ("x", ignoreCase: false, matchWholeWords: false, SearchMode.Normal);
