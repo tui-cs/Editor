@@ -82,11 +82,6 @@ public sealed partial class TedApp : Window
             Value = Editor.UseThemeBackground ? CheckState.Checked : CheckState.UnChecked
         };
 
-        useThemeBackgroundCheckBox.ValueChanged += (_, e) =>
-        {
-            Editor.UseThemeBackground = e.NewValue == CheckState.Checked;
-        };
-
         ThemeDropDown = new DropDownList<ThemeName>
         {
             Value = ThemeName.DarkPlus,
@@ -207,6 +202,10 @@ public sealed partial class TedApp : Window
                 },
                 new MenuItem
                 {
+                    Action = () =>
+                    {
+                        Editor.UseThemeBackground = useThemeBackgroundCheckBox.Value == CheckState.Checked;
+                    },
                     CommandView = useThemeBackgroundCheckBox,
                     HelpText = "Use theme background for highlighted text"
                 }

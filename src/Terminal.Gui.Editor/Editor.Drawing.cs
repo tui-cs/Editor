@@ -22,11 +22,47 @@ public partial class Editor
         Attribute normal = GetAttributeForRole (VisualRole.Normal);
         Attribute selected = GetAttributeForRole (VisualRole.Active);
 
+        FillViewportBackground (viewport, normal);
         DrawVisibleLines (viewport, normal, selected);
         SetAttribute (normal);
         UpdateCursor ();
 
         return true;
+    }
+
+    /// <summary>
+    ///     When <see cref="UseThemeBackground" /> is <see langword="true" /> and a syntax highlighter
+    ///     provides a <see cref="ISyntaxHighlighter.DefaultBackground" />, fills the viewport with
+    ///     that background so empty cells match per-token backgrounds.
+    /// </summary>
+    private void FillViewportBackground (Rectangle viewport, Attribute normal)
+    {
+        if (!UseThemeBackground)
+        {
+            return;
+        }
+
+#pragma warning disable CS0618 // Type or member is obsolete
+        Terminal.Gui.Drawing.Color? themeBg = SyntaxHighlighter?.DefaultBackground;
+#pragma warning restore CS0618 // Type or member is obsolete
+
+        if (themeBg is not { } bg)
+        {
+            return;
+        }
+
+        Attribute fillAttr = new (normal.Foreground, bg);
+        SetAttribute (fillAttr);
+
+        for (var row = 0; row < viewport.Height; row++)
+        {
+            Move (0, row);
+
+            for (var col = 0; col < viewport.Width; col++)
+            {
+                AddRune (' ');
+            }
+        }
     }
 
     private void DrawVisibleLines (Rectangle viewport, Attribute normal, Attribute selected)

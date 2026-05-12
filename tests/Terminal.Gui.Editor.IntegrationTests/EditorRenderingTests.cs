@@ -193,7 +193,6 @@ public class EditorRenderingTests
 #pragma warning disable CS0618 // Type or member is obsolete
         fx.Top.Editor.SyntaxHighlighter = new TextMateSyntaxHighlighter ();
 #pragma warning restore CS0618 // Type or member is obsolete
-        fx.Top.Editor.UseThemeBackground = false;
         fx.Render ();
 
         TextMateSyntaxHighlighter highlighter = new ();
@@ -331,7 +330,7 @@ public class EditorRenderingTests
     }
 
     [Fact]
-    public async Task UseThemeBackground_True_Overrides_Highlighter_Background ()
+    public async Task UseThemeBackground_True_Preserves_Highlighter_Background ()
     {
         const string text = "public class C";
 
@@ -340,6 +339,26 @@ public class EditorRenderingTests
         fx.Top.Editor.SyntaxHighlighter = new TextMateSyntaxHighlighter ();
 #pragma warning restore CS0618 // Type or member is obsolete
         fx.Top.Editor.UseThemeBackground = true;
+        fx.Render ();
+
+        TextMateSyntaxHighlighter highlighter = new ();
+        Attribute expected = highlighter.Highlight (text, "csharp")[0].Attribute!.Value;
+
+        Cell cell = fx.Driver.Contents![0, 0];
+        Assert.Equal ("p", cell.Grapheme);
+        Assert.Equal (expected, cell.Attribute);
+    }
+
+    [Fact]
+    public async Task UseThemeBackground_False_Overrides_Highlighter_Background ()
+    {
+        const string text = "public class C";
+
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost (text));
+#pragma warning disable CS0618 // Type or member is obsolete
+        fx.Top.Editor.SyntaxHighlighter = new TextMateSyntaxHighlighter ();
+#pragma warning restore CS0618 // Type or member is obsolete
+        fx.Top.Editor.UseThemeBackground = false;
         fx.Render ();
 
         Attribute normal = fx.Top.Editor.GetAttributeForRole (VisualRole.Normal);
@@ -351,28 +370,8 @@ public class EditorRenderingTests
         Attribute highlighterAttr = highlighter.Highlight (text, "csharp")[0].Attribute!.Value;
         Assert.Equal (highlighterAttr.Foreground, cell.Attribute!.Value.Foreground);
 
-        // The background must match the theme's Normal background, not the highlighter's.
+        // The background must match the TG theme's Normal background, not the highlighter's.
         Assert.Equal (normal.Background, cell.Attribute!.Value.Background);
-    }
-
-    [Fact]
-    public async Task UseThemeBackground_False_Preserves_Highlighter_Background ()
-    {
-        const string text = "public class C";
-
-        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost (text));
-#pragma warning disable CS0618 // Type or member is obsolete
-        fx.Top.Editor.SyntaxHighlighter = new TextMateSyntaxHighlighter ();
-#pragma warning restore CS0618 // Type or member is obsolete
-        fx.Top.Editor.UseThemeBackground = false;
-        fx.Render ();
-
-        TextMateSyntaxHighlighter highlighter = new ();
-        Attribute expected = highlighter.Highlight (text, "csharp")[0].Attribute!.Value;
-
-        Cell cell = fx.Driver.Contents![0, 0];
-        Assert.Equal ("p", cell.Grapheme);
-        Assert.Equal (expected, cell.Attribute);
     }
 
     [Fact]

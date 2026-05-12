@@ -160,7 +160,7 @@ public sealed class VisualLineBuilder
         Attribute segmentAttribute = context.StyledSegments[Math.Min (segmentIndex, context.StyledSegments.Count - 1)].Attribute
                                      ?? context.NormalAttribute;
 
-        if (context.UseThemeBackground)
+        if (!context.UseThemeBackground)
         {
             return new Attribute (segmentAttribute.Foreground, context.NormalAttribute.Background);
         }

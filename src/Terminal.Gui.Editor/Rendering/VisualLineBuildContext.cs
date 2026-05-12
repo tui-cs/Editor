@@ -36,8 +36,9 @@ public sealed class VisualLineBuildContext (
     public IEnumerable<IVisualLineTransformer> LineTransformers { get; } = lineTransformers;
 
     /// <summary>
-    ///     When <see langword="true" />, styled-segment backgrounds are replaced with
-    ///     <see cref="NormalAttribute" />'s background so text blends into the theme.
+    ///     When <see langword="true" />, styled-segment backgrounds are preserved from the
+    ///     syntax highlighting theme. When <see langword="false" />, backgrounds are replaced
+    ///     with <see cref="NormalAttribute" />'s background so text blends into the TG scheme.
     /// </summary>
     public bool UseThemeBackground { get; } = useThemeBackground;
 
