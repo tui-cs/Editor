@@ -35,6 +35,13 @@ namespace Terminal.Gui.Text.Search
         {
             if (searchPattern == null)
                 throw new ArgumentNullException(nameof(searchPattern));
+            // Terminal.Gui deviation: upstream accepts an empty pattern, which compiles to a
+            // regex that matches at every position (TextLength+1 results) — a DoS in FindAll /
+            // ReplaceAll. Reject up front. Whitespace patterns remain legitimate (they match
+            // literal whitespace in Normal mode and match the same in Regex mode).
+            // Logged in third_party/AvaloniaEdit/UPSTREAM.md.
+            if (searchPattern.Length == 0)
+                throw new ArgumentException("Search pattern must not be empty.", nameof(searchPattern));
             var options = RegexOptions.Multiline;
             if (ignoreCase)
                 options |= RegexOptions.IgnoreCase;

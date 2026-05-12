@@ -143,10 +143,46 @@ public class SearchStrategyTests
     }
 
     [Fact]
+    public void Equals_ReturnsFalseForDifferentWholeWord ()
+    {
+        // Pins the Terminal.Gui correctness deviation from upstream — upstream's Equals omits
+        // _matchWholeWords, so this assertion would fail without the fork patch. Re-sync from
+        // AvaloniaEdit must re-apply the deviation; this test catches a regression.
+        ISearchStrategy a = SearchStrategyFactory.Create ("foo", ignoreCase: false, matchWholeWords: false, SearchMode.Normal);
+        ISearchStrategy b = SearchStrategyFactory.Create ("foo", ignoreCase: false, matchWholeWords: true, SearchMode.Normal);
+
+        Assert.False (a.Equals (b));
+    }
+
+    [Fact]
     public void InvalidRegex_ThrowsSearchPatternException ()
     {
         Assert.Throws<SearchPatternException> (
                                                () => SearchStrategyFactory.Create ("(", ignoreCase: false, matchWholeWords: false, SearchMode.RegEx));
+    }
+
+    [Fact]
+    public void Create_ThrowsOnEmptyPattern ()
+    {
+        // Pins the Terminal.Gui correctness deviation from upstream — upstream accepts the
+        // empty pattern and compiles to a regex that matches at every position
+        // (TextLength+1 zero-length results), a DoS in FindAll/ReplaceAll. Re-sync must
+        // re-apply the guard.
+        Assert.Throws<ArgumentException> (
+                                          () => SearchStrategyFactory.Create (string.Empty, ignoreCase: false, matchWholeWords: false, SearchMode.Normal));
+    }
+
+    [Fact]
+    public void Create_AcceptsWhitespacePattern ()
+    {
+        // Whitespace is a legitimate search pattern — the empty-pattern guard must not
+        // accidentally reject " " or "\t".
+        ISearchStrategy strategy = SearchStrategyFactory.Create (" ", ignoreCase: false, matchWholeWords: false, SearchMode.Normal);
+        TextDocument document = new ("a b c");
+
+        ISearchResult[] results = strategy.FindAll (document, 0, document.TextLength).ToArray ();
+
+        Assert.Equal (2, results.Length);
     }
 
     [Fact]

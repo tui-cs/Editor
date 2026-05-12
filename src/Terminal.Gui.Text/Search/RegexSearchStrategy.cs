@@ -66,7 +66,11 @@ namespace Terminal.Gui.Text.Search
 			return strategy != null &&
 				strategy._searchPattern.ToString() == _searchPattern.ToString() &&
 				strategy._searchPattern.Options == _searchPattern.Options &&
-				strategy._searchPattern.RightToLeft == _searchPattern.RightToLeft;
+				strategy._searchPattern.RightToLeft == _searchPattern.RightToLeft &&
+				// Terminal.Gui deviation: upstream omits _matchWholeWords from equality, so two
+				// strategies that differ only by whole-word matching compare equal — breaks
+				// consumer caching/dedup. Logged in third_party/AvaloniaEdit/UPSTREAM.md.
+				strategy._matchWholeWords == _matchWholeWords;
 		}
 	}
 
