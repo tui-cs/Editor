@@ -8,7 +8,7 @@ using System;
 
 #nullable enable
 
-namespace Terminal.Gui.Editor.Utils
+namespace Terminal.Gui.Document.Utils
 {
     internal ref partial struct ValueStringBuilder
     {

@@ -20,9 +20,9 @@
 using System;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
-using Terminal.Gui.Editor.Utils;
+using Terminal.Gui.Document.Utils;
 
-namespace Terminal.Gui.Editor.Document
+namespace Terminal.Gui.Document
 {
 	/// <summary>
 	/// Implements the ITextSource interface using a rope.

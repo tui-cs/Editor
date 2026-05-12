@@ -24,9 +24,9 @@ using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Text;
-using Terminal.Gui.Editor.Utils;
+using Terminal.Gui.Document.Utils;
 
-namespace Terminal.Gui.Editor.Document
+namespace Terminal.Gui.Document
 {
     /// <summary>
     /// Interface to allow TextSegments to access the TextSegmentCollection - we cannot use a direct reference

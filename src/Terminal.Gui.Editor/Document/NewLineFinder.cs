@@ -20,7 +20,7 @@
 using System;
 using System.Text;
 
-namespace Terminal.Gui.Editor.Document
+namespace Terminal.Gui.Document
 {
     internal static class NewLineFinder
     {

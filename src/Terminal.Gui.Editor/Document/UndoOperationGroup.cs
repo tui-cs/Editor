@@ -19,9 +19,9 @@
 
 using System;
 using System.Diagnostics;
-using Terminal.Gui.Editor.Utils;
+using Terminal.Gui.Document.Utils;
 
-namespace Terminal.Gui.Editor.Document
+namespace Terminal.Gui.Document
 {
 	/// <summary>
 	/// This class stacks the last x operations from the undostack and makes

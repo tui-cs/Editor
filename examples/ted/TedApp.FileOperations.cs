@@ -1,6 +1,6 @@
 using Terminal.Gui.App;
 using Terminal.Gui.Resources;
-using Terminal.Gui.Editor.Document;
+using Terminal.Gui.Document;
 using Terminal.Gui.Views;
 
 namespace Ted;

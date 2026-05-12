@@ -40,7 +40,7 @@ The lift is straightforward — no Avalonia GUI dependencies are expected beyond
 ## Requirements
 
 - **FR-001**: Lift `ISearchStrategy`, `RegexSearchStrategy`, `SearchResult` from AvaloniaEdit.
-- **FR-002**: Transform namespace to `Terminal.Gui.Editor.Search`.
+- **FR-002**: Transform namespace to `Terminal.Gui.Document.Search`.
 - **FR-003**: Strip any `using Avalonia.*` directives (pro-forma check).
 - **FR-004**: Preserve original formatting and copyright headers per fork policy.
 - **FR-005**: Add `// Adapted for Terminal.Gui from AvaloniaEdit <commit-sha>` header line.
@@ -53,7 +53,7 @@ The lift is straightforward — no Avalonia GUI dependencies are expected beyond
 
 ## Definition of Done
 
-- [ ] All search types compile and are in `Terminal.Gui.Editor.Search` namespace
+- [ ] All search types compile and are in `Terminal.Gui.Document.Search` namespace
 - [ ] Tests in `tests/Terminal.Gui.Editor.Tests/Search/` pass — case sensitivity, whole-word, regex flags, search across line boundaries, search returns anchored ranges
 - [ ] `UPSTREAM.md` updated with per-file modification log
 - [ ] No Avalonia residue

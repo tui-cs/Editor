@@ -1,4 +1,4 @@
-using Terminal.Gui.Editor.Search;
+using Terminal.Gui.Document.Search;
 using Terminal.Gui.ViewBase;
 using Terminal.Gui.Views;
 

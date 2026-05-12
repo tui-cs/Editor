@@ -1,5 +1,5 @@
-using Terminal.Gui.Editor.Document;
-using Terminal.Gui.Editor.Search;
+using Terminal.Gui.Document;
+using Terminal.Gui.Document.Search;
 
 namespace Terminal.Gui.Views;
 

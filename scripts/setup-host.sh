@@ -54,7 +54,7 @@ if ! command -v dotnet >/dev/null 2>&1 || ! dotnet --list-sdks | grep -q '^10\.'
   if ! grep -q 'DOTNET_ROOT' "$HOME/.zshrc" 2>/dev/null; then
     {
       echo ''
-      echo '# .NET 10 preview (added by gui-cs/Text scripts/setup-host.sh)'
+      echo '# .NET 10 preview (added by gui-cs/Editor scripts/setup-host.sh)'
       echo 'export DOTNET_ROOT="$HOME/.dotnet"'
       echo 'export PATH="$DOTNET_ROOT:$PATH"'
     } >> "$HOME/.zshrc"

@@ -2,7 +2,7 @@
 
 using System.Drawing;
 using System.Reflection;
-using Terminal.Gui.Editor.Document;
+using Terminal.Gui.Document;
 using Terminal.Gui.Views;
 using Xunit;
 

@@ -1,6 +1,6 @@
 # Codex Autonomous Sprint
 
-This is the current autonomous-execution plan for `gui-cs/Text`: one OpenAI Codex CLI session works the MLP roadmap in `specs/plan.md`.
+This is the current autonomous-execution plan for `gui-cs/Editor`: one OpenAI Codex CLI session works the MLP roadmap in `specs/plan.md`.
 
 This replaces the old three-agent comparison harness for active development. The comparison plan remains archived at `specs/archive/10-autonomous-three-agent.md`; it is historical evidence, not the current runbook.
 
@@ -37,7 +37,7 @@ Codex should:
                          pushes branches
                               |
                               v
-                 github.com/gui-cs/Text
+                 github.com/gui-cs/Editor
 
       experiment/codex/develop    # Codex shadow develop, final-check branch
       experiment/codex/<feature>  # feature branches, integrated into shadow develop
@@ -68,7 +68,7 @@ gh auth login
 ./scripts/setup-agent-clone.sh codex
 ```
 
-`gh auth status` in the Codex clone must show an identity that can push branches and open PRs on `gui-cs/Text`.
+`gh auth status` in the Codex clone must show an identity that can push branches and open PRs on `gui-cs/Editor`.
 
 ## 6. Kickoff
 

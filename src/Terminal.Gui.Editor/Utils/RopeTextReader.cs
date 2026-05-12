@@ -22,7 +22,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 
-namespace Terminal.Gui.Editor.Utils
+namespace Terminal.Gui.Document.Utils
 {
 	/// <summary>
 	/// TextReader implementation that reads text from a rope.

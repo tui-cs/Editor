@@ -19,7 +19,7 @@
 
 using System;
 
-namespace Terminal.Gui.Editor.Document
+namespace Terminal.Gui.Document
 {
     /// <summary>
     /// A document representing a source code file for refactoring.

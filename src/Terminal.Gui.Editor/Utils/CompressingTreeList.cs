@@ -25,7 +25,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Text;
 
-namespace Terminal.Gui.Editor.Utils
+namespace Terminal.Gui.Document.Utils
 {
     /// <summary>
     /// A IList{T} implementation that has efficient insertion and removal (in O(lg n) time)

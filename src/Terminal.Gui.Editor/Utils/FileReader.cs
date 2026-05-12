@@ -21,7 +21,7 @@ using System;
 using System.IO;
 using System.Text;
 
-namespace Terminal.Gui.Editor.Utils
+namespace Terminal.Gui.Document.Utils
 {
     /// <summary>
     /// Class that can open text files with auto-detection of the encoding.

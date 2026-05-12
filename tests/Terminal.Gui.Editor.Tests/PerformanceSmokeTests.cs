@@ -1,5 +1,5 @@
 using System.Diagnostics;
-using Terminal.Gui.Editor.Document;
+using Terminal.Gui.Document;
 using Terminal.Gui.Views.Rendering;
 using Xunit;
 using Attribute = Terminal.Gui.Drawing.Attribute;

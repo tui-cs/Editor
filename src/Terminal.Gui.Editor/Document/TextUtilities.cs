@@ -21,7 +21,7 @@ using System;
 using System.Globalization;
 using System.Reflection;
 
-namespace Terminal.Gui.Editor.Document
+namespace Terminal.Gui.Document
 {
     public enum LogicalDirection
     {

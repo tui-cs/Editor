@@ -1,4 +1,4 @@
-# gui-cs/Text — MLP Plan
+# gui-cs/Editor — MLP Plan
 
 **Updated**: 2026-05-10 | **Target**: Alpha (MLP — Minimum Lovable Product)
 
@@ -6,7 +6,7 @@
 
 ## MLP Definition
 
-The alpha release of `gui-cs/Text` ships when `Editor` reaches MLP:
+The alpha release of `gui-cs/Editor` ships when `Editor` reaches MLP:
 
 - **Most of what people expect from a TUI code editor is in place and works.** Typing, selection, multi-caret, find/replace, syntax highlighting, folding, soft wrap, line numbers, indentation, clipboard, mouse, undo with sane granularity, large-file responsiveness.
 - **`examples/ted` is a TUI editor someone would actually want to use.** Open, edit, save, close. Find. Replace. Toggle wrap. Pick a theme.

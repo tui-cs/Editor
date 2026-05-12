@@ -23,8 +23,8 @@ using System.Linq;
 using Xunit;
 
 
-using Terminal.Gui.Editor.Document;
-using Terminal.Gui.Editor.Utils;
+using Terminal.Gui.Document;
+using Terminal.Gui.Document.Utils;
 namespace Terminal.Gui.Editor.Tests.Document
 {
     

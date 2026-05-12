@@ -3,14 +3,14 @@
 
 set -euo pipefail
 
-REPO="gui-cs/Text"
+REPO="gui-cs/Editor"
 DRY=0
 
 usage () {
   cat <<'EOF'
 Usage: ./scripts/create-codex-run-issue.sh [--dry-run]
 
-Creates one issue on gui-cs/Text for the Codex-only autonomous sprint.
+Creates one issue on gui-cs/Editor for the Codex-only autonomous sprint.
 Ensures the labels agent:codex and experiment exist.
 
 The issue is optional; scripts/start-agent.sh can run directly from specs/plan.md.
@@ -42,18 +42,18 @@ ensure_label "experiment"  "fbca04" "Tracking work created by autonomous develop
 BODY=$(cat <<'EOF'
 ## Codex autonomous sprint
 
-Run the Codex-only autonomous sprint described in [`specs/codex-autonomous-sprint.md`](https://github.com/gui-cs/Text/blob/develop/specs/codex-autonomous-sprint.md).
+Run the Codex-only autonomous sprint described in [`specs/codex-autonomous-sprint.md`](https://github.com/gui-cs/Editor/blob/develop/specs/codex-autonomous-sprint.md).
 
-**Goal:** move `gui-cs/Text` toward the MLP in [`specs/plan.md`](https://github.com/gui-cs/Text/blob/develop/specs/plan.md).
+**Goal:** move `gui-cs/Editor` toward the MLP in [`specs/plan.md`](https://github.com/gui-cs/Editor/blob/develop/specs/plan.md).
 
 **Required reading before coding:**
 
-- [`specs/constitution.md`](https://github.com/gui-cs/Text/blob/develop/specs/constitution.md)
-- [`specs/plan.md`](https://github.com/gui-cs/Text/blob/develop/specs/plan.md)
-- [`specs/public-api.md`](https://github.com/gui-cs/Text/blob/develop/specs/public-api.md)
-- [`specs/decisions.md`](https://github.com/gui-cs/Text/blob/develop/specs/decisions.md)
+- [`specs/constitution.md`](https://github.com/gui-cs/Editor/blob/develop/specs/constitution.md)
+- [`specs/plan.md`](https://github.com/gui-cs/Editor/blob/develop/specs/plan.md)
+- [`specs/public-api.md`](https://github.com/gui-cs/Editor/blob/develop/specs/public-api.md)
+- [`specs/decisions.md`](https://github.com/gui-cs/Editor/blob/develop/specs/decisions.md)
 - The relevant `specs/<feature>/spec.md` for each selected feature.
-- [`CLAUDE.md`](https://github.com/gui-cs/Text/blob/develop/CLAUDE.md) for coding standards.
+- [`CLAUDE.md`](https://github.com/gui-cs/Editor/blob/develop/CLAUDE.md) for coding standards.
 
 **How to work:**
 

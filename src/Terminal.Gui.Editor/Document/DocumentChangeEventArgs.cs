@@ -19,7 +19,7 @@
 
 using System;
 
-namespace Terminal.Gui.Editor.Document
+namespace Terminal.Gui.Document
 {
     /// <summary>
     /// Describes a change of the document text.

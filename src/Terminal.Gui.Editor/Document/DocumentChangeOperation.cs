@@ -19,7 +19,7 @@
 
 using System.Diagnostics;
 
-namespace Terminal.Gui.Editor.Document
+namespace Terminal.Gui.Document
 {
 	/// <summary>
 	/// Describes a change to a TextDocument.

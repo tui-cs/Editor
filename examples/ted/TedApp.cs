@@ -3,7 +3,7 @@ using Terminal.Gui.Configuration;
 using Terminal.Gui.Drawing;
 using Terminal.Gui.Input;
 using Terminal.Gui.Resources;
-using Terminal.Gui.Editor.Document;
+using Terminal.Gui.Document;
 using Terminal.Gui.ViewBase;
 using Terminal.Gui.Views;
 using TextMateSharp.Grammars;
@@ -293,8 +293,8 @@ public sealed partial class TedApp : Window
 
         Link link = new ()
         {
-            Text = "https://github.com/gui-cs/Text",
-            Url = "https://github.com/gui-cs/Text",
+            Text = "https://github.com/gui-cs/Editor",
+            Url = "https://github.com/gui-cs/Editor",
             X = Pos.Center (),
             Y = Pos.Bottom (version) + 1
         };

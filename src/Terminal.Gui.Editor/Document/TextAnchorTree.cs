@@ -21,9 +21,9 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Text;
-using Terminal.Gui.Editor.Utils;
+using Terminal.Gui.Document.Utils;
 
-namespace Terminal.Gui.Editor.Document
+namespace Terminal.Gui.Document
 {
     /// <summary>
     /// A tree of TextAnchorNodes.

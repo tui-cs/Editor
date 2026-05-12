@@ -17,7 +17,7 @@
 // OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 // DEALINGS IN THE SOFTWARE.
 
-namespace Terminal.Gui.Editor.Document
+namespace Terminal.Gui.Document
 {
     // A tree node in the document line tree.
     // For the purpose of the invariants, "children", "descendents", "siblings" etc. include the DocumentLine object,

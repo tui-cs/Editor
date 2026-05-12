@@ -22,7 +22,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 
-namespace Terminal.Gui.Editor.Document
+namespace Terminal.Gui.Document
 {
     /// <summary>
     /// Provides ITextSourceVersion instances.

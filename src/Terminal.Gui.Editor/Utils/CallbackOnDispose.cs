@@ -20,7 +20,7 @@
 using System;
 using System.Threading;
 
-namespace Terminal.Gui.Editor.Utils
+namespace Terminal.Gui.Document.Utils
 {
 	/// <summary>
 	/// Invokes an action when it is disposed.

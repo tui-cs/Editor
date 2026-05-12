@@ -25,10 +25,10 @@ using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.IO;
-using Terminal.Gui.Editor.Utils;
+using Terminal.Gui.Document.Utils;
 using System.Threading;
 
-namespace Terminal.Gui.Editor.Document
+namespace Terminal.Gui.Document
 {
     /// <summary>
     /// This class is the main class of the text model. Basically, it is a <see cref="System.Text.StringBuilder"/> with events.

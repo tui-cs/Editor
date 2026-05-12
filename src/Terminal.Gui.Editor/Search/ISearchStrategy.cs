@@ -19,9 +19,9 @@
 
 using System;
 using System.Collections.Generic;
-using Terminal.Gui.Editor.Document;
+using Terminal.Gui.Document;
 
-namespace Terminal.Gui.Editor.Search
+namespace Terminal.Gui.Document.Search
 {
 	/// <summary>
 	/// Basic interface for search algorithms.

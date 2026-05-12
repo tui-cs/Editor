@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# setup-agent-clone.sh — clone gui-cs/Text into $HOME/s/Terminal.Gui.Editor/codex/,
+# setup-agent-clone.sh — clone gui-cs/Editor into $HOME/s/Terminal.Gui.Editor/codex/,
 # restore tools, and verify GitHub auth for Codex PR creation.
 
 set -euo pipefail
@@ -10,7 +10,7 @@ usage () {
   cat <<'EOF'
 Usage: ./scripts/setup-agent-clone.sh codex
 
-Idempotent. Clones gui-cs/Text into $HOME/s/Terminal.Gui.Editor/codex/ if not
+Idempotent. Clones gui-cs/Editor into $HOME/s/Terminal.Gui.Editor/codex/ if not
 already there, runs `dotnet tool restore`, and reports the active gh identity.
 EOF
 }
@@ -28,9 +28,9 @@ esac
 WORK="$HOME/s/Terminal.Gui.Editor/$AGENT"
 
 if [[ ! -d "$WORK/.git" ]]; then
-  echo "==> Cloning gui-cs/Text into $WORK"
+  echo "==> Cloning gui-cs/Editor into $WORK"
   mkdir -p "$WORK"
-  gh repo clone gui-cs/Text "$WORK"
+  gh repo clone gui-cs/Editor "$WORK"
 fi
 
 cd "$WORK"

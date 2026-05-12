@@ -19,7 +19,7 @@
 
 using System;
 
-namespace Terminal.Gui.Editor.Utils
+namespace Terminal.Gui.Document.Utils
 {
     /// <summary>
     /// Represents a string with a segment.

@@ -21,7 +21,7 @@ using System;
 using System.Text;
 using System.Text.RegularExpressions;
 
-namespace Terminal.Gui.Editor.Search
+namespace Terminal.Gui.Document.Search
 {
     /// <summary>
     /// Provides factory methods for ISearchStrategies.

@@ -11,8 +11,8 @@ using System.Text;
 using Xunit;
 
 
-using Terminal.Gui.Editor.Document;
-using Terminal.Gui.Editor.Utils;
+using Terminal.Gui.Document;
+using Terminal.Gui.Document.Utils;
 namespace Terminal.Gui.Editor.Tests.Utils
 {
     [SuppressMessage("Reliability", "S2930: IDisposables should be disposed", Justification = "Just unit tests")]

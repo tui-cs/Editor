@@ -21,7 +21,7 @@ using System;
 using System.ComponentModel;
 using System.Globalization;
 
-namespace Terminal.Gui.Editor.Document
+namespace Terminal.Gui.Document
 {
     /// <summary>
     /// A line/column position.

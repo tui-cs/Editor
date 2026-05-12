@@ -20,7 +20,7 @@
 using System;
 using System.Globalization;
 
-namespace Terminal.Gui.Editor.Utils
+namespace Terminal.Gui.Document.Utils
 {
 	/// <summary>
 	/// Contains exception-throwing helper methods.

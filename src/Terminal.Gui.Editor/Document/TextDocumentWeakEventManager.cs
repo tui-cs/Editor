@@ -18,9 +18,9 @@
 // DEALINGS IN THE SOFTWARE.
 
 using System;
-using Terminal.Gui.Editor.Utils;
+using Terminal.Gui.Document.Utils;
 
-namespace Terminal.Gui.Editor.Document
+namespace Terminal.Gui.Document
 {
     /// <summary>
     /// Contains weak event managers for the TextDocument events.

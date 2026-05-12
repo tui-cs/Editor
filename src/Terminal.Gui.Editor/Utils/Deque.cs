@@ -20,7 +20,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace Terminal.Gui.Editor.Utils
+namespace Terminal.Gui.Document.Utils
 {
 	/// <summary>
 	/// Double-ended queue.

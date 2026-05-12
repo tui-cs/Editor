@@ -19,7 +19,7 @@
 
 using System;
 
-namespace Terminal.Gui.Editor.Document
+namespace Terminal.Gui.Document
 {
 	/// <summary>
 	/// The TextAnchor class references an offset (a position between two characters).

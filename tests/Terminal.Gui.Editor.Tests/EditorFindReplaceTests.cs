@@ -1,7 +1,7 @@
 // Claude - claude-opus-4-7
 
-using Terminal.Gui.Editor.Document;
-using Terminal.Gui.Editor.Search;
+using Terminal.Gui.Document;
+using Terminal.Gui.Document.Search;
 using Terminal.Gui.Views;
 using Xunit;
 

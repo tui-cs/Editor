@@ -19,7 +19,7 @@
 
 using System.Collections.Immutable;
 
-namespace Terminal.Gui.Editor.Utils;
+namespace Terminal.Gui.Document.Utils;
 
 /// <summary>
 ///     Helpers on <see cref="ImmutableStack{T}"/> that AvaloniaEdit's Rope/CharRope rely on. Lifted

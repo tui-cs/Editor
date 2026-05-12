@@ -1,5 +1,5 @@
 using BenchmarkDotNet.Attributes;
-using Terminal.Gui.Editor.Document;
+using Terminal.Gui.Document;
 
 namespace Terminal.Gui.Editor.Benchmarks;
 
