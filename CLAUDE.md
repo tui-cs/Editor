@@ -84,10 +84,10 @@ The fork is **hard** — re-syncs are manual and deliberate, triggered only by u
 Adopts Terminal.Gui's house style. Three enforcement layers:
 
 1. **`.editorconfig` + `dotnet format`** — formatting, var, expression-bodied, collection expressions, modern syntax preferences. CI runs `dotnet format --verify-no-changes`.
-2. **`Terminal.Gui.Text.slnx.DotSettings` + `dotnet jb cleanupcode`** — ReSharper-driven cleanup ("Full Cleanup" profile). Catches what `dotnet format` misses (XML doc spacing, using sorting, name qualifier removal, expression-bodied conversions). CI runs `dotnet jb cleanupcode` and fails on any diff.
+2. **`Terminal.Gui.Text.slnx.DotSettings` + `dotnet jb cleanupcode`** — ReSharper-driven cleanup ("TG.Text Full Cleanup" profile). Catches what `dotnet format` misses (XML doc spacing, using sorting, name qualifier removal, expression-bodied conversions). CI runs `dotnet jb cleanupcode` and fails on any diff.
 3. **A Stop hook in `.claude/settings.json`** that runs both tools on .cs files modified during the session before the agent reports done. Output is suppressed unless the cleanup actually changed something.
 
-**Before declaring work complete, an agent must run `dotnet tool restore && dotnet format Terminal.Gui.Text.slnx --exclude third_party/ && dotnet jb cleanupcode Terminal.Gui.Text.slnx --profile="Full Cleanup"` (the Stop hook does this automatically). If the cleanup adjusts files, those changes are part of the work — re-stage and continue.**
+**Before declaring work complete, an agent must run `dotnet tool restore && dotnet format Terminal.Gui.Text.slnx --exclude third_party/ && dotnet jb cleanupcode Terminal.Gui.Text.slnx --profile="TG.Text Full Cleanup"` (the Stop hook does this automatically). If the cleanup adjusts files, those changes are part of the work — re-stage and continue.**
 
 ### Formatting and spacing
 

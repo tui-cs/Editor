@@ -246,7 +246,7 @@ public sealed partial class TedApp : Window
     private void ShowAboutDialog ()
     {
         Dialog dialog = new ()
-            { Title = "About ted", Buttons = [new Button { Title = Strings.btnOk, IsDefault = true }] };
+        { Title = "About ted", Buttons = [new Button { Title = Strings.btnOk, IsDefault = true }] };
 
         dialog.Border.Settings &= ~BorderSettings.Title;
 
