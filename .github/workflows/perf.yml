@@ -1,0 +1,82 @@
+name: Performance
+
+# Performance jobs run on ubuntu-latest only. Windows / macOS GitHub-hosted runners share
+# hosts with neighbour VMs, so their wall-time measurements are too noisy to gate on; Linux
+# runners are still noisy but consistent enough that a 3× regression is a real signal.
+#
+# The smoke-test step runs on every push / PR. The benchmark-compare step runs the same way
+# but only the gated *VisualLineBuild* filter — full BenchmarkDotNet runs (Scrolling,
+# EndToEndScroll, CaretMovement, DocumentAccess) are too slow for per-PR CI and live behind
+# the manual `workflow_dispatch` trigger for occasional baseline refreshes.
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+    branches: [main, develop]
+  workflow_dispatch:
+    inputs:
+      full-suite:
+        description: 'Run the full BenchmarkDotNet suite (all categories, not just the gated filter). Output is uploaded as an artifact.'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  perf:
+    runs-on: ubuntu-latest
+
+    env:
+      DisableRealDriverIO: "1"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+          dotnet-quality: 'preview'
+
+      - name: Restore
+        run: dotnet restore Terminal.Gui.Text.slnx
+
+      # Smoke tests are stopwatch-based (PerformanceSmokeTests.cs) — Release config matters
+      # because Debug-mode timings would force the thresholds to be useless.
+      - name: Build (Release)
+        run: dotnet build Terminal.Gui.Text.slnx -c Release --no-restore
+
+      - name: Terminal.Gui.Editor.PerformanceTests (smoke)
+        run: dotnet run -c Release --project tests/Terminal.Gui.Editor.PerformanceTests --no-build
+
+      # Gated benchmark compare. Fails the job on >3× regression vs. benchmarks/baseline.json,
+      # celebrates <0.8× improvements in the step summary. Uses the lowercase `--job short`
+      # form BenchmarkDotNet actually accepts (see compare-baseline.sh for the bug history).
+      - name: Benchmark gate — VisualLineBuild vs. baseline
+        run: |
+          OUTPUT=$(bash benchmarks/compare-baseline.sh 3.0 0.8 2>&1) || PERF_FAILED=1
+          echo "$OUTPUT"
+          echo "$OUTPUT" >> "$GITHUB_STEP_SUMMARY"
+          if [ "${PERF_FAILED:-0}" -eq 1 ]; then
+            exit 1
+          fi
+
+      # Full BenchmarkDotNet run is opt-in via workflow_dispatch. It uploads the results
+      # directory so the operator can pick numbers for baseline.json refreshes (see #78).
+      - name: Full benchmark suite (manual)
+        if: github.event_name == 'workflow_dispatch' && inputs.full-suite
+        run: |
+          dotnet run -c Release --no-build \
+            --project benchmarks/Terminal.Gui.Editor.Benchmarks \
+            -- --job short --exporters json,html --artifacts BenchmarkDotNet.Artifacts
+
+      - name: Upload BenchmarkDotNet artifacts (manual full run only)
+        if: github.event_name == 'workflow_dispatch' && inputs.full-suite
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-results-${{ github.sha }}
+          path: BenchmarkDotNet.Artifacts/
+          retention-days: 30

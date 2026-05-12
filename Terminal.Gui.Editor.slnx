@@ -13,6 +13,7 @@
     <File Path=".editorconfig" />
     <File Path=".gitattributes" />
     <File Path=".github/workflows/ci.yml" />
+    <File Path=".github/workflows/perf.yml" />
     <File Path=".github/workflows/release.yml" />
     <File Path=".gitignore" />
     <File Path="Directory.Build.props" />
@@ -30,5 +31,6 @@
   <Project Path="examples/ted/ted.csproj" />
   <Project Path="src/Terminal.Gui.Editor/Terminal.Gui.Editor.csproj" />
   <Project Path="tests/Terminal.Gui.Editor.IntegrationTests/Terminal.Gui.Editor.IntegrationTests.csproj" />
+  <Project Path="tests/Terminal.Gui.Editor.PerformanceTests/Terminal.Gui.Editor.PerformanceTests.csproj" />
   <Project Path="tests/Terminal.Gui.Editor.Tests/Terminal.Gui.Editor.Tests.csproj" />
 </Solution>
