@@ -1,4 +1,5 @@
 using Terminal.Gui.App;
+using Terminal.Gui.Configuration;
 using Terminal.Gui.Drawing;
 using Terminal.Gui.Input;
 using Terminal.Gui.Resources;
@@ -14,7 +15,7 @@ namespace Ted;
 ///     <see cref="Editor" /> in the middle, StatusBar at the bottom. Single-file —
 ///     no tabs (compare to Terminal.Gui's Notepad scenario).
 /// </summary>
-public sealed class TedApp : Window
+public sealed partial class TedApp : Window
 {
     private readonly Shortcut _fileNameShortcut;
     private readonly Shortcut _locShortcut;
@@ -47,7 +48,11 @@ public sealed class TedApp : Window
         ShowSaveDialog = ShowDefaultSaveDialog;
         ShowSaveChangesDialog = ShowDefaultSaveChangesDialog;
 
-        MenuBar menu = new ();
+        MenuBar menu = new ()
+        {
+            AlignmentModes = AlignmentModes.IgnoreFirstOrLast
+        };
+
         CheckBox lineNumbersCheckBox = new ()
         {
             AllowCheckStateNone = false,
@@ -134,17 +139,12 @@ public sealed class TedApp : Window
 
         StatusBar statusBar =
             new ([
-                new Shortcut (KeyFor (Command.Quit), "Quit", Quit),
                 new Shortcut { Title = "Themes", CommandView = ThemeDropDown },
                 new Shortcut
                     { Text = "Indent", CommandView = IndentationSizeUpDown, MouseHighlightStates = MouseState.None },
                 new Shortcut { CommandView = ShowTabsCheckBox },
-                _locShortcut = new Shortcut (Key.Empty, FormatLoc (1, 1), null, "Loc")
-                    { MouseHighlightStates = MouseState.None },
-                _fileNameShortcut = new Shortcut (Key.Empty, "<untitled>", Open)
-                {
-                    MouseHighlightStates = MouseState.None
-                }
+                _locShortcut = new Shortcut (Key.Empty, FormatLoc (1, 1), null)
+                    { MouseHighlightStates = MouseState.None }
             ])
             {
                 AlignmentModes = AlignmentModes.IgnoreFirstOrLast
@@ -162,7 +162,7 @@ public sealed class TedApp : Window
                 return;
             }
 
-            editorContextMenu.MakeVisible (mouse.ScreenPosition, null);
+            editorContextMenu.MakeVisible (mouse.ScreenPosition);
             mouse.Handled = true;
         };
 
@@ -194,7 +194,12 @@ public sealed class TedApp : Window
                 }
             ]),
             new MenuBarItem (Strings.menuHelp,
-                [new MenuItem ("_About", "Show About dialog", Action)])
+                [new MenuItem ("_About", "About ted", ShowAboutDialog)]),
+            _fileNameShortcut = new Shortcut (Key.Empty, "<untitled>", Open)
+            {
+                MouseHighlightStates = MouseState.None,
+                SchemeName = SchemeManager.SchemesToSchemeName (Schemes.Dialog)
+            }
         );
 
         Editor.Y = Pos.Bottom (menu);
@@ -208,7 +213,6 @@ public sealed class TedApp : Window
         Editor.CaretChanged += (_, _) => UpdateLocShortcut ();
         UpdateLocShortcut ();
     }
-
 
     /// <summary>The editor View at the centre of the app. Exposed for tests and future commands.</summary>
     public Editor Editor { get; }
@@ -229,83 +233,6 @@ public sealed class TedApp : Window
     /// </summary>
     public Shortcut LocShortcut => _locShortcut;
 
-    /// <summary>The path currently associated with <see cref="Editor" />, or <see langword="null" /> for an untitled buffer.</summary>
-    public string? CurrentFilePath { get; private set; }
-
-    /// <summary>Dialog hook used by <see cref="OpenFile" />. Tests can replace it to avoid interactive UI.</summary>
-    public Func<string?> ShowOpenDialog { get; set; }
-
-    /// <summary>Dialog hook used by <see cref="SaveFileAs" />. Tests can replace it to avoid interactive UI.</summary>
-    public Func<string?> ShowSaveDialog { get; set; }
-
-    /// <summary>Dialog hook used by <see cref="QuitFile" />. Tests can replace it to avoid interactive UI.</summary>
-    public Func<SaveChangesChoice> ShowSaveChangesDialog { get; set; }
-
-    /// <summary>File read hook used by <see cref="OpenFile" />. Tests can replace it with an in-memory fake.</summary>
-    public Func<string, string> ReadAllText { get; set; } = File.ReadAllText;
-
-    /// <summary>
-    ///     File write hook used by <see cref="SaveFile" /> and <see cref="SaveFileAs" />. Tests can replace it with an
-    ///     in-memory fake.
-    /// </summary>
-    public Action<string, string> WriteAllText { get; set; } = File.WriteAllText;
-
-    /// <summary>Gets whether the current editor document has unsaved changes.</summary>
-    public bool IsDocumentModified => Editor.Document?.UndoStack.IsOriginalFile == false;
-
-    /// <summary>Clears the editor and makes the buffer untitled.</summary>
-    public void NewFile ()
-    {
-        SetDocument (string.Empty, null);
-    }
-
-    /// <summary>Prompts for a file path, then loads that file into the editor.</summary>
-    public bool OpenFile ()
-    {
-        var filePath = ShowOpenDialog ();
-
-        if (string.IsNullOrWhiteSpace (filePath))
-        {
-            return false;
-        }
-
-        SetDocument (ReadAllText (filePath), filePath);
-
-        return true;
-    }
-
-    /// <summary>Saves the editor text to the current file, or prompts for a path if the buffer is untitled.</summary>
-    public bool SaveFile ()
-    {
-        if (CurrentFilePath is null)
-        {
-            return SaveFileAs ();
-        }
-
-        WriteAllText (CurrentFilePath, GetEditorText ());
-        Editor.Document!.UndoStack.MarkAsOriginalFile ();
-
-        return true;
-    }
-
-    /// <summary>Prompts for a file path, then saves the editor text to that path.</summary>
-    public bool SaveFileAs ()
-    {
-        var filePath = ShowSaveDialog ();
-
-        if (string.IsNullOrWhiteSpace (filePath))
-        {
-            return false;
-        }
-
-        CurrentFilePath = filePath;
-        WriteAllText (filePath, GetEditorText ());
-        Editor.Document!.UndoStack.MarkAsOriginalFile ();
-        UpdateFileNameShortcut ();
-
-        return true;
-    }
-
     /// <summary>
     ///     Resolves the key shortcut for <paramref name="command" /> by asking the <see cref="Editor" />'s
     ///     <see cref="View.KeyBindings" /> first; falls back to <see cref="Application.GetDefaultKey" /> for
@@ -316,169 +243,54 @@ public sealed class TedApp : Window
         return Editor.KeyBindings.GetAllFromCommands (command).FirstOrDefault () ?? Application.GetDefaultKey (command);
     }
 
-    private void Action () { }
-
-    private View[] CreateEditMenuItems ()
+    private void ShowAboutDialog ()
     {
-        return
-        [
-            new MenuItem ("_Find...", "Find text in the current document", Find),
-            new MenuItem ("_Replace...", "Find and replace text in the current document", Replace),
-            new Line (),
-            new MenuItem { Command = Command.Undo, Action = Undo, Key = KeyFor (Command.Undo) },
-            new MenuItem { Command = Command.Redo, Action = Redo, Key = KeyFor (Command.Redo) },
-            new Line (),
-            new MenuItem { Command = Command.Cut, Action = Cut, Key = KeyFor (Command.Cut) },
-            new MenuItem { Command = Command.Copy, Action = Copy, Key = KeyFor (Command.Copy) },
-            new MenuItem { Command = Command.Paste, Action = Paste, Key = KeyFor (Command.Paste) },
-            new MenuItem { Command = Command.SelectAll, Action = SelectAll, Key = KeyFor (Command.SelectAll) }
-        ];
-    }
+        Dialog dialog = new ()
+        { Title = "About ted", Buttons = [new Button { Title = Strings.btnOk, IsDefault = true }] };
 
-    private void Find () { ShowFindReplaceDialog (false); }
+        dialog.Border.Settings &= ~BorderSettings.Title;
 
-    private void Replace () { ShowFindReplaceDialog (true); }
+        Version? tguiVersion = typeof (Application).Assembly.GetName ().Version;
 
-    private void SelectAll () { Editor.SelectAll (); }
-
-    private void Paste ()
-    {
-        if (Editor.ReadOnly)
+        Label tagline = new ()
         {
-            return;
-        }
-
-        IClipboard? clipboard = App?.Clipboard;
-
-        if (clipboard is null || !clipboard.TryGetClipboardData (out string contents))
-        {
-            return;
-        }
-
-        if (Editor.HasSelection)
-        {
-            Editor.ReplaceSelection (contents);
-        }
-        else
-        {
-            Editor.Document?.Insert (Editor.CaretOffset, contents);
-        }
-    }
-
-    private void Copy ()
-    {
-        if (!Editor.HasSelection)
-        {
-            return;
-        }
-
-        App?.Clipboard?.TrySetClipboardData (Editor.SelectedText);
-    }
-
-    private void Cut ()
-    {
-        if (Editor.ReadOnly || !Editor.HasSelection)
-        {
-            return;
-        }
-
-        Copy ();
-        Editor.ReplaceSelection (string.Empty);
-    }
-
-    private void Undo ()
-    {
-        if (!Editor.ReadOnly)
-        {
-            Editor.Document?.UndoStack.Undo ();
-        }
-    }
-
-    private void Redo ()
-    {
-        if (!Editor.ReadOnly)
-        {
-            Editor.Document?.UndoStack.Redo ();
-        }
-    }
-
-    private string? ShowDefaultOpenDialog ()
-    {
-        using OpenDialog dialog = new ();
-        dialog.AllowsMultipleSelection = false;
-        dialog.MustExist = true;
-        dialog.OpenMode = OpenMode.File;
-
-        if (App is null)
-        {
-            throw new InvalidOperationException ("ted must be running before showing the open dialog.");
-        }
-
-        App.Run (dialog);
-
-        return dialog.FilePaths.FirstOrDefault ();
-    }
-
-    private string? ShowDefaultSaveDialog ()
-    {
-        using SaveDialog dialog = new ();
-        dialog.AllowsMultipleSelection = false;
-        dialog.OpenMode = OpenMode.File;
-
-        if (App is null)
-        {
-            throw new InvalidOperationException ("ted must be running before showing the save dialog.");
-        }
-
-        App.Run (dialog);
-
-        return dialog.FileName;
-    }
-
-    private SaveChangesChoice ShowDefaultSaveChangesDialog ()
-    {
-        if (App is null)
-        {
-            throw new InvalidOperationException ("ted must be running before showing the save-changes dialog.");
-        }
-
-        var result = MessageBox.Query (
-            App,
-            "Save changes?",
-            "The document has unsaved changes. Save before quitting?",
-            Strings.btnCancel,
-            "Don't Save",
-            Strings.btnSave);
-
-        return result switch
-        {
-            1 => SaveChangesChoice.Discard,
-            2 => SaveChangesChoice.Save,
-            _ => SaveChangesChoice.Cancel
+            Text = $"A terminal text editor built with Terminal.Gui {tguiVersion}",
+            TextAlignment = Alignment.Center,
+            X = Pos.Center (),
+            Width = Dim.Auto (DimAutoStyle.Text),
+            Height = Dim.Auto (DimAutoStyle.Text)
         };
-    }
 
-    internal void SetDocument (string text, string? filePath)
-    {
-        Editor.ClearSelection ();
-        Editor.Document = new TextDocument (text);
-        Editor.CaretOffset = 0;
-        CurrentFilePath = filePath;
-        UpdateFileNameShortcut ();
-        Editor.SetNeedsDraw ();
-    }
+        TedLogo logo = new () { X = Pos.Center (), Y = Pos.Bottom (tagline) + 1 };
 
-    private string GetEditorText ()
-    {
-        return Editor.Document is null
-            ? throw new InvalidOperationException ("ted cannot save because the editor has no document.")
-            : Editor.Document.Text;
+        Version? editorVersion = typeof (Editor).Assembly.GetName ().Version;
+
+        View version = new ()
+        {
+            Width = Dim.Auto (),
+            Height = Dim.Auto (),
+            Text = $"Terminal.Gui.Editor {editorVersion}",
+            X = Pos.Center (),
+            Y = Pos.Bottom (logo) + 1
+        };
+
+        Link link = new ()
+        {
+            Text = "https://github.com/gui-cs/Text",
+            Url = "https://github.com/gui-cs/Text",
+            X = Pos.Center (),
+            Y = Pos.Bottom (version) + 1
+        };
+
+        dialog.Add (tagline, logo, version, link);
+        dialog.Buttons.ElementAt (0).SetFocus ();
+        App?.Run (dialog);
+        dialog.Dispose ();
     }
 
     private void UpdateFileNameShortcut ()
     {
-        _fileNameShortcut.Text = CurrentFilePath is null ? "<untitled>" : Path.GetFileName (CurrentFilePath);
-        _fileNameShortcut.HelpText = CurrentFilePath ?? "No file";
+        _fileNameShortcut.Title = CurrentFilePath ?? "<untitled>";
         _fileNameShortcut.SetNeedsDraw ();
     }
 
@@ -488,12 +300,12 @@ public sealed class TedApp : Window
 
         if (document is null)
         {
-            _locShortcut.Text = FormatLoc (1, 1);
+            _locShortcut.Title = FormatLoc (1, 1);
         }
         else
         {
             DocumentLine line = document.GetLineByOffset (Editor.CaretOffset);
-            _locShortcut.Text = FormatLoc (line.LineNumber, Editor.CaretOffset - line.Offset + 1);
+            _locShortcut.Title = FormatLoc (line.LineNumber, Editor.CaretOffset - line.Offset + 1);
         }
 
         _locShortcut.SetNeedsDraw ();
@@ -501,66 +313,6 @@ public sealed class TedApp : Window
 
     private static string FormatLoc (int line, int column)
     {
-        return $"{line}, {column}";
-    }
-
-    private void New ()
-    {
-        // TODO: if unsaved changes, confirm with user before clearing
-        NewFile ();
-    }
-
-    private void Open ()
-    {
-        // TODO: if unsaved changes, confirm with user before clearing
-        OpenFile ();
-    }
-
-    private void Save () { SaveFile (); }
-
-    private void SaveAs () { SaveFileAs (); }
-
-    /// <summary>Quits ted, prompting to save first when the current document has unsaved changes.</summary>
-    public bool QuitFile ()
-    {
-        if (!ConfirmSaveChanges ())
-        {
-            return false;
-        }
-
-        RequestStop ();
-
-        return true;
-    }
-
-    private void Quit ()
-    {
-        QuitFile ();
-    }
-
-    private void ShowFindReplaceDialog (bool selectReplaceTab)
-    {
-        if (App is null)
-        {
-            throw new InvalidOperationException ("Cannot show find/replace when Application is not running.");
-        }
-
-        using FindReplaceDialog dialog = new (Editor, selectReplaceTab);
-        App.Run (dialog);
-    }
-
-    private bool ConfirmSaveChanges ()
-    {
-        if (!IsDocumentModified)
-        {
-            return true;
-        }
-
-        return ShowSaveChangesDialog () switch
-        {
-            SaveChangesChoice.Discard => true,
-            SaveChangesChoice.Save => SaveFile (),
-            _ => false
-        };
+        return $"Ln: {line}, Ch: {column}";
     }
 }
