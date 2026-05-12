@@ -11,6 +11,13 @@ if (args.Length > 0 && args[0] == "--quick-find")
     return;
 }
 
+if (args.Length > 0 && args[0] == "--quick-find-incremental")
+{
+    QuickIncrementalFindBench ();
+
+    return;
+}
+
 BenchmarkSwitcher.FromAssembly (typeof (Program).Assembly).Run (args);
 
 static void QuickFindBench ()
@@ -45,6 +52,113 @@ static void QuickFindBench ()
         Console.WriteLine ($"{"",10}  {"  ratio (new/old)",-32}  {newMean / oldMean,10:F2}x  {"",10}  {(double)newAlloc / oldAlloc,18:F2}x");
         Console.WriteLine ();
     }
+}
+
+static void QuickIncrementalFindBench ()
+{
+    // Demonstrates the gui-cs/Text#82 fix: FindNext advancing through a document one match at
+    // a time should not re-scan the prefix [0, offset) on every call. Compares the new path
+    // (RegexSearchStrategy.FindAll using Regex.Match(text, startat)) against an inlined
+    // simulation of the old upstream behavior (Regex.Matches(text) from index 0, post-filtered
+    // by offset). Both paths materialize document.Text once per call — that's the rope cost,
+    // which this fix does not address.
+    const string needle = "FINDME";
+    const int docSize = 1_000_000;
+    int[] matchCounts = [50, 200, 1_000];
+
+    Console.WriteLine ($"Quick incremental-find bench — DocSize={docSize}");
+    Console.WriteLine ();
+    Console.WriteLine ($"{"MatchCount",10}  {"Path",-44}  {"Total (ms)",12}  {"Per call (µs)",14}");
+    Console.WriteLine (new string ('-', 90));
+
+    foreach (var matchCount in matchCounts)
+    {
+        var doc = BuildDoc (needle, docSize, matchCount);
+        var strategy = SearchStrategyFactory.Create (needle, ignoreCase: false, matchWholeWords: false, SearchMode.Normal);
+        var pattern = new System.Text.RegularExpressions.Regex (
+                                                                System.Text.RegularExpressions.Regex.Escape (needle),
+                                                                System.Text.RegularExpressions.RegexOptions.Multiline);
+
+        // Warm.
+        WalkNew (doc, strategy);
+        WalkOldSim (doc, pattern, needle.Length);
+
+        var (newTotal, newCalls) = TimeWalk (() => WalkNew (doc, strategy));
+        var (oldTotal, oldCalls) = TimeWalk (() => WalkOldSim (doc, pattern, needle.Length));
+
+        Console.WriteLine ($"{matchCount,10}  {"new (Regex.Match from offset)",-44}  {newTotal,12:F2}  {newTotal * 1000.0 / Math.Max (1, newCalls),14:F2}");
+        Console.WriteLine ($"{matchCount,10}  {"old sim (Regex.Matches from 0 + post-filter)",-44}  {oldTotal,12:F2}  {oldTotal * 1000.0 / Math.Max (1, oldCalls),14:F2}");
+        Console.WriteLine ($"{"",10}  {"  ratio new/old",-44}  {newTotal / oldTotal,12:F3}x");
+        Console.WriteLine ();
+    }
+}
+
+/// <summary>Walks the document by repeatedly calling the new ISearchStrategy.FindNext (#82 fix).</summary>
+static int WalkNew (TextDocument doc, ISearchStrategy strategy)
+{
+    var calls = 0;
+    var offset = 0;
+
+    while (true)
+    {
+        ISearchResult? r = strategy.FindNext (doc, offset, doc.TextLength - offset);
+        calls++;
+
+        if (r is null)
+        {
+            return calls;
+        }
+
+        offset = r.Offset + Math.Max (1, r.Length);
+    }
+}
+
+/// <summary>
+///     Walks the document via an inlined simulation of the upstream behavior — Regex.Matches(text)
+///     starting at index 0 every call, post-filtered by offset. This is what
+///     <c>RegexSearchStrategy.FindAll</c> did before #82.
+/// </summary>
+static int WalkOldSim (TextDocument doc, System.Text.RegularExpressions.Regex pattern, int needleLen)
+{
+    var calls = 0;
+    var offset = 0;
+
+    while (true)
+    {
+        var text = doc.Text;
+        var matchOffset = -1;
+
+        foreach (System.Text.RegularExpressions.Match m in pattern.Matches (text))
+        {
+            if (m.Index >= offset)
+            {
+                matchOffset = m.Index;
+
+                break;
+            }
+        }
+
+        calls++;
+
+        if (matchOffset < 0)
+        {
+            return calls;
+        }
+
+        offset = matchOffset + Math.Max (1, needleLen);
+    }
+}
+
+static (double totalMs, int calls) TimeWalk (Func<int> walk)
+{
+    GC.Collect ();
+    GC.WaitForPendingFinalizers ();
+    GC.Collect ();
+    var sw = Stopwatch.StartNew ();
+    var calls = walk ();
+    sw.Stop ();
+
+    return (sw.Elapsed.TotalMilliseconds, calls);
 }
 
 static TextDocument BuildDoc (string needle, int docSize, int matchCount)

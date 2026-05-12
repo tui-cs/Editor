@@ -39,14 +39,35 @@ namespace Terminal.Gui.Text.Search
 
 		public IEnumerable<ISearchResult> FindAll(ITextSource document, int offset, int length)
 		{
+			// Terminal.Gui deviation from AvaloniaEdit d7a6b63 (gui-cs/Text#82): use Regex.Match(text, startat)
+			// to begin scanning at `offset` instead of `_searchPattern.Matches(text)` which always starts at
+			// index 0 and then post-filters. For repeated FindNext at increasing offsets (e.g. F3 advancing
+			// through a document) this eliminates O(offset) wasted regex work per call. The .NET Regex engine
+			// preserves RegexOptions.Multiline `^` / `$` semantics correctly across `startat` — anchoring at
+			// the start position only when it is 0 or follows a newline. Matches still arrive in order, so
+			// we can short-circuit once `result.Index >= endOffset`. Logged in
+			// third_party/AvaloniaEdit/UPSTREAM.md.
 			int endOffset = offset + length;
-			foreach (Match result in _searchPattern.Matches(document.Text)) {
+			string text = document.Text;
+			Match result = _searchPattern.Match(text, offset);
+			while (result.Success) {
 				int resultEndOffset = result.Length + result.Index;
-				if (offset > result.Index || endOffset < resultEndOffset)
+				// Matches arrive in ascending order of Index, so once Index passes endOffset there
+				// can be no more in-range results. Use `>` rather than `>=` so zero-length matches
+				// exactly at endOffset are still yielded (upstream's `endOffset < resultEndOffset`
+				// post-filter keeps them).
+				if (result.Index > endOffset)
+					yield break;
+				if (resultEndOffset > endOffset) {
+					result = result.NextMatch();
 					continue;
-				if (_matchWholeWords && (!IsWordBorder(document, result.Index) || !IsWordBorder(document, resultEndOffset)))
+				}
+				if (_matchWholeWords && (!IsWordBorder(document, result.Index) || !IsWordBorder(document, resultEndOffset))) {
+					result = result.NextMatch();
 					continue;
+				}
 				yield return new SearchResult { StartOffset = result.Index, Length = result.Length, Data = result };
+				result = result.NextMatch();
 			}
 		}
 
