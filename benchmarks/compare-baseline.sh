@@ -16,10 +16,14 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 BASELINE="$SCRIPT_DIR/baseline.json"
 RESULTS_DIR="$(mktemp -d)"
 
-echo "::group::Running focused benchmarks (ShortRun)"
+echo "::group::Running focused benchmarks (short job)"
+# BenchmarkDotNet accepts only lowercase job names: default, dry, short, medium, long, verylong.
+# Passing "ShortRun" makes BDN print "invalid base job" and exit without running anything; the
+# script then sees no JSON report and falls into "skipping comparison" → exit 0 → silent no-op.
+# This was the gate's bug for everything between PR #53 and PR #77.
 dotnet run --project "$SCRIPT_DIR/Terminal.Gui.Editor.Benchmarks" -c Release -- \
   --filter "*VisualLineBuild*" \
-  --job ShortRun \
+  --job short \
   --exporters json \
   --artifacts "$RESULTS_DIR" 2>&1 | tail -20
 echo "::endgroup::"

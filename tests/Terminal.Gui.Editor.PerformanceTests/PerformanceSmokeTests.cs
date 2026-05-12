@@ -4,13 +4,15 @@ using Terminal.Gui.Views.Rendering;
 using Xunit;
 using Attribute = Terminal.Gui.Drawing.Attribute;
 
-namespace Terminal.Gui.Editor.Tests;
+namespace Terminal.Gui.Editor.PerformanceTests;
 
 /// <summary>
-///     Stopwatch-based performance smoke tests that run in normal CI. Thresholds are set to
-///     ~5x the typical wall time on an M-series Mac, so they only fail on catastrophic
-///     regressions — not CI-runner noise. For precision measurements use the BenchmarkDotNet
-///     suite in <c>benchmarks/</c>.
+///     Stopwatch-based performance smoke tests. Lives in its own csproj and is driven by the
+///     dedicated <c>.github/workflows/perf.yml</c> workflow on ubuntu-latest only — Windows /
+///     macOS GitHub-hosted runners are too noisy for meaningful timing assertions. Thresholds
+///     are deliberately loose (~5× typical wall time on a fast machine) so they only fail on
+///     catastrophic regressions, not CI jitter. For precision measurements use the
+///     BenchmarkDotNet suite in <c>benchmarks/</c>.
 /// </summary>
 public class PerformanceSmokeTests
 {
