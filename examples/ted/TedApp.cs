@@ -139,7 +139,6 @@ public sealed partial class TedApp : Window
 
         StatusBar statusBar =
             new ([
-                new Shortcut (KeyFor (Command.Quit), "Quit", Quit),
                 new Shortcut { Title = "Themes", CommandView = ThemeDropDown },
                 new Shortcut
                     { Text = "Indent", CommandView = IndentationSizeUpDown, MouseHighlightStates = MouseState.None },
@@ -195,7 +194,7 @@ public sealed partial class TedApp : Window
                 }
             ]),
             new MenuBarItem (Strings.menuHelp,
-                [new MenuItem ("_About", "Show About dialog", Action)]),
+                [new MenuItem ("_About", "About ted", ShowAboutDialog)]),
             _fileNameShortcut = new Shortcut (Key.Empty, "<untitled>", Open)
             {
                 MouseHighlightStates = MouseState.None,
@@ -244,11 +243,54 @@ public sealed partial class TedApp : Window
         return Editor.KeyBindings.GetAllFromCommands (command).FirstOrDefault () ?? Application.GetDefaultKey (command);
     }
 
-    private void Action () { }
+    private void ShowAboutDialog ()
+    {
+        Dialog dialog = new ()
+            { Title = "About ted", Buttons = [new Button { Title = Strings.btnOk, IsDefault = true }] };
+
+        dialog.Border.Settings &= ~BorderSettings.Title;
+
+        Version? tguiVersion = typeof (Application).Assembly.GetName ().Version;
+
+        Label tagline = new ()
+        {
+            Text = $"A terminal text editor built with Terminal.Gui {tguiVersion}",
+            TextAlignment = Alignment.Center,
+            X = Pos.Center (),
+            Width = Dim.Auto (DimAutoStyle.Text),
+            Height = Dim.Auto (DimAutoStyle.Text)
+        };
+
+        TedLogo logo = new () { X = Pos.Center (), Y = Pos.Bottom (tagline) + 1 };
+
+        Version? editorVersion = typeof (Editor).Assembly.GetName ().Version;
+
+        View version = new ()
+        {
+            Width = Dim.Auto (),
+            Height = Dim.Auto (),
+            Text = $"Terminal.Gui.Editor {editorVersion}",
+            X = Pos.Center (),
+            Y = Pos.Bottom (logo) + 1
+        };
+
+        Link link = new ()
+        {
+            Text = "https://github.com/gui-cs/Text",
+            Url = "https://github.com/gui-cs/Text",
+            X = Pos.Center (),
+            Y = Pos.Bottom (version) + 1
+        };
+
+        dialog.Add (tagline, logo, version, link);
+        dialog.Buttons.ElementAt (0).SetFocus ();
+        App?.Run (dialog);
+        dialog.Dispose ();
+    }
 
     private void UpdateFileNameShortcut ()
     {
-        _fileNameShortcut.Title = CurrentFilePath is null ? "<untitled>" : CurrentFilePath;
+        _fileNameShortcut.Title = CurrentFilePath ?? "<untitled>";
         _fileNameShortcut.SetNeedsDraw ();
     }
 
