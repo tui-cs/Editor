@@ -139,7 +139,7 @@ public sealed partial class TedApp : Window
                 new Shortcut
                     { Text = "Indent", CommandView = IndentationSizeUpDown, MouseHighlightStates = MouseState.None },
                 new Shortcut { CommandView = ShowTabsCheckBox },
-                _locShortcut = new Shortcut (Key.Empty, FormatLoc (1, 1), null, "Loc")
+                _locShortcut = new Shortcut (Key.Empty, FormatLoc (1, 1), null)
                     { MouseHighlightStates = MouseState.None },
                 _fileNameShortcut = new Shortcut (Key.Empty, "<untitled>", Open)
                 {
@@ -242,8 +242,7 @@ public sealed partial class TedApp : Window
 
     private void UpdateFileNameShortcut ()
     {
-        _fileNameShortcut.Text = CurrentFilePath is null ? "<untitled>" : Path.GetFileName (CurrentFilePath);
-        _fileNameShortcut.HelpText = CurrentFilePath ?? "No file";
+        _fileNameShortcut.Title = CurrentFilePath is null ? "<untitled>" : Path.GetFileName (CurrentFilePath);
         _fileNameShortcut.SetNeedsDraw ();
     }
 
@@ -253,12 +252,12 @@ public sealed partial class TedApp : Window
 
         if (document is null)
         {
-            _locShortcut.Text = FormatLoc (1, 1);
+            _locShortcut.Title = FormatLoc (1, 1);
         }
         else
         {
             DocumentLine line = document.GetLineByOffset (Editor.CaretOffset);
-            _locShortcut.Text = FormatLoc (line.LineNumber, Editor.CaretOffset - line.Offset + 1);
+            _locShortcut.Title = FormatLoc (line.LineNumber, Editor.CaretOffset - line.Offset + 1);
         }
 
         _locShortcut.SetNeedsDraw ();
@@ -266,6 +265,6 @@ public sealed partial class TedApp : Window
 
     private static string FormatLoc (int line, int column)
     {
-        return $"{line}, {column}";
+        return $"Ln: {line}, Ch: {column}";
     }
 }
