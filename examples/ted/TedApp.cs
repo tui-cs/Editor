@@ -1,4 +1,5 @@
 using Terminal.Gui.App;
+using Terminal.Gui.Configuration;
 using Terminal.Gui.Drawing;
 using Terminal.Gui.Input;
 using Terminal.Gui.Resources;
@@ -47,7 +48,11 @@ public sealed partial class TedApp : Window
         ShowSaveDialog = ShowDefaultSaveDialog;
         ShowSaveChangesDialog = ShowDefaultSaveChangesDialog;
 
-        MenuBar menu = new ();
+        MenuBar menu = new ()
+        {
+            AlignmentModes = AlignmentModes.IgnoreFirstOrLast
+        };
+
         CheckBox lineNumbersCheckBox = new ()
         {
             AllowCheckStateNone = false,
@@ -140,11 +145,7 @@ public sealed partial class TedApp : Window
                     { Text = "Indent", CommandView = IndentationSizeUpDown, MouseHighlightStates = MouseState.None },
                 new Shortcut { CommandView = ShowTabsCheckBox },
                 _locShortcut = new Shortcut (Key.Empty, FormatLoc (1, 1), null)
-                    { MouseHighlightStates = MouseState.None },
-                _fileNameShortcut = new Shortcut (Key.Empty, "<untitled>", Open)
-                {
-                    MouseHighlightStates = MouseState.None
-                }
+                    { MouseHighlightStates = MouseState.None }
             ])
             {
                 AlignmentModes = AlignmentModes.IgnoreFirstOrLast
@@ -194,7 +195,12 @@ public sealed partial class TedApp : Window
                 }
             ]),
             new MenuBarItem (Strings.menuHelp,
-                [new MenuItem ("_About", "Show About dialog", Action)])
+                [new MenuItem ("_About", "Show About dialog", Action)]),
+            _fileNameShortcut = new Shortcut (Key.Empty, "<untitled>", Open)
+            {
+                MouseHighlightStates = MouseState.None,
+                SchemeName = SchemeManager.SchemesToSchemeName (Schemes.Dialog)
+            }
         );
 
         Editor.Y = Pos.Bottom (menu);
@@ -242,7 +248,7 @@ public sealed partial class TedApp : Window
 
     private void UpdateFileNameShortcut ()
     {
-        _fileNameShortcut.Title = CurrentFilePath is null ? "<untitled>" : Path.GetFileName (CurrentFilePath);
+        _fileNameShortcut.Title = CurrentFilePath is null ? "<untitled>" : CurrentFilePath;
         _fileNameShortcut.SetNeedsDraw ();
     }
 
