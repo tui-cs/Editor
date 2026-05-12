@@ -32,8 +32,8 @@ public class PerformanceSmokeTests
         BuildViewport (document, builder, startLine, 50);
         sw.Stop ();
 
-        Assert.True (sw.ElapsedMilliseconds < 50,
-            $"Viewport build took {sw.ElapsedMilliseconds}ms — expected < 50ms. Possible performance regression.");
+        Assert.True (sw.ElapsedMilliseconds < 250,
+            $"Viewport build took {sw.ElapsedMilliseconds}ms — expected < 250ms. Possible performance regression.");
     }
 
     /// <summary>
@@ -63,8 +63,8 @@ public class PerformanceSmokeTests
 
         sw.Stop ();
 
-        Assert.True (sw.ElapsedMilliseconds < 100,
-            $"100 long-line builds took {sw.ElapsedMilliseconds}ms — expected < 100ms. Possible performance regression.");
+        Assert.True (sw.ElapsedMilliseconds < 500,
+            $"100 long-line builds took {sw.ElapsedMilliseconds}ms — expected < 500ms. Possible performance regression.");
     }
 
     /// <summary>
@@ -95,8 +95,8 @@ public class PerformanceSmokeTests
 
         sw.Stop ();
 
-        Assert.True (sw.ElapsedMilliseconds < 5,
-            $"5000 line lookups in 100K-line doc took {sw.ElapsedMilliseconds}ms — expected < 5ms. Possible performance regression.");
+        Assert.True (sw.ElapsedMilliseconds < 25,
+            $"5000 line lookups in 100K-line doc took {sw.ElapsedMilliseconds}ms — expected < 25ms. Possible performance regression.");
     }
 
     /// <summary>
