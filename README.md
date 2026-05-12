@@ -18,10 +18,11 @@ Pre-alpha — see [`specs/00-plan.md`](specs/00-plan.md) for the full implementa
 ## Repository layout
 
 ```
-specs/      Planning and design docs
-src/        Terminal.Gui.Editor library (document layer + Editor view)
-tests/      xUnit.v3 test projects
-examples/   ted — standalone demo app
+specs/        Planning and design docs
+src/          Terminal.Gui.Editor library (document layer + Editor view)
+tests/        xUnit.v3 test projects (correctness + perf smoke)
+benchmarks/   BenchmarkDotNet suite + CI baseline
+examples/     ted — standalone demo app
 ```
 
 ## Build
@@ -31,8 +32,14 @@ Requires the .NET 10 SDK (preview).
 ```sh
 dotnet restore Terminal.Gui.Editor.slnx
 dotnet build   Terminal.Gui.Editor.slnx
+
+# Correctness suites — run on every push/PR across ubuntu/macos/windows.
 dotnet run --project tests/Terminal.Gui.Editor.Tests
 dotnet run --project tests/Terminal.Gui.Editor.IntegrationTests
+
+# Perf smoke + BenchmarkDotNet baseline gate — ubuntu-latest only in CI
+# (.github/workflows/perf.yml). Run locally in Release config.
+dotnet run --project tests/Terminal.Gui.Editor.PerformanceTests -c Release
 ```
 
 Run the demo:

@@ -42,12 +42,12 @@ jobs:
           dotnet-quality: 'preview'
 
       - name: Restore
-        run: dotnet restore Terminal.Gui.Text.slnx
+        run: dotnet restore Terminal.Gui.Editor.slnx
 
       # Smoke tests are stopwatch-based (PerformanceSmokeTests.cs) — Release config matters
       # because Debug-mode timings would force the thresholds to be useless.
       - name: Build (Release)
-        run: dotnet build Terminal.Gui.Text.slnx -c Release --no-restore
+        run: dotnet build Terminal.Gui.Editor.slnx -c Release --no-restore
 
       - name: Terminal.Gui.Editor.PerformanceTests (smoke)
         run: dotnet run -c Release --project tests/Terminal.Gui.Editor.PerformanceTests --no-build
