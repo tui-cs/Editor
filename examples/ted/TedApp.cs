@@ -74,6 +74,14 @@ public sealed partial class TedApp : Window
             Editor.ConvertTabsToSpaces = e.NewValue == CheckState.Checked;
         };
 
+        CheckBox useThemeBackgroundCheckBox = new ()
+        {
+            AllowCheckStateNone = false,
+            CanFocus = false,
+            Text = "Use _Theme Background",
+            Value = Editor.UseThemeBackground ? CheckState.Checked : CheckState.UnChecked
+        };
+
         ThemeDropDown = new DropDownList<ThemeName>
         {
             Value = ThemeName.DarkPlus,
@@ -191,6 +199,15 @@ public sealed partial class TedApp : Window
                 {
                     CommandView = convertTabsToSpacesCheckBox,
                     HelpText = "Insert spaces when Tab is pressed"
+                },
+                new MenuItem
+                {
+                    Action = () =>
+                    {
+                        Editor.UseThemeBackground = useThemeBackgroundCheckBox.Value == CheckState.Checked;
+                    },
+                    CommandView = useThemeBackgroundCheckBox,
+                    HelpText = "Use theme background for highlighted text"
                 }
             ]),
             new MenuBarItem (Strings.menuHelp,
