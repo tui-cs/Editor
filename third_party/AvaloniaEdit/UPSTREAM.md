@@ -1,6 +1,6 @@
 # AvaloniaEdit Upstream Tracking
 
-`Terminal.Gui.Text` carries a hard fork of [AvaloniaEdit](https://github.com/AvaloniaUI/AvaloniaEdit)'s
+`Terminal.Gui.Editor` carries a hard fork of [AvaloniaEdit](https://github.com/AvaloniaUI/AvaloniaEdit)'s
 pure-data layers. This file pins the upstream commit, lists what was lifted, and records every
 modification we made. Re-syncs are deliberate, manual, and against this log — see
 `specs/00-plan.md` §5 for fork policy.
@@ -13,11 +13,11 @@ modification we made. Re-syncs are deliberate, manual, and against this log — 
 
 ## Lifted folders
 
-| AvaloniaEdit | → | Terminal.Gui.Text |
+| AvaloniaEdit | → | Terminal.Gui.Editor |
 |---|---|---|
-| `src/AvaloniaEdit/Document/` | → | `src/Terminal.Gui.Text/Document/` |
-| `src/AvaloniaEdit/Utils/` (subset) | → | `src/Terminal.Gui.Text/Utils/` |
-| `src/AvaloniaEdit/Search/` (subset) | → | `src/Terminal.Gui.Text/Search/` |
+| `src/AvaloniaEdit/Document/` | → | `src/Terminal.Gui.Editor/Document/` |
+| `src/AvaloniaEdit/Utils/` (subset) | → | `src/Terminal.Gui.Editor/Utils/` |
+| `src/AvaloniaEdit/Search/` (subset) | → | `src/Terminal.Gui.Editor/Search/` |
 
 ## Skipped from `Document/`
 
@@ -47,11 +47,11 @@ Each lifted file carries `// Adapted for Terminal.Gui from AvaloniaEdit d7a6b63`
 
 | File | Modification |
 |---|---|
-| All `Document/*.cs`, `Utils/*.cs`, `Search/*.cs` | `namespace AvaloniaEdit.Document` → `namespace Terminal.Gui.Text.Document`; `namespace AvaloniaEdit.Utils` → `namespace Terminal.Gui.Text.Utils`; `namespace AvaloniaEdit.Search` → `namespace Terminal.Gui.Text.Search`; `using AvaloniaEdit.Document` / `using AvaloniaEdit.Utils` rewritten to match. |
+| All `Document/*.cs`, `Utils/*.cs`, `Search/*.cs` | `namespace AvaloniaEdit.Document` → `namespace Terminal.Gui.Editor.Document`; `namespace AvaloniaEdit.Utils` → `namespace Terminal.Gui.Editor.Utils`; `namespace AvaloniaEdit.Search` → `namespace Terminal.Gui.Editor.Search`; `using AvaloniaEdit.Document` / `using AvaloniaEdit.Utils` rewritten to match. |
 | `Document/DocumentLineTree.cs` | Stripped `using Avalonia.Threading;` and the five `Dispatcher.UIThread.VerifyAccess()` call sites (commented out with rationale). The document is no longer thread-affined — that's a UI concern, owned by `Terminal.Gui.Editor`. |
 | `Document/TextSegmentCollection.cs` | Same `Avalonia.Threading` strip + one `VerifyAccess()` site stripped. |
 | `Search/ISearchStrategy.cs` | Namespace transform only. No Avalonia references upstream. |
-| `Search/RegexSearchStrategy.cs` | Namespace transform; `using AvaloniaEdit.Document` → `using Terminal.Gui.Text.Document`. No Avalonia references upstream. Contains both `RegexSearchStrategy` and `SearchResult` (kept as a single file matching upstream layout). Added `#nullable disable` directive after the "Adapted for" line — upstream predates nullable reference types (`IEquatable<T>.Equals` override, `SearchResult.Data` auto-property, and `FindAll().FirstOrDefault()` all trip CS warnings under nullable enable; suppressing per-file matches the fork policy of "minimal targeted edits to lifted source"). **Correctness deviation**: `Equals(ISearchStrategy)` now includes `_matchWholeWords` in the comparison. Upstream omits it, so two strategies that differ only by whole-word matching compare equal — breaks consumer caching/dedup. Surfaced in Copilot review of PR #76. **Perf deviation** (gui-cs/Text#82): `FindAll` now drives the regex engine via `Regex.Match(text, startat)` + `NextMatch()` from `offset` instead of `_searchPattern.Matches(text)` over the whole document followed by post-filtering. Upstream re-scans the prefix `[0, offset)` on every call — wasted work for incremental advancing search (one FindNext per F3 keystroke). The .NET regex engine preserves `RegexOptions.Multiline` `^` / `$` semantics across `startat` (anchoring at the start position only when it is 0 or follows a newline). Worth mirroring upstream at AvaloniaEdit. |
+| `Search/RegexSearchStrategy.cs` | Namespace transform; `using AvaloniaEdit.Document` → `using Terminal.Gui.Editor.Document`. No Avalonia references upstream. Contains both `RegexSearchStrategy` and `SearchResult` (kept as a single file matching upstream layout). Added `#nullable disable` directive after the "Adapted for" line — upstream predates nullable reference types (`IEquatable<T>.Equals` override, `SearchResult.Data` auto-property, and `FindAll().FirstOrDefault()` all trip CS warnings under nullable enable; suppressing per-file matches the fork policy of "minimal targeted edits to lifted source"). **Correctness deviation**: `Equals(ISearchStrategy)` now includes `_matchWholeWords` in the comparison. Upstream omits it, so two strategies that differ only by whole-word matching compare equal — breaks consumer caching/dedup. Surfaced in Copilot review of PR #76. **Perf deviation** (gui-cs/Text#82): `FindAll` now drives the regex engine via `Regex.Match(text, startat)` + `NextMatch()` from `offset` instead of `_searchPattern.Matches(text)` over the whole document followed by post-filtering. Upstream re-scans the prefix `[0, offset)` on every call — wasted work for incremental advancing search (one FindNext per F3 keystroke). The .NET regex engine preserves `RegexOptions.Multiline` `^` / `$` semantics across `startat` (anchoring at the start position only when it is 0 or follows a newline). Worth mirroring upstream at AvaloniaEdit. |
 | `Search/SearchStrategyFactory.cs` | Namespace transform only. No Avalonia references upstream. Required to construct `RegexSearchStrategy` (which is `internal` upstream and remains so here). **Correctness deviation**: `Create` now rejects empty patterns with `ArgumentException`. Upstream accepts them, compiling to a regex that matches at every position (`TextLength+1` zero-length results) — a DoS hazard in `FindAll` / `ReplaceAll`. Whitespace patterns remain legitimate (they match literal whitespace in Normal mode and the space character in Regex mode). Surfaced in Copilot review of PR #76. |
 
 ## New supporting files
@@ -63,7 +63,7 @@ Each lifted file carries `// Adapted for Terminal.Gui from AvaloniaEdit d7a6b63`
 To pull a newer AvaloniaEdit revision:
 
 1. Update the pinned commit in this file.
-2. For each file in the table above, diff `<new commit>:src/AvaloniaEdit/<path>` against the lifted copy in `src/Terminal.Gui.Text/<path>`.
+2. For each file in the table above, diff `<new commit>:src/AvaloniaEdit/<path>` against the lifted copy in `src/Terminal.Gui.Editor/<path>`.
 3. Apply upstream changes, re-asserting the namespace transforms and Avalonia strips listed in **Modifications**.
-4. Re-run `tests/Terminal.Gui.Text.Tests` to catch regressions.
+4. Re-run `tests/Terminal.Gui.Editor.Tests` to catch regressions.
 5. Update the **Modifications** table if the strip/transform set changed.

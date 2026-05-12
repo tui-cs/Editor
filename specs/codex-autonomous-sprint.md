@@ -31,8 +31,8 @@ Codex should:
 ```
                  Mac mini / operator host
 
-      $HOME/s/Terminal.Gui.Text/operator/  # normal human clone
-      $HOME/s/Terminal.Gui.Text/codex/     # Codex autonomous clone
+      $HOME/s/Terminal.Gui.Editor/operator/  # normal human clone
+      $HOME/s/Terminal.Gui.Editor/codex/     # Codex autonomous clone
 
                          pushes branches
                               |

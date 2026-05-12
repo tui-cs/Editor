@@ -1,0 +1,5 @@
+# Lifted xUnit-converted tests from AvaloniaEdit. Same fork-policy rationale as the production
+# folder — see src/Terminal.Gui.Editor/Document/.editorconfig.
+[*.cs]
+generated_code = true
+dotnet_analyzer_diagnostic.severity = none

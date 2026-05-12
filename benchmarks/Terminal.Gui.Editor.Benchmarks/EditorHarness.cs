@@ -2,7 +2,7 @@ using Terminal.Gui.App;
 using Terminal.Gui.Drawing;
 using Terminal.Gui.Drivers;
 using Terminal.Gui.Testing;
-using Terminal.Gui.Text.Document;
+using Terminal.Gui.Editor.Document;
 using Terminal.Gui.ViewBase;
 using Terminal.Gui.Views;
 

@@ -1,7 +1,7 @@
 using System.Drawing;
 using Terminal.Gui.Drawing;
 using Terminal.Gui.Drivers;
-using Terminal.Gui.Text.Document;
+using Terminal.Gui.Editor.Document;
 using Terminal.Gui.ViewBase;
 using Terminal.Gui.Views.Rendering;
 using Attribute = Terminal.Gui.Drawing.Attribute;

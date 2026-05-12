@@ -1,4 +1,4 @@
-using Terminal.Gui.Text.Document;
+using Terminal.Gui.Editor.Document;
 using Terminal.Gui.Views.Rendering;
 
 namespace Terminal.Gui.Views;

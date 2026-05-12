@@ -27,7 +27,7 @@ if (-not $changed) { exit 0 }
 
 # dotnet format (whitespace + style + analyzers) on the whole solution. Single pass is faster
 # than per-file invocations because the workspace loads once.
-& dotnet format Terminal.Gui.Text.slnx --no-restore --exclude third_party/ *> $null
+& dotnet format Terminal.Gui.Editor.slnx --no-restore --exclude third_party/ *> $null
 
 # ReSharper code cleanup. Uses the built-in profile name because jb cleanupcode does not
 # always discover custom profile names from team-shared .DotSettings files reliably; the
@@ -36,7 +36,7 @@ if (-not $changed) { exit 0 }
 # --include narrows the work to changed files.
 $includes = ($changed | ForEach-Object { "--include=$_" }) -join ' '
 if ($includes) {
-    & dotnet jb cleanupcode Terminal.Gui.Text.slnx --profile="TG.Text Full Cleanup" $includes.Split(' ') --no-build *> $null
+    & dotnet jb cleanupcode Terminal.Gui.Editor.slnx --profile="TG.Text Full Cleanup" $includes.Split(' ') --no-build *> $null
 }
 
 # Surface the net effect so the agent sees its own drift.

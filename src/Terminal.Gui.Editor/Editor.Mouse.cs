@@ -1,6 +1,6 @@
 using System.Drawing;
 using Terminal.Gui.Input;
-using Terminal.Gui.Text.Document;
+using Terminal.Gui.Editor.Document;
 
 namespace Terminal.Gui.Views;
 

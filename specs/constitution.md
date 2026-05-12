@@ -8,11 +8,11 @@ This constitution governs all contributions to `gui-cs/Text`. It is the highest-
 
 ## I. Purpose & Scope
 
-`Terminal.Gui.Text` — UI-framework-independent document model lifted from AvaloniaEdit. **Must not reference Terminal.Gui.**
+`Terminal.Gui.Editor` — UI-framework-independent document model lifted from AvaloniaEdit. **Must not reference Terminal.Gui.**
 
-`Terminal.Gui.Editor` — `Editor : View` consuming `Terminal.Gui.Text`, rendering on a cell grid. References `Terminal.Gui` (version pinned via `$(TerminalGuiVersion)` in `Directory.Build.props`).
+`Terminal.Gui.Editor` — `Editor : View` consuming `Terminal.Gui.Editor`, rendering on a cell grid. References `Terminal.Gui` (version pinned via `$(TerminalGuiVersion)` in `Directory.Build.props`).
 
-The boundary matters: anything that depends on `Terminal.Gui` types belongs in `Terminal.Gui.Editor`, never in `Terminal.Gui.Text`.
+The boundary matters: anything that depends on `Terminal.Gui` types belongs in `Terminal.Gui.Editor`, never in `Terminal.Gui.Editor`.
 
 `Editor` is **not** a replacement for `TextView`. Both ship side-by-side. No source-compat obligation.
 
@@ -124,7 +124,7 @@ Terminal.Gui exposes paired events (`Accepting`/`Accepted`, etc.). Use the `-ed`
 
 ## V. AvaloniaEdit Fork Policy
 
-Code is lifted from AvaloniaEdit into `src/Terminal.Gui.Text/` subfolders. The pinned upstream commit and per-file modification log live in `third_party/AvaloniaEdit/UPSTREAM.md`.
+Code is lifted from AvaloniaEdit into `src/Terminal.Gui.Editor/` subfolders. The pinned upstream commit and per-file modification log live in `third_party/AvaloniaEdit/UPSTREAM.md`.
 
 For lifted files:
 
@@ -141,7 +141,7 @@ Three test projects mirroring Terminal.Gui's convention:
 
 | Project | Parallel | Purpose | Coverage Target |
 |---------|----------|---------|-----------------|
-| `Terminal.Gui.Text.Tests` | ✅ | Pure, no UI, no static state | ≥ 90% |
+| `Terminal.Gui.Editor.Tests` | ✅ | Pure, no UI, no static state | ≥ 90% |
 | `Terminal.Gui.Editor.Tests` | ✅ | Visual-line builder, wrap, caret/selection, commands | ≥ 75% |
 | `Terminal.Gui.Editor.IntegrationTests` | ✅ | Full key-input → render via `AppFixture<T>` (per-test `IApplication.Create()`) | Informational |
 

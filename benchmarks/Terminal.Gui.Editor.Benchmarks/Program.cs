@@ -1,8 +1,8 @@
 using System.Diagnostics;
 using BenchmarkDotNet.Running;
 using Terminal.Gui.Editor.Benchmarks;
-using Terminal.Gui.Text.Document;
-using Terminal.Gui.Text.Search;
+using Terminal.Gui.Editor.Document;
+using Terminal.Gui.Editor.Search;
 
 if (args.Length > 0 && args[0] == "--quick-find")
 {

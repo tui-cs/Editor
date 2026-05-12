@@ -68,8 +68,8 @@ if ! command -v codex >/dev/null 2>&1; then
   npm install -g @openai/codex
 fi
 
-echo "==> $HOME/s/Terminal.Gui.Text/ directory (where the Codex clone lands)"
-mkdir -p "$HOME/s/Terminal.Gui.Text"
+echo "==> $HOME/s/Terminal.Gui.Editor/ directory (where the Codex clone lands)"
+mkdir -p "$HOME/s/Terminal.Gui.Editor"
 
 echo
 echo "Host setup complete. Versions:"

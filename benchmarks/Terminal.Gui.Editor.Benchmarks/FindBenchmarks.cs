@@ -1,6 +1,6 @@
 using BenchmarkDotNet.Attributes;
-using Terminal.Gui.Text.Document;
-using Terminal.Gui.Text.Search;
+using Terminal.Gui.Editor.Document;
+using Terminal.Gui.Editor.Search;
 
 namespace Terminal.Gui.Editor.Benchmarks;
 
