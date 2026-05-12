@@ -17,10 +17,19 @@ modification we made. Re-syncs are deliberate, manual, and against this log — 
 |---|---|---|
 | `src/AvaloniaEdit/Document/` | → | `src/Terminal.Gui.Text/Document/` |
 | `src/AvaloniaEdit/Utils/` (subset) | → | `src/Terminal.Gui.Text/Utils/` |
+| `src/AvaloniaEdit/Search/` (subset) | → | `src/Terminal.Gui.Text/Search/` |
 
 ## Skipped from `Document/`
 
 - `DataObjectCopyingEventArgs.cs` — Avalonia clipboard interop. The Editor View will plug Terminal.Gui clipboard semantics in directly; we don't need this surface in the document layer.
+
+## Skipped from `Search/`
+
+`src/AvaloniaEdit/Search/` contains both the pure search engine and the Avalonia UI panel. Only the engine is lifted:
+
+- `SearchCommands.cs` — Avalonia routed commands. Replaced by Terminal.Gui key bindings in `Terminal.Gui.Editor`.
+- `SearchPanel.cs` / `SearchPanel.xaml` — Avalonia `TemplatedControl`. Replaced by `ted`'s `FindReplaceDialog`.
+- `SearchResultBackgroundRenderer.cs` — Avalonia `IBackgroundRenderer`. Will be reimplemented atop Terminal.Gui.Editor's `IBackgroundRenderer` pipeline as part of find-and-replace.
 
 ## Skipped from `Utils/`
 
@@ -38,9 +47,12 @@ Each lifted file carries `// Adapted for Terminal.Gui from AvaloniaEdit d7a6b63`
 
 | File | Modification |
 |---|---|
-| All `Document/*.cs`, `Utils/*.cs` | `namespace AvaloniaEdit.Document` → `namespace Terminal.Gui.Text.Document`; `namespace AvaloniaEdit.Utils` → `namespace Terminal.Gui.Text.Utils`; `using AvaloniaEdit.Document` / `using AvaloniaEdit.Utils` rewritten to match. |
+| All `Document/*.cs`, `Utils/*.cs`, `Search/*.cs` | `namespace AvaloniaEdit.Document` → `namespace Terminal.Gui.Text.Document`; `namespace AvaloniaEdit.Utils` → `namespace Terminal.Gui.Text.Utils`; `namespace AvaloniaEdit.Search` → `namespace Terminal.Gui.Text.Search`; `using AvaloniaEdit.Document` / `using AvaloniaEdit.Utils` rewritten to match. |
 | `Document/DocumentLineTree.cs` | Stripped `using Avalonia.Threading;` and the five `Dispatcher.UIThread.VerifyAccess()` call sites (commented out with rationale). The document is no longer thread-affined — that's a UI concern, owned by `Terminal.Gui.Editor`. |
 | `Document/TextSegmentCollection.cs` | Same `Avalonia.Threading` strip + one `VerifyAccess()` site stripped. |
+| `Search/ISearchStrategy.cs` | Namespace transform only. No Avalonia references upstream. |
+| `Search/RegexSearchStrategy.cs` | Namespace transform; `using AvaloniaEdit.Document` → `using Terminal.Gui.Text.Document`. No Avalonia references upstream. Contains both `RegexSearchStrategy` and `SearchResult` (kept as a single file matching upstream layout). Added `#nullable disable` directive after the "Adapted for" line — upstream predates nullable reference types (`IEquatable<T>.Equals` override, `SearchResult.Data` auto-property, and `FindAll().FirstOrDefault()` all trip CS warnings under nullable enable; suppressing per-file matches the fork policy of "minimal targeted edits to lifted source"). |
+| `Search/SearchStrategyFactory.cs` | Namespace transform only. No Avalonia references upstream. Required to construct `RegexSearchStrategy` (which is `internal` upstream and remains so here). |
 
 ## New supporting files
 
