@@ -237,4 +237,45 @@ public class EditorFindReplaceTests
         Assert.Equal (3, n);
         Assert.Equal ("a->1 b->2 c->3", editor.Document!.Text);
     }
+
+    [Fact]
+    public void FindPrevious_Selects_InProgress_Match_When_Caret_Is_Inside ()
+    {
+        // Caret at offset 9 is inside the second "foo" (offsets 8..10).
+        // FindPrevious should select [8, 11) — the in-progress match.
+        Views.Editor editor = new () { Document = new TextDocument ("foo bar foo") };
+        editor.CaretOffset = 9;
+
+        Assert.True (editor.FindPrevious ("foo"));
+
+        Assert.Equal (8, editor.SelectionStart);
+        Assert.Equal (11, editor.SelectionEnd);
+    }
+
+    [Fact]
+    public void FindPrevious_Twice_From_InProgress_Moves_To_Prior_Hit ()
+    {
+        // First call lands on the in-progress match, second call lands on the earlier match.
+        Views.Editor editor = new () { Document = new TextDocument ("foo bar foo") };
+        editor.CaretOffset = 9;
+
+        Assert.True (editor.FindPrevious ("foo"));
+        Assert.Equal (8, editor.SelectionStart);
+        Assert.Equal (11, editor.SelectionEnd);
+
+        // After first FindPrevious, selection is [8,11), so SelectionStart=8.
+        // Second call should find the match before offset 8 → offset 0.
+        Assert.True (editor.FindPrevious ("foo"));
+        Assert.Equal (0, editor.SelectionStart);
+        Assert.Equal (3, editor.SelectionEnd);
+    }
+
+    [Fact]
+    public void FindPrevious_WrapAround_False_Returns_False_When_No_Match_Before_Caret ()
+    {
+        Views.Editor editor = new () { Document = new TextDocument ("foo bar foo") };
+        editor.CaretOffset = 0;
+
+        Assert.False (editor.FindPrevious ("foo", false, false));
+    }
 }
