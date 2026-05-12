@@ -16,7 +16,7 @@ using IApplication app = Application.Create ();
 app.Init ();
 
 var readOnly = args.Any (static arg => arg is "--read-only" or "-r");
-string? requestedPath = args.FirstOrDefault (static arg => arg is not ("--read-only" or "-r"));
+var requestedPath = args.FirstOrDefault (static arg => arg is not ("--read-only" or "-r"));
 
 using TedApp ted = new (readOnly);
 

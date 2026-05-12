@@ -1,9 +1,9 @@
 using Terminal.Gui.App;
 using Terminal.Gui.Configuration;
+using Terminal.Gui.Document;
 using Terminal.Gui.Drawing;
 using Terminal.Gui.Input;
 using Terminal.Gui.Resources;
-using Terminal.Gui.Document;
 using Terminal.Gui.ViewBase;
 using Terminal.Gui.Views;
 using TextMateSharp.Grammars;
@@ -18,7 +18,6 @@ namespace Ted;
 public sealed partial class TedApp : Window
 {
     private readonly Shortcut _fileNameShortcut;
-    private readonly Shortcut _locShortcut;
 
     /// <summary>Initializes a new <see cref="TedApp" />.</summary>
     public TedApp (bool readOnly = false)
@@ -151,7 +150,7 @@ public sealed partial class TedApp : Window
                 new Shortcut
                     { Text = "Indent", CommandView = IndentationSizeUpDown, MouseHighlightStates = MouseState.None },
                 new Shortcut { CommandView = ShowTabsCheckBox },
-                _locShortcut = new Shortcut (Key.Empty, FormatLoc (1, 1), null)
+                LocShortcut = new Shortcut (Key.Empty, FormatLoc (1, 1), null)
                     { MouseHighlightStates = MouseState.None }
             ])
             {
@@ -248,7 +247,7 @@ public sealed partial class TedApp : Window
     ///     1-based. Updated whenever <see cref="Editor.CaretChanged" /> fires (user-driven movement
     ///     and document edits that shift the caret).
     /// </summary>
-    public Shortcut LocShortcut => _locShortcut;
+    public Shortcut LocShortcut { get; }
 
     /// <summary>
     ///     Resolves the key shortcut for <paramref name="command" /> by asking the <see cref="Editor" />'s
@@ -263,7 +262,7 @@ public sealed partial class TedApp : Window
     private void ShowAboutDialog ()
     {
         Dialog dialog = new ()
-        { Title = "About ted", Buttons = [new Button { Title = Strings.btnOk, IsDefault = true }] };
+            { Title = "About ted", Buttons = [new Button { Title = Strings.btnOk, IsDefault = true }] };
 
         dialog.Border.Settings &= ~BorderSettings.Title;
 
@@ -317,15 +316,15 @@ public sealed partial class TedApp : Window
 
         if (document is null)
         {
-            _locShortcut.Title = FormatLoc (1, 1);
+            LocShortcut.Title = FormatLoc (1, 1);
         }
         else
         {
             DocumentLine line = document.GetLineByOffset (Editor.CaretOffset);
-            _locShortcut.Title = FormatLoc (line.LineNumber, Editor.CaretOffset - line.Offset + 1);
+            LocShortcut.Title = FormatLoc (line.LineNumber, Editor.CaretOffset - line.Offset + 1);
         }
 
-        _locShortcut.SetNeedsDraw ();
+        LocShortcut.SetNeedsDraw ();
     }
 
     private static string FormatLoc (int line, int column)

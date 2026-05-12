@@ -1,7 +1,7 @@
 using System.ComponentModel;
 using System.Drawing;
-using Terminal.Gui.Drawing;
 using Terminal.Gui.Document;
+using Terminal.Gui.Drawing;
 using Terminal.Gui.ViewBase;
 using Terminal.Gui.Views.Rendering;
 using Attribute = Terminal.Gui.Drawing.Attribute;
@@ -34,18 +34,18 @@ public partial class Editor : View
     private readonly Dictionary<int, DrawCacheEntry> _drawVisualLineCache = [];
     private readonly VisualLineBuilder _visualLineBuilder = new ();
 
+    private TextAnchor? _caretAnchor;
+    private TextDocument? _document;
+    private Gutter? _gutter;
+    private int _lastKnownCaretOffset;
+
     // Incremental max-width tracking: avoids the O(N) all-lines walk that UpdateContentSize
     // used to do on every edit. _maxVisualWidth is the widest visual line seen; _maxWidthLineNumber
     // tracks which line holds it so we can detect when that line is edited. _maxWidthDirty forces
     // a full recompute (e.g. on Document swap or IndentationSize change).
     private int _maxVisualWidth;
-    private int _maxWidthLineNumber;
     private bool _maxWidthDirty = true;
-
-    private TextAnchor? _caretAnchor;
-    private TextDocument? _document;
-    private Gutter? _gutter;
-    private int _lastKnownCaretOffset;
+    private int _maxWidthLineNumber;
     private bool _showLineNumbers;
     private ISyntaxHighlighter? _syntaxHighlighter;
 
@@ -520,7 +520,8 @@ public partial class Editor : View
         RekeyCache (_defaultVisualLineCache, threshold, lineDelta, removedNewlines);
         RekeyCache (_drawVisualLineCache, threshold, lineDelta, removedNewlines);
 
-        static void RekeyCache<TValue> (Dictionary<int, TValue> cache, int threshold, int lineDelta, int removedNewlines)
+        static void RekeyCache<TValue> (Dictionary<int, TValue> cache, int threshold, int lineDelta,
+            int removedNewlines)
         {
             if (cache.Count == 0)
             {
@@ -735,8 +736,6 @@ public partial class Editor : View
         return segments is null && selStart >= selEnd && LineTransformers.Count == 0;
     }
 
-    private readonly record struct DrawCacheEntry (CellVisualLine Line, Attribute Normal, Attribute Selected);
-
     private CellVisualLine BuildVisualLine (
         DocumentLine line,
         IReadOnlyList<StyledSegment>? styledSegments = null,
@@ -797,4 +796,6 @@ public partial class Editor : View
             Viewport = viewport with { X = newX, Y = newY };
         }
     }
+
+    private readonly record struct DrawCacheEntry (CellVisualLine Line, Attribute Normal, Attribute Selected);
 }
