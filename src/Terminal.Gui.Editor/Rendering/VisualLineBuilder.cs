@@ -157,8 +157,15 @@ public sealed class VisualLineBuilder
             return context.NormalAttribute;
         }
 
-        return context.StyledSegments[Math.Min (segmentIndex, context.StyledSegments.Count - 1)].Attribute
-               ?? context.NormalAttribute;
+        Attribute segAttr = context.StyledSegments[Math.Min (segmentIndex, context.StyledSegments.Count - 1)].Attribute
+                            ?? context.NormalAttribute;
+
+        if (context.UseThemeBackground)
+        {
+            return new Attribute (segAttr.Foreground, context.NormalAttribute.Background);
+        }
+
+        return segAttr;
     }
 
     private static int GetSegmentEnd (IReadOnlyList<StyledSegment>? segments, int segmentIndex)

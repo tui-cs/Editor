@@ -14,7 +14,8 @@ public sealed class VisualLineBuildContext (
     IReadOnlyList<StyledSegment>? styledSegments,
     int selectionStart,
     int selectionEnd,
-    IEnumerable<IVisualLineTransformer> lineTransformers)
+    IEnumerable<IVisualLineTransformer> lineTransformers,
+    bool useThemeBackground = true)
 {
     public TextDocument Document { get; } = document;
 
@@ -33,6 +34,12 @@ public sealed class VisualLineBuildContext (
     public int SelectionEnd { get; } = selectionEnd;
 
     public IEnumerable<IVisualLineTransformer> LineTransformers { get; } = lineTransformers;
+
+    /// <summary>
+    ///     When <see langword="true" />, styled-segment backgrounds are replaced with
+    ///     <see cref="NormalAttribute" />'s background so text blends into the theme.
+    /// </summary>
+    public bool UseThemeBackground { get; } = useThemeBackground;
 
     public bool HasSelection => SelectionStart < SelectionEnd;
 }
