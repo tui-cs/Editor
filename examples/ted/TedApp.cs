@@ -162,7 +162,7 @@ public sealed partial class TedApp : Window
                 return;
             }
 
-            editorContextMenu.MakeVisible (mouse.ScreenPosition, null);
+            editorContextMenu.MakeVisible (mouse.ScreenPosition);
             mouse.Handled = true;
         };
 

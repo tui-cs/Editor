@@ -172,13 +172,21 @@ public sealed partial class TedApp
 
     private void New ()
     {
-        // TODO: if unsaved changes, confirm with user before clearing
+        if (!ConfirmSaveChanges ())
+        {
+            return;
+        }
+
         NewFile ();
     }
 
     private void Open ()
     {
-        // TODO: if unsaved changes, confirm with user before clearing
+        if (!ConfirmSaveChanges ())
+        {
+            return;
+        }
+
         OpenFile ();
     }
 
