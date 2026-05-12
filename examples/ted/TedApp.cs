@@ -293,8 +293,8 @@ public sealed partial class TedApp : Window
 
         Link link = new ()
         {
-            Text = "https://github.com/gui-cs/Text",
-            Url = "https://github.com/gui-cs/Text",
+            Text = "https://github.com/gui-cs/Editor",
+            Url = "https://github.com/gui-cs/Editor",
             X = Pos.Center (),
             Y = Pos.Bottom (version) + 1
         };

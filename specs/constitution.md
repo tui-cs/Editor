@@ -1,8 +1,8 @@
-# gui-cs/Text Constitution
+# gui-cs/Editor Constitution
 
 **Version**: 1.0 | **Ratified**: 2026-05-10 | **Last Amended**: 2026-05-10
 
-This constitution governs all contributions to `gui-cs/Text`. It is the highest-authority document in the repository — PRs that violate it are rejected with a link to the specific rule.
+This constitution governs all contributions to `gui-cs/Editor`. It is the highest-authority document in the repository — PRs that violate it are rejected with a link to the specific rule.
 
 ---
 

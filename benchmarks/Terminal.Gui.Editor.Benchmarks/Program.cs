@@ -56,7 +56,7 @@ static void QuickFindBench ()
 
 static void QuickIncrementalFindBench ()
 {
-    // Demonstrates the gui-cs/Text#82 fix: FindNext advancing through a document one match at
+    // Demonstrates the gui-cs/Editor#82 fix: FindNext advancing through a document one match at
     // a time should not re-scan the prefix [0, offset) on every call. Compares the new path
     // (RegexSearchStrategy.FindAll using Regex.Match(text, startat)) against an inlined
     // simulation of the old upstream behavior (Regex.Matches(text) from index 0, post-filtered

@@ -39,7 +39,7 @@ namespace Terminal.Gui.Text.Search
 
 		public IEnumerable<ISearchResult> FindAll(ITextSource document, int offset, int length)
 		{
-			// Terminal.Gui deviation from AvaloniaEdit d7a6b63 (gui-cs/Text#82): use Regex.Match(text, startat)
+			// Terminal.Gui deviation from AvaloniaEdit d7a6b63 (gui-cs/Editor#82): use Regex.Match(text, startat)
 			// to begin scanning at `offset` instead of `_searchPattern.Matches(text)` which always starts at
 			// index 0 and then post-filters. For repeated FindNext at increasing offsets (e.g. F3 advancing
 			// through a document) this eliminates O(offset) wasted regex work per call. The .NET Regex engine
