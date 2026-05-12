@@ -7,7 +7,7 @@
 
 ## Overview
 
-Bring `IIndentationStrategy` and `DefaultIndentationStrategy` from AvaloniaEdit into `src/Terminal.Gui.Text/Indentation/`. This establishes the pluggable indentation abstraction that the Editor (auto-indent) will consume for auto-indent on Enter and Tab behavior.
+Bring `IIndentationStrategy` and `DefaultIndentationStrategy` from AvaloniaEdit into `src/Terminal.Gui.Editor/Indentation/`. This establishes the pluggable indentation abstraction that the Editor (auto-indent) will consume for auto-indent on Enter and Tab behavior.
 
 The lift is minimal — no Avalonia GUI dependencies are expected.
 
@@ -36,13 +36,13 @@ The lift is minimal — no Avalonia GUI dependencies are expected.
 
 ## Files in Scope
 
-- `src/Terminal.Gui.Text/Indentation/*.cs`
+- `src/Terminal.Gui.Editor/Indentation/*.cs`
 - `third_party/AvaloniaEdit/UPSTREAM.md` (append rows)
 
 ## Definition of Done
 
 - [ ] All indentation types compile and are in `Terminal.Gui.Text.Indentation` namespace
-- [ ] Tests in `tests/Terminal.Gui.Text.Tests/Indentation/` pass — `IndentLine` copies leading whitespace from previous line; no-op on first line; respects mixed tabs+spaces
+- [ ] Tests in `tests/Terminal.Gui.Editor.Tests/Indentation/` pass — `IndentLine` copies leading whitespace from previous line; no-op on first line; respects mixed tabs+spaces
 - [ ] `UPSTREAM.md` updated with per-file modification log
 - [ ] No Avalonia residue
 

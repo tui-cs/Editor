@@ -1,4 +1,4 @@
-using Terminal.Gui.Text.Search;
+using Terminal.Gui.Document.Search;
 using Terminal.Gui.ViewBase;
 using Terminal.Gui.Views;
 
@@ -7,12 +7,12 @@ namespace Ted;
 internal sealed class FindReplaceDialog : Dialog
 {
     private readonly TextField _findTextField;
+    private readonly CheckBox _matchCaseCheckBox;
+    private readonly CheckBox _regexCheckBox;
     private readonly TextField _replaceFindTextField;
     private readonly TextField _replaceWithTextField;
-    private readonly CheckBox _matchCaseCheckBox;
-    private readonly CheckBox _wholeWordCheckBox;
-    private readonly CheckBox _regexCheckBox;
     private readonly Label _statusLabel;
+    private readonly CheckBox _wholeWordCheckBox;
 
     public FindReplaceDialog (Editor editor, bool selectReplaceTab)
     {
@@ -68,13 +68,13 @@ internal sealed class FindReplaceDialog : Dialog
         Button findPreviousButton = new () { X = Pos.Right (findNextButton) + 1, Y = 3, Text = "Find _Previous" };
 
         tab.Add (
-                 new Label { X = 1, Y = 1, Text = "_Find:" },
-                 _findTextField,
-                 findNextButton,
-                 findPreviousButton);
+            new Label { X = 1, Y = 1, Text = "_Find:" },
+            _findTextField,
+            findNextButton,
+            findPreviousButton);
 
-        findNextButton.Accepted += (_, _) => RunFind (editor, _findTextField.Text, forward: true);
-        findPreviousButton.Accepted += (_, _) => RunFind (editor, _findTextField.Text, forward: false);
+        findNextButton.Accepted += (_, _) => RunFind (editor, _findTextField.Text, true);
+        findPreviousButton.Accepted += (_, _) => RunFind (editor, _findTextField.Text, false);
 
         return tab;
     }
@@ -84,16 +84,16 @@ internal sealed class FindReplaceDialog : Dialog
         View tab = new () { Title = "_Replace" };
 
         tab.Add (
-                 new Label { X = 1, Y = 1, Text = "_Find:" },
-                 _replaceFindTextField,
-                 new Label { X = 1, Y = 3, Text = "_Replace:" },
-                 _replaceWithTextField);
+            new Label { X = 1, Y = 1, Text = "_Find:" },
+            _replaceFindTextField,
+            new Label { X = 1, Y = 3, Text = "_Replace:" },
+            _replaceWithTextField);
 
         Button findNextButton = new () { X = 1, Y = 5, Text = "Find _Next" };
         Button replaceButton = new () { X = Pos.Right (findNextButton) + 1, Y = 5, Text = "_Replace" };
         Button replaceAllButton = new () { X = Pos.Right (replaceButton) + 1, Y = 5, Text = "Replace _All" };
 
-        findNextButton.Accepted += (_, _) => RunFind (editor, _replaceFindTextField.Text, forward: true);
+        findNextButton.Accepted += (_, _) => RunFind (editor, _replaceFindTextField.Text, true);
         replaceButton.Accepted += (_, _) => RunReplaceNext (editor);
         replaceAllButton.Accepted += (_, _) => RunReplaceAll (editor);
 
@@ -109,7 +109,7 @@ internal sealed class FindReplaceDialog : Dialog
             return;
         }
 
-        bool found = forward ? editor.FindNext () : editor.FindPrevious ();
+        var found = forward ? editor.FindNext () : editor.FindPrevious ();
         _statusLabel.Text = found ? string.Empty : $"No match for \"{searchText}\".";
     }
 
@@ -120,7 +120,7 @@ internal sealed class FindReplaceDialog : Dialog
             return;
         }
 
-        bool replaced = editor.ReplaceNext (_replaceWithTextField.Text);
+        var replaced = editor.ReplaceNext (_replaceWithTextField.Text);
         _statusLabel.Text = replaced ? string.Empty : $"No match for \"{_replaceFindTextField.Text}\".";
     }
 
@@ -131,8 +131,10 @@ internal sealed class FindReplaceDialog : Dialog
             return;
         }
 
-        int count = editor.ReplaceAll (_replaceWithTextField.Text);
-        _statusLabel.Text = count == 0 ? $"No match for \"{_replaceFindTextField.Text}\"." : $"Replaced {count} occurrence{(count == 1 ? "" : "s")}.";
+        var count = editor.ReplaceAll (_replaceWithTextField.Text);
+        _statusLabel.Text = count == 0
+            ? $"No match for \"{_replaceFindTextField.Text}\"."
+            : $"Replaced {count} occurrence{(count == 1 ? "" : "s")}.";
     }
 
     /// <summary>
@@ -150,8 +152,8 @@ internal sealed class FindReplaceDialog : Dialog
         }
 
         SearchMode mode = _regexCheckBox.Value == CheckState.Checked ? SearchMode.RegEx : SearchMode.Normal;
-        bool ignoreCase = _matchCaseCheckBox.Value != CheckState.Checked;
-        bool wholeWord = _wholeWordCheckBox.Value == CheckState.Checked;
+        var ignoreCase = _matchCaseCheckBox.Value != CheckState.Checked;
+        var wholeWord = _wholeWordCheckBox.Value == CheckState.Checked;
 
         try
         {

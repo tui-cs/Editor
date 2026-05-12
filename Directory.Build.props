@@ -21,8 +21,8 @@
         - workflow_dispatch      → input.version (verbatim)
     -->
     <Version>2.1.1-develop</Version>
-    <PackageProjectUrl>https://github.com/gui-cs/Text</PackageProjectUrl>
-    <RepositoryUrl>https://github.com/gui-cs/Text</RepositoryUrl>
+    <PackageProjectUrl>https://github.com/gui-cs/Editor</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/gui-cs/Editor</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
 

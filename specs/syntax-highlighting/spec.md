@@ -7,7 +7,7 @@
 
 ## Overview
 
-Bring the AvaloniaEdit highlighting engine into `src/Terminal.Gui.Text/Highlighting/`: `HighlightingManager`, `IHighlighter`, `HighlightingColor`, the xshd loader, and `DocumentHighlighter`. This gives the document model a complete syntax-highlighting tokenizer that is UI-framework-independent, producing color/style annotations that the Editor's rendering pipeline (syntax-colorizer) can consume.
+Bring the AvaloniaEdit highlighting engine into `src/Terminal.Gui.Editor/Highlighting/`: `HighlightingManager`, `IHighlighter`, `HighlightingColor`, the xshd loader, and `DocumentHighlighter`. This gives the document model a complete syntax-highlighting tokenizer that is UI-framework-independent, producing color/style annotations that the Editor's rendering pipeline (syntax-colorizer) can consume.
 
 Key adaptation: AvaloniaEdit's `IBrush` / `Avalonia.Media.Color` is replaced with `Terminal.Gui.Color`. Typeface and font-size fields are dropped from `HighlightingColor` (irrelevant in a cell-grid TUI). Bold, italic, and underline are mapped to `TextStyle.Bold | TextStyle.Italic | TextStyle.Underline`. The xshd loader's `Bold`/`Italic`/`Underline` attributes map to the corresponding `TextStyle` flags.
 
@@ -44,16 +44,16 @@ Key adaptation: AvaloniaEdit's `IBrush` / `Avalonia.Media.Color` is replaced wit
 
 ## Files in Scope
 
-- `src/Terminal.Gui.Text/Highlighting/**/*.cs`
+- `src/Terminal.Gui.Editor/Highlighting/**/*.cs`
 - Bundled `.xshd` resource files
 - `third_party/AvaloniaEdit/UPSTREAM.md` (append rows)
 
 ## Definition of Done
 
 - [ ] All highlighting types compile and are in `Terminal.Gui.Text.Highlighting` namespace
-- [ ] Tests in `tests/Terminal.Gui.Text.Tests/Highlighting/` pass — load a known xshd (e.g. C#), tokenize a sample, expected ranges + colors; round-trip color → `Terminal.Gui.Color` is lossless
+- [ ] Tests in `tests/Terminal.Gui.Editor.Tests/Highlighting/` pass — load a known xshd (e.g. C#), tokenize a sample, expected ranges + colors; round-trip color → `Terminal.Gui.Color` is lossless
 - [ ] `UPSTREAM.md` updated with per-file modification log
-- [ ] No Avalonia residue (`grep -r "using Avalonia" src/Terminal.Gui.Text/Highlighting/` returns nothing)
+- [ ] No Avalonia residue (`grep -r "using Avalonia" src/Terminal.Gui.Editor/Highlighting/` returns nothing)
 
 ## Out of Scope
 

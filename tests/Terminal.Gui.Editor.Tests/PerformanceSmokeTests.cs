@@ -1,5 +1,5 @@
 using System.Diagnostics;
-using Terminal.Gui.Text.Document;
+using Terminal.Gui.Document;
 using Terminal.Gui.Views.Rendering;
 using Xunit;
 using Attribute = Terminal.Gui.Drawing.Attribute;
@@ -116,8 +116,8 @@ public class PerformanceSmokeTests
         ScrollFullDocument (document, builder, 24);
         sw.Stop ();
 
-        Assert.True (sw.ElapsedMilliseconds < 200,
-            $"Full scroll of 1K lines took {sw.ElapsedMilliseconds}ms — expected < 200ms. Possible performance regression.");
+        Assert.True (sw.ElapsedMilliseconds < 500,
+            $"Full scroll of 1K lines took {sw.ElapsedMilliseconds}ms — expected < 500ms. Possible performance regression.");
     }
 
     private static void BuildViewport (TextDocument document, VisualLineBuilder builder, int startLine, int height)

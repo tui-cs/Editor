@@ -1,15 +1,22 @@
 using System.Drawing;
+using Terminal.Gui.Document;
 using Terminal.Gui.Drawing;
 using Terminal.Gui.Drivers;
-using Terminal.Gui.Text.Document;
 using Terminal.Gui.ViewBase;
 using Terminal.Gui.Views.Rendering;
 using Attribute = Terminal.Gui.Drawing.Attribute;
+using Color = Terminal.Gui.Drawing.Color;
 
 namespace Terminal.Gui.Views;
 
 public partial class Editor
 {
+    private ISyntaxHighlighter? _highlighterPreparedInstance;
+
+    // Syntax highlighter state optimization: tracks how far we've prepared so incremental
+    // scrolling doesn't re-highlight from line 0 every frame.
+    private int _highlighterPreparedUpToLine = -1;
+
     /// <inheritdoc />
     protected override bool OnDrawingContent (DrawContext? context)
     {
@@ -43,7 +50,7 @@ public partial class Editor
         }
 
 #pragma warning disable CS0618 // Type or member is obsolete
-        Terminal.Gui.Drawing.Color? themeBg = SyntaxHighlighter?.DefaultBackground;
+        Color? themeBg = SyntaxHighlighter?.DefaultBackground;
 #pragma warning restore CS0618 // Type or member is obsolete
 
         if (themeBg is not { } bg)
@@ -98,11 +105,6 @@ public partial class Editor
         }
     }
 
-    // Syntax highlighter state optimization: tracks how far we've prepared so incremental
-    // scrolling doesn't re-highlight from line 0 every frame.
-    private int _highlighterPreparedUpToLine = -1;
-    private ISyntaxHighlighter? _highlighterPreparedInstance;
-
     private void PrepareSyntaxHighlighter (ISyntaxHighlighter? syntaxHighlighter, int firstVisibleLineIndex)
     {
         if (syntaxHighlighter is null || _document is null)
@@ -120,7 +122,9 @@ public partial class Editor
         }
 
         // Incrementally highlight from where we left off to the first visible line.
-        for (var lineIndex = _highlighterPreparedUpToLine; lineIndex < firstVisibleLineIndex && lineIndex < _document.LineCount; lineIndex++)
+        for (var lineIndex = _highlighterPreparedUpToLine;
+             lineIndex < firstVisibleLineIndex && lineIndex < _document.LineCount;
+             lineIndex++)
         {
             DocumentLine line = _document.GetLineByNumber (lineIndex + 1);
 #pragma warning disable CS0618 // Type or member is obsolete — see note in OnDrawingContent.

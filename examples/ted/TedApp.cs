@@ -1,9 +1,9 @@
 using Terminal.Gui.App;
 using Terminal.Gui.Configuration;
+using Terminal.Gui.Document;
 using Terminal.Gui.Drawing;
 using Terminal.Gui.Input;
 using Terminal.Gui.Resources;
-using Terminal.Gui.Text.Document;
 using Terminal.Gui.ViewBase;
 using Terminal.Gui.Views;
 using TextMateSharp.Grammars;
@@ -18,7 +18,6 @@ namespace Ted;
 public sealed partial class TedApp : Window
 {
     private readonly Shortcut _fileNameShortcut;
-    private readonly Shortcut _locShortcut;
 
     /// <summary>Initializes a new <see cref="TedApp" />.</summary>
     public TedApp (bool readOnly = false)
@@ -151,7 +150,7 @@ public sealed partial class TedApp : Window
                 new Shortcut
                     { Text = "Indent", CommandView = IndentationSizeUpDown, MouseHighlightStates = MouseState.None },
                 new Shortcut { CommandView = ShowTabsCheckBox },
-                _locShortcut = new Shortcut (Key.Empty, FormatLoc (1, 1), null)
+                LocShortcut = new Shortcut (Key.Empty, FormatLoc (1, 1), null)
                     { MouseHighlightStates = MouseState.None }
             ])
             {
@@ -248,7 +247,7 @@ public sealed partial class TedApp : Window
     ///     1-based. Updated whenever <see cref="Editor.CaretChanged" /> fires (user-driven movement
     ///     and document edits that shift the caret).
     /// </summary>
-    public Shortcut LocShortcut => _locShortcut;
+    public Shortcut LocShortcut { get; }
 
     /// <summary>
     ///     Resolves the key shortcut for <paramref name="command" /> by asking the <see cref="Editor" />'s
@@ -267,11 +266,11 @@ public sealed partial class TedApp : Window
 
         dialog.Border.Settings &= ~BorderSettings.Title;
 
-        Version? tguiVersion = typeof (Application).Assembly.GetName ().Version;
+        Version? tgVersion = typeof (Application).Assembly.GetName ().Version;
 
         Label tagline = new ()
         {
-            Text = $"A terminal text editor built with Terminal.Gui {tguiVersion}",
+            Text = $"A terminal text editor built with Terminal.Gui {tgVersion}",
             TextAlignment = Alignment.Center,
             X = Pos.Center (),
             Width = Dim.Auto (DimAutoStyle.Text),
@@ -293,8 +292,8 @@ public sealed partial class TedApp : Window
 
         Link link = new ()
         {
-            Text = "https://github.com/gui-cs/Text",
-            Url = "https://github.com/gui-cs/Text",
+            Text = "https://github.com/gui-cs/Editor",
+            Url = "https://github.com/gui-cs/Editor",
             X = Pos.Center (),
             Y = Pos.Bottom (version) + 1
         };
@@ -317,15 +316,15 @@ public sealed partial class TedApp : Window
 
         if (document is null)
         {
-            _locShortcut.Title = FormatLoc (1, 1);
+            LocShortcut.Title = FormatLoc (1, 1);
         }
         else
         {
             DocumentLine line = document.GetLineByOffset (Editor.CaretOffset);
-            _locShortcut.Title = FormatLoc (line.LineNumber, Editor.CaretOffset - line.Offset + 1);
+            LocShortcut.Title = FormatLoc (line.LineNumber, Editor.CaretOffset - line.Offset + 1);
         }
 
-        _locShortcut.SetNeedsDraw ();
+        LocShortcut.SetNeedsDraw ();
     }
 
     private static string FormatLoc (int line, int column)

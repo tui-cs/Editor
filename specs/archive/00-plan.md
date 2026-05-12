@@ -18,8 +18,8 @@ The track-by-track work in §7 and the per-item briefs in §8 are the path to ML
 
 ## 1. Purpose & scope (unchanged)
 
-`Terminal.Gui.Text` — UI-framework-independent document model lifted from AvaloniaEdit. No Terminal.Gui dependency.
-`Terminal.Gui.Editor` — `Editor : View` consuming `Terminal.Gui.Text`, rendering on a cell grid.
+`Terminal.Gui.Editor` — UI-framework-independent document model lifted from AvaloniaEdit. No Terminal.Gui dependency.
+`Terminal.Gui.Editor` — `Editor : View` consuming `Terminal.Gui.Editor`, rendering on a cell grid.
 
 `Editor` is **not** a replacement for `TextView`. Both ship side-by-side. No source-compat obligation.
 
@@ -34,7 +34,7 @@ The track-by-track work in §7 and the per-item briefs in §8 are the path to ML
 
 ### Landed
 
-- **Repo + CI**: solution (`Terminal.Gui.Text.slnx`), two src csprojs, three test csprojs, `examples/ted`, `examples/EditorBenchmarks` placeholder, GitHub Actions for build/test/format/release. net10.0, xUnit.v3 exe-style tests.
+- **Repo + CI**: solution (`Terminal.Gui.Editor.slnx`), two src csprojs, three test csprojs, `examples/ted`, `examples/EditorBenchmarks` placeholder, GitHub Actions for build/test/format/release. net10.0, xUnit.v3 exe-style tests.
 - **AvaloniaEdit fork**: pinned at `d7a6b63`; `Document/` and `Utils/` lifted; `third_party/AvaloniaEdit/UPSTREAM.md` records every modification. Document tests cover rope, anchors, line tracker, undo, segment tree, change tracking.
 - **Editor partials**: `Editor.cs`, `Editor.Commands.cs`, `Editor.Keyboard.cs`, `Editor.Mouse.cs`, `Editor.Drawing.cs`, `Editor.Selection.cs`, `Editor.FindReplace.cs`. Caret, sticky virtual column, vertical/horizontal/page navigation, Home/End, Backspace/Delete, Enter, Ctrl+Z/Y, Ctrl+A, Shift+arrows for selection, drag-to-select, click-to-place, mouse wheel, line numbers, an obsoleted Markdown `ISyntaxHighlighter` stopgap, a partial `Editor.TabWidth` tab-expansion shortcut, **find/next/previous/replace/replace-all** (bespoke `string.IndexOf` over `_document.Text`, not yet on `ISearchStrategy`; no hit highlighting yet; `ReplaceAll` does N separate edits without `OpenUpdateScope`).
 - **ted demo**: file menu (incl. Find / Replace items), `FindReplaceDialog` with find + replace tabs, theme dropdown, tab-width numeric updown, status bar, line-numbers toggle.
@@ -83,14 +83,14 @@ These are the rules new work must meet. A reviewer (or a dispatching agent) shou
   00-plan.md                      # this file (source of truth)
   03-public-api.md                # Editor surface (to be created/extracted)
   05-decisions.md                 # decision log (to be created)
-/src/Terminal.Gui.Text/           # UI-independent document layer
+/src/Terminal.Gui.Editor/           # UI-independent document layer
   Document/  Utils/  Extensions/  Properties/
   (Folding/, Search/, Indentation/, Highlighting/ pending — track A)
 /src/Terminal.Gui.Editor/         # the View
   Editor.cs / .Drawing / .Keyboard / .Mouse / .Selection / .Commands
   (Rendering/ pending — track B)
 /tests/
-  Terminal.Gui.Text.Tests/         (parallel, pure)
+  Terminal.Gui.Editor.Tests/         (parallel, pure)
   Terminal.Gui.Editor.Tests/       (parallel logic)
   Terminal.Gui.Editor.IntegrationTests/  (Application.Init)
 /examples/
@@ -177,38 +177,38 @@ Each item is structured as a sub-agent brief. The dispatching agent should give 
 These four can run as four independent sub-agents. Each is a near-mechanical lift following the `Document/` + `Utils/` precedent already in the repo.
 
 #### A1 — Lift `Folding/`
-- *Goal*: bring `FoldingManager`, `FoldingSection`, `FoldingSectionCollection` into `src/Terminal.Gui.Text/Folding/`.
+- *Goal*: bring `FoldingManager`, `FoldingSection`, `FoldingSectionCollection` into `src/Terminal.Gui.Editor/Folding/`.
 - *Source*: `https://github.com/AvaloniaUI/AvaloniaEdit` at the SHA pinned in `third_party/AvaloniaEdit/UPSTREAM.md`. Limit to `src/AvaloniaEdit/Folding/*.cs` excluding any class that names `Avalonia.Controls`/`Avalonia.Media`.
 - *Edits required*: namespace `AvaloniaEdit.Folding` → `Terminal.Gui.Text.Folding`; strip `using Avalonia.*`; remove `Dispatcher.UIThread.VerifyAccess ()`; replace any Avalonia `IBrush`/`Color` with `Terminal.Gui.Color`.
-- *Files in scope*: `src/Terminal.Gui.Text/Folding/*.cs`; `third_party/AvaloniaEdit/UPSTREAM.md` (append rows).
-- *Tests*: `tests/Terminal.Gui.Text.Tests/Folding/` — port AvaloniaEdit's `FoldingTests` (or write equivalents): create/remove sections, edits inside/across folds keep the section's anchored offsets correct, manager survives whole-document replace.
+- *Files in scope*: `src/Terminal.Gui.Editor/Folding/*.cs`; `third_party/AvaloniaEdit/UPSTREAM.md` (append rows).
+- *Tests*: `tests/Terminal.Gui.Editor.Tests/Folding/` — port AvaloniaEdit's `FoldingTests` (or write equivalents): create/remove sections, edits inside/across folds keep the section's anchored offsets correct, manager survives whole-document replace.
 - *Definition of done*: Folding tests pass; `UPSTREAM.md` updated; no Avalonia residue (grep `using Avalonia`).
 - *Out of scope*: any Editor-side UI (margins, click-to-toggle, marker rendering) — that's §D6.
 - *Depends on*: nothing.
 
 #### A2 — Lift `Search/`
-- *Goal*: bring `ISearchStrategy`, `RegexSearchStrategy`, `SearchResult` into `src/Terminal.Gui.Text/Search/`.
+- *Goal*: bring `ISearchStrategy`, `RegexSearchStrategy`, `SearchResult` into `src/Terminal.Gui.Editor/Search/`.
 - *Edits required*: namespace transform; no Avalonia deps to strip in this folder beyond a pro-forma check.
-- *Files in scope*: `src/Terminal.Gui.Text/Search/*.cs`; `UPSTREAM.md` rows.
-- *Tests*: `tests/Terminal.Gui.Text.Tests/Search/` — case sensitivity, whole-word, regex flags, search across line boundaries, search returns anchored ranges (anchors must survive subsequent edits).
+- *Files in scope*: `src/Terminal.Gui.Editor/Search/*.cs`; `UPSTREAM.md` rows.
+- *Tests*: `tests/Terminal.Gui.Editor.Tests/Search/` — case sensitivity, whole-word, regex flags, search across line boundaries, search returns anchored ranges (anchors must survive subsequent edits).
 - *Definition of done*: tests pass; `UPSTREAM.md` updated.
 - *Out of scope*: find/replace UI, hit-highlight rendering — those are §D4 and §E1.
 - *Depends on*: nothing.
 
 #### A3 — Lift `Indentation/`
-- *Goal*: `IIndentationStrategy`, `DefaultIndentationStrategy` into `src/Terminal.Gui.Text/Indentation/`.
+- *Goal*: `IIndentationStrategy`, `DefaultIndentationStrategy` into `src/Terminal.Gui.Editor/Indentation/`.
 - *Edits required*: namespace transform; no Avalonia deps expected.
-- *Files in scope*: `src/Terminal.Gui.Text/Indentation/*.cs`; `UPSTREAM.md` rows.
-- *Tests*: `tests/Terminal.Gui.Text.Tests/Indentation/` — `IndentLine` copies leading whitespace from the previous line; no-op on first line; respects mixed tabs+spaces.
+- *Files in scope*: `src/Terminal.Gui.Editor/Indentation/*.cs`; `UPSTREAM.md` rows.
+- *Tests*: `tests/Terminal.Gui.Editor.Tests/Indentation/` — `IndentLine` copies leading whitespace from the previous line; no-op on first line; respects mixed tabs+spaces.
 - *Definition of done*: tests pass; `UPSTREAM.md` updated.
 - *Out of scope*: wiring into `Editor` (Tab/Shift+Tab keys, Enter auto-indent) — those are §D1 and §D7.
 - *Depends on*: nothing.
 
 #### A4 — Lift `Highlighting/` (xshd parser + tokenizer model only)
-- *Goal*: `HighlightingManager`, `IHighlighter`, `HighlightingColor`, the xshd loader, `DocumentHighlighter`. Land them in `src/Terminal.Gui.Text/Highlighting/`.
+- *Goal*: `HighlightingManager`, `IHighlighter`, `HighlightingColor`, the xshd loader, `DocumentHighlighter`. Land them in `src/Terminal.Gui.Editor/Highlighting/`.
 - *Edits required*: namespace transform; replace `IBrush`/`Avalonia.Media.Color` with `Terminal.Gui.Color`; **drop typeface/font-size from `HighlightingColor`** (keep bold/italic/underline as TG `TextStyle` flags); strip `using Avalonia.*`. Map xshd's `Bold`/`Italic`/`Underline` to `TextStyle.Bold | TextStyle.Italic | TextStyle.Underline` on a new `TerminalGuiAttribute` projection (or directly on `Terminal.Gui.Drawing.Attribute`).
-- *Files in scope*: `src/Terminal.Gui.Text/Highlighting/**/*.cs`; bundled `.xshd` resources; `UPSTREAM.md` rows.
-- *Tests*: `tests/Terminal.Gui.Text.Tests/Highlighting/` — load a known xshd (e.g. C#), tokenize a sample, expected ranges + colors; round-trip color → `Terminal.Gui.Color` is lossless for the in-tree palettes.
+- *Files in scope*: `src/Terminal.Gui.Editor/Highlighting/**/*.cs`; bundled `.xshd` resources; `UPSTREAM.md` rows.
+- *Tests*: `tests/Terminal.Gui.Editor.Tests/Highlighting/` — load a known xshd (e.g. C#), tokenize a sample, expected ranges + colors; round-trip color → `Terminal.Gui.Color` is lossless for the in-tree palettes.
 - *Definition of done*: tests pass; `UPSTREAM.md` updated; no Avalonia residue.
 - *Out of scope*: the `IVisualLineTransformer` that consumes the highlighter — that's §E1.
 - *Depends on*: nothing (parallel with A1/A2/A3).
@@ -376,7 +376,7 @@ These four can run as four independent sub-agents. Each is a near-mechanical lif
 
 #### F1 — Port `AvaloniaEdit.TextMate`
 - *Goal*: TextMate grammar + `tmTheme` support, mapped to `Terminal.Gui.Color`. Plugs into the same `HighlightingColorizer` seam as E1 (just a different `IHighlighter` implementation).
-- *Files in scope*: new `src/Terminal.Gui.Text/Highlighting/TextMate/*.cs`; tests; `UPSTREAM.md` rows.
+- *Files in scope*: new `src/Terminal.Gui.Editor/Highlighting/TextMate/*.cs`; tests; `UPSTREAM.md` rows.
 - *Tests*: load `csharp.tmLanguage.json`, tokenize a sample, expected scopes → expected colors.
 - *Definition of done*: ted demo can load a `.tmTheme` and use a TextMate grammar.
 - *Depends on*: E1.
@@ -388,11 +388,11 @@ These four can run as four independent sub-agents. Each is a near-mechanical lif
 Each criterion below is testable. The dispatching agent should treat the list as the merge-to-`main` gate.
 
 - [ ] All work-items in tracks A, B, C (C1+C2), D1–D7, E1 merged.
-- [ ] `dotnet build Terminal.Gui.Text.slnx` clean on Linux/macOS/Windows on net10.0.
+- [ ] `dotnet build Terminal.Gui.Editor.slnx` clean on Linux/macOS/Windows on net10.0.
 - [ ] All three test projects pass. Coverage targets: `Text.Tests` ≥ 90%, `Editor.Tests` ≥ 75%, integration informational.
 - [ ] `Editor.OnDrawingContent` does not iterate `text` by `char`. R1, R2, R4, R5 hold.
 - [ ] `Editor.TabWidth`, `Editor.SyntaxHighlighter`, `Editor.SyntaxLanguage` are all gone.
-- [ ] No file under `src/Terminal.Gui.Text/` references `Terminal.Gui` (run `grep -r "using Terminal.Gui" src/Terminal.Gui.Text/` and assert empty).
+- [ ] No file under `src/Terminal.Gui.Editor/` references `Terminal.Gui` (run `grep -r "using Terminal.Gui" src/Terminal.Gui.Editor/` and assert empty).
 - [ ] ted demo exercises: typing, selection (mouse + keyboard), multi-caret, undo/redo, find/replace, folding, word wrap toggle, line numbers, mouse, large-file load (10 MB file < 200 ms initial render — measured by `examples/EditorBenchmarks`).
 - [ ] One `Terminal.Gui.Editor` consumer-facing scenario in Terminal.Gui's UICatalog (PR to that repo).
 - [ ] `specs/03-public-api.md` and `specs/05-decisions.md` are populated; every open decision in §10 below has a resolution entry.
@@ -409,7 +409,7 @@ These are blockers if hit by a work-item. The dispatching agent should pause the
 
 ### Still open
 
-1. **Distribution of `Terminal.Gui.Text` as an independent NuGet from day one** vs. holding until a second consumer materializes.
+1. **Distribution of `Terminal.Gui.Editor` as an independent NuGet from day one** vs. holding until a second consumer materializes.
 2. **Completion item shape.** Reuse Terminal.Gui's `IAutocomplete`-style types vs. a fresh LSP-flavored `IEditorCompletionProvider`.
 3. **Async I/O.** `LoadAsync (Stream)` / `SaveAsync` on `Editor` vs. on the document.
 4. **Read-only ranges.** Lift `TextSegmentReadOnlySectionProvider`, or YAGNI.

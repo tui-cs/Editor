@@ -33,13 +33,13 @@ jobs:
           dotnet-quality: 'preview'
 
       - name: Restore
-        run: dotnet restore Terminal.Gui.Text.slnx
+        run: dotnet restore Terminal.Gui.Editor.slnx
 
       - name: Restore dotnet tools
         run: dotnet tool restore
 
       - name: Build
-        run: dotnet build Terminal.Gui.Text.slnx --no-restore
+        run: dotnet build Terminal.Gui.Editor.slnx --no-restore
 
       # Style gate runs once (Linux). dotnet format catches whitespace/analyzer drift;
       # jb cleanupcode catches what dotnet format misses (var, expression-bodied members,
@@ -47,7 +47,7 @@ jobs:
       - name: Verify code style — dotnet format
         if: matrix.os == 'ubuntu-latest'
         run: |
-          dotnet format Terminal.Gui.Text.slnx --no-restore --exclude third_party/ --verify-no-changes
+          dotnet format Terminal.Gui.Editor.slnx --no-restore --exclude third_party/ --verify-no-changes
 
       - name: Verify code style — ReSharper cleanupcode
         if: matrix.os == 'ubuntu-latest'
@@ -56,18 +56,15 @@ jobs:
           # Previous attempts used "Built-in: Full Cleanup" which worked but didn't pick
           # up our tweaks (CSUseAutoProperty OFF, etc.). The custom-named profile resolves
           # reliably from the .DotSettings file.
-          dotnet jb cleanupcode Terminal.Gui.Text.slnx \
-            --profile="TG.Text Full Cleanup" \
+          dotnet jb cleanupcode Terminal.Gui.Editor.slnx \
+            --profile="TG.Editor Full Cleanup" \
             --no-build \
             --exclude="third_party/**/*" \
             || true
           if ! git diff --exit-code; then
-            echo "::error::ReSharper code cleanup found style drift. Run 'dotnet jb cleanupcode Terminal.Gui.Text.slnx --profile=\"TG.Text Full Cleanup\"' locally and commit the result."
+            echo "::error::ReSharper code cleanup found style drift. Run 'dotnet jb cleanupcode Terminal.Gui.Editor.slnx --profile=\"TG.Editor Full Cleanup\"' locally and commit the result."
             exit 1
           fi
-
-      - name: Terminal.Gui.Text.Tests
-        run: dotnet run --project tests/Terminal.Gui.Text.Tests --no-build
 
       - name: Terminal.Gui.Editor.Tests
         run: dotnet run --project tests/Terminal.Gui.Editor.Tests --no-build

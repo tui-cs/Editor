@@ -69,9 +69,9 @@ public sealed class TedLogo : View
 
                 if (row < 5)
                 {
-                    Point coord = new (col, row);
+                    Point c = new (col, row);
 
-                    if (colorMap.TryGetValue (coord, out Color color))
+                    if (colorMap.TryGetValue (c, out Color color))
                     {
                         SetAttribute (new Attribute (color, normalAttr.Background));
                     }

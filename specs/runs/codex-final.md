@@ -28,14 +28,14 @@
 
 Latest integrated branch validation from the `read-only` branch, which included the prior integrated commits:
 
-- `dotnet build Terminal.Gui.Text.slnx` - passed
-- `dotnet run --project tests/Terminal.Gui.Text.Tests` - 212 passed
+- `dotnet build Terminal.Gui.Editor.slnx` - passed
+- `dotnet run --project tests/Terminal.Gui.Editor.Tests` - 212 passed
 - `dotnet run --project tests/Terminal.Gui.Editor.Tests` - 78 passed
 - `dotnet run --project tests/Terminal.Gui.Editor.IntegrationTests` - 105 passed
-- `dotnet format Terminal.Gui.Text.slnx --exclude third_party/` - passed
-- `dotnet format Terminal.Gui.Text.slnx --verify-no-changes --exclude third_party/` - passed
-- `dotnet jb cleanupcode Terminal.Gui.Text.slnx --profile="Full Cleanup"` - blocked: profile named `Full Cleanup` is not defined in the shared settings
-- `dotnet jb cleanupcode Terminal.Gui.Text.slnx` - reported no items to cleanup; the tool exited 3
+- `dotnet format Terminal.Gui.Editor.slnx --exclude third_party/` - passed
+- `dotnet format Terminal.Gui.Editor.slnx --verify-no-changes --exclude third_party/` - passed
+- `dotnet jb cleanupcode Terminal.Gui.Editor.slnx --profile="Full Cleanup"` - blocked: profile named `Full Cleanup` is not defined in the shared settings
+- `dotnet jb cleanupcode Terminal.Gui.Editor.slnx` - reported no items to cleanup; the tool exited 3
 
 Focused visual-line benchmark check:
 

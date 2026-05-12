@@ -35,7 +35,7 @@ Implemented issue #37 (proper tab handling) as a single PR against `develop`.
 
 ### Test results
 
-- `Terminal.Gui.Text.Tests`: 212 passed, 0 failed
+- `Terminal.Gui.Editor.Tests`: 212 passed, 0 failed
 - `Terminal.Gui.Editor.Tests`: 44 passed, 0 failed
 - `Terminal.Gui.Editor.IntegrationTests`: 81 passed, 0 failed
 - `dotnet format --verify-no-changes`: clean

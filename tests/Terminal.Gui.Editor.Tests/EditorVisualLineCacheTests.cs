@@ -1,9 +1,11 @@
 // Claude - claude-opus-4-7
 
 using System.Reflection;
-using Terminal.Gui.Text.Document;
+using Terminal.Gui.Document;
+using Terminal.Gui.Drawing;
 using Terminal.Gui.Views.Rendering;
 using Xunit;
+using Attribute = Terminal.Gui.Drawing.Attribute;
 
 namespace Terminal.Gui.Editor.Tests;
 
@@ -171,8 +173,8 @@ public class EditorVisualLineCacheTests
             Views.Editor editor = new () { Document = new TextDocument ("alpha") };
             DocumentLine line = editor.Document!.GetLineByNumber (1);
 
-            Terminal.Gui.Drawing.Attribute red = new (Terminal.Gui.Drawing.Color.Red, Terminal.Gui.Drawing.Color.Black);
-            Terminal.Gui.Drawing.Attribute blue = new (Terminal.Gui.Drawing.Color.Blue, Terminal.Gui.Drawing.Color.Black);
+            Attribute red = new (Color.Red, Color.Black);
+            Attribute blue = new (Color.Blue, Color.Black);
 
             CellVisualLine first = InvokeDrawBuild (editor, line, red, red);
             CellVisualLine second = InvokeDrawBuild (editor, line, blue, blue);
@@ -212,8 +214,8 @@ public class EditorVisualLineCacheTests
         private static CellVisualLine InvokeDrawBuild (
             Views.Editor editor,
             DocumentLine line,
-            Terminal.Gui.Drawing.Attribute? normal = null,
-            Terminal.Gui.Drawing.Attribute? selected = null,
+            Attribute? normal = null,
+            Attribute? selected = null,
             int selStart = 0,
             int selEnd = 0)
         {
@@ -223,8 +225,8 @@ public class EditorVisualLineCacheTests
                                         BindingFlags.Instance | BindingFlags.NonPublic)
                                 ?? throw new InvalidOperationException ("GetOrBuildDrawVisualLine missing");
 
-            Terminal.Gui.Drawing.Attribute n = normal ?? Terminal.Gui.Drawing.Attribute.Default;
-            Terminal.Gui.Drawing.Attribute s = selected ?? Terminal.Gui.Drawing.Attribute.Default;
+            Attribute n = normal ?? Attribute.Default;
+            Attribute s = selected ?? Attribute.Default;
 
             return (CellVisualLine)method.Invoke (
                 editor,

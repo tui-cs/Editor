@@ -1,5 +1,5 @@
+using Terminal.Gui.Document;
 using Terminal.Gui.Drawing;
-using Terminal.Gui.Text.Document;
 using Attribute = Terminal.Gui.Drawing.Attribute;
 
 namespace Terminal.Gui.Views.Rendering;

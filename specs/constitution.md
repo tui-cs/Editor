@@ -1,18 +1,18 @@
-# gui-cs/Text Constitution
+# gui-cs/Editor Constitution
 
 **Version**: 1.0 | **Ratified**: 2026-05-10 | **Last Amended**: 2026-05-10
 
-This constitution governs all contributions to `gui-cs/Text`. It is the highest-authority document in the repository — PRs that violate it are rejected with a link to the specific rule.
+This constitution governs all contributions to `gui-cs/Editor`. It is the highest-authority document in the repository — PRs that violate it are rejected with a link to the specific rule.
 
 ---
 
 ## I. Purpose & Scope
 
-`Terminal.Gui.Text` — UI-framework-independent document model lifted from AvaloniaEdit. **Must not reference Terminal.Gui.**
+`Terminal.Gui.Editor` — UI-framework-independent document model lifted from AvaloniaEdit. **Must not reference Terminal.Gui.**
 
-`Terminal.Gui.Editor` — `Editor : View` consuming `Terminal.Gui.Text`, rendering on a cell grid. References `Terminal.Gui` (version pinned via `$(TerminalGuiVersion)` in `Directory.Build.props`).
+`Terminal.Gui.Editor` — `Editor : View` consuming `Terminal.Gui.Editor`, rendering on a cell grid. References `Terminal.Gui` (version pinned via `$(TerminalGuiVersion)` in `Directory.Build.props`).
 
-The boundary matters: anything that depends on `Terminal.Gui` types belongs in `Terminal.Gui.Editor`, never in `Terminal.Gui.Text`.
+The boundary matters: anything that depends on `Terminal.Gui` types belongs in `Terminal.Gui.Editor`, never in `Terminal.Gui.Editor`.
 
 `Editor` is **not** a replacement for `TextView`. Both ship side-by-side. No source-compat obligation.
 
@@ -49,7 +49,7 @@ Developers — AI agents and humans — working on this project strive to raise 
 
 ### Delightful Customer Experience
 
-`TG.Text` serves four customers, listed in the order in which tradeoffs are made:
+`TG.Editor` serves four customers, listed in the order in which tradeoffs are made:
 
 1. End customers using `TG.Edit` to edit files in their terminals.
 2. Human developers building TG apps.
@@ -58,7 +58,7 @@ Developers — AI agents and humans — working on this project strive to raise 
 
 ### This Is TG
 
-`TG.Text` is an extension of TG, not independent of it. We follow the tenets of TG (see the TG deep dives), and we do not hack around TG limitations. We work to engineer correct fixes.
+`TG.Editor` is an extension of TG, not independent of it. We follow the tenets of TG (see the TG deep dives), and we do not hack around TG limitations. We work to engineer correct fixes.
 
 Short-term workarounds are allowed when they are the right product tradeoff, but if we use one, we also file a great TG issue that includes clear repros or unit tests that would fail.
 
@@ -124,7 +124,7 @@ Terminal.Gui exposes paired events (`Accepting`/`Accepted`, etc.). Use the `-ed`
 
 ## V. AvaloniaEdit Fork Policy
 
-Code is lifted from AvaloniaEdit into `src/Terminal.Gui.Text/` subfolders. The pinned upstream commit and per-file modification log live in `third_party/AvaloniaEdit/UPSTREAM.md`.
+Code is lifted from AvaloniaEdit into `src/Terminal.Gui.Editor/` subfolders. The pinned upstream commit and per-file modification log live in `third_party/AvaloniaEdit/UPSTREAM.md`.
 
 For lifted files:
 
@@ -141,7 +141,7 @@ Three test projects mirroring Terminal.Gui's convention:
 
 | Project | Parallel | Purpose | Coverage Target |
 |---------|----------|---------|-----------------|
-| `Terminal.Gui.Text.Tests` | ✅ | Pure, no UI, no static state | ≥ 90% |
+| `Terminal.Gui.Editor.Tests` | ✅ | Pure, no UI, no static state | ≥ 90% |
 | `Terminal.Gui.Editor.Tests` | ✅ | Visual-line builder, wrap, caret/selection, commands | ≥ 75% |
 | `Terminal.Gui.Editor.IntegrationTests` | ✅ | Full key-input → render via `AppFixture<T>` (per-test `IApplication.Create()`) | Informational |
 

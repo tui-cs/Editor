@@ -1,4 +1,4 @@
-# gui-cs/Text — MLP Plan
+# gui-cs/Editor — MLP Plan
 
 **Updated**: 2026-05-10 | **Target**: Alpha (MLP — Minimum Lovable Product)
 
@@ -6,7 +6,7 @@
 
 ## MLP Definition
 
-The alpha release of `gui-cs/Text` ships when `Editor` reaches MLP:
+The alpha release of `gui-cs/Editor` ships when `Editor` reaches MLP:
 
 - **Most of what people expect from a TUI code editor is in place and works.** Typing, selection, multi-caret, find/replace, syntax highlighting, folding, soft wrap, line numbers, indentation, clipboard, mouse, undo with sane granularity, large-file responsiveness.
 - **`examples/ted` is a TUI editor someone would actually want to use.** Open, edit, save, close. Find. Replace. Toggle wrap. Pick a theme.
@@ -18,7 +18,7 @@ The textmate-grammars feature ships in the release **after** alpha.
 
 ### Done
 
-- **Repo + CI**: solution (`Terminal.Gui.Text.slnx`), two src csprojs, three test csprojs, `examples/ted`, `examples/EditorBenchmarks` placeholder, GitHub Actions. net10.0, xUnit.v3 exe-style tests.
+- **Repo + CI**: solution (`Terminal.Gui.Editor.slnx`), two src csprojs, three test csprojs, `examples/ted`, `examples/EditorBenchmarks` placeholder, GitHub Actions. net10.0, xUnit.v3 exe-style tests.
 - **AvaloniaEdit fork**: pinned at `d7a6b63`; `Document/` and `Utils/` lifted; `UPSTREAM.md` tracks modifications.
 - **Editor partials**: `Editor.cs`, `Editor.Commands.cs`, `Editor.Keyboard.cs`, `Editor.Mouse.cs`, `Editor.Drawing.cs`, `Editor.Selection.cs`, `Editor.FindReplace.cs`. Caret, sticky virtual column, navigation, editing, undo/redo, selection, mouse, line numbers, find/replace (bespoke, pre-`ISearchStrategy`).
 - **rendering-pipeline — Rendering pipeline** ✅: `VisualLineBuilder` → `CellVisualLine` → `CellVisualLineElement` (`TextRunElement`, `TabElement`). `IVisualLineTransformer`, `IBackgroundRenderer` interfaces. Grapheme-aware via `GraphemeHelper`. `Editor.LineTransformers` and `BackgroundRenderers` exposed. (Codex branch, merged with tweaks.)
@@ -30,7 +30,7 @@ The textmate-grammars feature ships in the release **after** alpha.
 
 ### Remaining (per-feature specs in `specs/<name>/spec.md`)
 
-**Composition rule** (constitution R9): every feature listed here is end-to-end — `Terminal.Gui.Text` model layer + `Terminal.Gui.Editor` consumer + `examples/ted` UI wiring, in a single PR. AvaloniaEdit lifts and pure-plumbing sub-features (the old `search`, `indentation`, `folding`, `syntax-highlighting` rows) are subsumed into the feature that ships them to the user. Lift-only PRs are not accepted.
+**Composition rule** (constitution R9): every feature listed here is end-to-end — `Terminal.Gui.Editor` model layer + `Terminal.Gui.Editor` consumer + `examples/ted` UI wiring, in a single PR. AvaloniaEdit lifts and pure-plumbing sub-features (the old `search`, `indentation`, `folding`, `syntax-highlighting` rows) are subsumed into the feature that ships them to the user. Lift-only PRs are not accepted.
 
 | Feature | Status | Bundles | Notes |
 |---------|--------|---------|-------|
@@ -56,14 +56,14 @@ specs/                              # spec-kit structure
   <name>/spec.md                    # per-feature specifications
   runs/                            # experiment run data
   archive/                         # superseded docs
-src/Terminal.Gui.Text/             # UI-independent document layer
+src/Terminal.Gui.Editor/             # UI-independent document layer
   Document/  Utils/  Extensions/  Properties/
   (Folding/, Search/, Indentation/, Highlighting/ pending)
 src/Terminal.Gui.Editor/           # the View
   Editor.cs / .Drawing / .Keyboard / .Mouse / .Selection / .Commands
   Rendering/                       # rendering pipeline types
 tests/
-  Terminal.Gui.Text.Tests/         (parallel, pure)
+  Terminal.Gui.Editor.Tests/         (parallel, pure)
   Terminal.Gui.Editor.Tests/       (parallel, logic)
   Terminal.Gui.Editor.IntegrationTests/  (parallel, per-test IApplication.Create())
 examples/
@@ -103,11 +103,11 @@ All of these are end-to-end (model + Editor + ted) and can be picked up immediat
 Each criterion is testable. This is the merge-to-`main` gate.
 
 - [ ] All features merged: drawing-overhaul, caret-anchors, read-only, find-and-replace, auto-indent, folding-ui, syntax-colorizer, word-wrap, multi-caret, clipboard.
-- [ ] `dotnet build Terminal.Gui.Text.slnx` clean on Linux/macOS/Windows on net10.0.
+- [ ] `dotnet build Terminal.Gui.Editor.slnx` clean on Linux/macOS/Windows on net10.0.
 - [ ] All three test projects pass. Coverage: `Text.Tests` ≥ 90%, `Editor.Tests` ≥ 75%.
 - [ ] `Editor.OnDrawingContent` does not iterate `text` by `char`. R1, R2, R4, R5 hold.
 - [ ] `Editor.TabWidth`, `Editor.SyntaxHighlighter`, `Editor.SyntaxLanguage` all removed.
-- [ ] No file under `src/Terminal.Gui.Text/` references `Terminal.Gui`.
+- [ ] No file under `src/Terminal.Gui.Editor/` references `Terminal.Gui`.
 - [ ] ted exercises: typing, selection, multi-caret, undo/redo, find/replace, folding, word wrap, line numbers, mouse, large-file (10 MB < 200 ms initial render).
 - [ ] `specs/public-api.md` and `specs/decisions.md` populated; every open decision resolved.
 - [ ] README documents MIT licensing, AvaloniaEdit attribution, targets, install, usage example.

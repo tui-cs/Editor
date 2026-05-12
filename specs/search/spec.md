@@ -7,7 +7,7 @@
 
 ## Overview
 
-Bring `ISearchStrategy`, `RegexSearchStrategy`, and `SearchResult` from AvaloniaEdit into `src/Terminal.Gui.Text/Search/`. This provides a clean, testable search abstraction that the Editor's find/replace feature (find-and-replace) will consume instead of the current bespoke `string.IndexOf` approach.
+Bring `ISearchStrategy`, `RegexSearchStrategy`, and `SearchResult` from AvaloniaEdit into `src/Terminal.Gui.Editor/Search/`. This provides a clean, testable search abstraction that the Editor's find/replace feature (find-and-replace) will consume instead of the current bespoke `string.IndexOf` approach.
 
 The lift is straightforward — no Avalonia GUI dependencies are expected beyond a pro-forma check.
 
@@ -40,7 +40,7 @@ The lift is straightforward — no Avalonia GUI dependencies are expected beyond
 ## Requirements
 
 - **FR-001**: Lift `ISearchStrategy`, `RegexSearchStrategy`, `SearchResult` from AvaloniaEdit.
-- **FR-002**: Transform namespace to `Terminal.Gui.Text.Search`.
+- **FR-002**: Transform namespace to `Terminal.Gui.Document.Search`.
 - **FR-003**: Strip any `using Avalonia.*` directives (pro-forma check).
 - **FR-004**: Preserve original formatting and copyright headers per fork policy.
 - **FR-005**: Add `// Adapted for Terminal.Gui from AvaloniaEdit <commit-sha>` header line.
@@ -48,13 +48,13 @@ The lift is straightforward — no Avalonia GUI dependencies are expected beyond
 
 ## Files in Scope
 
-- `src/Terminal.Gui.Text/Search/*.cs`
+- `src/Terminal.Gui.Editor/Search/*.cs`
 - `third_party/AvaloniaEdit/UPSTREAM.md` (append rows)
 
 ## Definition of Done
 
-- [ ] All search types compile and are in `Terminal.Gui.Text.Search` namespace
-- [ ] Tests in `tests/Terminal.Gui.Text.Tests/Search/` pass — case sensitivity, whole-word, regex flags, search across line boundaries, search returns anchored ranges
+- [ ] All search types compile and are in `Terminal.Gui.Document.Search` namespace
+- [ ] Tests in `tests/Terminal.Gui.Editor.Tests/Search/` pass — case sensitivity, whole-word, regex flags, search across line boundaries, search returns anchored ranges
 - [ ] `UPSTREAM.md` updated with per-file modification log
 - [ ] No Avalonia residue
 

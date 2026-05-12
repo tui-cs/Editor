@@ -1,5 +1,4 @@
-using Terminal.Gui.Text.Document;
-using Terminal.Gui.Text.Search;
+using Terminal.Gui.Document.Search;
 
 namespace Terminal.Gui.Views;
 
@@ -89,8 +88,8 @@ public partial class Editor
         // We search the entire document and take the last match starting before caretOrSelStart
         // so that matches extending past the caret (i.e. the caret is inside a match) are included.
         ISearchResult? match = SearchStrategy.FindAll (_document, 0, _document.TextLength)
-                                             .TakeWhile (r => r.Offset < caretOrSelStart)
-                                             .LastOrDefault ();
+            .TakeWhile (r => r.Offset < caretOrSelStart)
+            .LastOrDefault ();
 
         if (match is null && wrapAround)
         {

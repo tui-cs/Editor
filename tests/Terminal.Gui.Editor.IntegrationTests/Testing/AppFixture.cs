@@ -16,7 +16,7 @@ namespace Terminal.Gui.Editor.IntegrationTests.Testing;
 /// <remarks>
 ///     <para>
 ///         Modeled loosely on Terminal.Gui's <c>AppTestHelper</c> but slimmer and only what the
-///         gui-cs/Text integration tests need today. Uses <c>app.Begin</c> (non-blocking) instead of
+///         gui-cs/Editor integration tests need today. Uses <c>app.Begin</c> (non-blocking) instead of
 ///         <c>app.Run</c> (blocks) so each test can inject + assert + dispose deterministically
 ///         without a worker thread.
 ///     </para>

@@ -10,7 +10,7 @@ All scripts are bash, target macOS (the Mac mini host), and are idempotent where
 # Day -1, on the Mac mini, ONCE per host:
 ./scripts/setup-host.sh
 
-# Day -1, creates $HOME/s/Terminal.Gui.Text/codex:
+# Day -1, creates $HOME/s/Terminal.Gui.Editor/codex:
 ./scripts/setup-agent-clone.sh codex
 
 # Optional: create one tracking issue for the Codex run:
@@ -31,9 +31,9 @@ Codex integrates completed work into `experiment/codex/develop`. Use that branch
 ## What each script assumes
 
 - `bash 4+` and `gh` on `$PATH`.
-- The operator (you) is logged into `gh` with admin on `gui-cs/Text` so the issue creator and label-creator can run.
+- The operator (you) is logged into `gh` with admin on `gui-cs/Editor` so the issue creator and label-creator can run.
 - `codex` is installed and logged in. `setup-host.sh` installs it, but `codex login` is interactive and stays manual.
-- `gh auth status` in `$HOME/s/Terminal.Gui.Text/codex` shows an identity that can push branches and open PRs.
+- `gh auth status` in `$HOME/s/Terminal.Gui.Editor/codex` shows an identity that can push branches and open PRs.
 
 ## What each script will NOT do
 

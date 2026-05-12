@@ -1,6 +1,6 @@
 name: Release
 
-# Publishes Terminal.Gui.Text and Terminal.Gui.Editor to NuGet.
+# Publishes Terminal.Gui.Editor to NuGet.
 #
 # Triggers:
 #   1. Push of a `v*` tag (canonical release path, e.g. v2.1.0)
@@ -90,13 +90,10 @@ jobs:
           dotnet-quality: 'preview'
 
       - name: Restore
-        run: dotnet restore Terminal.Gui.Text.slnx
+        run: dotnet restore Terminal.Gui.Editor.slnx
 
       - name: Build
-        run: dotnet build Terminal.Gui.Text.slnx --no-restore -c Release -p:Version=${{ env.VERSION }}
-
-      - name: Terminal.Gui.Text.Tests
-        run: dotnet run --project tests/Terminal.Gui.Text.Tests --no-build -c Release
+        run: dotnet build Terminal.Gui.Editor.slnx --no-restore -c Release -p:Version=${{ env.VERSION }}
 
       - name: Terminal.Gui.Editor.Tests
         run: dotnet run --project tests/Terminal.Gui.Editor.Tests --no-build -c Release
@@ -117,9 +114,6 @@ jobs:
         with:
           dotnet-version: '10.0.x'
           dotnet-quality: 'preview'
-
-      - name: Pack Terminal.Gui.Text
-        run: dotnet pack src/Terminal.Gui.Text -c Release -p:Version=${{ env.VERSION }} -o packages/
 
       - name: Pack Terminal.Gui.Editor
         run: dotnet pack src/Terminal.Gui.Editor -c Release -p:Version=${{ env.VERSION }} -o packages/

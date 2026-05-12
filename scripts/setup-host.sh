@@ -54,7 +54,7 @@ if ! command -v dotnet >/dev/null 2>&1 || ! dotnet --list-sdks | grep -q '^10\.'
   if ! grep -q 'DOTNET_ROOT' "$HOME/.zshrc" 2>/dev/null; then
     {
       echo ''
-      echo '# .NET 10 preview (added by gui-cs/Text scripts/setup-host.sh)'
+      echo '# .NET 10 preview (added by gui-cs/Editor scripts/setup-host.sh)'
       echo 'export DOTNET_ROOT="$HOME/.dotnet"'
       echo 'export PATH="$DOTNET_ROOT:$PATH"'
     } >> "$HOME/.zshrc"
@@ -68,8 +68,8 @@ if ! command -v codex >/dev/null 2>&1; then
   npm install -g @openai/codex
 fi
 
-echo "==> $HOME/s/Terminal.Gui.Text/ directory (where the Codex clone lands)"
-mkdir -p "$HOME/s/Terminal.Gui.Text"
+echo "==> $HOME/s/Terminal.Gui.Editor/ directory (where the Codex clone lands)"
+mkdir -p "$HOME/s/Terminal.Gui.Editor"
 
 echo
 echo "Host setup complete. Versions:"

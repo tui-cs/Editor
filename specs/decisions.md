@@ -48,9 +48,9 @@ Decisions are recorded here when an open question from the plan is resolved. Eac
 
 ## Open
 
-### OPEN-001: Independent `Terminal.Gui.Text` NuGet from day one
+### OPEN-001: Independent `Terminal.Gui.Editor` NuGet from day one
 
-**Question**: Distribute `Terminal.Gui.Text` as an independent NuGet package from day one, or hold until a second consumer materializes?
+**Question**: Distribute `Terminal.Gui.Editor` as an independent NuGet package from day one, or hold until a second consumer materializes?
 
 **Affected features**: All — packaging decision.
 
