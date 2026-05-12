@@ -36,7 +36,7 @@ if (-not $changed) { exit 0 }
 # --include narrows the work to changed files.
 $includes = ($changed | ForEach-Object { "--include=$_" }) -join ' '
 if ($includes) {
-    & dotnet jb cleanupcode Terminal.Gui.Editor.slnx --profile="TG.Text Full Cleanup" $includes.Split(' ') --no-build *> $null
+    & dotnet jb cleanupcode Terminal.Gui.Editor.slnx --profile="TG.Editor Full Cleanup" $includes.Split(' ') --no-build *> $null
 }
 
 # Surface the net effect so the agent sees its own drift.

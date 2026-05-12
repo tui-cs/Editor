@@ -61,7 +61,7 @@ csharp_space_between_square_brackets = false
 # discoverability, but don't block the build. Enforcement happens in two other places:
 #
 #   1. `dotnet format Terminal.Gui.Editor.slnx --verify-no-changes` in CI, and
-#   2. `dotnet jb cleanupcode Terminal.Gui.Editor.slnx --profile="TG.Text Full Cleanup"` in CI
+#   2. `dotnet jb cleanupcode Terminal.Gui.Editor.slnx --profile="TG.Editor Full Cleanup"` in CI
 #      (and the Stop hook in .claude/settings.json before each agent turn ends).
 #
 # Both tools auto-fix what they can and surface a clean diff. The `:warning` posture

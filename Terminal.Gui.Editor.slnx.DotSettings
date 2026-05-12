@@ -1,6 +1,6 @@
 ﻿<wpf:ResourceDictionary xml:space="preserve" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:s="clr-namespace:System;assembly=mscorlib" xmlns:ss="urn:shemas-jetbrains-com:settings-storage-xaml" xmlns:wpf="http://schemas.microsoft.com/winfx/2006/xaml/presentation">
   <!--
-    Team-shared ReSharper / Rider settings for gui-cs/Text.
+    Team-shared ReSharper / Rider settings for gui-cs/Editor.
     Committed alongside .editorconfig. Edit in Rider via "Settings | Editor | Code Style"
     and "Settings | Editor | Code Cleanup", then "Save to: This Solution Team-Shared".
 
@@ -13,7 +13,7 @@
   -->
 
   <!-- =============================================================== -->
-  <!-- Cleanup profile: "TG.Text Full Cleanup"                          -->
+  <!-- Cleanup profile: "TG.Editor Full Cleanup"                          -->
   <!-- Used by `jb cleanupcode`, the Claude Code Stop hook, and CI.     -->
   <!--                                                                   -->
   <!-- This is a copy of the built-in "Full Cleanup" with our tweaks    -->
@@ -21,37 +21,37 @@
   <!-- `jb cleanupcode --profile="Full Cleanup"` fails to resolve the   -->
   <!-- built-in name when it's overridden in team-shared settings.      -->
   <!-- =============================================================== -->
-  <s:String x:Key="/Default/CodeStyle/CodeCleanup/RecentlyUsedProfile/@EntryValue">TG.Text Full Cleanup</s:String>
-  <s:String x:Key="/Default/CodeStyle/CodeCleanup/SilentCleanupProfile/@EntryValue">TG.Text Full Cleanup</s:String>
+  <s:String x:Key="/Default/CodeStyle/CodeCleanup/RecentlyUsedProfile/@EntryValue">TG.Editor Full Cleanup</s:String>
+  <s:String x:Key="/Default/CodeStyle/CodeCleanup/SilentCleanupProfile/@EntryValue">TG.Editor Full Cleanup</s:String>
 
-  <s:Boolean x:Key="/Default/CodeStyle/CodeCleanup/Profiles/=TG_002EText_0020Full_0020Cleanup/@EntryIndexedValue">True</s:Boolean>
-  <s:String x:Key="/Default/CodeStyle/CodeCleanup/Profiles/=TG_002EText_0020Full_0020Cleanup/Description/@EntryValue">gui-cs/Text house cleanup. Keep aligned with CLAUDE.md.</s:String>
-  <s:String x:Key="/Default/CodeStyle/CodeCleanup/Profiles/=TG_002EText_0020Full_0020Cleanup/Name/@EntryValue">TG.Text Full Cleanup</s:String>
+  <s:Boolean x:Key="/Default/CodeStyle/CodeCleanup/Profiles/=TG_002EEditor_0020Full_0020Cleanup/@EntryIndexedValue">True</s:Boolean>
+  <s:String x:Key="/Default/CodeStyle/CodeCleanup/Profiles/=TG_002EEditor_0020Full_0020Cleanup/Description/@EntryValue">gui-cs/Editor house cleanup. Keep aligned with CLAUDE.md.</s:String>
+  <s:String x:Key="/Default/CodeStyle/CodeCleanup/Profiles/=TG_002EEditor_0020Full_0020Cleanup/Name/@EntryValue">TG.Editor Full Cleanup</s:String>
 
-  <s:Boolean x:Key="/Default/CodeStyle/CodeCleanup/Profiles/=TG_002EText_0020Full_0020Cleanup/CSArrangeAccessorOwnerBody/@EntryIndexedValue">True</s:Boolean>
-  <s:Boolean x:Key="/Default/CodeStyle/CodeCleanup/Profiles/=TG_002EText_0020Full_0020Cleanup/CSArrangeArgumentsStyle/@EntryIndexedValue">True</s:Boolean>
-  <s:Boolean x:Key="/Default/CodeStyle/CodeCleanup/Profiles/=TG_002EText_0020Full_0020Cleanup/CSArrangeAttributes/@EntryIndexedValue">True</s:Boolean>
-  <s:Boolean x:Key="/Default/CodeStyle/CodeCleanup/Profiles/=TG_002EText_0020Full_0020Cleanup/CSArrangeBraces/@EntryIndexedValue">True</s:Boolean>
-  <s:Boolean x:Key="/Default/CodeStyle/CodeCleanup/Profiles/=TG_002EText_0020Full_0020Cleanup/CSArrangeCodeBodyStyle/@EntryIndexedValue">True</s:Boolean>
-  <s:Boolean x:Key="/Default/CodeStyle/CodeCleanup/Profiles/=TG_002EText_0020Full_0020Cleanup/CSArrangeDefaultBody/@EntryIndexedValue">True</s:Boolean>
-  <s:Boolean x:Key="/Default/CodeStyle/CodeCleanup/Profiles/=TG_002EText_0020Full_0020Cleanup/CSArrangeMethodOrOperatorBody/@EntryIndexedValue">True</s:Boolean>
-  <s:Boolean x:Key="/Default/CodeStyle/CodeCleanup/Profiles/=TG_002EText_0020Full_0020Cleanup/CSArrangeQualifiers/@EntryIndexedValue">True</s:Boolean>
-  <s:Boolean x:Key="/Default/CodeStyle/CodeCleanup/Profiles/=TG_002EText_0020Full_0020Cleanup/CSArrangeThisQualifier/@EntryIndexedValue">True</s:Boolean>
-  <s:Boolean x:Key="/Default/CodeStyle/CodeCleanup/Profiles/=TG_002EText_0020Full_0020Cleanup/CSArrangeTrailingCommas/@EntryIndexedValue">True</s:Boolean>
-  <s:Boolean x:Key="/Default/CodeStyle/CodeCleanup/Profiles/=TG_002EText_0020Full_0020Cleanup/CSArrangeTypeMemberModifiers/@EntryIndexedValue">True</s:Boolean>
-  <s:Boolean x:Key="/Default/CodeStyle/CodeCleanup/Profiles/=TG_002EText_0020Full_0020Cleanup/CSArrangeTypeModifiers/@EntryIndexedValue">True</s:Boolean>
-  <s:Boolean x:Key="/Default/CodeStyle/CodeCleanup/Profiles/=TG_002EText_0020Full_0020Cleanup/CSFixBuiltinTypeReferences/@EntryIndexedValue">True</s:Boolean>
-  <s:Boolean x:Key="/Default/CodeStyle/CodeCleanup/Profiles/=TG_002EText_0020Full_0020Cleanup/CSOptimizeUsings/OptimizeUsings/@EntryIndexedValue">True</s:Boolean>
-  <s:Boolean x:Key="/Default/CodeStyle/CodeCleanup/Profiles/=TG_002EText_0020Full_0020Cleanup/CSReformatCode/@EntryIndexedValue">True</s:Boolean>
-  <s:Boolean x:Key="/Default/CodeStyle/CodeCleanup/Profiles/=TG_002EText_0020Full_0020Cleanup/CSReorderTypeMembers/@EntryIndexedValue">True</s:Boolean>
-  <s:Boolean x:Key="/Default/CodeStyle/CodeCleanup/Profiles/=TG_002EText_0020Full_0020Cleanup/CSShortenReferences/@EntryIndexedValue">True</s:Boolean>
-  <s:Boolean x:Key="/Default/CodeStyle/CodeCleanup/Profiles/=TG_002EText_0020Full_0020Cleanup/CSStaticnessAnalysis/@EntryIndexedValue">True</s:Boolean>
-  <s:Boolean x:Key="/Default/CodeStyle/CodeCleanup/Profiles/=TG_002EText_0020Full_0020Cleanup/CSUpdateFileHeader/@EntryIndexedValue">True</s:Boolean>
-  <s:Boolean x:Key="/Default/CodeStyle/CodeCleanup/Profiles/=TG_002EText_0020Full_0020Cleanup/CSUseAutoProperty/@EntryIndexedValue">False</s:Boolean>
-  <s:Boolean x:Key="/Default/CodeStyle/CodeCleanup/Profiles/=TG_002EText_0020Full_0020Cleanup/CSUseVar/BehavourStyle/@EntryIndexedValue">True</s:Boolean>
-  <s:Boolean x:Key="/Default/CodeStyle/CodeCleanup/Profiles/=TG_002EText_0020Full_0020Cleanup/CSDeclareLocalsAsType/@EntryIndexedValue">False</s:Boolean>
-  <s:Boolean x:Key="/Default/CodeStyle/CodeCleanup/Profiles/=TG_002EText_0020Full_0020Cleanup/CsRemoveCodeRedundancies/@EntryIndexedValue">True</s:Boolean>
-  <s:Boolean x:Key="/Default/CodeStyle/CodeCleanup/Profiles/=TG_002EText_0020Full_0020Cleanup/RemoveCodeRedundanciesVB/@EntryIndexedValue">True</s:Boolean>
+  <s:Boolean x:Key="/Default/CodeStyle/CodeCleanup/Profiles/=TG_002EEditor_0020Full_0020Cleanup/CSArrangeAccessorOwnerBody/@EntryIndexedValue">True</s:Boolean>
+  <s:Boolean x:Key="/Default/CodeStyle/CodeCleanup/Profiles/=TG_002EEditor_0020Full_0020Cleanup/CSArrangeArgumentsStyle/@EntryIndexedValue">True</s:Boolean>
+  <s:Boolean x:Key="/Default/CodeStyle/CodeCleanup/Profiles/=TG_002EEditor_0020Full_0020Cleanup/CSArrangeAttributes/@EntryIndexedValue">True</s:Boolean>
+  <s:Boolean x:Key="/Default/CodeStyle/CodeCleanup/Profiles/=TG_002EEditor_0020Full_0020Cleanup/CSArrangeBraces/@EntryIndexedValue">True</s:Boolean>
+  <s:Boolean x:Key="/Default/CodeStyle/CodeCleanup/Profiles/=TG_002EEditor_0020Full_0020Cleanup/CSArrangeCodeBodyStyle/@EntryIndexedValue">True</s:Boolean>
+  <s:Boolean x:Key="/Default/CodeStyle/CodeCleanup/Profiles/=TG_002EEditor_0020Full_0020Cleanup/CSArrangeDefaultBody/@EntryIndexedValue">True</s:Boolean>
+  <s:Boolean x:Key="/Default/CodeStyle/CodeCleanup/Profiles/=TG_002EEditor_0020Full_0020Cleanup/CSArrangeMethodOrOperatorBody/@EntryIndexedValue">True</s:Boolean>
+  <s:Boolean x:Key="/Default/CodeStyle/CodeCleanup/Profiles/=TG_002EEditor_0020Full_0020Cleanup/CSArrangeQualifiers/@EntryIndexedValue">True</s:Boolean>
+  <s:Boolean x:Key="/Default/CodeStyle/CodeCleanup/Profiles/=TG_002EEditor_0020Full_0020Cleanup/CSArrangeThisQualifier/@EntryIndexedValue">True</s:Boolean>
+  <s:Boolean x:Key="/Default/CodeStyle/CodeCleanup/Profiles/=TG_002EEditor_0020Full_0020Cleanup/CSArrangeTrailingCommas/@EntryIndexedValue">True</s:Boolean>
+  <s:Boolean x:Key="/Default/CodeStyle/CodeCleanup/Profiles/=TG_002EEditor_0020Full_0020Cleanup/CSArrangeTypeMemberModifiers/@EntryIndexedValue">True</s:Boolean>
+  <s:Boolean x:Key="/Default/CodeStyle/CodeCleanup/Profiles/=TG_002EEditor_0020Full_0020Cleanup/CSArrangeTypeModifiers/@EntryIndexedValue">True</s:Boolean>
+  <s:Boolean x:Key="/Default/CodeStyle/CodeCleanup/Profiles/=TG_002EEditor_0020Full_0020Cleanup/CSFixBuiltinTypeReferences/@EntryIndexedValue">True</s:Boolean>
+  <s:Boolean x:Key="/Default/CodeStyle/CodeCleanup/Profiles/=TG_002EEditor_0020Full_0020Cleanup/CSOptimizeUsings/OptimizeUsings/@EntryIndexedValue">True</s:Boolean>
+  <s:Boolean x:Key="/Default/CodeStyle/CodeCleanup/Profiles/=TG_002EEditor_0020Full_0020Cleanup/CSReformatCode/@EntryIndexedValue">True</s:Boolean>
+  <s:Boolean x:Key="/Default/CodeStyle/CodeCleanup/Profiles/=TG_002EEditor_0020Full_0020Cleanup/CSReorderTypeMembers/@EntryIndexedValue">True</s:Boolean>
+  <s:Boolean x:Key="/Default/CodeStyle/CodeCleanup/Profiles/=TG_002EEditor_0020Full_0020Cleanup/CSShortenReferences/@EntryIndexedValue">True</s:Boolean>
+  <s:Boolean x:Key="/Default/CodeStyle/CodeCleanup/Profiles/=TG_002EEditor_0020Full_0020Cleanup/CSStaticnessAnalysis/@EntryIndexedValue">True</s:Boolean>
+  <s:Boolean x:Key="/Default/CodeStyle/CodeCleanup/Profiles/=TG_002EEditor_0020Full_0020Cleanup/CSUpdateFileHeader/@EntryIndexedValue">True</s:Boolean>
+  <s:Boolean x:Key="/Default/CodeStyle/CodeCleanup/Profiles/=TG_002EEditor_0020Full_0020Cleanup/CSUseAutoProperty/@EntryIndexedValue">False</s:Boolean>
+  <s:Boolean x:Key="/Default/CodeStyle/CodeCleanup/Profiles/=TG_002EEditor_0020Full_0020Cleanup/CSUseVar/BehavourStyle/@EntryIndexedValue">True</s:Boolean>
+  <s:Boolean x:Key="/Default/CodeStyle/CodeCleanup/Profiles/=TG_002EEditor_0020Full_0020Cleanup/CSDeclareLocalsAsType/@EntryIndexedValue">False</s:Boolean>
+  <s:Boolean x:Key="/Default/CodeStyle/CodeCleanup/Profiles/=TG_002EEditor_0020Full_0020Cleanup/CsRemoveCodeRedundancies/@EntryIndexedValue">True</s:Boolean>
+  <s:Boolean x:Key="/Default/CodeStyle/CodeCleanup/Profiles/=TG_002EEditor_0020Full_0020Cleanup/RemoveCodeRedundanciesVB/@EntryIndexedValue">True</s:Boolean>
 
   <!-- IMPORTANT: CSUseAutoProperty is OFF.                                                  -->
   <!-- ReSharper has bugs around the C# 13 `field` keyword: it offers / applies              -->

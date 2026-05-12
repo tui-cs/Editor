@@ -49,7 +49,7 @@ Developers — AI agents and humans — working on this project strive to raise 
 
 ### Delightful Customer Experience
 
-`TG.Text` serves four customers, listed in the order in which tradeoffs are made:
+`TG.Editor` serves four customers, listed in the order in which tradeoffs are made:
 
 1. End customers using `TG.Edit` to edit files in their terminals.
 2. Human developers building TG apps.
@@ -58,7 +58,7 @@ Developers — AI agents and humans — working on this project strive to raise 
 
 ### This Is TG
 
-`TG.Text` is an extension of TG, not independent of it. We follow the tenets of TG (see the TG deep dives), and we do not hack around TG limitations. We work to engineer correct fixes.
+`TG.Editor` is an extension of TG, not independent of it. We follow the tenets of TG (see the TG deep dives), and we do not hack around TG limitations. We work to engineer correct fixes.
 
 Short-term workarounds are allowed when they are the right product tradeoff, but if we use one, we also file a great TG issue that includes clear repros or unit tests that would fail.
 

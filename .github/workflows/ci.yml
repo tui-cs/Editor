@@ -57,12 +57,12 @@ jobs:
           # up our tweaks (CSUseAutoProperty OFF, etc.). The custom-named profile resolves
           # reliably from the .DotSettings file.
           dotnet jb cleanupcode Terminal.Gui.Editor.slnx \
-            --profile="TG.Text Full Cleanup" \
+            --profile="TG.Editor Full Cleanup" \
             --no-build \
             --exclude="third_party/**/*" \
             || true
           if ! git diff --exit-code; then
-            echo "::error::ReSharper code cleanup found style drift. Run 'dotnet jb cleanupcode Terminal.Gui.Editor.slnx --profile=\"TG.Text Full Cleanup\"' locally and commit the result."
+            echo "::error::ReSharper code cleanup found style drift. Run 'dotnet jb cleanupcode Terminal.Gui.Editor.slnx --profile=\"TG.Editor Full Cleanup\"' locally and commit the result."
             exit 1
           fi
 

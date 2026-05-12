@@ -137,7 +137,7 @@ The operator should run final checks from that branch, compare it against `origi
 
 ## 10. Terminal.Gui Bugs
 
-`TG.Text` is part of TG, so suspected Terminal.Gui bugs are handled with a high bar.
+`TG.Editor` is part of TG, so suspected Terminal.Gui bugs are handled with a high bar.
 
 When Codex suspects a Terminal.Gui bug:
 

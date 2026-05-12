@@ -267,11 +267,11 @@ public sealed partial class TedApp : Window
 
         dialog.Border.Settings &= ~BorderSettings.Title;
 
-        Version? tguiVersion = typeof (Application).Assembly.GetName ().Version;
+        Version? tgVersion = typeof (Application).Assembly.GetName ().Version;
 
         Label tagline = new ()
         {
-            Text = $"A terminal text editor built with Terminal.Gui {tguiVersion}",
+            Text = $"A terminal text editor built with Terminal.Gui {tgVersion}",
             TextAlignment = Alignment.Center,
             X = Pos.Center (),
             Width = Dim.Auto (DimAutoStyle.Text),
