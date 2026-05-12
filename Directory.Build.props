@@ -30,4 +30,9 @@
     <TerminalGuiVersion Condition="'$(TerminalGuiVersion)' == ''">2.1.0</TerminalGuiVersion>
   </PropertyGroup>
 
+  <ItemGroup>
+    <None Include="$(MSBuildThisFileDirectory)LICENSE" Pack="true" PackagePath="" />
+    <None Include="$(MSBuildThisFileDirectory)README.md" Pack="true" PackagePath="" />
+  </ItemGroup>
+
 </Project>
