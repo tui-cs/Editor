@@ -231,6 +231,29 @@ public partial class Editor : View
     /// <summary>Whether pressing Tab inserts spaces instead of a tab character.</summary>
     public bool ConvertTabsToSpaces { get; set; }
 
+    /// <summary>
+    ///     When <see langword="true" /> (the default), syntax-highlighted tokens keep both their
+    ///     foreground and background from the syntax highlighting theme (e.g. Dark Plus's
+    ///     <c>#1E1E1E</c> background). Set to <see langword="false" /> to override the
+    ///     highlighter's background with the TG scheme's <see cref="VisualRole.Normal" />
+    ///     background, matching the active application theme.
+    /// </summary>
+    public bool UseThemeBackground
+    {
+        get;
+        set
+        {
+            if (field == value)
+            {
+                return;
+            }
+
+            field = value;
+            ClearVisualLineCaches ();
+            SetNeedsDraw ();
+        }
+    } = true;
+
     /// <summary>Whether tab characters render with a visible glyph in their first cell.</summary>
     public bool ShowTabs
     {
@@ -731,7 +754,8 @@ public partial class Editor : View
             styledSegments,
             selectionStart,
             selectionEnd,
-            LineTransformers);
+            LineTransformers,
+            UseThemeBackground);
 
         return _visualLineBuilder.Build (line, context);
     }
