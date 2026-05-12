@@ -1,50 +1,43 @@
 # scripts/
 
-Operator helpers for the three-agent autonomous experiment described in `specs/10-autonomous-three-agent.md`.
+Operator helpers for the Codex-only autonomous sprint described in `specs/codex-autonomous-sprint.md`.
 
-All scripts are bash, target macOS (the Mac mini host), and are idempotent — re-running them is safe. Each script supports `--help`.
+All scripts are bash, target macOS (the Mac mini host), and are idempotent where practical. Each script supports `--help`.
 
-## Run order
-
-### Test run (issue #37 — tabs)
+## Run Order
 
 ```sh
 # Day -1, on the Mac mini, ONCE per host:
 ./scripts/setup-host.sh
 
-# Day -1, ONCE per agent (creates $HOME/s/Terminal.Gui.Text/{claude,codex,copilot} clones):
-./scripts/setup-agent-clone.sh claude
+# Day -1, creates $HOME/s/Terminal.Gui.Text/codex:
 ./scripts/setup-agent-clone.sh codex
-./scripts/setup-agent-clone.sh copilot
 
-# Day -1, from any clone (creates the 3 mirrored issues on github.com):
-./scripts/create-test-run-issues.sh
+# Optional: create one tracking issue for the Codex run:
+./scripts/create-codex-run-issue.sh
 
-# Day 0 — one-liner:
+# Day 0:
 ./scripts/start-experiment.sh
-tmux attach -t autonomy
-# Then go to https://github.com/gui-cs/Text/issues/44 and assign Copilot.
+tmux attach -t codex-autonomy
 
-# Day N — when you've seen enough, capture the artifact:
-./scripts/collect-run.sh test-2026-05-09
+# Day N, when Codex stops or you cut it off:
+./scripts/collect-run.sh codex-2026-05-11
 ```
 
-The artifact lands in `specs/runs/test-2026-05-09/` — transcripts, PR list, spend snapshot, and a stub `comparison.md` for you to fill in.
+The artifact lands in `specs/runs/<run-name>/` — transcript, PR list, spend snapshot, copied final report when present, and a stub `summary.md`.
 
-### Full run
-
-Same scripts, swap `create-test-run-issues.sh` for the full A1..E1 set (TODO: `create-full-run-issues.sh` not yet written — wait for the test run to land first).
+Codex integrates completed work into `experiment/codex/develop`. Use that branch for final checks before deciding whether anything should land on `develop`.
 
 ## What each script assumes
 
 - `bash 4+` and `gh` on `$PATH`.
 - The operator (you) is logged into `gh` with admin on `gui-cs/Text` so the issue creator and label-creator can run.
-- Per-agent gh auth uses three machine users / PATs — `setup-agent-clone.sh` checks for that posture but does not provision them. See spec §3.
-- `claude` and `codex` CLIs are installed and logged in (per their own `--login` flow). `setup-host.sh` installs them but the login step is interactive and stays manual.
+- `codex` is installed and logged in. `setup-host.sh` installs it, but `codex login` is interactive and stays manual.
+- `gh auth status` in `$HOME/s/Terminal.Gui.Text/codex` shows an identity that can push branches and open PRs.
 
 ## What each script will NOT do
 
 - Create accounts.
 - Spend money on your behalf without you running the script first.
 - Modify `develop` directly.
-- Push branches under another agent's identity (the gh-auth posture in §3 prevents this).
+- Merge PRs.

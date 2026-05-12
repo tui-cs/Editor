@@ -1,14 +1,14 @@
 // Claude - claude-opus-4-7
+
 using Terminal.Gui.Input;
 using Terminal.Gui.Text.Document;
-using Terminal.Gui.Views;
 using Xunit;
 
 namespace Terminal.Gui.Editor.Tests;
 
 /// <summary>
 ///     Selection state logic — anchor + caret arithmetic, ClearSelection, ReplaceSelection, SelectAll.
-///     No <c>Application.Init</c> needed; covered separately by integration tests for keyboard wiring.
+///     No <see cref="App.IApplication" /> needed; integration tests cover keyboard wiring.
 /// </summary>
 public class EditorSelectionLogicTests
 {
@@ -72,6 +72,18 @@ public class EditorSelectionLogicTests
     }
 
     [Fact]
+    public void ReplaceSelection_ReadOnly_Does_Not_Modify_Document ()
+    {
+        Views.Editor editor = new () { Document = new TextDocument ("hello world"), ReadOnly = true };
+        editor.SelectAll ();
+
+        editor.ReplaceSelection ("hi");
+
+        Assert.Equal ("hello world", editor.Document.Text);
+        Assert.True (editor.HasSelection);
+    }
+
+    [Fact]
     public void Selection_TextSegment_Reflects_Range ()
     {
         Views.Editor editor = new () { Document = new TextDocument ("hello") };
@@ -80,15 +92,29 @@ public class EditorSelectionLogicTests
         TextSegment? sel = editor.Selection;
 
         Assert.NotNull (sel);
-        Assert.Equal (0, sel!.StartOffset);
+        Assert.Equal (0, sel.StartOffset);
         Assert.Equal (5, sel.Length);
+    }
+
+    [Fact]
+    public void Selection_Tracks_Insertion_Before_Range ()
+    {
+        Views.Editor editor = new () { Document = new TextDocument ("abcdef") };
+        editor.SelectRange (2, 3);
+
+        editor.Document!.Insert (0, ">>");
+
+        Assert.True (editor.HasSelection);
+        Assert.Equal (4, editor.SelectionStart);
+        Assert.Equal (7, editor.SelectionEnd);
+        Assert.Equal ("cde", editor.SelectedText);
     }
 
     [Fact]
     public void SelectionChanged_Fires_On_SelectAll_And_Clear ()
     {
         Views.Editor editor = new () { Document = new TextDocument ("abc") };
-        int fires = 0;
+        var fires = 0;
         editor.SelectionChanged += (_, _) => fires++;
 
         editor.SelectAll ();
@@ -105,7 +131,7 @@ public class EditorSelectionLogicTests
     public void SelectionChanged_Does_Not_Fire_For_SelectAll_On_Empty_Document ()
     {
         Views.Editor editor = new () { Document = new TextDocument (string.Empty) };
-        int fires = 0;
+        var fires = 0;
         editor.SelectionChanged += (_, _) => fires++;
 
         editor.SelectAll ();
@@ -119,7 +145,7 @@ public class EditorSelectionLogicTests
     {
         Views.Editor editor = new () { Document = new TextDocument ("abc") };
         editor.CaretOffset = 3; // already at end
-        int fires = 0;
+        var fires = 0;
         editor.SelectionChanged += (_, _) => fires++;
 
         // Extend right by one character but caret can't move — must not raise SelectionChanged.
@@ -134,7 +160,7 @@ public class EditorSelectionLogicTests
     {
         Views.Editor editor = new () { Document = new TextDocument ("abc") };
         editor.CaretOffset = 0;
-        int fires = 0;
+        var fires = 0;
         editor.SelectionChanged += (_, _) => fires++;
 
         // Single-line doc, so extending up has nowhere to go.

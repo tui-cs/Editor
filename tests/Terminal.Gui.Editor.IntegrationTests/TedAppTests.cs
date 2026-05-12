@@ -6,6 +6,7 @@ using Terminal.Gui.Drawing;
 using Terminal.Gui.Editor.IntegrationTests.Testing;
 using Terminal.Gui.Input;
 using Terminal.Gui.Testing;
+using Terminal.Gui.Views;
 using TextMateSharp.Grammars;
 using Xunit;
 
@@ -51,7 +52,7 @@ public class TedAppTests
     [Fact]
     public void OpenFile_LoadsSelectedFile_FromDisk ()
     {
-        string filePath = Path.Combine (Path.GetTempPath (), $"ted-open-{Guid.NewGuid ():N}.txt");
+        var filePath = Path.Combine (Path.GetTempPath (), $"ted-open-{Guid.NewGuid ():N}.txt");
         File.WriteAllText (filePath, "from disk");
 
         try
@@ -74,7 +75,7 @@ public class TedAppTests
     [Fact]
     public void SaveFile_WritesCurrentEditorText_ToCurrentPath ()
     {
-        string filePath = Path.Combine (Path.GetTempPath (), $"ted-save-{Guid.NewGuid ():N}.txt");
+        var filePath = Path.Combine (Path.GetTempPath (), $"ted-save-{Guid.NewGuid ():N}.txt");
         File.WriteAllText (filePath, "before");
 
         try
@@ -96,9 +97,48 @@ public class TedAppTests
     }
 
     [Fact]
+    public void SaveFile_MarksDocumentUnmodified ()
+    {
+        TedApp app = new ();
+        app.ShowOpenDialog = () => "/tmp/ted-save.txt";
+        app.ReadAllText = _ => "before";
+        Assert.True (app.OpenFile ());
+        app.Editor.Document!.Text = "after";
+        app.WriteAllText = (_, _) => { };
+
+        Assert.True (app.IsDocumentModified);
+
+        Assert.True (app.SaveFile ());
+
+        Assert.False (app.IsDocumentModified);
+    }
+
+    [Fact]
+    public void Open_Save_RoundTrip_Preserves_Tab_Characters ()
+    {
+        var filePath = Path.Combine (Path.GetTempPath (), $"ted-tabs-{Guid.NewGuid ():N}.txt");
+        File.WriteAllText (filePath, "a\tb");
+
+        try
+        {
+            TedApp app = new ();
+            app.ShowOpenDialog = () => filePath;
+
+            Assert.True (app.OpenFile ());
+            Assert.True (app.SaveFile ());
+
+            Assert.Equal ("a\tb", File.ReadAllText (filePath));
+        }
+        finally
+        {
+            File.Delete (filePath);
+        }
+    }
+
+    [Fact]
     public void SaveFileAs_Canceled_DoesNotWrite ()
     {
-        bool wrote = false;
+        var wrote = false;
         TedApp app = new ();
         app.ShowSaveDialog = () => " ";
         app.WriteAllText = (_, _) => wrote = true;
@@ -112,7 +152,7 @@ public class TedAppTests
     [Fact]
     public void SaveFileAs_WritesEditorText_ToSelectedPath ()
     {
-        string filePath = Path.Combine (Path.GetTempPath (), $"ted-save-as-{Guid.NewGuid ():N}.txt");
+        var filePath = Path.Combine (Path.GetTempPath (), $"ted-save-as-{Guid.NewGuid ():N}.txt");
 
         try
         {
@@ -132,6 +172,49 @@ public class TedAppTests
     }
 
     [Fact]
+    public void QuitFile_ModifiedDocument_CancelChoice_DoesNotQuit ()
+    {
+        var prompted = false;
+        TedApp app = new ();
+        app.Editor.Document!.Text = "dirty";
+        app.ShowSaveChangesDialog = () =>
+        {
+            prompted = true;
+
+            return SaveChangesChoice.Cancel;
+        };
+
+        Assert.False (app.QuitFile ());
+
+        Assert.True (prompted);
+        Assert.True (app.IsDocumentModified);
+    }
+
+    [Fact]
+    public async Task QuitFile_ModifiedDocument_SaveChoice_SavesBeforeQuitting ()
+    {
+        await using AppFixture<TedApp> fx = new (() => new TedApp ());
+        string? savedPath = null;
+        string? savedText = null;
+        fx.Top.ShowOpenDialog = () => "/tmp/ted-save-on-quit.txt";
+        fx.Top.ReadAllText = _ => "before";
+        Assert.True (fx.Top.OpenFile ());
+        fx.Top.Editor.Document!.Text = "after";
+        fx.Top.ShowSaveChangesDialog = () => SaveChangesChoice.Save;
+        fx.Top.WriteAllText = (path, text) =>
+        {
+            savedPath = path;
+            savedText = text;
+        };
+
+        Assert.True (fx.Top.QuitFile ());
+
+        Assert.Equal ("/tmp/ted-save-on-quit.txt", savedPath);
+        Assert.Equal ("after", savedText);
+        Assert.False (fx.Top.IsDocumentModified);
+    }
+
+    [Fact]
     public async Task Renders_FileMenu_Header ()
     {
         await using AppFixture<TedApp> fx = new (() => new TedApp ());
@@ -148,19 +231,11 @@ public class TedAppTests
     }
 
     [Fact]
-    public async Task Renders_Themes_StatusBar_Item ()
+    public async Task Renders_Indent_Size_StatusBar_Item ()
     {
         await using AppFixture<TedApp> fx = new (() => new TedApp ());
 
-        DriverAssert.ContentsContains (fx.Driver, "Themes");
-    }
-
-    [Fact]
-    public async Task Renders_Tab_StatusBar_Item ()
-    {
-        await using AppFixture<TedApp> fx = new (() => new TedApp ());
-
-        DriverAssert.ContentsContains (fx.Driver, "Tab");
+        DriverAssert.ContentsContains (fx.Driver, "Indent");
     }
 
     [Fact]
@@ -173,19 +248,82 @@ public class TedAppTests
         // CS0618: Editor.SyntaxHighlighter is the [Obsolete] stopgap surface (issue #32);
         // ted's theme drop-down is its UI, so this test must read it.
 #pragma warning disable CS0618 // Type or member is obsolete
-        TextMateSyntaxHighlighter highlighter = Assert.IsType<TextMateSyntaxHighlighter> (fx.Top.Editor.SyntaxHighlighter);
+        TextMateSyntaxHighlighter highlighter =
+            Assert.IsType<TextMateSyntaxHighlighter> (fx.Top.Editor.SyntaxHighlighter);
 #pragma warning restore CS0618 // Type or member is obsolete
         Assert.Equal (ThemeName.LightPlus, highlighter.ThemeName);
     }
 
     [Fact]
-    public async Task TabWidth_StatusBar_NumericUpDown_Changes_Editor_TabWidth ()
+    public async Task IndentationSize_StatusBar_NumericUpDown_Changes_Editor_IndentationSize ()
     {
         await using AppFixture<TedApp> fx = new (() => new TedApp ());
 
-        fx.Top.TabWidthUpDown.Value = 8;
+        fx.Top.IndentationSizeUpDown.Value = 8;
 
-        Assert.Equal (8, fx.Top.Editor.TabWidth);
+        Assert.Equal (8, fx.Top.Editor.IndentationSize);
+    }
+
+    [Fact]
+    public async Task ShowTabs_StatusBar_CheckBox_Changes_Editor_ShowTabs ()
+    {
+        await using AppFixture<TedApp> fx = new (() => new TedApp ());
+
+        fx.Top.ShowTabsCheckBox.Value = CheckState.Checked;
+
+        Assert.True (fx.Top.Editor.ShowTabs);
+    }
+
+    [Fact]
+    public void Constructor_ReadOnly_Sets_Editor_ReadOnly ()
+    {
+        TedApp app = new (readOnly: true);
+
+        Assert.True (app.Editor.ReadOnly);
+    }
+
+    [Fact]
+    public async Task Loc_StatusBar_Shortcut_Initially_Shows_Line_1_Column_1 ()
+    {
+        await using AppFixture<TedApp> fx = new (() => new TedApp ());
+
+        Assert.Equal ("1, 1", fx.Top.LocShortcut.Text);
+    }
+
+    [Fact]
+    public async Task Loc_StatusBar_Shortcut_Tracks_Caret_Movement ()
+    {
+        await using AppFixture<TedApp> fx = new (() =>
+        {
+            TedApp app = new ();
+            app.Editor.Document!.Text = "alpha\nbeta\ngamma";
+
+            return app;
+        });
+
+        // Caret at offset 8 → "beta": line 2, column 3 ('t').
+        fx.Top.Editor.CaretOffset = 8;
+
+        Assert.Equal ("2, 3", fx.Top.LocShortcut.Text);
+    }
+
+    [Fact]
+    public async Task Loc_StatusBar_Shortcut_Updates_When_Document_Edit_Shifts_Caret ()
+    {
+        await using AppFixture<TedApp> fx = new (() =>
+        {
+            TedApp app = new ();
+            app.Editor.Document!.Text = "abc";
+
+            return app;
+        });
+
+        fx.Top.Editor.CaretOffset = 1;
+
+        // Inserting before the caret shifts it to the right; the loc shortcut must follow.
+        fx.Top.Editor.Document!.Insert (0, ">>>");
+
+        Assert.Equal ("1, 5", fx.Top.LocShortcut.Text);
     }
 
     [Fact]
@@ -207,30 +345,30 @@ public class TedAppTests
     public async Task OptionsMenu_TogglesLineNumbers_ViaKeyboard ()
     {
         await using AppFixture<TedApp> fx = new (() => new TedApp ());
-
-        Assert.False (fx.Top.Editor.ShowLineNumbers);
+        Assert.True (fx.Top.Editor.ShowLineNumbers);
 
         InputInjectionOptions options = new () { Mode = InputInjectionMode.Direct };
         fx.Injector.InjectKey (Key.O.WithAlt, options);
         fx.Render ();
 
         DriverAssert.ContentsContains (fx.Driver, "Line Numbers");
+        DriverAssert.ContentsContains (fx.Driver, "☒ Line Numbers");
+        DriverAssert.ContentsContains (fx.Driver, "Convert Tabs To Spaces");
+
+        fx.Injector.InjectKey (Key.Enter, options);
+        fx.Render ();
+
+        Assert.False (fx.Top.Editor.ShowLineNumbers);
+
+        fx.Injector.InjectKey (Key.O.WithAlt, options);
+        fx.Render ();
+
         DriverAssert.ContentsContains (fx.Driver, "☐ Line Numbers");
 
         fx.Injector.InjectKey (Key.Enter, options);
         fx.Render ();
 
         Assert.True (fx.Top.Editor.ShowLineNumbers);
-
-        fx.Injector.InjectKey (Key.O.WithAlt, options);
-        fx.Render ();
-
-        DriverAssert.ContentsContains (fx.Driver, "☒ Line Numbers");
-
-        fx.Injector.InjectKey (Key.Enter, options);
-        fx.Render ();
-
-        Assert.False (fx.Top.Editor.ShowLineNumbers);
     }
 
     [Fact]
@@ -245,9 +383,10 @@ public class TedAppTests
         Point clickPos = new (2, 0); // somewhere on the "File" header at row 0
 
         fx.Injector.InjectMouse (
-            new () { ScreenPosition = clickPos, Flags = MouseFlags.LeftButtonPressed, Timestamp = baseTime }, options);
+            new Mouse { ScreenPosition = clickPos, Flags = MouseFlags.LeftButtonPressed, Timestamp = baseTime },
+            options);
         fx.Injector.InjectMouse (
-            new ()
+            new Mouse
             {
                 ScreenPosition = clickPos, Flags = MouseFlags.LeftButtonReleased,
                 Timestamp = baseTime.AddMilliseconds (50)
@@ -271,5 +410,30 @@ public class TedAppTests
 
         DriverAssert.ContentsContains (fx.Driver, "Find...");
         DriverAssert.ContentsContains (fx.Driver, "Replace...");
+    }
+
+    [Fact]
+    public async Task Editor_RightClick_Opens_Edit_Context_Menu ()
+    {
+        await using AppFixture<TedApp> fx = new (() => new TedApp ());
+
+        DriverAssert.ContentsDoesNotContain (fx.Driver, "Find...");
+        DriverAssert.ContentsDoesNotContain (fx.Driver, "Replace...");
+
+        InputInjectionOptions options = new () { Mode = InputInjectionMode.Direct };
+
+        fx.Injector.InjectMouse (
+            new Mouse
+            {
+                ScreenPosition = new Point (4, 2),
+                Flags = MouseFlags.RightButtonClicked,
+                Timestamp = new DateTime (2025, 1, 1, 12, 0, 0)
+            },
+            options);
+        fx.Render ();
+
+        DriverAssert.ContentsContains (fx.Driver, "Find...");
+        DriverAssert.ContentsContains (fx.Driver, "Replace...");
+        DriverAssert.ContentsContains (fx.Driver, "Select all");
     }
 }

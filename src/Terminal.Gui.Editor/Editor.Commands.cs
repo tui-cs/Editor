@@ -57,11 +57,11 @@ public partial class Editor
         AddCommand (Command.UpExtend, () => ExtendCommand (() => ExtendCaretVertically (-1)));
         AddCommand (Command.DownExtend, () => ExtendCommand (() => ExtendCaretVertically (1)));
         AddCommand (Command.LeftStartExtend,
-            () => ExtendCommand (() => ExtendCaretTo (_document!.GetLineByOffset (_caretOffset).Offset)));
+            () => ExtendCommand (() => ExtendCaretTo (_document!.GetLineByOffset (CaretOffset).Offset)));
 
         AddCommand (Command.RightEndExtend, () => ExtendCommand (() =>
         {
-            DocumentLine line = _document!.GetLineByOffset (_caretOffset);
+            DocumentLine line = _document!.GetLineByOffset (CaretOffset);
             ExtendCaretTo (line.Offset + line.Length);
         }));
 
@@ -88,27 +88,36 @@ public partial class Editor
         // History
         AddCommand (Command.Undo, () =>
         {
-            if (_document!.UndoStack.CanUndo)
+            if (ReadOnly || !_document!.UndoStack.CanUndo)
             {
-                ClearSelection ();
-                _document!.UndoStack.Undo ();
+                return true;
             }
+
+            ClearSelection ();
+            _document!.UndoStack.Undo ();
 
             return true;
         });
 
         AddCommand (Command.Redo, () =>
         {
-            if (_document!.UndoStack.CanRedo)
+            if (ReadOnly || !_document!.UndoStack.CanRedo)
             {
-                ClearSelection ();
-                _document!.UndoStack.Redo ();
+                return true;
             }
+
+            ClearSelection ();
+            _document!.UndoStack.Redo ();
 
             return true;
         });
 
         ApplyKeyBindings (View.DefaultKeyBindings, DefaultKeyBindings);
+
+        // Reclaim Tab before the framework consumes it; the editor handles Tab / Shift+Tab
+        // in OnKeyDownNotHandled so indentation still works without a command binding.
+        KeyBindings.Remove (Key.Tab);
+        KeyBindings.Remove (Key.Tab.WithShift);
 
         MouseBindings.Add (MouseFlags.WheeledUp, Command.ScrollUp);
         MouseBindings.Add (MouseFlags.WheeledDown, Command.ScrollDown);
@@ -163,13 +172,18 @@ public partial class Editor
 
     private bool? InsertOrReplace (string text)
     {
+        if (ReadOnly)
+        {
+            return true;
+        }
+
         if (HasSelection)
         {
             ReplaceSelection (text);
         }
         else
         {
-            _document!.Insert (_caretOffset, text);
+            _document!.Insert (CaretOffset, text);
         }
 
         return true;
@@ -177,13 +191,22 @@ public partial class Editor
 
     private bool? DeleteLeft ()
     {
+        if (ReadOnly)
+        {
+            return true;
+        }
+
         if (HasSelection)
         {
             ReplaceSelection (string.Empty);
         }
-        else if (_caretOffset > 0)
+        else if (TryDeleteIndentationLeft ())
         {
-            _document!.Remove (_caretOffset - 1, 1);
+            return true;
+        }
+        else if (CaretOffset > 0)
+        {
+            _document!.Remove (CaretOffset - 1, 1);
         }
 
         return true;
@@ -191,13 +214,18 @@ public partial class Editor
 
     private bool? DeleteRight ()
     {
+        if (ReadOnly)
+        {
+            return true;
+        }
+
         if (HasSelection)
         {
             ReplaceSelection (string.Empty);
         }
-        else if (_caretOffset < _document!.TextLength)
+        else if (CaretOffset < _document!.TextLength)
         {
-            _document!.Remove (_caretOffset, 1);
+            _document!.Remove (CaretOffset, 1);
         }
 
         return true;
@@ -212,7 +240,7 @@ public partial class Editor
 
     private bool? MoveCaretToLineStart ()
     {
-        DocumentLine line = _document!.GetLineByOffset (_caretOffset);
+        DocumentLine line = _document!.GetLineByOffset (CaretOffset);
         CaretOffset = line.Offset;
 
         return true;
@@ -220,7 +248,7 @@ public partial class Editor
 
     private bool? MoveCaretToLineEnd ()
     {
-        DocumentLine line = _document!.GetLineByOffset (_caretOffset);
+        DocumentLine line = _document!.GetLineByOffset (CaretOffset);
         CaretOffset = line.Offset + line.Length;
 
         return true;

@@ -13,6 +13,16 @@ public partial class Editor
     /// <inheritdoc />
     protected override bool OnKeyDownNotHandled (Key key)
     {
+        if (key == Key.Tab)
+        {
+            return InsertTab ();
+        }
+
+        if (key == Key.Tab.WithShift)
+        {
+            return Unindent ();
+        }
+
         if (key.IsCtrl || key.IsAlt)
         {
             return false;
@@ -24,13 +34,18 @@ public partial class Editor
             return false;
         }
 
+        if (ReadOnly)
+        {
+            return true;
+        }
+
         if (HasSelection)
         {
             ReplaceSelection (rune.ToString ());
         }
         else
         {
-            _document!.Insert (_caretOffset, rune.ToString ());
+            _document!.Insert (CaretOffset, rune.ToString ());
         }
 
         return true;

@@ -1,21 +1,21 @@
 #!/usr/bin/env bash
-# start-experiment.sh — one-shot experiment launcher.
+# start-experiment.sh — one-shot Codex autonomous sprint launcher.
 #
-# Creates (or reattaches to) a tmux session named "autonomy", opens windows
-# for claude and codex, starts each agent, and prints the Copilot dispatch
-# reminder. Run from anywhere; paths are absolute.
+# Creates (or reattaches to) a tmux session named "codex-autonomy", opens windows
+# for Codex, and starts the Codex autonomous lane. Run from anywhere; paths are
+# absolute.
 #
 # Usage:
 #   ./scripts/start-experiment.sh [--session <name>]
 #
 # Options:
-#   --session <name>   tmux session name (default: autonomy)
+#   --session <name>   tmux session name (default: codex-autonomy)
 #   --help             show this message
 
 set -euo pipefail
 
 SCRIPTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-SESSION="autonomy"
+SESSION="codex-autonomy"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -28,12 +28,12 @@ while [[ $# -gt 0 ]]; do
 done
 
 # Tag the start commit if not already tagged.
-if ! git -C "$SCRIPTS_DIR" rev-parse "experiment/start" &>/dev/null; then
-  echo "==> Tagging experiment/start on develop"
-  git -C "$SCRIPTS_DIR" tag experiment/start
-  git -C "$SCRIPTS_DIR" push origin experiment/start
+if ! git -C "$SCRIPTS_DIR" rev-parse "codex/autonomy-start" &>/dev/null; then
+  echo "==> Tagging codex/autonomy-start on develop"
+  git -C "$SCRIPTS_DIR" tag codex/autonomy-start
+  git -C "$SCRIPTS_DIR" push origin codex/autonomy-start
 else
-  echo "==> experiment/start already tagged at $(git -C "$SCRIPTS_DIR" rev-parse --short experiment/start)"
+  echo "==> codex/autonomy-start already tagged at $(git -C "$SCRIPTS_DIR" rev-parse --short codex/autonomy-start)"
 fi
 
 # Create or reuse the tmux session (detached so we can populate it first).
@@ -41,35 +41,18 @@ if tmux has-session -t "$SESSION" 2>/dev/null; then
   echo "==> Reusing existing tmux session '$SESSION'"
 else
   echo "==> Creating tmux session '$SESSION'"
-  tmux new-session -d -s "$SESSION" -n claude
+  tmux new-session -d -s "$SESSION" -n codex
 fi
 
-# Window 0: claude
-tmux rename-window -t "$SESSION:0" claude 2>/dev/null || true
-tmux send-keys -t "$SESSION:claude" \
-  "bash '$SCRIPTS_DIR/start-agent.sh' claude" Enter
-
-# Window 1: codex
-if ! tmux list-windows -t "$SESSION" -F '#W' | grep -qx codex; then
-  tmux new-window -t "$SESSION" -n codex
-fi
+# Window 0: codex
+tmux rename-window -t "$SESSION:0" codex 2>/dev/null || true
 tmux send-keys -t "$SESSION:codex" \
   "bash '$SCRIPTS_DIR/start-agent.sh' codex" Enter
 
-# Window 2: a reminder pane for the operator (no local copilot process)
-if ! tmux list-windows -t "$SESSION" -F '#W' | grep -qx copilot; then
-  tmux new-window -t "$SESSION" -n copilot
-fi
-tmux send-keys -t "$SESSION:copilot" \
-  "echo 'Copilot runs on github.com. Assign issue #44 at:'; echo '  https://github.com/gui-cs/Text/issues/44'; echo; echo 'Then watch CI at https://github.com/gui-cs/Text/actions'" Enter
-
-# Land on the claude window when the user attaches.
-tmux select-window -t "$SESSION:claude"
+tmux select-window -t "$SESSION:codex"
 
 echo
-echo "Session '$SESSION' ready. Windows: claude | codex | copilot"
+echo "Session '$SESSION' ready. Window: codex"
 echo
 echo "Attach with:"
 echo "  tmux attach -t $SESSION"
-echo
-echo "Copilot: go to https://github.com/gui-cs/Text/issues/44 and assign Copilot."

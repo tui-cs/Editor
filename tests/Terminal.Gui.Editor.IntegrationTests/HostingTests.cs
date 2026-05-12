@@ -9,10 +9,22 @@ using Xunit;
 namespace Terminal.Gui.Editor.IntegrationTests;
 
 /// <summary>
+///     Marker collection that serializes <see cref="HostingTests" /> against every other test
+///     collection in this assembly. <see cref="HostingTests" /> mutates process-global statics
+///     (<see cref="Logging.Logger" /> and <see cref="Trace.EnabledCategories" />) that
+///     Terminal.Gui itself reads during draw and lifecycle calls on other threads — running
+///     them in parallel with the rest of the suite is unsafe. DisableParallelization
+///     ensures no other collection runs while these tests are in flight.
+/// </summary>
+[CollectionDefinition (nameof (HostingTestsCollection), DisableParallelization = true)]
+public sealed class HostingTestsCollection;
+
+/// <summary>
 ///     Tests that ted's <see cref="Hosting" /> static helpers actually wire up <see cref="Logging.Logger" />
 ///     and <see cref="Trace.EnabledCategories" />. These prove the wiring exists; downstream Serilog tests
 ///     belong elsewhere.
 /// </summary>
+[Collection (nameof (HostingTestsCollection))]
 public class HostingTests
 {
     [Fact]

@@ -1,5 +1,6 @@
 // Claude - claude-opus-4-7
 
+using System.Drawing;
 using System.Reflection;
 using Terminal.Gui.Text.Document;
 using Terminal.Gui.Views;
@@ -8,8 +9,9 @@ using Xunit;
 namespace Terminal.Gui.Editor.Tests;
 
 /// <summary>
-///     Tests for <see cref="Editor" /> behaviors that don't need <c>Application.Init</c> — caret math,
-///     document rewiring, edit-tracking arithmetic. UI-side tests live in IntegrationTests.
+///     Tests for <see cref="Editor" /> behaviors that don't need an <see cref="App.IApplication" /> —
+///     caret tracking, document rewiring, and edit reactions. UI-side tests (full layout/draw,
+///     input injection) live in IntegrationTests, which also runs in parallel.
 /// </summary>
 public class EditorLogicTests
 {
@@ -65,7 +67,7 @@ public class EditorLogicTests
         original?.Insert (0, "xxx");
         Assert.Equal (0, editor.CaretOffset);
 
-        // Mutating the replacement still drives the editor's caret arithmetic.
+        // Mutating the replacement still drives the editor's caret anchor.
         replacement.Insert (0, "y");
         Assert.Equal (1, editor.CaretOffset);
     }
@@ -82,11 +84,35 @@ public class EditorLogicTests
     }
 
     [Fact]
+    public void Caret_Tracks_Insertion_At_It_With_AfterInsertion_Semantics ()
+    {
+        Views.Editor editor = new () { Document = new TextDocument ("hello") };
+        editor.CaretOffset = 2;
+
+        editor.Document.Insert (2, "XYZ");
+
+        Assert.Equal (5, editor.CaretOffset);
+    }
+
+    [Fact]
+    public void Caret_Tracks_External_Edit_On_Shared_Document ()
+    {
+        TextDocument document = new ("0123456789");
+        Views.Editor editor = new () { Document = document };
+        Views.Editor secondConsumer = new () { Document = document };
+        editor.CaretOffset = 8;
+
+        secondConsumer.Document!.Insert (3, "abc");
+
+        Assert.Equal (11, editor.CaretOffset);
+    }
+
+    [Fact]
     public void CaretChanged_Fires_When_Document_Insertion_Shifts_Caret ()
     {
         Views.Editor editor = new () { Document = new TextDocument ("hello world") };
         editor.CaretOffset = 5;
-        int fires = 0;
+        var fires = 0;
         editor.CaretChanged += (_, _) => fires++;
 
         editor.Document.Insert (0, ">>>");
@@ -100,7 +126,7 @@ public class EditorLogicTests
     {
         Views.Editor editor = new () { Document = new TextDocument ("hello") };
         editor.CaretOffset = 2;
-        int fires = 0;
+        var fires = 0;
         editor.CaretChanged += (_, _) => fires++;
 
         // Insert strictly after the caret — caret offset should not change.
@@ -115,7 +141,7 @@ public class EditorLogicTests
     {
         Views.Editor editor = new () { Document = new TextDocument ("hello world") };
         editor.CaretOffset = 4;
-        int fires = 0;
+        var fires = 0;
         editor.CaretChanged += (_, _) => fires++;
 
         editor.Document.Remove (2, 5); // straddles caret → snaps to 2
@@ -174,26 +200,50 @@ public class EditorLogicTests
     }
 
     [Fact]
-    public void TabWidth_Defaults_To_4 ()
+    public void IndentationSize_Defaults_To_4 ()
     {
         Views.Editor editor = new ();
 
-        Assert.Equal (4, editor.TabWidth);
+        Assert.Equal (4, editor.IndentationSize);
     }
 
     [Fact]
-    public void TabWidth_Rejects_Values_Less_Than_1 ()
+    public void IndentationSize_Rejects_Values_Less_Than_1 ()
     {
         Views.Editor editor = new ();
 
-        Assert.Throws<ArgumentOutOfRangeException> (() => editor.TabWidth = 0);
+        Assert.Throws<ArgumentOutOfRangeException> (() => editor.IndentationSize = 0);
+    }
+
+    [Fact]
+    public void ConvertTabsToSpaces_Defaults_To_False ()
+    {
+        Views.Editor editor = new ();
+
+        Assert.False (editor.ConvertTabsToSpaces);
+    }
+
+    [Fact]
+    public void ShowTabs_Defaults_To_False ()
+    {
+        Views.Editor editor = new ();
+
+        Assert.False (editor.ShowTabs);
+    }
+
+    [Fact]
+    public void ReadOnly_Defaults_To_False ()
+    {
+        Views.Editor editor = new ();
+
+        Assert.False (editor.ReadOnly);
     }
 
     [Fact]
     public void Caret_After_Tab_Uses_Visual_Columns_For_Viewport_Scrolling ()
     {
         Views.Editor editor = new () { Document = new TextDocument ("a\tb"), Width = 3, Height = 1 };
-        editor.Viewport = new (0, 0, 3, 1);
+        editor.Viewport = new Rectangle (0, 0, 3, 1);
         editor.CaretOffset = 2;
 
         Assert.Equal (2, editor.Viewport.X);
@@ -206,13 +256,13 @@ public class EditorLogicTests
         Views.Editor editor = new () { Document = doc };
         editor.CaretOffset = 3;
 
-        int caretFires = 0;
+        var caretFires = 0;
         editor.CaretChanged += (_, _) => caretFires++;
 
         editor.Dispose ();
 
         // After dispose, mutating the still-reachable document must not affect the disposed editor's state.
-        int caretBefore = editor.CaretOffset;
+        var caretBefore = editor.CaretOffset;
         doc.Insert (0, ">>>");
 
         Assert.Equal (caretBefore, editor.CaretOffset);
@@ -220,14 +270,14 @@ public class EditorLogicTests
     }
 
     [Fact]
-    public void Changing_TabWidth_Recomputes_Caret_Visibility ()
+    public void Changing_IndentationSize_Recomputes_Caret_Visibility ()
     {
         Views.Editor editor = new () { Document = new TextDocument ("\t"), Width = 4, Height = 1 };
-        editor.Viewport = new (0, 0, 4, 1);
+        editor.Viewport = new Rectangle (0, 0, 4, 1);
         editor.CaretOffset = 1;
         Assert.Equal (1, editor.Viewport.X);
 
-        editor.TabWidth = 8;
+        editor.IndentationSize = 8;
 
         Assert.Equal (5, editor.Viewport.X);
     }
@@ -249,7 +299,7 @@ public class EditorLogicTests
         ObsoleteAttribute? attr = prop.GetCustomAttribute<ObsoleteAttribute> ();
 
         Assert.NotNull (attr);
-        Assert.Contains ("28", attr!.Message ?? string.Empty);
+        Assert.Contains ("28", attr.Message ?? string.Empty);
     }
 
     [Fact]
@@ -261,6 +311,6 @@ public class EditorLogicTests
         ObsoleteAttribute? attr = prop.GetCustomAttribute<ObsoleteAttribute> ();
 
         Assert.NotNull (attr);
-        Assert.Contains ("28", attr!.Message ?? string.Empty);
+        Assert.Contains ("28", attr.Message ?? string.Empty);
     }
 }

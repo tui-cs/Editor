@@ -15,18 +15,28 @@ using IApplication app = Application.Create ();
 
 app.Init ();
 
-using TedApp ted = new ();
+var readOnly = args.Any (static arg => arg is "--read-only" or "-r");
+string? requestedPath = args.FirstOrDefault (static arg => arg is not ("--read-only" or "-r"));
 
-// If running from within the repo, open TedApp.cs as the default file.
-var repoRoot = FindRepoRoot (AppContext.BaseDirectory);
+using TedApp ted = new (readOnly);
 
-if (repoRoot is not null)
+if (!string.IsNullOrWhiteSpace (requestedPath) && File.Exists (requestedPath))
 {
-    var tedAppPath = Path.Combine (repoRoot, "examples", "ted", "TedApp.cs");
+    ted.SetDocument (File.ReadAllText (requestedPath), requestedPath);
+}
+else
+{
+    // If running from within the repo, open TedApp.cs as the default file.
+    var repoRoot = FindRepoRoot (AppContext.BaseDirectory);
 
-    if (File.Exists (tedAppPath))
+    if (repoRoot is not null)
     {
-        ted.SetDocument (File.ReadAllText (tedAppPath), tedAppPath);
+        var tedAppPath = Path.Combine (repoRoot, "examples", "ted", "TedApp.cs");
+
+        if (File.Exists (tedAppPath))
+        {
+            ted.SetDocument (File.ReadAllText (tedAppPath), tedAppPath);
+        }
     }
 }
 

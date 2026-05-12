@@ -165,13 +165,28 @@ private void ExtendCaretBy (int delta)
 
 ## Testing tiers
 
-Three test projects, mirroring Terminal.Gui's convention:
+Three test projects, mirroring Terminal.Gui's convention. **All three run fully in parallel** — Terminal.Gui's `Application` lifetime is per-instance (`Application.Create()` returns an `IApplication` whose `Init`/`Begin`/`End`/`Dispose` track via `ThreadLocal<>`, not process globals). Tests must never call the static `Application.Init()` shortcut, and must never enable `ConfigurationManager` (`CM.Enable(...)`) — both reach for process-global state and would force serialization.
 
-- `Terminal.Gui.Text.Tests` — pure, parallelizable, no UI, no static state. Target ≥90% coverage.
-- `Terminal.Gui.Editor.Tests` — parallelizable where possible. Visual-line builder, wrap, caret/selection math, command handlers — anything that doesn't need `Application.Init`. Target ≥75%.
-- `Terminal.Gui.Editor.IntegrationTests` — non-parallel, requires `Application.Init`-style setup; full key-input → render scenarios.
+- `Terminal.Gui.Text.Tests` — pure, no UI, no static state. Target ≥90% coverage.
+- `Terminal.Gui.Editor.Tests` — visual-line builder, wrap, caret/selection math, command handlers — anything that doesn't need an `IApplication`. Target ≥75%.
+- `Terminal.Gui.Editor.IntegrationTests` — full key-input → render scenarios via `AppFixture<T>`, which boots a per-test `IApplication` from `Application.Create()`. Parallel by default.
 
-New tests default to the parallel project. Promote to `IntegrationTests` only when `Application.Init` or similar global state is genuinely needed.
+New tests default to the parallel-by-name project. Promote to `IntegrationTests` only when an `IApplication` (driver, input injection, full layout/draw) is genuinely needed.
+
+**The one allowed exception:** a test that legitimately mutates a process-global (e.g. `Logging.Logger`, `Trace.EnabledCategories`, anything `static`) must opt out of cross-collection parallelism via a `[CollectionDefinition(name, DisableParallelization = true)]` + `[Collection(name)]` pair. See `tests/Terminal.Gui.Editor.IntegrationTests/HostingTests.cs` for the canonical example. Do **not** add an assembly-wide `xunit.runner.json` to make the whole project serial — that's the wrong tool for one offending class.
+
+### Diagnosing parallel-test hangs
+
+When integration tests run individually but hang when run as a suite, **the cause is almost always shared mutable state, not the parallelism itself**. Do not reach for `xunit.runner.json` with `parallelizeTestCollections: false` to "fix" it — that hides the bug and slows the suite. Walk this checklist instead:
+
+1. **Static `Application.Init()`?** Grep for `Application.Init` (without an `IApplication` receiver). It must always be `app.Init()` on an `IApplication` from `Application.Create()`. The static form is a process-global Init/Shutdown pair and serializes everything.
+2. **`ConfigurationManager.Enable(...)`?** Grep for `ConfigurationManager.Enable` / `CM.Enable`. CM is a process-global config store; tests must never enable it. Enabling it from one test poisons every concurrent `Application.Create()`.
+3. **Mutating TG-read process globals?** `Logging.Logger`, `Trace.EnabledCategories`, and anything `static` on `Application`/`Terminal.Gui.*` that TG itself reads during draw or lifecycle. A test that swaps these (even with try/finally restore) will deadlock or corrupt parallel tests because TG running on another test's thread reads the half-set value.
+4. **A new `View` subclass touching shared state?** Subscribing to a static event, allocating from a static cache, etc.
+
+Bisect by running test classes pairwise (`-class "*A" -class "*B"`) until you find the offending pair, then narrow by `-method`. The hang is reproducible deterministically with the right pair.
+
+The fix is **always** to remove or isolate the global mutation — either eliminate it, or wrap the offending class in `[CollectionDefinition(..., DisableParallelization = true)]` + `[Collection(...)]` so only it serializes. The rest of the suite stays parallel.
 
 ## Non-goals
 
