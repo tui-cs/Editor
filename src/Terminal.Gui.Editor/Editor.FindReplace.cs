@@ -31,6 +31,13 @@ public partial class Editor
         var startOffset = HasSelection ? SelectionEnd : CaretOffset;
         ISearchResult? match = FindForward (startOffset);
 
+        // Skip a zero-length match at the current search start to avoid an infinite no-op loop.
+        // Mirrors .NET Regex.NextMatch()'s "advance by 1 after a zero-length match" convention.
+        if (match is { Length: 0 } && match.Offset == startOffset)
+        {
+            match = FindForward (startOffset + 1);
+        }
+
         if (match is null && wrapAround && startOffset > 0)
         {
             match = FindForward (0, startOffset);
@@ -78,6 +85,12 @@ public partial class Editor
 
         var endOffset = HasSelection ? SelectionStart : CaretOffset;
         ISearchResult? match = FindBackward (0, endOffset);
+
+        // Skip a zero-length match at the current search start to avoid an infinite no-op loop.
+        if (match is { Length: 0 } && match.Offset == endOffset)
+        {
+            match = endOffset > 0 ? FindBackward (0, endOffset - 1) : null;
+        }
 
         if (match is null && wrapAround && endOffset < _document.TextLength)
         {
@@ -143,7 +156,22 @@ public partial class Editor
             }
         }
 
-        ReplaceSelection (match.ReplaceWith (replacement));
+        var replacementText = match.ReplaceWith (replacement);
+
+        if (match.Length == 0)
+        {
+            // Zero-length match (regex anchor): insert at the caret position.
+            var insertPos = CaretOffset;
+            _document.Insert (insertPos, replacementText);
+
+            // The caret anchor (AfterInsertion) already moved past the inserted text.
+            // Force a refresh of virtual column state.
+            SetCaretOffset (insertPos + replacementText.Length, true);
+        }
+        else
+        {
+            ReplaceSelection (replacementText);
+        }
 
         return true;
     }
@@ -236,7 +264,7 @@ public partial class Editor
 
         length = Math.Min (length, _document.TextLength - startOffset);
 
-        if (length <= 0)
+        if (length < 0)
         {
             return null;
         }
@@ -258,7 +286,7 @@ public partial class Editor
 
         length = Math.Min (length, _document.TextLength - startOffset);
 
-        if (length <= 0)
+        if (length < 0)
         {
             return null;
         }
@@ -270,11 +298,35 @@ public partial class Editor
     ///     Returns the current strategy's match exactly covering the current selection, or <see langword="null" /> when
     ///     the selection does not correspond to a fresh match. Used by <see cref="ReplaceNext(string,bool)" /> so we can
     ///     reach the matched <see cref="ISearchResult" /> (and its capture groups) without re-running the search.
+    ///     For zero-length matches (regex anchors like <c>^</c>, <c>$</c>, <c>\b</c>), returns a match at the caret
+    ///     position when there is no selection and the caret sits at a zero-length match.
     /// </summary>
     private ISearchResult? TryMatchSelection ()
     {
-        if (!HasSelection || SearchStrategy is null || _document is null)
+        if (SearchStrategy is null || _document is null)
         {
+            return null;
+        }
+
+        // Zero-length match: no selection, but the caret sits at a zero-length match position.
+        if (!HasSelection)
+        {
+            var caretPos = CaretOffset;
+
+            if (caretPos < 0 || caretPos > _document.TextLength)
+            {
+                return null;
+            }
+
+            // Search a 1-char window (or 0 at end) that could contain a zero-length match at caretPos.
+            var searchLen = Math.Min (1, _document.TextLength - caretPos);
+            ISearchResult? zeroMatch = SearchStrategy.FindNext (_document, caretPos, searchLen);
+
+            if (zeroMatch is { Length: 0 } && zeroMatch.Offset == caretPos)
+            {
+                return zeroMatch;
+            }
+
             return null;
         }
 
@@ -295,15 +347,15 @@ public partial class Editor
 
     private void SelectSearchMatch (int startOffset, int length)
     {
-        if (_document is null || length <= 0)
+        if (_document is null || length < 0)
         {
             return;
         }
 
         var start = Math.Clamp (startOffset, 0, _document.TextLength);
-        var end = Math.Clamp (start + length, start, _document.TextLength);
+        var end = Math.Clamp (start + Math.Max (0, length), start, _document.TextLength);
 
-        _selectionAnchor = CreateSelectionAnchor (start);
+        _selectionAnchor = start == end ? null : CreateSelectionAnchor (start);
         CaretOffset = end;
         RefreshSelectionAnchorMovement ();
         SelectionChanged?.Invoke (this, EventArgs.Empty);

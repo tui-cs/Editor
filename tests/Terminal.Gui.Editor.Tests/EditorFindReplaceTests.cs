@@ -237,4 +237,102 @@ public class EditorFindReplaceTests
         Assert.Equal (3, n);
         Assert.Equal ("a->1 b->2 c->3", editor.Document!.Text);
     }
+
+    // ─── Zero-length regex match tests ────────────────────────────────────────────
+
+    [Fact]
+    public void FindNext_ZeroLength_Caret_Regex_Cycles_Through_Line_Starts ()
+    {
+        // ^ matches at the start of each line: offsets 0, 6, 12 for "line1\nline2\nline3"
+        Views.Editor editor = new () { Document = new TextDocument ("line1\nline2\nline3") };
+        editor.SearchStrategy = SearchStrategyFactory.Create (@"^", false, false, SearchMode.RegEx);
+        editor.CaretOffset = 0;
+
+        Assert.True (editor.FindNext ());
+        Assert.Equal (6, editor.CaretOffset);
+        Assert.False (editor.HasSelection);
+
+        Assert.True (editor.FindNext ());
+        Assert.Equal (12, editor.CaretOffset);
+        Assert.False (editor.HasSelection);
+
+        // Wrap around back to 0
+        Assert.True (editor.FindNext ());
+        Assert.Equal (0, editor.CaretOffset);
+        Assert.False (editor.HasSelection);
+    }
+
+    [Fact]
+    public void FindNext_ZeroLength_WordBoundary_Cycles_Through_Positions ()
+    {
+        // \b on "ab cd" matches at: 0, 2, 3, 5
+        Views.Editor editor = new () { Document = new TextDocument ("ab cd") };
+        editor.SearchStrategy = SearchStrategyFactory.Create (@"\b", false, false, SearchMode.RegEx);
+        editor.CaretOffset = 0;
+
+        Assert.True (editor.FindNext ());
+        Assert.Equal (2, editor.CaretOffset);
+
+        Assert.True (editor.FindNext ());
+        Assert.Equal (3, editor.CaretOffset);
+
+        Assert.True (editor.FindNext ());
+        Assert.Equal (5, editor.CaretOffset);
+
+        // Wrap around back to 0
+        Assert.True (editor.FindNext ());
+        Assert.Equal (0, editor.CaretOffset);
+    }
+
+    [Fact]
+    public void FindPrevious_ZeroLength_Caret_Regex_Cycles_Backward ()
+    {
+        Views.Editor editor = new () { Document = new TextDocument ("line1\nline2\nline3") };
+        editor.SearchStrategy = SearchStrategyFactory.Create (@"^", false, false, SearchMode.RegEx);
+        editor.CaretOffset = 12;
+
+        Assert.True (editor.FindPrevious ());
+        Assert.Equal (6, editor.CaretOffset);
+        Assert.False (editor.HasSelection);
+
+        Assert.True (editor.FindPrevious ());
+        Assert.Equal (0, editor.CaretOffset);
+        Assert.False (editor.HasSelection);
+
+        // Wrap around to last match
+        Assert.True (editor.FindPrevious ());
+        Assert.Equal (12, editor.CaretOffset);
+        Assert.False (editor.HasSelection);
+    }
+
+    [Fact]
+    public void ReplaceNext_ZeroLength_Match_Inserts_At_Position ()
+    {
+        // Replace ^ with "// " — prepend comment marker to each line
+        Views.Editor editor = new () { Document = new TextDocument ("a\nb\nc") };
+        editor.SearchStrategy = SearchStrategyFactory.Create (@"^", false, false, SearchMode.RegEx);
+        editor.CaretOffset = 0;
+
+        Assert.True (editor.ReplaceNext ("// "));
+        Assert.Equal ("// a\nb\nc", editor.Document!.Text);
+
+        Assert.True (editor.ReplaceNext ("// "));
+        Assert.Equal ("// a\n// b\nc", editor.Document!.Text);
+
+        Assert.True (editor.ReplaceNext ("// "));
+        Assert.Equal ("// a\n// b\n// c", editor.Document!.Text);
+    }
+
+    [Fact]
+    public void ReplaceAll_ZeroLength_Match_Inserts_At_All_Positions ()
+    {
+        // ReplaceAll with ^ — prepend comment marker to every line
+        Views.Editor editor = new () { Document = new TextDocument ("a\nb\nc") };
+        editor.SearchStrategy = SearchStrategyFactory.Create (@"^", false, false, SearchMode.RegEx);
+
+        var n = editor.ReplaceAll ("// ");
+
+        Assert.Equal (3, n);
+        Assert.Equal ("// a\n// b\n// c", editor.Document!.Text);
+    }
 }
