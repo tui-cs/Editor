@@ -112,7 +112,11 @@ New public API on `Editor` requires a brief in `specs/public-api.md` before merg
 
 ### R9 — No unused public/internal APIs in `src/`
 
-If a public or internal member exists, something in `src/` or `examples/` must call it. Tests don't count as a consumer. If the API is a future affordance, leave it out until the consumer is ready.
+If a public or internal member exists, something in `src/` or `examples/` must call it. **Tests don't count as a consumer.** If the API is a future affordance, leave it out until the consumer is ready.
+
+**AvaloniaEdit lifts are not exempt.** A lift PR must include the `Terminal.Gui.Editor` integration *and* the `examples/ted` wiring that exercises the lifted surface in the same change — pure plumbing is not a complete feature. The principle: a customer (end-user of ted, developer using `Editor`, or maintainer) must be able to *experience* the new capability via the demo app the moment the PR merges. If the lift introduces three new search modes, ted gains three new toggles; if the lift adds folding, ted shows a fold marker; if the lift adds an indentation strategy, ted's Enter key auto-indents.
+
+When the work is too big to merge atomically, split it horizontally (smaller user-visible slices), not vertically (model first, view later). Lift the regex *with* the regex toggle UI. Lift folding *with* fold-marker rendering. Never land a layer that ted does not call.
 
 ### R10 — Subscribe to `-ed` events, not `-ing`
 

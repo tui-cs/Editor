@@ -95,3 +95,4 @@ public interface IBackgroundRenderer
 | 2026-05-10 | tab-handling tab properties landed (codex merge) | tab-handling |
 | 2026-05-11 | Caret and selection storage migrated to TextAnchor-backed tracking | caret-anchors |
 | 2026-05-11 | ReadOnly property landed on Editor | read-only |
+| 2026-05-12 | `ISearchStrategy?` `SearchStrategy { get; set; }` landed on Editor; string-based FindNext/FindPrevious/ReplaceNext/ReplaceAll overloads retained as convenience wrappers | find-and-replace |

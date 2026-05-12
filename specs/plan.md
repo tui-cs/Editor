@@ -30,21 +30,18 @@ The textmate-grammars feature ships in the release **after** alpha.
 
 ### Remaining (per-feature specs in `specs/<name>/spec.md`)
 
-| Feature | Status | Blocked by |
-|---------|--------|------------|
-| [folding](folding/spec.md) | Ready | — |
-| [search](search/spec.md) | Ready | — |
-| [indentation](indentation/spec.md) | Ready | — |
-| [syntax-highlighting](syntax-highlighting/spec.md) | Ready | — |
-| [word-wrap](word-wrap/spec.md) | Ready | — |
-| [multi-caret](multi-caret/spec.md) | Ready | — |
-| [clipboard](clipboard/spec.md) | Ready | — |
-| [find-and-replace](find-and-replace/spec.md) | Blocked | search |
-| [word-wrap-toggle](word-wrap-toggle/spec.md) | Blocked | word-wrap |
-| [folding-ui](folding-ui/spec.md) | Blocked | folding |
-| [auto-indent](auto-indent/spec.md) | Blocked | indentation |
-| [syntax-colorizer](syntax-colorizer/spec.md) | Blocked | syntax-highlighting |
-| [textmate-grammars](textmate-grammars/spec.md) | Blocked | syntax-colorizer |
+**Composition rule** (constitution R9): every feature listed here is end-to-end — `Terminal.Gui.Text` model layer + `Terminal.Gui.Editor` consumer + `examples/ted` UI wiring, in a single PR. AvaloniaEdit lifts and pure-plumbing sub-features (the old `search`, `indentation`, `folding`, `syntax-highlighting` rows) are subsumed into the feature that ships them to the user. Lift-only PRs are not accepted.
+
+| Feature | Status | Bundles | Notes |
+|---------|--------|---------|-------|
+| [find-and-replace](find-and-replace/spec.md) | In progress | `Search/` lift (done) + `Editor.SearchStrategy` + ted toggles + `SearchHitRenderer` + keybindings | Lift plumbing landed; engine swap + ted UI in flight. |
+| [auto-indent](auto-indent/spec.md) | Ready | `Indentation/` lift + `Editor.IndentationStrategy` + Enter wiring + ted demo | |
+| [folding-ui](folding-ui/spec.md) | Ready | `Folding/` lift + `FoldingTransformer` + click-to-toggle + ted demo | |
+| [syntax-colorizer](syntax-colorizer/spec.md) | Ready | `Highlighting/` lift (xshd) + colorizer transformer + ted theme integration | Blocks textmate-grammars (post-alpha). |
+| [word-wrap](word-wrap/spec.md) | Ready | `VisualLineBuilder` wrap + `Editor.WordWrap` + ted toggle | |
+| [multi-caret](multi-caret/spec.md) | Ready | Anchor-based multi-caret + ted demo | |
+| [clipboard](clipboard/spec.md) | Ready | Cut/Copy/Paste commands + ted menu wiring | |
+| [textmate-grammars](textmate-grammars/spec.md) | Post-alpha | TextMate parser + colorizer integration | Ships in release after alpha. |
 
 ## Repository Layout
 
@@ -78,40 +75,34 @@ third_party/AvaloniaEdit/
 
 ## Dependencies
 
-The diagram shows **must-finish-before** edges. Features not shown are independent.
+The diagram shows **must-finish-before** edges between user-visible features. Features not shown are independent. AvaloniaEdit lifts are not standalone nodes — they ride inside the feature that ships them.
 
 ```
-   ┌── folding ─────────┐
-   │                    │
-   ├── search ──────────┼── ██ rendering-pipeline DONE ██ ─┬─ ██ drawing-overhaul DONE ██ ─┬─ syntax-colorizer ── textmate-grammars
-   │                    │                                  │                    │
-   ├── indentation ─────┘                                  └─ word-wrap ── word-wrap-toggle
-   │
-   └── syntax-highlighting ─────────────────────────────────────────────────────┘
+   ██ rendering-pipeline DONE ██ ─┬─ ██ drawing-overhaul DONE ██ ─┬─ syntax-colorizer ── textmate-grammars
+                                  │                               │
+                                  └─ word-wrap                    └─ folding-ui
 
    ██ caret-anchors DONE ██ ── multi-caret
 
    ██ tab-handling DONE ██
-   ██ read-only DONE ██ ── independent
-   clipboard            ── independent
-   find-and-replace     ── needs search
-   folding-ui           ── needs folding
-   auto-indent          ── needs indentation
+   ██ read-only DONE ██
+
+   clipboard          ── independent
+   find-and-replace   ── independent (search lift already landed)
+   auto-indent        ── independent
 ```
 
-### Ready start state (post drawing-overhaul merge)
+### Ready start state
 
-All of these can be picked up immediately: **folding, search, indentation, syntax-highlighting, word-wrap, multi-caret, clipboard**.
+All of these are end-to-end (model + Editor + ted) and can be picked up immediately: **find-and-replace, auto-indent, folding-ui, syntax-colorizer, word-wrap, multi-caret, clipboard**.
 
-syntax-highlighting is the remaining dependency before syntax-colorizer can start.
-
-Second wave (after their dependencies): **find-and-replace** (after search), **word-wrap-toggle** (after word-wrap), **folding-ui** (after folding), **auto-indent** (after indentation), **syntax-colorizer** (after syntax-highlighting).
+`textmate-grammars` ships post-alpha and follows `syntax-colorizer`.
 
 ## MLP Definition of Done
 
 Each criterion is testable. This is the merge-to-`main` gate.
 
-- [ ] All features merged: folding, search, indentation, syntax-highlighting, drawing-overhaul, word-wrap, caret-anchors, multi-caret, read-only, clipboard, find-and-replace, word-wrap-toggle, folding-ui, auto-indent, syntax-colorizer.
+- [ ] All features merged: drawing-overhaul, caret-anchors, read-only, find-and-replace, auto-indent, folding-ui, syntax-colorizer, word-wrap, multi-caret, clipboard.
 - [ ] `dotnet build Terminal.Gui.Text.slnx` clean on Linux/macOS/Windows on net10.0.
 - [ ] All three test projects pass. Coverage: `Text.Tests` ≥ 90%, `Editor.Tests` ≥ 75%.
 - [ ] `Editor.OnDrawingContent` does not iterate `text` by `char`. R1, R2, R4, R5 hold.

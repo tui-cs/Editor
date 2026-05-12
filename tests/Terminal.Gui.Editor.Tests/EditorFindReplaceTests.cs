@@ -1,6 +1,7 @@
 // Claude - claude-opus-4-7
 
 using Terminal.Gui.Text.Document;
+using Terminal.Gui.Text.Search;
 using Terminal.Gui.Views;
 using Xunit;
 
@@ -8,9 +9,10 @@ namespace Terminal.Gui.Editor.Tests;
 
 /// <summary>
 ///     Tests for <see cref="Editor" /> find/replace surface. Pure logic — no
-///     <see cref="App.IApplication" />, no driver. The bigger migration onto
-///     <c>ISearchStrategy</c> is tracked by spec §8 D4; these tests pin the current
-///     contract so the migration is a refactor, not a rewrite.
+///     <see cref="App.IApplication" />, no driver. Covers both the legacy string-based
+///     convenience overloads (which build a <see cref="SearchMode.Normal" /> strategy under
+///     the hood) and the <see cref="Editor.SearchStrategy" /> property-driven path that
+///     unlocks regex, whole-word, and wildcard search through ted.
 /// </summary>
 public class EditorFindReplaceTests
 {
@@ -107,5 +109,132 @@ public class EditorFindReplaceTests
 
         Assert.True (found);
         Assert.Equal (0, editor.SelectionStart);
+    }
+
+    // ─── SearchStrategy property-driven path ──────────────────────────────────────
+
+    [Fact]
+    public void SearchStrategy_Property_Round_Trips ()
+    {
+        Views.Editor editor = new () { Document = new TextDocument ("hello") };
+        ISearchStrategy strategy = SearchStrategyFactory.Create ("hello", false, false, SearchMode.Normal);
+
+        editor.SearchStrategy = strategy;
+
+        Assert.Same (strategy, editor.SearchStrategy);
+    }
+
+    [Fact]
+    public void FindNext_NoArg_Returns_False_When_Strategy_Not_Set ()
+    {
+        Views.Editor editor = new () { Document = new TextDocument ("hello") };
+
+        Assert.False (editor.FindNext ());
+    }
+
+    [Fact]
+    public void FindNext_Via_Strategy_Finds_Regex_Match ()
+    {
+        // The bespoke IndexOf engine cannot express this — regex is the whole point of the lift.
+        Views.Editor editor = new () { Document = new TextDocument ("abc 123 def 456") };
+        editor.SearchStrategy = SearchStrategyFactory.Create (@"\d+", false, false, SearchMode.RegEx);
+
+        Assert.True (editor.FindNext ());
+
+        Assert.Equal (4, editor.SelectionStart);
+        Assert.Equal (7, editor.SelectionEnd);
+    }
+
+    [Fact]
+    public void FindNext_Via_Strategy_Respects_Whole_Word ()
+    {
+        Views.Editor editor = new () { Document = new TextDocument ("cat catalog scatter cat") };
+        editor.SearchStrategy = SearchStrategyFactory.Create ("cat", false, true, SearchMode.Normal);
+
+        Assert.True (editor.FindNext ());
+        Assert.Equal (0, editor.SelectionStart);
+
+        Assert.True (editor.FindNext ());
+        Assert.Equal (20, editor.SelectionStart);
+        Assert.Equal (23, editor.SelectionEnd);
+    }
+
+    [Fact]
+    public void FindPrevious_Finds_Rightmost_Match_Before_Caret ()
+    {
+        Views.Editor editor = new () { Document = new TextDocument ("foo bar foo baz foo") };
+        editor.CaretOffset = 15; // between "foo" #2 (offset 8-11) and "foo" #3 (offset 16-19)
+
+        Assert.True (editor.FindPrevious ("foo"));
+
+        Assert.Equal (8, editor.SelectionStart);
+        Assert.Equal (11, editor.SelectionEnd);
+    }
+
+    [Fact]
+    public void FindPrevious_Wraps_Around_When_Before_First_Match ()
+    {
+        Views.Editor editor = new () { Document = new TextDocument ("foo bar foo") };
+        editor.CaretOffset = 0;
+
+        Assert.True (editor.FindPrevious ("foo"));
+
+        Assert.Equal (8, editor.SelectionStart);
+    }
+
+    [Fact]
+    public void ReplaceNext_Substitutes_Regex_Backreferences ()
+    {
+        Views.Editor editor = new () { Document = new TextDocument ("count=42 size=7") };
+        editor.SearchStrategy = SearchStrategyFactory.Create (@"(\w+)=(\d+)", false, false, SearchMode.RegEx);
+
+        Assert.True (editor.ReplaceNext ("$2:$1"));
+
+        Assert.Equal ("42:count size=7", editor.Document!.Text);
+    }
+
+    [Fact]
+    public void ReplaceAll_Via_Regex_Strategy_Replaces_All_Matches ()
+    {
+        Views.Editor editor = new () { Document = new TextDocument ("abc 123 def 456 ghi 789") };
+        editor.SearchStrategy = SearchStrategyFactory.Create (@"\d+", false, false, SearchMode.RegEx);
+
+        var n = editor.ReplaceAll ("#");
+
+        Assert.Equal (3, n);
+        Assert.Equal ("abc # def # ghi #", editor.Document!.Text);
+    }
+
+    [Fact]
+    public void ReplaceAll_Via_Regex_Strategy_Collapses_To_Single_Undo_Step ()
+    {
+        // Reverse-iteration replace under a single RunUpdate () scope is the new path; verify the
+        // R5 invariant (one user-visible undo step) holds even when the engine is regex.
+        TextDocument doc = new ("a1 b2 c3 d4 e5");
+        Views.Editor editor = new () { Document = doc };
+        editor.SearchStrategy = SearchStrategyFactory.Create (@"\d", false, false, SearchMode.RegEx);
+
+        var n = editor.ReplaceAll ("X");
+        Assert.Equal (5, n);
+        Assert.Equal ("aX bX cX dX eX", doc.Text);
+
+        doc.UndoStack.Undo ();
+
+        Assert.Equal ("a1 b2 c3 d4 e5", doc.Text);
+    }
+
+    [Fact]
+    public void ReplaceAll_Substitutes_Backreferences_In_Reverse_Without_Drift ()
+    {
+        // Reverse iteration is required because replacing forward would invalidate later offsets
+        // as soon as the substitution differs in length from the match. This test would fail under
+        // a naive forward loop because "$1:$2" expands the match.
+        Views.Editor editor = new () { Document = new TextDocument ("a=1 b=2 c=3") };
+        editor.SearchStrategy = SearchStrategyFactory.Create (@"(\w)=(\d)", false, false, SearchMode.RegEx);
+
+        var n = editor.ReplaceAll ("$1->$2");
+
+        Assert.Equal (3, n);
+        Assert.Equal ("a->1 b->2 c->3", editor.Document!.Text);
     }
 }
