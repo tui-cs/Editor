@@ -389,6 +389,7 @@ public partial class Editor : View
         InvalidateVisualLineCaches (e);
         InvalidateHighlighterState (e);
         _cachedVisibleLineNumbers = null;
+        _searchHitRenderer?.Invalidate ();
         UpdateMaxWidthIncremental (e);
         UpdateContentSize ();
         UpdateGutterWidth ();

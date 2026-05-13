@@ -252,6 +252,8 @@ public sealed partial class TedApp : Window
         // Editor.CaretChanged covers both user-driven movement and document edits that shift the
         // caret (insert/remove). Initial render seeds the value before any movement happens.
         Editor.CaretChanged += (_, _) => UpdateLocShortcut ();
+        Editor.FindRequested += (_, _) => ShowFindReplaceDialog (false);
+        Editor.ReplaceRequested += (_, _) => ShowFindReplaceDialog (true);
         UpdateLocShortcut ();
     }
 
