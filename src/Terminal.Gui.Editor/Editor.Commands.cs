@@ -81,7 +81,7 @@ public partial class Editor
         });
 
         // Editing — selection-aware
-        AddCommand (Command.NewLine, () => InsertOrReplace ("\n"));
+        AddCommand (Command.NewLine, InsertNewLineWithAutoIndent);
         AddCommand (Command.DeleteCharLeft, DeleteLeft);
         AddCommand (Command.DeleteCharRight, DeleteRight);
 
@@ -166,6 +166,33 @@ public partial class Editor
         }
 
         SetNeedsDraw ();
+
+        return true;
+    }
+
+    private bool? InsertNewLineWithAutoIndent ()
+    {
+        if (ReadOnly)
+        {
+            return true;
+        }
+
+        if (HasSelection)
+        {
+            ReplaceSelection ("\n");
+        }
+        else
+        {
+            _document!.Insert (CaretOffset, "\n");
+        }
+
+        // After the newline is inserted the caret sits at the start of the new line.
+        // Ask the indentation strategy to fill in leading whitespace.
+        if (IndentationStrategy is { } strategy && _document is not null)
+        {
+            DocumentLine newLine = _document.GetLineByOffset (CaretOffset);
+            strategy.IndentLine (_document, newLine);
+        }
 
         return true;
     }
