@@ -1,9 +1,10 @@
 # Feature Specification: Folding Model
 
-**Status**: Ready
+**Status**: Subsumed — shipped as part of [folding-ui](../folding-ui/spec.md) (PR #96). Retained for historical reference only. Per constitution R9 ("lifts must ship with their ted consumer") lift-only specs are no longer scheduled separately.
 **Created**: 2026-05-10
+**Last updated**: 2026-05-13
 **Depends on**: None
-**Blocked by**: None
+**Blocked by**: —
 
 ## Overview
 

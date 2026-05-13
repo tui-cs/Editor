@@ -1,7 +1,8 @@
 # Feature Specification: Clipboard (Cut / Copy / Paste)
 
-**Status**: Ready
+**Status**: Ready — tracked in issue #101
 **Created**: 2026-05-10
+**Last updated**: 2026-05-13
 **Depends on**: None
 **Blocked by**: None
 

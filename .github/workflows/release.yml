@@ -137,6 +137,7 @@ jobs:
   notify-downstream:
     needs: [resolve-version, pack-and-publish]
     runs-on: ubuntu-latest
+    continue-on-error: true  # Non-blocking: missing secret shouldn't fail the release
     env:
       VERSION: ${{ needs.resolve-version.outputs.version }}
     steps:

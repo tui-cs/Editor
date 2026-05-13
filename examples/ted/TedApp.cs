@@ -107,6 +107,19 @@ public sealed partial class TedApp : Window
             Value = Editor.UseThemeBackground ? CheckState.Checked : CheckState.UnChecked
         };
 
+        CheckBox wordWrapCheckBox = new ()
+        {
+            AllowCheckStateNone = false,
+            CanFocus = false,
+            Text = "_Word Wrap",
+            Value = Editor.WordWrap ? CheckState.Checked : CheckState.UnChecked
+        };
+
+        wordWrapCheckBox.ValueChanged += (_, e) =>
+        {
+            Editor.WordWrap = e.NewValue == CheckState.Checked;
+        };
+
         LanguageShortcut = new Shortcut (Key.Empty, "C#", null) { MouseHighlightStates = MouseState.None };
 
         IndentationSizeUpDown = new NumericUpDown<int>
@@ -232,6 +245,11 @@ public sealed partial class TedApp : Window
                     },
                     CommandView = useThemeBackgroundCheckBox,
                     HelpText = "Use theme background for highlighted text"
+                },
+                new MenuItem
+                {
+                    CommandView = wordWrapCheckBox,
+                    HelpText = "Soft-wrap long lines at viewport edge"
                 }
             ]),
             new MenuBarItem (Strings.menuHelp,

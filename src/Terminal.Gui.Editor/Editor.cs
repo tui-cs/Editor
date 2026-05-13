@@ -4,6 +4,7 @@ using Terminal.Gui.Document.Folding;
 using Terminal.Gui.Drawing;
 using Terminal.Gui.Highlighting;
 using Terminal.Gui.Text.Indentation;
+using Terminal.Gui.Text;
 using Terminal.Gui.ViewBase;
 using Terminal.Gui.Editor.Rendering;
 using Attribute = Terminal.Gui.Drawing.Attribute;
@@ -51,6 +52,13 @@ public partial class Editor : View
     private bool _maxWidthDirty = true;
     private int _maxWidthLineNumber;
     private GutterOptions _gutterOptions;
+
+    // Word-wrap map: when WordWrap == true, maps visual row indices to (lineNumber, segmentIndex)
+    // pairs. Lazily built and cached. Cleared on any document change or property change that
+    // affects wrapping. _wrapMapColumn tracks the wrap column used to build the map so we
+    // can detect viewport-width changes and rebuild.
+    private List<WrapMapEntry>? _wrapMap;
+    private int _wrapMapColumn;
 
     /// <summary>
     ///     Sticky column for vertical caret moves. Tracks the column the user *intends* to be in,
@@ -251,6 +259,33 @@ public partial class Editor : View
         }
     }
 
+    /// <summary>
+    ///     When <see langword="true" />, lines wider than the viewport soft-wrap at whitespace
+    ///     boundaries (or hard-break when no whitespace exists). Continuation lines render flush
+    ///     at column 0. Defaults to <see langword="false" />.
+    /// </summary>
+    public bool WordWrap
+    {
+        get;
+        set
+        {
+            if (field == value)
+            {
+                return;
+            }
+
+            field = value;
+            ClearVisualLineCaches ();
+            _cachedVisibleLineNumbers = null;
+            _wrapMap = null;
+            _maxWidthDirty = true;
+            _virtualCaretColumn = GetCaretColumn ();
+            UpdateContentSize ();
+            EnsureCaretVisible ();
+            SetNeedsDraw ();
+        }
+    }
+
     /// <summary>Transformers applied to visual lines after they are built.</summary>
     public IList<IVisualLineTransformer> LineTransformers { get; } = [];
 
@@ -304,6 +339,7 @@ public partial class Editor : View
     {
         ClearVisualLineCaches ();
         _cachedVisibleLineNumbers = null;
+        _wrapMap = null;
         _maxWidthDirty = true;
         UpdateContentSize ();
         SetNeedsDraw ();
@@ -390,6 +426,7 @@ public partial class Editor : View
         InvalidateHighlighterState (e);
         _cachedVisibleLineNumbers = null;
         _searchHitRenderer?.Invalidate ();
+        _wrapMap = null;
         UpdateMaxWidthIncremental (e);
         UpdateContentSize ();
         UpdateGutterWidth ();
@@ -412,6 +449,16 @@ public partial class Editor : View
     {
         if (_document == null)
         {
+            return;
+        }
+
+        if (WordWrap)
+        {
+            // In word-wrap mode, the content height is the total number of visual rows
+            // (each wrapped segment counts as one row). No horizontal scrolling needed.
+            List<WrapMapEntry> map = GetWrapMap ();
+            SetContentSize (new Size (Viewport.Width, Math.Max (1, map.Count)));
+
             return;
         }
 
@@ -725,7 +772,35 @@ public partial class Editor : View
         var caretOffset = CaretOffset;
         DocumentLine? line = _document?.GetLineByOffset (caretOffset);
 
-        return line is null ? 0 : GetOrBuildDefaultVisualLine (line).GetVisualColumn (caretOffset - line.Offset);
+        if (line is null)
+        {
+            return 0;
+        }
+
+        if (!WordWrap)
+        {
+            return GetOrBuildDefaultVisualLine (line).GetVisualColumn (caretOffset - line.Offset);
+        }
+
+        // In word-wrap mode, the column is relative to the start of the wrap segment.
+        var offsetInLine = caretOffset - line.Offset;
+        var text = _document!.GetText (line);
+        IReadOnlyList<WrapSegment> segments =
+            WordWrapStrategy.ComputeSegments (text, GetWrapColumn (), IndentationSize);
+
+        // Find which segment the caret falls in.
+        for (var i = segments.Count - 1; i >= 0; i--)
+        {
+            if (offsetInLine >= segments[i].StartOffset)
+            {
+                var localOffset = offsetInLine - segments[i].StartOffset;
+                var segText = text.Substring (segments[i].StartOffset, segments[i].Length);
+
+                return ComputeVisualColumnDirect (segText, localOffset);
+            }
+        }
+
+        return GetOrBuildDefaultVisualLine (line).GetVisualColumn (offsetInLine);
     }
 
     private int GetCaretLineIndex ()
@@ -740,6 +815,11 @@ public partial class Editor : View
     /// </summary>
     private int GetCaretVisibleLineIndex ()
     {
+        if (WordWrap)
+        {
+            return GetCaretWrapRow ();
+        }
+
         var docLineNumber = (_document?.GetLineByOffset (CaretOffset).LineNumber ?? 1);
         List<int> visible = GetVisibleLineNumbers ();
         var idx = visible.IndexOf (docLineNumber);
@@ -753,12 +833,86 @@ public partial class Editor : View
     /// </summary>
     private void MoveCaretVertically (int delta)
     {
+        if (WordWrap)
+        {
+            MoveCaretVerticallyWrapped (delta);
+
+            return;
+        }
+
         var targetLine = Math.Clamp (GetCaretLineIndex () + delta, 0, _document!.LineCount - 1);
         DocumentLine line = _document!.GetLineByNumber (targetLine + 1);
         var targetCol = GetOrBuildDefaultVisualLine (line).GetRelativeOffset (_virtualCaretColumn);
 
         // resetVirtualColumn: false keeps the sticky column intact across vertical moves.
         SetCaretOffset (line.Offset + targetCol, false);
+    }
+
+    private void MoveCaretVerticallyWrapped (int delta)
+    {
+        List<WrapMapEntry> map = GetWrapMap ();
+        var currentRow = GetCaretWrapRow ();
+        var targetRow = Math.Clamp (currentRow + delta, 0, map.Count - 1);
+
+        if (targetRow == currentRow)
+        {
+            return;
+        }
+
+        WrapMapEntry entry = map[targetRow];
+        DocumentLine line = _document!.GetLineByNumber (entry.LineNumber);
+        var text = _document.GetText (line);
+        IReadOnlyList<WrapSegment> segments =
+            WordWrapStrategy.ComputeSegments (text, GetWrapColumn (), IndentationSize);
+        WrapSegment seg = segments[entry.SegmentIndex];
+
+        // Resolve the virtual column within this segment.
+        var segText = text.Substring (seg.StartOffset, seg.Length);
+        var localOffset = ComputeRelativeOffsetDirect (segText, _virtualCaretColumn);
+
+        SetCaretOffset (line.Offset + seg.StartOffset + localOffset, false);
+    }
+
+    /// <summary>Returns the visual row in the wrap map for the current caret position.</summary>
+    private int GetCaretWrapRow ()
+    {
+        if (_document is null)
+        {
+            return 0;
+        }
+
+        var caretOffset = CaretOffset;
+        DocumentLine line = _document.GetLineByOffset (caretOffset);
+        var offsetInLine = caretOffset - line.Offset;
+        var text = _document.GetText (line);
+        IReadOnlyList<WrapSegment> segments =
+            WordWrapStrategy.ComputeSegments (text, GetWrapColumn (), IndentationSize);
+
+        // Determine which segment the caret is in.
+        var segIndex = 0;
+
+        for (var i = segments.Count - 1; i >= 0; i--)
+        {
+            if (offsetInLine >= segments[i].StartOffset)
+            {
+                segIndex = i;
+
+                break;
+            }
+        }
+
+        // Find matching row in the wrap map.
+        List<WrapMapEntry> map = GetWrapMap ();
+
+        for (var row = 0; row < map.Count; row++)
+        {
+            if (map[row].LineNumber == line.LineNumber && map[row].SegmentIndex == segIndex)
+            {
+                return row;
+            }
+        }
+
+        return 0;
     }
 
     private int GetCaretOffset ()
@@ -883,13 +1037,20 @@ public partial class Editor : View
             newY = caretLine - viewport.Height + 1;
         }
 
-        if (caretCol < newX)
+        if (!WordWrap)
         {
-            newX = caretCol;
+            if (caretCol < newX)
+            {
+                newX = caretCol;
+            }
+            else if (caretCol >= newX + viewport.Width)
+            {
+                newX = caretCol - viewport.Width + 1;
+            }
         }
-        else if (caretCol >= newX + viewport.Width)
+        else
         {
-            newX = caretCol - viewport.Width + 1;
+            newX = 0;
         }
 
         if (newX != viewport.X || newY != viewport.Y)
@@ -899,4 +1060,123 @@ public partial class Editor : View
     }
 
     private readonly record struct DrawCacheEntry (CellVisualLine Line, Attribute Normal, Attribute Selected);
+
+    /// <summary>
+    ///     Computes the visual column for a character offset within a text segment without
+    ///     allocating a <see cref="TextDocument" />. Walks graphemes and accumulates widths.
+    /// </summary>
+    private int ComputeVisualColumnDirect (string segmentText, int targetOffset)
+    {
+        var visualCol = 0;
+        var logicalCol = 0;
+
+        foreach (var grapheme in Terminal.Gui.Drawing.GraphemeHelper.GetGraphemes (segmentText))
+        {
+            if (logicalCol >= targetOffset)
+            {
+                break;
+            }
+
+            if (grapheme == "\t")
+            {
+                var remainder = visualCol % IndentationSize;
+                visualCol += remainder == 0 ? IndentationSize : IndentationSize - remainder;
+            }
+            else
+            {
+                visualCol += Math.Max (0, grapheme.GetColumns ());
+            }
+
+            logicalCol += grapheme.Length;
+        }
+
+        return visualCol;
+    }
+
+    /// <summary>
+    ///     Computes the character offset closest to a target visual column within a text segment
+    ///     without allocating a <see cref="TextDocument" />. Inverse of
+    ///     <see cref="ComputeVisualColumnDirect" />.
+    /// </summary>
+    private int ComputeRelativeOffsetDirect (string segmentText, int targetVisualColumn)
+    {
+        var visualCol = 0;
+        var logicalCol = 0;
+
+        foreach (var grapheme in Terminal.Gui.Drawing.GraphemeHelper.GetGraphemes (segmentText))
+        {
+            int width;
+
+            if (grapheme == "\t")
+            {
+                var remainder = visualCol % IndentationSize;
+                width = remainder == 0 ? IndentationSize : IndentationSize - remainder;
+            }
+            else
+            {
+                width = Math.Max (0, grapheme.GetColumns ());
+            }
+
+            if (visualCol + width > targetVisualColumn)
+            {
+                return logicalCol;
+            }
+
+            visualCol += width;
+            logicalCol += grapheme.Length;
+        }
+
+        return logicalCol;
+    }
+
+    /// <summary>Maps a visual row (in the wrap map) to a document line and segment within that line.</summary>
+    private readonly record struct WrapMapEntry (int LineNumber, int SegmentIndex, int SegmentStartOffset);
+
+    /// <summary>
+    ///     Returns the wrap map, building it lazily. Each entry corresponds to one visual row
+    ///     in the document when word wrap is active. Automatically rebuilds if the wrap column
+    ///     has changed (viewport resize) or visible lines have been invalidated (fold toggle).
+    /// </summary>
+    private List<WrapMapEntry> GetWrapMap ()
+    {
+        var wrapColumn = GetWrapColumn ();
+
+        if (_wrapMap is not null && _wrapMapColumn == wrapColumn)
+        {
+            return _wrapMap;
+        }
+
+        _wrapMap = [];
+        _wrapMapColumn = wrapColumn;
+
+        if (_document is null)
+        {
+            return _wrapMap;
+        }
+
+        List<int> visibleLineNumbers = GetVisibleLineNumbers ();
+
+        foreach (var lineNumber in visibleLineNumbers)
+        {
+            DocumentLine line = _document.GetLineByNumber (lineNumber);
+            var text = _document.GetText (line);
+            IReadOnlyList<WrapSegment> segments =
+                WordWrapStrategy.ComputeSegments (text, wrapColumn, IndentationSize);
+
+            for (var i = 0; i < segments.Count; i++)
+            {
+                _wrapMap.Add (new WrapMapEntry (lineNumber, i, segments[i].StartOffset));
+            }
+        }
+
+        return _wrapMap;
+    }
+
+    /// <summary>Returns the effective wrap column (viewport width).</summary>
+    private int GetWrapColumn ()
+    {
+        Rectangle viewport = Viewport;
+
+        return viewport.Width > 0 ? viewport.Width : 80;
+    }
 }
