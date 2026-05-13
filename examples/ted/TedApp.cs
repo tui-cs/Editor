@@ -69,6 +69,21 @@ public sealed partial class TedApp : Window
             Editor.ConvertTabsToSpaces = e.NewValue == CheckState.Checked;
         };
 
+        CheckBox autoIndentCheckBox = new ()
+        {
+            AllowCheckStateNone = false,
+            CanFocus = false,
+            Text = "_Auto Indent",
+            Value = Editor.IndentationStrategy is not null ? CheckState.Checked : CheckState.UnChecked
+        };
+
+        autoIndentCheckBox.ValueChanged += (_, e) =>
+        {
+            Editor.IndentationStrategy = e.NewValue == CheckState.Checked
+                ? new Terminal.Gui.Text.Indentation.DefaultIndentationStrategy ()
+                : null;
+        };
+
         CheckBox useThemeBackgroundCheckBox = new ()
         {
             AllowCheckStateNone = false,
@@ -162,6 +177,11 @@ public sealed partial class TedApp : Window
                 {
                     CommandView = convertTabsToSpacesCheckBox,
                     HelpText = "Insert spaces when Tab is pressed"
+                },
+                new MenuItem
+                {
+                    CommandView = autoIndentCheckBox,
+                    HelpText = "Copy indentation from the previous line on Enter"
                 },
                 new MenuItem
                 {
