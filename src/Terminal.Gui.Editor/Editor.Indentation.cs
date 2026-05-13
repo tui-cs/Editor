@@ -125,16 +125,25 @@ public partial class Editor
 
     private bool TryDeleteIndentationLeft ()
     {
-        if (_document is null || CaretOffset == 0)
+        return TryDeleteIndentationLeftAt (CaretOffset);
+    }
+
+    /// <summary>
+    ///     Attempts smart-indentation backspace at the given <paramref name="offset" />. If the offset
+    ///     sits exactly at the end of leading whitespace and aligns to an indentation boundary, the last
+    ///     complete indentation unit is removed. Returns <see langword="true" /> if handled.
+    /// </summary>
+    private bool TryDeleteIndentationLeftAt (int offset)
+    {
+        if (_document is null || offset == 0)
         {
             return false;
         }
 
-        var caretOffset = CaretOffset;
-        DocumentLine line = _document.GetLineByOffset (caretOffset);
+        DocumentLine line = _document.GetLineByOffset (offset);
         ISegment leadingWhitespace = TextUtilities.GetLeadingWhitespace (_document, line);
 
-        if (leadingWhitespace.Length == 0 || caretOffset != leadingWhitespace.EndOffset)
+        if (leadingWhitespace.Length == 0 || offset != leadingWhitespace.EndOffset)
         {
             return false;
         }
@@ -147,7 +156,7 @@ public partial class Editor
         {
             ISegment segment = TextUtilities.GetSingleIndentationSegment (_document, scanOffset, IndentationSize);
 
-            if (segment.Length == 0 || scanOffset + segment.Length > caretOffset)
+            if (segment.Length == 0 || scanOffset + segment.Length > offset)
             {
                 break;
             }
@@ -156,7 +165,7 @@ public partial class Editor
             scanOffset += segment.Length;
         }
 
-        if (scanOffset != caretOffset || lastSegment.length == 0)
+        if (scanOffset != offset || lastSegment.length == 0)
         {
             return false;
         }

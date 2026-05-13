@@ -159,8 +159,9 @@ public partial class Editor
     }
 
     /// <summary>
-    ///     Executes a multi-caret delete-left (backspace). Each caret deletes one character to its left.
-    ///     Wrapped in a single undo scope.
+    ///     Executes a multi-caret delete-left (backspace). Each caret deletes one indentation unit
+    ///     (when at a leading-whitespace boundary) or one character to its left, matching single-caret
+    ///     smart-backspace behavior. Wrapped in a single undo scope.
     /// </summary>
     private bool? MultiCaretDeleteLeft ()
     {
@@ -186,7 +187,7 @@ public partial class Editor
                     {
                         ReplaceSelection (string.Empty);
                     }
-                    else if (CaretOffset > 0)
+                    else if (!TryDeleteIndentationLeftAt (CaretOffset) && CaretOffset > 0)
                     {
                         _document.Remove (CaretOffset - 1, 1);
                     }
@@ -206,7 +207,7 @@ public partial class Editor
                         }
                     }
 
-                    if (caret.Offset > 0)
+                    if (!TryDeleteIndentationLeftAt (caret.Offset) && caret.Offset > 0)
                     {
                         _document.Remove (caret.Offset - 1, 1);
                     }
@@ -281,7 +282,8 @@ public partial class Editor
     }
 
     /// <summary>
-    ///     Multi-caret newline insert. Each caret gets a newline.
+    ///     Multi-caret newline insert. Each caret gets a newline followed by auto-indent
+    ///     (when <see cref="IndentationStrategy" /> is set), matching single-caret Enter behavior.
     /// </summary>
     private bool? MultiCaretNewLine ()
     {
@@ -311,6 +313,12 @@ public partial class Editor
                     {
                         _document.Insert (CaretOffset, "\n");
                     }
+
+                    if (IndentationStrategy is { } strategy)
+                    {
+                        DocumentLine newLine = _document.GetLineByOffset (CaretOffset);
+                        strategy.IndentLine (_document, newLine);
+                    }
                 }
                 else
                 {
@@ -323,11 +331,24 @@ public partial class Editor
                         {
                             _document.Replace (selStart, selEnd - selStart, "\n");
 
+                            // Apply indentation to the new line after selection replacement.
+                            if (IndentationStrategy is { } selStrategy)
+                            {
+                                DocumentLine newLine = _document.GetLineByOffset (selStart + 1);
+                                selStrategy.IndentLine (_document, newLine);
+                            }
+
                             continue;
                         }
                     }
 
                     _document.Insert (caret.Offset, "\n");
+
+                    if (IndentationStrategy is { } caretStrategy)
+                    {
+                        DocumentLine newLine = _document.GetLineByOffset (caret.Offset + 1);
+                        caretStrategy.IndentLine (_document, newLine);
+                    }
                 }
             }
         }
