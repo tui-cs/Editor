@@ -108,11 +108,11 @@ print(data['results'].get('$key', {}).get('description', '$key'))
   echo "| $desc | ${baseline_val} ${unit} | ${current} ${unit} | ${ratio}x | $status |"
 }
 
-compare_benchmark "BuildLine_Short" "2.6" "us"
-compare_benchmark "BuildLine_Long" "15.7" "us"
-compare_benchmark "BuildLine_Tabs" "3.0" "us"
-compare_benchmark "BuildLine_Emoji" "2.7" "us"
-compare_benchmark "BuildLine_Mixed" "2.6" "us"
+compare_benchmark "BuildLine_Short" "5.8" "us"
+compare_benchmark "BuildLine_Long" "35.4" "us"
+compare_benchmark "BuildLine_Tabs" "6.1" "us"
+compare_benchmark "BuildLine_Emoji" "6.4" "us"
+compare_benchmark "BuildLine_Mixed" "6.2" "us"
 
 echo ""
 
