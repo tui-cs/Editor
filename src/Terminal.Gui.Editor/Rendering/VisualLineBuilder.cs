@@ -178,6 +178,121 @@ public sealed class VisualLineBuilder
         return segmentAttribute;
     }
 
+    /// <summary>
+    ///     Builds multiple <see cref="CellVisualLine" />s for a single document line by applying
+    ///     word-wrap segments. Each segment produces one visual line.
+    /// </summary>
+    public IReadOnlyList<CellVisualLine> BuildWrapped (
+        DocumentLine documentLine,
+        VisualLineBuildContext context,
+        int wrapColumn)
+    {
+        var text = context.Document.GetText (documentLine);
+        IReadOnlyList<WrapSegment> segments =
+            WordWrapStrategy.ComputeSegments (text, wrapColumn, context.IndentationSize);
+
+        if (segments.Count <= 1)
+        {
+            // No wrapping needed — fall through to normal build.
+            return [Build (documentLine, context)];
+        }
+
+        List<CellVisualLine> lines = new (segments.Count);
+
+        foreach (WrapSegment segment in segments)
+        {
+            CellVisualLine visualLine = new (documentLine);
+            var segmentText = text.Substring (segment.StartOffset, segment.Length);
+
+            if (IsAsciiOnly (segmentText))
+            {
+                BuildAsciiSegment (documentLine, context, segmentText, segment.StartOffset, visualLine);
+            }
+            else
+            {
+                BuildGraphemeSegment (documentLine, context, segmentText, segment.StartOffset, visualLine);
+            }
+
+            foreach (IVisualLineTransformer transformer in context.LineTransformers)
+            {
+                transformer.Transform (visualLine);
+            }
+
+            if (context.HasSelection)
+            {
+                ApplySelection (visualLine, context);
+            }
+
+            lines.Add (visualLine);
+        }
+
+        return lines;
+    }
+
+    private static void BuildAsciiSegment (
+        DocumentLine documentLine,
+        VisualLineBuildContext context,
+        string text,
+        int textOffset,
+        CellVisualLine visualLine)
+    {
+        var visualColumn = 0;
+
+        for (var i = 0; i < text.Length; i++)
+        {
+            Attribute attribute = context.NormalAttribute;
+            var documentOffset = documentLine.Offset + textOffset + i;
+
+            if (text[i] == '\t')
+            {
+                var width = GetTabExpansionWidth (visualColumn, context.IndentationSize);
+                visualLine.AddElement (
+                    new TabElement (documentOffset, visualColumn, width, context.ShowTabs, attribute));
+                visualColumn += width;
+            }
+            else
+            {
+                TextRunElement element = new (documentOffset, 1, visualColumn, text.Substring (i, 1), attribute);
+                visualLine.AddElement (element);
+                visualColumn += 1;
+            }
+        }
+    }
+
+    private static void BuildGraphemeSegment (
+        DocumentLine documentLine,
+        VisualLineBuildContext context,
+        string text,
+        int textOffset,
+        CellVisualLine visualLine)
+    {
+        var logicalColumn = 0;
+        var visualColumn = 0;
+
+        foreach (var grapheme in GraphemeHelper.GetGraphemes (text))
+        {
+            Attribute attribute = context.NormalAttribute;
+            var documentOffset = documentLine.Offset + textOffset + logicalColumn;
+            var documentLength = grapheme.Length;
+
+            if (grapheme == "\t")
+            {
+                var width = GetTabExpansionWidth (visualColumn, context.IndentationSize);
+                visualLine.AddElement (
+                    new TabElement (documentOffset, visualColumn, width, context.ShowTabs, attribute));
+                visualColumn += width;
+            }
+            else
+            {
+                TextRunElement element = new (documentOffset, documentLength, visualColumn, grapheme, attribute);
+                visualLine.AddElement (element);
+                visualColumn += element.VisualLength;
+            }
+
+            logicalColumn += documentLength;
+        }
+    }
+
     private static int GetSegmentEnd (IReadOnlyList<StyledSegment>? segments, int segmentIndex)
     {
         return segments is { Count: > 0 } ? segments[segmentIndex].Text.Length : int.MaxValue;
