@@ -11,9 +11,15 @@ Ships as a single NuGet package: **`Terminal.Gui.Editor`**.
 
 `Editor` ships alongside `TextView`. It is **not** a drop-in replacement and has no source-compat obligation to it.
 
-The project includes a complete TUI editor called `ted` as an example.
+The project includes a complete TUI editor called `ted`. Ted supports many of the features you'd expect in a modern text/code editor. 
 
-For a pre-built, production-ready, editor, see clet, which provides a rich TUI editoe based on this library. 
+Run Ted with:
+
+```sh
+dotnet run --project examples/ted
+```
+
+For a pre-built, production-ready, editor, see [clet](https://github.com/gui-cs/clet), which provides a rich TUI editor based on TG.Editor. 
 
 ## Status
 
@@ -44,12 +50,6 @@ dotnet run --project tests/Terminal.Gui.Editor.IntegrationTests
 # Perf smoke + BenchmarkDotNet baseline gate — ubuntu-latest only in CI
 # (.github/workflows/perf.yml). Run locally in Release config.
 dotnet run --project tests/Terminal.Gui.Editor.PerformanceTests -c Release
-```
-
-Run the demo:
-
-```sh
-dotnet run --project examples/ted
 ```
 
 ## License
