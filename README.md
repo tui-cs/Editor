@@ -11,6 +11,10 @@ Ships as a single NuGet package: **`Terminal.Gui.Editor`**.
 
 `Editor` ships alongside `TextView`. It is **not** a drop-in replacement and has no source-compat obligation to it.
 
+The project includes a complete TUI editor called `ted` as an example.
+
+For a pre-built, production-ready, editor, see clet, which provides a rich TUI editoe based on this library. 
+
 ## Status
 
 Pre-alpha — see [`specs/00-plan.md`](specs/00-plan.md) for the full implementation plan, phased milestones, and open decisions.
