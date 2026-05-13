@@ -106,7 +106,11 @@ public partial class Editor
                 return true;
             }
 
-            App?.Clipboard?.TrySetClipboardData (SelectedText);
+            // Abort cut if clipboard write fails — never destroy text without placing it on the clipboard.
+            if (App?.Clipboard?.TrySetClipboardData (SelectedText) is not true)
+            {
+                return true;
+            }
 
             using (_document!.RunUpdate ())
             {

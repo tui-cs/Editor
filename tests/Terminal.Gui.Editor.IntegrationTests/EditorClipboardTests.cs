@@ -1,5 +1,6 @@
 // Claude - claude-sonnet-4
 
+using Terminal.Gui.Drivers;
 using Terminal.Gui.Editor.IntegrationTests.Testing;
 using Terminal.Gui.Input;
 using Terminal.Gui.Testing;
@@ -15,10 +16,20 @@ public class EditorClipboardTests
 {
     private static readonly InputInjectionOptions Direct = new () { Mode = InputInjectionMode.Direct };
 
+    /// <summary>
+    ///     Ensures the fixture's driver has a working in-memory clipboard regardless of platform.
+    ///     On macOS/Windows CI the system clipboard is not available in headless mode.
+    /// </summary>
+    private static void EnsureFakeClipboard (AppFixture<EditorTestHost> fx)
+    {
+        fx.Driver.Clipboard = new FakeClipboard (false, false);
+    }
+
     [Fact]
     public async Task Copy_Paste_RoundTrip ()
     {
         await using AppFixture<EditorTestHost> fx = new (() => new ("hello world"));
+        EnsureFakeClipboard (fx);
         fx.Top.Editor.SetFocus ();
 
         // Select "hello"
@@ -41,6 +52,7 @@ public class EditorClipboardTests
     public async Task Copy_NoSelection_IsNoOp ()
     {
         await using AppFixture<EditorTestHost> fx = new (() => new ("abc"));
+        EnsureFakeClipboard (fx);
         fx.Top.Editor.SetFocus ();
         fx.Top.Editor.CaretOffset = 1;
 
@@ -57,6 +69,7 @@ public class EditorClipboardTests
     public async Task Cut_RemovesSelection_And_SingleUndo ()
     {
         await using AppFixture<EditorTestHost> fx = new (() => new ("hello world"));
+        EnsureFakeClipboard (fx);
         fx.Top.Editor.SetFocus ();
 
         // Select "hello"
@@ -78,6 +91,7 @@ public class EditorClipboardTests
     public async Task Cut_NoSelection_IsNoOp ()
     {
         await using AppFixture<EditorTestHost> fx = new (() => new ("abc"));
+        EnsureFakeClipboard (fx);
         fx.Top.Editor.SetFocus ();
         fx.Top.Editor.CaretOffset = 1;
 
@@ -91,6 +105,7 @@ public class EditorClipboardTests
     public async Task Paste_ReplacesSelection ()
     {
         await using AppFixture<EditorTestHost> fx = new (() => new ("hello world"));
+        EnsureFakeClipboard (fx);
         fx.Top.Editor.SetFocus ();
 
         // Copy "hello"
@@ -110,6 +125,7 @@ public class EditorClipboardTests
     public async Task Paste_MultiLine_PreservesLineEndings ()
     {
         await using AppFixture<EditorTestHost> fx = new (() => new ("abc"));
+        EnsureFakeClipboard (fx);
         fx.Top.Editor.SetFocus ();
 
         // Put multi-line text on clipboard
@@ -126,6 +142,7 @@ public class EditorClipboardTests
     public async Task ReadOnly_Blocks_Cut ()
     {
         await using AppFixture<EditorTestHost> fx = new (() => new ("secret"));
+        EnsureFakeClipboard (fx);
         fx.Top.Editor.SetFocus ();
         fx.Top.Editor.ReadOnly = true;
 
@@ -140,6 +157,7 @@ public class EditorClipboardTests
     public async Task ReadOnly_Blocks_Paste ()
     {
         await using AppFixture<EditorTestHost> fx = new (() => new ("original"));
+        EnsureFakeClipboard (fx);
         fx.Top.Editor.SetFocus ();
         fx.Top.Editor.ReadOnly = true;
 
@@ -154,6 +172,7 @@ public class EditorClipboardTests
     public async Task ReadOnly_Allows_Copy ()
     {
         await using AppFixture<EditorTestHost> fx = new (() => new ("secret"));
+        EnsureFakeClipboard (fx);
         fx.Top.Editor.SetFocus ();
         fx.Top.Editor.ReadOnly = true;
 
@@ -170,6 +189,7 @@ public class EditorClipboardTests
     public async Task Paste_SingleUndoStep ()
     {
         await using AppFixture<EditorTestHost> fx = new (() => new ("AB"));
+        EnsureFakeClipboard (fx);
         fx.Top.Editor.SetFocus ();
 
         // Select "AB" and paste multi-line content
@@ -183,5 +203,21 @@ public class EditorClipboardTests
         fx.Injector.InjectKey (Key.Z.WithCtrl, Direct);
 
         Assert.Equal ("AB", fx.Top.Editor.Document?.Text);
+    }
+
+    [Fact]
+    public async Task Cut_NoOp_When_Clipboard_Unavailable ()
+    {
+        await using AppFixture<EditorTestHost> fx = new (() => new ("hello world"));
+
+        // Use a FakeClipboard that reports unsupported — simulates clipboard unavailability.
+        fx.Driver.Clipboard = new FakeClipboard (false, true);
+        fx.Top.Editor.SetFocus ();
+
+        fx.Top.Editor.SelectRange (0, 5);
+        fx.Injector.InjectKey (Key.X.WithCtrl, Direct);
+
+        // Text must be preserved because the clipboard write would have failed.
+        Assert.Equal ("hello world", fx.Top.Editor.Document?.Text);
     }
 }
