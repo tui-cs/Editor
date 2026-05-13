@@ -58,7 +58,6 @@ The Avalonia-UI-specific helpers that the document layer doesn't depend on:
 ## Skipped from `Highlighting/Resources/`
 
 - `ASPX-Mode.xshd`, `Boo.xshd`, `Coco-Mode.xshd`, `Patch-Mode.xshd`, `PHP-Mode.xshd`, `Tex-Mode.xshd`, `MarkDownWithFontSize.xshd` — Less commonly used languages. Can be added on demand.
-
 ## Skipped from `Indentation/`
 
 - `CSharp/` — C#-specific smart indentation. Language-specific strategies are out of scope for the initial lift (see `specs/indentation/spec.md`).
