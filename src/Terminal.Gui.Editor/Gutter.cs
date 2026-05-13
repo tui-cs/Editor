@@ -28,6 +28,7 @@ public sealed class Gutter : View
         {
             X = 0,
             Y = 0,
+            Width = Dim.Fill (),
             Height = Dim.Fill ()
         };
         Add (_lineNumbers);
@@ -46,7 +47,7 @@ public sealed class Gutter : View
             {
                 _foldingGutter = new FoldingGutter (_editor)
                 {
-                    X = Pos.Right (_lineNumbers),
+                    X = 0,
                     Y = 0,
                     Width = 2,
                     Height = Dim.Fill ()
@@ -54,7 +55,9 @@ public sealed class Gutter : View
                 Add (_foldingGutter);
             }
 
-            _lineNumbers.Width = Viewport.Width - 2;
+            // Line numbers fill remaining space after the 2-column fold gutter.
+            _lineNumbers.X = Pos.Right (_foldingGutter);
+            _lineNumbers.Width = Dim.Fill ();
         }
         else
         {
@@ -65,7 +68,8 @@ public sealed class Gutter : View
                 _foldingGutter = null;
             }
 
-            _lineNumbers.Width = Viewport.Width;
+            _lineNumbers.X = 0;
+            _lineNumbers.Width = Dim.Fill ();
         }
     }
 }

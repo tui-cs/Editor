@@ -1,6 +1,7 @@
 // Claude - claude-opus-4-7
 
 using Terminal.Gui.Document;
+using Terminal.Gui.Input;
 using Terminal.Gui.ViewBase;
 using Terminal.Gui.Views;
 using Xunit;
@@ -92,6 +93,63 @@ public class GutterTests
         Gutter view = new (editor);
 
         Assert.False (view.CanFocus);
+    }
+
+    [Fact]
+    public void Gutter_Has_LineNumberGutter_SubView_Without_Folding ()
+    {
+        Views.Editor editor = new () { Document = new TextDocument ("a\nb\nc") };
+        editor.ShowLineNumbers = true;
+
+        Gutter gutter = (Gutter)PaddingSubViewsOf (editor).Single ();
+
+        // Should have exactly one subview: LineNumberGutter.
+        Assert.Single (gutter.SubViews);
+        Assert.IsType<LineNumberGutter> (gutter.SubViews.First ());
+    }
+
+    [Fact]
+    public void Gutter_Has_Both_SubViews_With_Folding ()
+    {
+        Views.Editor editor = new () { Document = new TextDocument ("{\n  a\n}\n") };
+        editor.ShowLineNumbers = true;
+        editor.FoldingManager = new Terminal.Gui.Document.Folding.FoldingManager (editor.Document!);
+
+        Gutter gutter = (Gutter)PaddingSubViewsOf (editor).Single ();
+
+        // Should have two subviews: FoldingGutter and LineNumberGutter.
+        Assert.Equal (2, gutter.SubViews.Count);
+        Assert.Contains (gutter.SubViews, v => v is FoldingGutter);
+        Assert.Contains (gutter.SubViews, v => v is LineNumberGutter);
+    }
+
+    [Fact]
+    public void LineNumberGutter_Width_Is_Fill_Not_Zero ()
+    {
+        Views.Editor editor = new () { Document = new TextDocument ("{\n  a\n}\n") };
+        editor.ShowLineNumbers = true;
+        editor.FoldingManager = new Terminal.Gui.Document.Folding.FoldingManager (editor.Document!);
+
+        Gutter gutter = (Gutter)PaddingSubViewsOf (editor).Single ();
+        View lineNumbers = gutter.SubViews.First (v => v is LineNumberGutter);
+
+        // LineNumberGutter.Width must be Dim.Fill(), never Dim.Absolute(0).
+        Assert.Equal (Dim.Fill (), lineNumbers.Width);
+    }
+
+    [Fact]
+    public void FoldingGutter_Has_Toggle_MouseBinding ()
+    {
+        Views.Editor editor = new () { Document = new TextDocument ("{\n  a\n}\n") };
+        editor.ShowLineNumbers = true;
+        editor.FoldingManager = new Terminal.Gui.Document.Folding.FoldingManager (editor.Document!);
+
+        Gutter gutter = (Gutter)PaddingSubViewsOf (editor).Single ();
+        View foldingGutter = gutter.SubViews.First (v => v is FoldingGutter);
+
+        // FoldingGutter should have a mouse binding for LeftButtonClicked → Toggle.
+        var bindings = foldingGutter.MouseBindings.GetAllFromCommands (Command.Toggle);
+        Assert.NotEmpty (bindings);
     }
 
     private static IReadOnlyCollection<View> PaddingSubViewsOf (Views.Editor editor)

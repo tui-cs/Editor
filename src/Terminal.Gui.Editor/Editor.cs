@@ -317,6 +317,7 @@ public partial class Editor : View
 
             ClearVisualLineCaches ();
             UpdateContentSize ();
+            UpdateLineNumberPadding ();
             SetNeedsDraw ();
         }
     }
