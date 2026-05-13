@@ -46,6 +46,16 @@ Decisions are recorded here when an open question from the plan is resolved. Eac
 
 ---
 
+### DEC-005: No-selection behavior for Cut/Copy (FR-005)
+
+**Decision**: When there is no selection, Cut and Copy are **no-ops** (do nothing).
+
+**Rationale**: VS Code's most-common preset (the default) copies/cuts the current line when there is no selection, but this is a power-user feature that surprises newcomers and makes accidental clipboard overwrites common. Matching the "no-op on empty selection" behavior is safer, simpler to implement, and avoids the implicit "current line" semantic that would require additional UI feedback. This can be revisited later as an opt-in `ClipboardLineMode` property if demand arises.
+
+**Date**: 2026-05-13
+
+---
+
 ## Open
 
 ### OPEN-001: Independent `Terminal.Gui.Editor` NuGet from day one
