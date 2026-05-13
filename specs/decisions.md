@@ -85,3 +85,13 @@ Decisions are recorded here when an open question from the plan is resolved. Eac
 **Question**: `HighlightingColor` carries Bold/Italic/Underline. Confirmed mapping target is `Terminal.Gui.TextStyle`. Verify all xshd attributes are representable; if not, document drops.
 
 **Affected features**: syntax-highlighting, syntax-colorizer.
+
+---
+
+### DEC-005: Word-wrap continuation-line indent policy
+
+**Decision**: Continuation lines render flush at column 0 for v1 (no leading indent).
+
+**Rationale**: Matches VS Code's default behavior with `editor.wrappingIndent: "none"`. Simplifies implementation — no need to compute or track the original line's indentation level for each wrap segment. Revisit in a future version if users need indented continuation lines.
+
+**Date**: 2026-05-13
