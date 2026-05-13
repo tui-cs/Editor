@@ -56,13 +56,19 @@ public partial class Editor
             }
 
             var offset = MousePositionToOffset (pos);
+            var ctrl = mouse.Flags.HasFlag (MouseFlags.Ctrl);
 
-            if (shift)
+            if (ctrl)
+            {
+                ToggleCaretAt (offset);
+            }
+            else if (shift)
             {
                 ExtendCaretTo (offset);
             }
             else
             {
+                ClearAdditionalCarets ();
                 ClearSelection ();
                 CaretOffset = offset;
             }

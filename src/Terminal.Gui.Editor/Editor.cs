@@ -94,6 +94,7 @@ public partial class Editor : View
             _caretAnchor = CreateCaretAnchor (caretOffset);
             _lastKnownCaretOffset = caretOffset;
             _selectionAnchor = null;
+            _additionalCarets.Clear ();
             ClearVisualLineCaches ();
             _cachedVisibleLineNumbers = null;
             _maxWidthDirty = true;
@@ -375,6 +376,7 @@ public partial class Editor : View
             _lastKnownCaretOffset = CaretOffset;
             _caretAnchor = null;
             _selectionAnchor = null;
+            _additionalCarets.Clear ();
         }
 
         base.Dispose (disposing);

@@ -13,6 +13,13 @@ public partial class Editor
     /// <inheritdoc />
     protected override bool OnKeyDownNotHandled (Key key)
     {
+        if (key == Key.Esc && HasMultipleCarets)
+        {
+            ClearAdditionalCarets ();
+
+            return true;
+        }
+
         if (key == Key.Tab)
         {
             return InsertTab ();
@@ -36,6 +43,13 @@ public partial class Editor
 
         if (ReadOnly)
         {
+            return true;
+        }
+
+        if (HasMultipleCarets)
+        {
+            MultiCaretInsert (rune.ToString ());
+
             return true;
         }
 

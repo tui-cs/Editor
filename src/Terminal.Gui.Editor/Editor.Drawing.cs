@@ -33,6 +33,7 @@ public partial class Editor
 
         FillViewportBackground (viewport, normal);
         DrawVisibleLines (viewport, normal, selected);
+        DrawAdditionalCarets (viewport, normal);
         SetAttribute (normal);
         UpdateCursor ();
 
@@ -238,6 +239,52 @@ public partial class Editor
             }
 
             element.Draw (this, 0, row, visibleStart, visibleEnd);
+        }
+    }
+
+    private void DrawAdditionalCarets (Rectangle viewport, Attribute normal)
+    {
+        if (!HasMultipleCarets || _document is null)
+        {
+            return;
+        }
+
+        // Use the Active role (selection attribute) to highlight additional caret positions —
+        // this makes them visible as inverted cells.
+        Attribute caretAttr = GetAttributeForRole (VisualRole.Active);
+        List<int> visibleLineNumbers = GetVisibleLineNumbers ();
+
+        foreach (var offset in AdditionalCaretOffsets)
+        {
+            DocumentLine line = _document.GetLineByOffset (Math.Clamp (offset, 0, _document.TextLength));
+            var visibleIndex = visibleLineNumbers.IndexOf (line.LineNumber);
+
+            if (visibleIndex < 0)
+            {
+                continue;
+            }
+
+            var row = visibleIndex - viewport.Y;
+
+            if (row < 0 || row >= viewport.Height)
+            {
+                continue;
+            }
+
+            var colInLine = offset - line.Offset;
+            CellVisualLine visualLine = GetOrBuildDefaultVisualLine (line);
+            var visualCol = visualLine.GetVisualColumn (colInLine);
+            var col = visualCol - viewport.X;
+
+            if (col < 0 || col >= viewport.Width)
+            {
+                continue;
+            }
+
+            // Draw a visible caret marker (inverted attribute on the character at that position).
+            SetAttribute (caretAttr);
+            var ch = offset < line.Offset + line.Length ? _document.GetCharAt (offset) : ' ';
+            AddStr (col, row, ch.ToString ());
         }
     }
 

@@ -82,10 +82,10 @@ public partial class Editor
             return true;
         });
 
-        // Editing — selection-aware
-        AddCommand (Command.NewLine, InsertNewLineWithAutoIndent);
-        AddCommand (Command.DeleteCharLeft, DeleteLeft);
-        AddCommand (Command.DeleteCharRight, DeleteRight);
+        // Editing — selection-aware (multi-caret aware)
+        AddCommand (Command.NewLine, MultiCaretNewLine);
+        AddCommand (Command.DeleteCharLeft, MultiCaretDeleteLeft);
+        AddCommand (Command.DeleteCharRight, MultiCaretDeleteRight);
 
         // History
         AddCommand (Command.Undo, () =>
