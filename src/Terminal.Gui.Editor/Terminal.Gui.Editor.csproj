@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <RootNamespace>Terminal.Gui.Views</RootNamespace>
+    <RootNamespace>Terminal.Gui.Editor</RootNamespace>
     <AssemblyName>Terminal.Gui.Editor</AssemblyName>
 
     <PackageId>Terminal.Gui.Editor</PackageId>
@@ -12,6 +12,11 @@
 
   <ItemGroup>
     <PackageReference Include="Terminal.Gui" Version="$(TerminalGuiVersion)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Highlighting\Resources\*.xshd" />
+    <EmbeddedResource Include="Highlighting\Resources\*.xsd" />
   </ItemGroup>
 
 </Project>

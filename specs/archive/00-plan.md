@@ -105,7 +105,7 @@ These are the rules new work must meet. A reviewer (or a dispatching agent) shou
 The MLP shape, AvaloniaEdit-aligned. Where current properties differ, the right-hand column says what to rename. The dispatching agent should treat any *new* property added to `Editor` as a spec change requiring a §3-table update.
 
 ```csharp
-namespace Terminal.Gui.Views;
+namespace Terminal.Gui.Editor;
 
 public class Editor : View
 {
@@ -221,7 +221,7 @@ These four can run as four independent sub-agents. Each is a near-mechanical lif
 - *Goal*: stand up the rendering data model the rest of the editor draws through. After this, `OnDrawingContent` is a thin walker. After this, R1 starts being enforceable.
 - *Public surface*:
   ```csharp
-  namespace Terminal.Gui.Views.Rendering;
+  namespace Terminal.Gui.Editor.Rendering;
 
   public sealed class CellVisualLine {
       public DocumentLine DocumentLine { get; }

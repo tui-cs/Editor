@@ -5,7 +5,7 @@ remains the source of truth for the target architecture.
 
 ## D1 Tabs
 
-`Terminal.Gui.Views.Editor` exposes the AvaloniaEdit-aligned tab surface directly:
+`Terminal.Gui.Editor.Editor` exposes the AvaloniaEdit-aligned tab surface directly:
 
 - `int IndentationSize { get; set; } = 4` controls indentation stops in terminal cells. Values less than 1 are rejected.
 - `bool ConvertTabsToSpaces { get; set; }` controls what the Tab key inserts. It never rewrites existing document text.
@@ -16,7 +16,7 @@ is the planned AvaloniaEdit-compatible name.
 
 ## Rendering Pipeline Slice
 
-The first rendering pipeline types live in `Terminal.Gui.Views.Rendering`:
+The first rendering pipeline types live in `Terminal.Gui.Editor.Rendering`:
 
 - `VisualLineBuilder`
 - `CellVisualLine`

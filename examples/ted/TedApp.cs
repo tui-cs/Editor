@@ -1,12 +1,14 @@
 using Terminal.Gui.App;
 using Terminal.Gui.Configuration;
 using Terminal.Gui.Document;
+using Terminal.Gui.Document.Folding;
 using Terminal.Gui.Drawing;
+using Terminal.Gui.Highlighting;
 using Terminal.Gui.Input;
 using Terminal.Gui.Resources;
 using Terminal.Gui.ViewBase;
+using Terminal.Gui.Editor;
 using Terminal.Gui.Views;
-using TextMateSharp.Grammars;
 
 namespace Ted;
 
@@ -17,6 +19,7 @@ namespace Ted;
 /// </summary>
 public sealed partial class TedApp : Window
 {
+    private readonly BraceFoldingStrategy _braceFoldingStrategy;
     private readonly Shortcut _fileNameShortcut;
 
     /// <summary>Initializes a new <see cref="TedApp" />.</summary>
@@ -29,20 +32,20 @@ public sealed partial class TedApp : Window
         // Editor's KeyBindings (any commands the editor doesn't claim fall back to Application).
         Editor = new Editor
         {
-            ShowLineNumbers = true,
+            GutterOptions = GutterOptions.LineNumbers | GutterOptions.Folding,
             ConvertTabsToSpaces = true,
             ReadOnly = readOnly,
 
-            ViewportSettings = ViewportSettingsFlags.HasScrollBars
+            ViewportSettings = ViewportSettingsFlags.HasScrollBars,
+
+            // Default to C# highlighting from the built-in xshd definitions.
+            HighlightingDefinition = HighlightingManager.Instance.GetDefinition ("C#")
         };
 
-        // ted is the demo for the stopgap Editor.SyntaxHighlighter / SyntaxLanguage surface
-        // (issue #32). The CS0618 warning is intentional on the public API; suppressed here
-        // because exercising the API is exactly this app's job until issue #28 ships the
-        // visual-line HighlightingColorizer pipeline.
-#pragma warning disable CS0618 // Type or member is obsolete
-        Editor.SyntaxHighlighter = new TextMateSyntaxHighlighter ();
-#pragma warning restore CS0618 // Type or member is obsolete
+        // Enable brace-based folding. The strategy re-scans on each document change.
+        _braceFoldingStrategy = new BraceFoldingStrategy ();
+        InstallFolding ();
+
         ShowOpenDialog = ShowDefaultOpenDialog;
         ShowSaveDialog = ShowDefaultSaveDialog;
         ShowSaveChangesDialog = ShowDefaultSaveChangesDialog;
@@ -57,7 +60,15 @@ public sealed partial class TedApp : Window
             AllowCheckStateNone = false,
             CanFocus = false,
             Text = "_Line Numbers",
-            Value = Editor.ShowLineNumbers ? CheckState.Checked : CheckState.UnChecked
+            Value = Editor.GutterOptions.HasFlag (GutterOptions.LineNumbers) ? CheckState.Checked : CheckState.UnChecked
+        };
+
+        CheckBox foldIndicatorsCheckBox = new ()
+        {
+            AllowCheckStateNone = false,
+            CanFocus = false,
+            Text = "_Fold Indicators",
+            Value = Editor.GutterOptions.HasFlag (GutterOptions.Folding) ? CheckState.Checked : CheckState.UnChecked
         };
 
         CheckBox convertTabsToSpacesCheckBox = new ()
@@ -73,6 +84,21 @@ public sealed partial class TedApp : Window
             Editor.ConvertTabsToSpaces = e.NewValue == CheckState.Checked;
         };
 
+        CheckBox autoIndentCheckBox = new ()
+        {
+            AllowCheckStateNone = false,
+            CanFocus = false,
+            Text = "_Auto Indent",
+            Value = Editor.IndentationStrategy is not null ? CheckState.Checked : CheckState.UnChecked
+        };
+
+        autoIndentCheckBox.ValueChanged += (_, e) =>
+        {
+            Editor.IndentationStrategy = e.NewValue == CheckState.Checked
+                ? new Terminal.Gui.Text.Indentation.DefaultIndentationStrategy ()
+                : null;
+        };
+
         CheckBox useThemeBackgroundCheckBox = new ()
         {
             AllowCheckStateNone = false,
@@ -81,39 +107,7 @@ public sealed partial class TedApp : Window
             Value = Editor.UseThemeBackground ? CheckState.Checked : CheckState.UnChecked
         };
 
-        ThemeDropDown = new DropDownList<ThemeName>
-        {
-            Value = ThemeName.DarkPlus,
-            ReadOnly = true,
-            CanFocus = false
-        };
-
-        ThemeDropDown.ValueChanged += (_, e) =>
-        {
-            if (e.Value is not { } themeName)
-            {
-                return;
-            }
-
-            // CS0618: Editor.SyntaxHighlighter is the stopgap API
-            // ted exists to exercise. See issue #32.
-#pragma warning disable CS0618 // Type or member is obsolete
-            if (Editor.SyntaxHighlighter is TextMateSyntaxHighlighter highlighter)
-            {
-                if (highlighter.ThemeName == themeName)
-                {
-                    return;
-                }
-
-                highlighter.SetTheme (themeName);
-                Editor.SetNeedsDraw ();
-
-                return;
-            }
-
-            Editor.SyntaxHighlighter = new TextMateSyntaxHighlighter (themeName);
-#pragma warning restore CS0618 // Type or member is obsolete
-        };
+        LanguageShortcut = new Shortcut (Key.Empty, "C#", null) { MouseHighlightStates = MouseState.None };
 
         IndentationSizeUpDown = new NumericUpDown<int>
         {
@@ -146,7 +140,7 @@ public sealed partial class TedApp : Window
 
         StatusBar statusBar =
             new ([
-                new Shortcut { Title = "Themes", CommandView = ThemeDropDown },
+                new Shortcut { Title = "Language", CommandView = LanguageShortcut },
                 new Shortcut
                     { Text = "Indent", CommandView = IndentationSizeUpDown, MouseHighlightStates = MouseState.None },
                 new Shortcut { CommandView = ShowTabsCheckBox },
@@ -188,7 +182,15 @@ public sealed partial class TedApp : Window
                 {
                     Action = () =>
                     {
-                        Editor.ShowLineNumbers = lineNumbersCheckBox.Value == CheckState.Checked;
+                        if (lineNumbersCheckBox.Value == CheckState.Checked)
+                        {
+                            Editor.GutterOptions |= GutterOptions.LineNumbers;
+                        }
+                        else
+                        {
+                            Editor.GutterOptions &= ~GutterOptions.LineNumbers;
+                        }
+
                         Editor.SetNeedsDraw ();
                     },
                     CommandView = lineNumbersCheckBox,
@@ -196,8 +198,31 @@ public sealed partial class TedApp : Window
                 },
                 new MenuItem
                 {
+                    Action = () =>
+                    {
+                        if (foldIndicatorsCheckBox.Value == CheckState.Checked)
+                        {
+                            Editor.GutterOptions |= GutterOptions.Folding;
+                        }
+                        else
+                        {
+                            Editor.GutterOptions &= ~GutterOptions.Folding;
+                        }
+
+                        Editor.SetNeedsDraw ();
+                    },
+                    CommandView = foldIndicatorsCheckBox,
+                    HelpText = "Show fold indicators in the gutter"
+                },
+                new MenuItem
+                {
                     CommandView = convertTabsToSpacesCheckBox,
                     HelpText = "Insert spaces when Tab is pressed"
+                },
+                new MenuItem
+                {
+                    CommandView = autoIndentCheckBox,
+                    HelpText = "Copy indentation from the previous line on Enter"
                 },
                 new MenuItem
                 {
@@ -233,8 +258,8 @@ public sealed partial class TedApp : Window
     /// <summary>The editor View at the centre of the app. Exposed for tests and future commands.</summary>
     public Editor Editor { get; }
 
-    /// <summary>The syntax-highlighting theme selector shown in the status bar.</summary>
-    public DropDownList<ThemeName> ThemeDropDown { get; }
+    /// <summary>The status-bar shortcut that displays the current syntax-highlighting language name.</summary>
+    public Shortcut LanguageShortcut { get; }
 
     /// <summary>The indentation-size selector shown in the status bar.</summary>
     public NumericUpDown<int> IndentationSizeUpDown { get; }
@@ -262,7 +287,10 @@ public sealed partial class TedApp : Window
     private void ShowAboutDialog ()
     {
         Dialog dialog = new ()
-        { Title = "About ted", Buttons = [new Button { Title = Strings.btnOk, IsDefault = true }] };
+        {
+            Title = "About ted",
+            Buttons = [new Button { Title = Strings.btnOk, IsDefault = true }]
+        };
 
         dialog.Border.Settings &= ~BorderSettings.Title;
 
@@ -330,5 +358,30 @@ public sealed partial class TedApp : Window
     private static string FormatLoc (int line, int column)
     {
         return $"Ln: {line}, Ch: {column}";
+    }
+
+    /// <summary>
+    ///     Creates a <see cref="FoldingManager" /> for the current document and wires up
+    ///     automatic fold updates on document changes.
+    /// </summary>
+    private void InstallFolding ()
+    {
+        if (Editor.Document is null)
+        {
+            return;
+        }
+
+        FoldingManager fm = new (Editor.Document);
+        Editor.FoldingManager = fm;
+        _braceFoldingStrategy.UpdateFoldings (fm, Editor.Document);
+        Editor.Document.Changed += (_, _) => UpdateFoldings ();
+    }
+
+    private void UpdateFoldings ()
+    {
+        if (Editor.FoldingManager is not null && Editor.Document is not null)
+        {
+            _braceFoldingStrategy.UpdateFoldings (Editor.FoldingManager, Editor.Document);
+        }
     }
 }

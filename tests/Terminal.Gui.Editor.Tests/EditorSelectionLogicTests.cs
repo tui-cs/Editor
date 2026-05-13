@@ -15,7 +15,7 @@ public class EditorSelectionLogicTests
     [Fact]
     public void Default_NoSelection ()
     {
-        Views.Editor editor = new ();
+        Editor editor = new ();
 
         Assert.False (editor.HasSelection);
         Assert.Null (editor.Selection);
@@ -25,7 +25,7 @@ public class EditorSelectionLogicTests
     [Fact]
     public void SelectAll_Selects_Whole_Document ()
     {
-        Views.Editor editor = new () { Document = new TextDocument ("alpha\nbeta") };
+        Editor editor = new () { Document = new TextDocument ("alpha\nbeta") };
 
         editor.SelectAll ();
 
@@ -38,7 +38,7 @@ public class EditorSelectionLogicTests
     [Fact]
     public void ClearSelection_Removes_Selection ()
     {
-        Views.Editor editor = new () { Document = new TextDocument ("abc") };
+        Editor editor = new () { Document = new TextDocument ("abc") };
         editor.SelectAll ();
 
         editor.ClearSelection ();
@@ -49,7 +49,7 @@ public class EditorSelectionLogicTests
     [Fact]
     public void ReplaceSelection_With_Empty_Removes_Range ()
     {
-        Views.Editor editor = new () { Document = new TextDocument ("hello world") };
+        Editor editor = new () { Document = new TextDocument ("hello world") };
         editor.SelectAll ();
 
         editor.ReplaceSelection (string.Empty);
@@ -61,7 +61,7 @@ public class EditorSelectionLogicTests
     [Fact]
     public void ReplaceSelection_With_Text_Substitutes ()
     {
-        Views.Editor editor = new () { Document = new TextDocument ("hello world") };
+        Editor editor = new () { Document = new TextDocument ("hello world") };
         editor.SelectAll ();
 
         editor.ReplaceSelection ("hi");
@@ -74,7 +74,7 @@ public class EditorSelectionLogicTests
     [Fact]
     public void ReplaceSelection_ReadOnly_Does_Not_Modify_Document ()
     {
-        Views.Editor editor = new () { Document = new TextDocument ("hello world"), ReadOnly = true };
+        Editor editor = new () { Document = new TextDocument ("hello world"), ReadOnly = true };
         editor.SelectAll ();
 
         editor.ReplaceSelection ("hi");
@@ -86,7 +86,7 @@ public class EditorSelectionLogicTests
     [Fact]
     public void Selection_TextSegment_Reflects_Range ()
     {
-        Views.Editor editor = new () { Document = new TextDocument ("hello") };
+        Editor editor = new () { Document = new TextDocument ("hello") };
         editor.SelectAll ();
 
         TextSegment? sel = editor.Selection;
@@ -99,7 +99,7 @@ public class EditorSelectionLogicTests
     [Fact]
     public void Selection_Tracks_Insertion_Before_Range ()
     {
-        Views.Editor editor = new () { Document = new TextDocument ("abcdef") };
+        Editor editor = new () { Document = new TextDocument ("abcdef") };
         editor.SelectRange (2, 3);
 
         editor.Document!.Insert (0, ">>");
@@ -113,7 +113,7 @@ public class EditorSelectionLogicTests
     [Fact]
     public void SelectionChanged_Fires_On_SelectAll_And_Clear ()
     {
-        Views.Editor editor = new () { Document = new TextDocument ("abc") };
+        Editor editor = new () { Document = new TextDocument ("abc") };
         var fires = 0;
         editor.SelectionChanged += (_, _) => fires++;
 
@@ -130,7 +130,7 @@ public class EditorSelectionLogicTests
     [Fact]
     public void SelectionChanged_Does_Not_Fire_For_SelectAll_On_Empty_Document ()
     {
-        Views.Editor editor = new () { Document = new TextDocument (string.Empty) };
+        Editor editor = new () { Document = new TextDocument (string.Empty) };
         var fires = 0;
         editor.SelectionChanged += (_, _) => fires++;
 
@@ -143,7 +143,7 @@ public class EditorSelectionLogicTests
     [Fact]
     public void SelectionChanged_Does_Not_Fire_When_ExtendCaret_Is_NoOp ()
     {
-        Views.Editor editor = new () { Document = new TextDocument ("abc") };
+        Editor editor = new () { Document = new TextDocument ("abc") };
         editor.CaretOffset = 3; // already at end
         var fires = 0;
         editor.SelectionChanged += (_, _) => fires++;
@@ -158,7 +158,7 @@ public class EditorSelectionLogicTests
     [Fact]
     public void SelectionChanged_Does_Not_Fire_When_ExtendCaretVertically_Is_NoOp ()
     {
-        Views.Editor editor = new () { Document = new TextDocument ("abc") };
+        Editor editor = new () { Document = new TextDocument ("abc") };
         editor.CaretOffset = 0;
         var fires = 0;
         editor.SelectionChanged += (_, _) => fires++;

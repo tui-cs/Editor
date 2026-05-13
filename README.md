@@ -1,19 +1,25 @@
 # Terminal.Gui.Editor
 
-![Terminal.Gui.Editor — ted demo app](docs/images/hero.png)
+![Terminal.Gui.Editor — ted demo app](docs/images/hero.gif)
 
 A full-featured text editor `View` for [Terminal.Gui](https://github.com/gui-cs/Terminal.Gui), built on a hard fork of [AvaloniaEdit](https://github.com/AvaloniaUI/AvaloniaEdit)'s pure-data layers (Document, Folding, Search, Indentation, Highlighting).
 
 Ships as a single NuGet package: **`Terminal.Gui.Editor`**.
 
 - **Document layer** (`Terminal.Gui.Document` namespace) — UI-framework-independent: rope-backed `TextDocument`, `TextAnchor`, `UndoStack`, `FoldingManager`, search, indentation, highlighting.
-- **Editor view** (`Terminal.Gui.Views` namespace) — an `Editor : View` subclass consuming the document layer and rendering on a cell grid, with selection, multi-caret, folding, search, and (post-MVP) TextMate highlighting.
+- **Editor view** (`Terminal.Gui.Editor` namespace) — an `Editor : View` subclass consuming the document layer and rendering on a cell grid, with selection, multi-caret, folding, search, and (post-MVP) TextMate highlighting.
 
 `Editor` ships alongside `TextView`. It is **not** a drop-in replacement and has no source-compat obligation to it.
 
-The project includes a complete TUI editor called `ted` as an example.
+The project includes a complete TUI editor called `ted`. Ted supports many of the features you'd expect in a modern text/code editor. 
 
-For a pre-built, production-ready, editor, see clet, which provides a rich TUI editoe based on this library. 
+Run Ted with:
+
+```sh
+dotnet run --project examples/ted
+```
+
+For a pre-built, production-ready, editor, see [clet](https://github.com/gui-cs/clet), which provides a rich TUI editor based on TG.Editor. 
 
 ## Status
 
@@ -44,12 +50,6 @@ dotnet run --project tests/Terminal.Gui.Editor.IntegrationTests
 # Perf smoke + BenchmarkDotNet baseline gate — ubuntu-latest only in CI
 # (.github/workflows/perf.yml). Run locally in Release config.
 dotnet run --project tests/Terminal.Gui.Editor.PerformanceTests -c Release
-```
-
-Run the demo:
-
-```sh
-dotnet run --project examples/ted
 ```
 
 ## License

@@ -1,9 +1,10 @@
 // Claude - claude-opus-4-7
 
 using System.Drawing;
-using System.Reflection;
 using Terminal.Gui.Document;
-using Terminal.Gui.Views;
+using Terminal.Gui.Highlighting;
+using Terminal.Gui.Editor;
+using Terminal.Gui.Editor.Rendering;
 using Xunit;
 
 namespace Terminal.Gui.Editor.Tests;
@@ -18,7 +19,7 @@ public class EditorLogicTests
     [Fact]
     public void Default_DocumentIsEmpty ()
     {
-        Views.Editor editor = new ();
+        Editor editor = new ();
 
         Assert.NotNull (editor.Document);
         Assert.Equal (string.Empty, editor.Document!.Text);
@@ -27,7 +28,7 @@ public class EditorLogicTests
     [Fact]
     public void CaretOffset_Clamps_To_DocumentLength ()
     {
-        Views.Editor editor = new () { Document = new TextDocument ("abc") };
+        Editor editor = new () { Document = new TextDocument ("abc") };
 
         editor.CaretOffset = 99;
         Assert.Equal (3, editor.CaretOffset);
@@ -39,7 +40,7 @@ public class EditorLogicTests
     [Fact]
     public void CaretOffset_Set_Raises_CaretChanged ()
     {
-        Views.Editor editor = new () { Document = new TextDocument ("abcdef") };
+        Editor editor = new () { Document = new TextDocument ("abcdef") };
         var fires = 0;
         editor.CaretChanged += (_, _) => fires++;
 
@@ -53,7 +54,7 @@ public class EditorLogicTests
     [Fact]
     public void Document_Setter_Rewires_ChangeHandler ()
     {
-        Views.Editor editor = new ();
+        Editor editor = new ();
         TextDocument? original = editor.Document;
 
         TextDocument replacement = new ("first\nsecond");
@@ -75,7 +76,7 @@ public class EditorLogicTests
     [Fact]
     public void Caret_Tracks_Insertion_Before_It ()
     {
-        Views.Editor editor = new () { Document = new TextDocument ("hello world") };
+        Editor editor = new () { Document = new TextDocument ("hello world") };
         editor.CaretOffset = 5;
 
         editor.Document.Insert (0, ">>>");
@@ -86,7 +87,7 @@ public class EditorLogicTests
     [Fact]
     public void Caret_Tracks_Insertion_At_It_With_AfterInsertion_Semantics ()
     {
-        Views.Editor editor = new () { Document = new TextDocument ("hello") };
+        Editor editor = new () { Document = new TextDocument ("hello") };
         editor.CaretOffset = 2;
 
         editor.Document.Insert (2, "XYZ");
@@ -98,8 +99,8 @@ public class EditorLogicTests
     public void Caret_Tracks_External_Edit_On_Shared_Document ()
     {
         TextDocument document = new ("0123456789");
-        Views.Editor editor = new () { Document = document };
-        Views.Editor secondConsumer = new () { Document = document };
+        Editor editor = new () { Document = document };
+        Editor secondConsumer = new () { Document = document };
         editor.CaretOffset = 8;
 
         secondConsumer.Document!.Insert (3, "abc");
@@ -110,7 +111,7 @@ public class EditorLogicTests
     [Fact]
     public void CaretChanged_Fires_When_Document_Insertion_Shifts_Caret ()
     {
-        Views.Editor editor = new () { Document = new TextDocument ("hello world") };
+        Editor editor = new () { Document = new TextDocument ("hello world") };
         editor.CaretOffset = 5;
         var fires = 0;
         editor.CaretChanged += (_, _) => fires++;
@@ -124,7 +125,7 @@ public class EditorLogicTests
     [Fact]
     public void CaretChanged_Does_Not_Fire_When_Document_Insertion_Leaves_Caret_Alone ()
     {
-        Views.Editor editor = new () { Document = new TextDocument ("hello") };
+        Editor editor = new () { Document = new TextDocument ("hello") };
         editor.CaretOffset = 2;
         var fires = 0;
         editor.CaretChanged += (_, _) => fires++;
@@ -139,7 +140,7 @@ public class EditorLogicTests
     [Fact]
     public void CaretChanged_Fires_When_Document_Removal_Snaps_Caret ()
     {
-        Views.Editor editor = new () { Document = new TextDocument ("hello world") };
+        Editor editor = new () { Document = new TextDocument ("hello world") };
         editor.CaretOffset = 4;
         var fires = 0;
         editor.CaretChanged += (_, _) => fires++;
@@ -153,7 +154,7 @@ public class EditorLogicTests
     [Fact]
     public void Caret_Stays_Put_For_Insertion_After_It ()
     {
-        Views.Editor editor = new () { Document = new TextDocument ("hello") };
+        Editor editor = new () { Document = new TextDocument ("hello") };
         editor.CaretOffset = 2;
 
         editor.Document.Insert (4, "X");
@@ -164,7 +165,7 @@ public class EditorLogicTests
     [Fact]
     public void Caret_Snaps_To_Removal_Start_When_Inside_Removed_Range ()
     {
-        Views.Editor editor = new () { Document = new TextDocument ("hello world") };
+        Editor editor = new () { Document = new TextDocument ("hello world") };
         editor.CaretOffset = 4;
 
         editor.Document.Remove (2, 5); // removes "llo w" → "heorld"
@@ -175,22 +176,22 @@ public class EditorLogicTests
     [Fact]
     public void ShowLineNumbers_Toggles_LeftPadding ()
     {
-        Views.Editor editor = new () { Document = new TextDocument (string.Join ('\n', Enumerable.Range (1, 9))) };
+        Editor editor = new () { Document = new TextDocument (string.Join ('\n', Enumerable.Range (1, 9))) };
 
         Assert.Equal (0, editor.Padding.Thickness.Left);
 
-        editor.ShowLineNumbers = true;
+        editor.GutterOptions = GutterOptions.LineNumbers;
         Assert.Equal (2, editor.Padding.Thickness.Left);
 
-        editor.ShowLineNumbers = false;
+        editor.GutterOptions = GutterOptions.None;
         Assert.Equal (0, editor.Padding.Thickness.Left);
     }
 
     [Fact]
     public void ShowLineNumbers_Updates_Padding_When_LineCount_DigitWidth_Changes ()
     {
-        Views.Editor editor = new () { Document = new TextDocument (string.Join ('\n', Enumerable.Range (1, 9))) };
-        editor.ShowLineNumbers = true;
+        Editor editor = new () { Document = new TextDocument (string.Join ('\n', Enumerable.Range (1, 9))) };
+        editor.GutterOptions = GutterOptions.LineNumbers;
 
         Assert.Equal (2, editor.Padding.Thickness.Left);
 
@@ -202,7 +203,7 @@ public class EditorLogicTests
     [Fact]
     public void IndentationSize_Defaults_To_4 ()
     {
-        Views.Editor editor = new ();
+        Editor editor = new ();
 
         Assert.Equal (4, editor.IndentationSize);
     }
@@ -210,7 +211,7 @@ public class EditorLogicTests
     [Fact]
     public void IndentationSize_Rejects_Values_Less_Than_1 ()
     {
-        Views.Editor editor = new ();
+        Editor editor = new ();
 
         Assert.Throws<ArgumentOutOfRangeException> (() => editor.IndentationSize = 0);
     }
@@ -218,7 +219,7 @@ public class EditorLogicTests
     [Fact]
     public void ConvertTabsToSpaces_Defaults_To_False ()
     {
-        Views.Editor editor = new ();
+        Editor editor = new ();
 
         Assert.False (editor.ConvertTabsToSpaces);
     }
@@ -226,7 +227,7 @@ public class EditorLogicTests
     [Fact]
     public void ShowTabs_Defaults_To_False ()
     {
-        Views.Editor editor = new ();
+        Editor editor = new ();
 
         Assert.False (editor.ShowTabs);
     }
@@ -234,7 +235,7 @@ public class EditorLogicTests
     [Fact]
     public void ReadOnly_Defaults_To_False ()
     {
-        Views.Editor editor = new ();
+        Editor editor = new ();
 
         Assert.False (editor.ReadOnly);
     }
@@ -242,7 +243,7 @@ public class EditorLogicTests
     [Fact]
     public void Caret_After_Tab_Uses_Visual_Columns_For_Viewport_Scrolling ()
     {
-        Views.Editor editor = new () { Document = new TextDocument ("a\tb"), Width = 3, Height = 1 };
+        Editor editor = new () { Document = new TextDocument ("a\tb"), Width = 3, Height = 1 };
         editor.Viewport = new Rectangle (0, 0, 3, 1);
         editor.CaretOffset = 2;
 
@@ -253,7 +254,7 @@ public class EditorLogicTests
     public void Dispose_Unsubscribes_From_Document_Changed ()
     {
         TextDocument doc = new ("hello");
-        Views.Editor editor = new () { Document = doc };
+        Editor editor = new () { Document = doc };
         editor.CaretOffset = 3;
 
         var caretFires = 0;
@@ -272,7 +273,7 @@ public class EditorLogicTests
     [Fact]
     public void Changing_IndentationSize_Recomputes_Caret_Visibility ()
     {
-        Views.Editor editor = new () { Document = new TextDocument ("\t"), Width = 4, Height = 1 };
+        Editor editor = new () { Document = new TextDocument ("\t"), Width = 4, Height = 1 };
         editor.Viewport = new Rectangle (0, 0, 4, 1);
         editor.CaretOffset = 1;
         Assert.Equal (1, editor.Viewport.X);
@@ -282,35 +283,70 @@ public class EditorLogicTests
         Assert.Equal (5, editor.Viewport.X);
     }
 
-    // The Editor.SyntaxHighlighter / Editor.SyntaxLanguage surface reuses Terminal.Gui's
-    // Markdown ISyntaxHighlighter as a stopgap until specs/00-plan.md Phase 6 lifts the
-    // AvaloniaEdit Highlighting/ pipeline (HighlightingColorizer : IVisualLineTransformer,
-    // tracked by issue #28). Mark the property [Obsolete] so external code knows not to
-    // take a hard dependency on the temporary contract. See issue #32.
-    //
-    // The CS0618 suppressions here exist so the compiler doesn't fight the test's purpose,
-    // which is to *verify* the obsoletion is wired up.
+    // The Editor.HighlightingDefinition property replaced the obsolete SyntaxHighlighter /
+    // SyntaxLanguage stopgap (issues #28, #32). It drives a HighlightingColorizer transformer
+    // through the visual-line pipeline.
     [Fact]
-    public void SyntaxHighlighter_Is_Obsolete ()
+    public void HighlightingDefinition_Is_Null_By_Default ()
     {
-#pragma warning disable CS0618 // Type or member is obsolete
-        PropertyInfo prop = typeof (Views.Editor).GetProperty (nameof (Views.Editor.SyntaxHighlighter))!;
-#pragma warning restore CS0618 // Type or member is obsolete
-        ObsoleteAttribute? attr = prop.GetCustomAttribute<ObsoleteAttribute> ();
+        Editor editor = new ();
 
-        Assert.NotNull (attr);
-        Assert.Contains ("28", attr.Message ?? string.Empty);
+        Assert.Null (editor.HighlightingDefinition);
     }
 
     [Fact]
-    public void SyntaxLanguage_Is_Obsolete ()
+    public void HighlightingDefinition_Adds_Colorizer_To_LineTransformers ()
     {
-#pragma warning disable CS0618 // Type or member is obsolete
-        PropertyInfo prop = typeof (Views.Editor).GetProperty (nameof (Views.Editor.SyntaxLanguage))!;
-#pragma warning restore CS0618 // Type or member is obsolete
-        ObsoleteAttribute? attr = prop.GetCustomAttribute<ObsoleteAttribute> ();
+        Editor editor = new ();
+        editor.Document = new TextDocument ("public class Foo { }");
 
-        Assert.NotNull (attr);
-        Assert.Contains ("28", attr.Message ?? string.Empty);
+        IHighlightingDefinition? csharp = HighlightingManager.Instance.GetDefinition ("C#");
+        Assert.NotNull (csharp);
+
+        editor.HighlightingDefinition = csharp;
+
+        Assert.Single (editor.LineTransformers);
+        Assert.IsType<HighlightingColorizer> (editor.LineTransformers[0]);
+    }
+
+    [Fact]
+    public void HighlightingDefinition_Set_Null_Removes_Colorizer ()
+    {
+        Editor editor = new ();
+        editor.Document = new TextDocument ("public class Foo { }");
+
+        editor.HighlightingDefinition = HighlightingManager.Instance.GetDefinition ("C#");
+        Assert.Single (editor.LineTransformers);
+
+        editor.HighlightingDefinition = null;
+        Assert.Empty (editor.LineTransformers);
+    }
+
+    [Fact]
+    public void GetVisibleLineNumbers_Skips_Deepest_Fold_When_Multiple_Start_On_Same_Line ()
+    {
+        // Lines: 1="a{", 2="b", 3="c", 4="d{", 5="e", 6="f}", 7="g}"
+        // Two folds start on line 1: short (lines 1-4) and long (lines 1-7).
+        // When both are collapsed, only line 1 should be visible.
+        var text = "a{\nb\nc\nd{\ne\nf}\ng}";
+        Editor editor = new () { Document = new TextDocument (text) };
+        var fm = new Terminal.Gui.Document.Folding.FoldingManager (editor.Document!);
+        editor.GutterOptions = GutterOptions.LineNumbers | GutterOptions.Folding;
+        editor.FoldingManager = fm;
+
+        // Create two folded sections starting on line 1 with different end offsets.
+        // Short fold: offset 0 (line 1) to offset 8 (line 4 "d{")
+        var shortFold = fm.CreateFolding (0, 8);
+        shortFold.IsFolded = true;
+
+        // Long fold: offset 0 (line 1) to offset 16 (line 7 "g}")
+        var longFold = fm.CreateFolding (0, text.Length);
+        longFold.IsFolded = true;
+
+        List<int> visible = editor.GetVisibleLineNumbers ();
+
+        // Only line 1 should be visible — the long fold hides lines 2-7.
+        Assert.Single (visible);
+        Assert.Equal (1, visible[0]);
     }
 }

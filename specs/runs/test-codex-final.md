@@ -3,7 +3,7 @@
 ## What I did
 
 - Chose option (b): implemented the slice of the VisualLineBuilder pipeline needed for D1, then implemented tab handling on top of it.
-- Added `Terminal.Gui.Views.Rendering` types: `VisualLineBuilder`, `CellVisualLine`, `CellVisualLineElement`, `TextRunElement`, `TabElement`, `IVisualLineTransformer`, `IBackgroundRenderer`, and build context.
+- Added `Terminal.Gui.Editor.Rendering` types: `VisualLineBuilder`, `CellVisualLine`, `CellVisualLineElement`, `TextRunElement`, `TabElement`, `IVisualLineTransformer`, `IBackgroundRenderer`, and build context.
 - Replaced `Editor.TabWidth` with `Editor.IndentationSize`, and added `ConvertTabsToSpaces`, `ShowTabs`, `LineTransformers`, and `BackgroundRenderers`.
 - Moved visible line text drawing through grapheme-aware visual-line elements. `OnDrawingContent` no longer expands `\t` directly or walks rendered text char-by-char.
 - Implemented Tab, Shift+Tab, block indent/unindent, and indentation-aware Backspace.

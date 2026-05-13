@@ -5,7 +5,7 @@
 The MLP shape, AvaloniaEdit-aligned. This is the target surface for the alpha release. Where current properties differ, the notes column says what to rename/add. New properties added to `Editor` require updating this document before merge (rule R8).
 
 ```csharp
-namespace Terminal.Gui.Views;
+namespace Terminal.Gui.Editor;
 
 public class Editor : View
 {
@@ -39,6 +39,9 @@ public class Editor : View
     public IList<IVisualLineTransformer> LineTransformers { get; }  // exists (codex merge)
     public IList<IBackgroundRenderer> BackgroundRenderers { get; }  // exists (codex merge)
 
+    // --- Syntax highlighting (syntax-colorizer ✅) ---
+    public IHighlightingDefinition? HighlightingDefinition { get; set; } // exists (syntax-colorizer)
+
     // --- Folding ---
     public FoldingManager? FoldingManager { get; set; }           // folding-ui (needs folding + rendering-pipeline ✅)
 
@@ -53,7 +56,7 @@ public class Editor : View
 ## Pipeline Types (rendering-pipeline — landed)
 
 ```csharp
-namespace Terminal.Gui.Views.Rendering;
+namespace Terminal.Gui.Editor.Rendering;
 
 public sealed class CellVisualLine
 {

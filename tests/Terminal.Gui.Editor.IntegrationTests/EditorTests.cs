@@ -9,7 +9,7 @@ namespace Terminal.Gui.Editor.IntegrationTests;
 
 /// <summary>
 ///     End-to-end tests that boot an <see cref="EditorTestHost" /> on the ANSI driver and exercise
-///     the <see cref="Views.Editor" /> via synthetic keyboard input. Asserts on <c>Driver.Contents</c>
+///     the <see cref="Editor" /> via synthetic keyboard input. Asserts on <c>Driver.Contents</c>
 ///     and the document state.
 /// </summary>
 public class EditorTests

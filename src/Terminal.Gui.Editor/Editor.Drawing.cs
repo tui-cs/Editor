@@ -1,21 +1,20 @@
 using System.Drawing;
 using Terminal.Gui.Document;
+using Terminal.Gui.Document.Folding;
 using Terminal.Gui.Drawing;
 using Terminal.Gui.Drivers;
+using Terminal.Gui.Highlighting;
 using Terminal.Gui.ViewBase;
-using Terminal.Gui.Views.Rendering;
+using Terminal.Gui.Editor.Rendering;
 using Attribute = Terminal.Gui.Drawing.Attribute;
 using Color = Terminal.Gui.Drawing.Color;
 
-namespace Terminal.Gui.Views;
+namespace Terminal.Gui.Editor;
 
 public partial class Editor
 {
-    private ISyntaxHighlighter? _highlighterPreparedInstance;
-
-    // Syntax highlighter state optimization: tracks how far we've prepared so incremental
-    // scrolling doesn't re-highlight from line 0 every frame.
-    private int _highlighterPreparedUpToLine = -1;
+    /// <summary>Cached visible-line mapping; cleared when folds change or the document changes.</summary>
+    private List<int>? _cachedVisibleLineNumbers;
 
     /// <inheritdoc />
     protected override bool OnDrawingContent (DrawContext? context)
@@ -29,6 +28,9 @@ public partial class Editor
         Attribute normal = GetAttributeForRole (VisualRole.Normal);
         Attribute selected = GetAttributeForRole (VisualRole.Active);
 
+        // Ensure the colorizer sees the current attribute (scheme may have changed since install).
+        EnsureColorizerAttribute (normal);
+
         FillViewportBackground (viewport, normal);
         DrawVisibleLines (viewport, normal, selected);
         SetAttribute (normal);
@@ -38,9 +40,9 @@ public partial class Editor
     }
 
     /// <summary>
-    ///     When <see cref="UseThemeBackground" /> is <see langword="true" /> and a syntax highlighter
-    ///     provides a <see cref="ISyntaxHighlighter.DefaultBackground" />, fills the viewport with
-    ///     that background so empty cells match per-token backgrounds.
+    ///     When <see cref="UseThemeBackground" /> is <see langword="true" /> and a highlighting
+    ///     definition has a default background color, fills the viewport with that background
+    ///     so empty cells match per-token backgrounds.
     /// </summary>
     private void FillViewportBackground (Rectangle viewport, Attribute normal)
     {
@@ -49,9 +51,7 @@ public partial class Editor
             return;
         }
 
-#pragma warning disable CS0618 // Type or member is obsolete
-        Color? themeBg = SyntaxHighlighter?.DefaultBackground;
-#pragma warning restore CS0618 // Type or member is obsolete
+        Color? themeBg = _highlighter?.DefaultTextColor?.Background?.Color;
 
         if (themeBg is not { } bg)
         {
@@ -71,68 +71,135 @@ public partial class Editor
 
     private void DrawVisibleLines (Rectangle viewport, Attribute normal, Attribute selected)
     {
-        // The CS0618 here is the API's purpose: SyntaxHighlighter is [Obsolete] to warn
-        // external callers that this is a stopgap (issue #32). The editor itself still has to
-        // honor the property until Phase 6 lifts AvaloniaEdit's Highlighting/ pipeline (#28).
-#pragma warning disable CS0618 // Type or member is obsolete
-        ISyntaxHighlighter? syntaxHighlighter = SyntaxHighlighter;
-#pragma warning restore CS0618 // Type or member is obsolete
-
         var hasSelection = HasSelection;
         var selStart = hasSelection ? SelectionStart : 0;
         var selEnd = hasSelection ? SelectionEnd : 0;
         var visibleStart = viewport.X;
         var visibleEnd = viewport.X + viewport.Width;
 
-        PrepareSyntaxHighlighter (syntaxHighlighter, viewport.Y);
+        // Build a mapping from viewport row → document line number (1-based),
+        // skipping lines hidden by collapsed folds.
+        List<int> visibleLineNumbers = GetVisibleLineNumbers ();
 
         for (var row = 0; row < viewport.Height; row++)
         {
-            var lineIndex = viewport.Y + row;
+            var visibleIndex = viewport.Y + row;
 
-            if (lineIndex < 0 || lineIndex >= _document!.LineCount)
+            if (visibleIndex < 0 || visibleIndex >= visibleLineNumbers.Count)
             {
                 break;
             }
 
-            DocumentLine line = _document.GetLineByNumber (lineIndex + 1);
-#pragma warning disable CS0618 // Type or member is obsolete — see PrepareSyntaxHighlighter.
-            IReadOnlyList<StyledSegment>? segments =
-                syntaxHighlighter?.Highlight (_document.GetText (line), SyntaxLanguage);
-#pragma warning restore CS0618 // Type or member is obsolete
+            var lineNumber = visibleLineNumbers[visibleIndex];
+            DocumentLine line = _document!.GetLineByNumber (lineNumber);
 
-            DrawVisualLine (row, line, visibleStart, visibleEnd, segments, normal, selected, selStart, selEnd);
+            DrawVisualLine (row, line, visibleStart, visibleEnd, null, normal, selected, selStart, selEnd);
         }
     }
 
-    private void PrepareSyntaxHighlighter (ISyntaxHighlighter? syntaxHighlighter, int firstVisibleLineIndex)
+    /// <summary>
+    ///     Returns a list of 1-based document line numbers that are visible (not hidden by folds),
+    ///     in order. Cached until folds change.
+    /// </summary>
+    internal List<int> GetVisibleLineNumbers ()
     {
-        if (syntaxHighlighter is null || _document is null)
+        if (_cachedVisibleLineNumbers is not null)
+        {
+            return _cachedVisibleLineNumbers;
+        }
+
+        List<int> result = new ();
+
+        if (_document is null)
+        {
+            _cachedVisibleLineNumbers = result;
+
+            return result;
+        }
+
+        FoldingManager? fm = FoldingManager;
+        var lineNumber = 1;
+
+        while (lineNumber <= _document.LineCount)
+        {
+            result.Add (lineNumber);
+
+            if (fm is not null)
+            {
+                // If there are folded sections starting on this line, skip past the deepest one.
+                var maxEndLine = lineNumber;
+
+                foreach (FoldingSection fs in fm.AllFoldings)
+                {
+                    if (!fs.IsFolded)
+                    {
+                        continue;
+                    }
+
+                    DocumentLine startLine =
+                        fm.Document.GetLineByOffset (Math.Clamp (fs.StartOffset, 0, fm.Document.TextLength));
+
+                    if (startLine.LineNumber != lineNumber)
+                    {
+                        continue;
+                    }
+
+                    DocumentLine endLine =
+                        fm.Document.GetLineByOffset (Math.Clamp (fs.EndOffset, 0, fm.Document.TextLength));
+
+                    if (endLine.LineNumber > maxEndLine)
+                    {
+                        maxEndLine = endLine.LineNumber;
+                    }
+                }
+
+                if (maxEndLine > lineNumber)
+                {
+                    lineNumber = maxEndLine + 1;
+
+                    continue;
+                }
+            }
+
+            lineNumber++;
+        }
+
+        _cachedVisibleLineNumbers = result;
+
+        return result;
+    }
+
+    /// <summary>
+    ///     Rebuilds the <see cref="HighlightingColorizer" /> if the editor's normal attribute
+    ///     has changed (e.g. after a scheme swap or focus change). Keeps the same underlying
+    ///     <see cref="DocumentHighlighter" />.
+    /// </summary>
+    private void EnsureColorizerAttribute (Attribute normal)
+    {
+        if (_highlightingColorizer is null)
         {
             return;
         }
 
-        // If the highlighter instance changed or viewport scrolled backward, reset from scratch.
-        if (!ReferenceEquals (syntaxHighlighter, _highlighterPreparedInstance)
-            || firstVisibleLineIndex < _highlighterPreparedUpToLine)
+        HighlightingColorizer replacement = _highlightingColorizer.WithDefaultAttribute (normal, UseThemeBackground);
+
+        if (ReferenceEquals (replacement, _highlightingColorizer))
         {
-            syntaxHighlighter.ResetState ();
-            _highlighterPreparedInstance = syntaxHighlighter;
-            _highlighterPreparedUpToLine = 0;
+            return;
         }
 
-        // Incrementally highlight from where we left off to the first visible line.
-        for (var lineIndex = _highlighterPreparedUpToLine;
-             lineIndex < firstVisibleLineIndex && lineIndex < _document.LineCount;
-             lineIndex++)
+        var index = LineTransformers.IndexOf (_highlightingColorizer);
+
+        if (index >= 0)
         {
-            DocumentLine line = _document.GetLineByNumber (lineIndex + 1);
-#pragma warning disable CS0618 // Type or member is obsolete — see note in OnDrawingContent.
-            syntaxHighlighter.Highlight (_document.GetText (line), SyntaxLanguage);
-#pragma warning restore CS0618 // Type or member is obsolete
+            LineTransformers[index] = replacement;
+        }
+        else
+        {
+            LineTransformers.Insert (0, replacement);
         }
 
-        _highlighterPreparedUpToLine = firstVisibleLineIndex;
+        _highlightingColorizer = replacement;
     }
 
     private void DrawVisualLine (
@@ -184,7 +251,7 @@ public partial class Editor
         }
 
         Rectangle viewport = Viewport;
-        var caretLine = GetCaretLineIndex ();
+        var caretLine = GetCaretVisibleLineIndex ();
         var caretCol = GetCaretColumn ();
         var row = caretLine - viewport.Y;
         var col = caretCol - viewport.X;

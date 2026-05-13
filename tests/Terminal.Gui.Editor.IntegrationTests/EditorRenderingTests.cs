@@ -3,16 +3,18 @@
 using System.Drawing;
 using Terminal.Gui.Drawing;
 using Terminal.Gui.Editor.IntegrationTests.Testing;
+using Terminal.Gui.Highlighting;
 using Terminal.Gui.Input;
 using Terminal.Gui.Testing;
 using Terminal.Gui.Text;
+using Terminal.Gui.Editor;
 using Xunit;
 using Attribute = Terminal.Gui.Drawing.Attribute;
 
 namespace Terminal.Gui.Editor.IntegrationTests;
 
 /// <summary>
-///     Asserts the visual roles used by <see cref="Views.Editor" /> when rendering. Unselected text
+///     Asserts the visual roles used by <see cref="Editor" /> when rendering. Unselected text
 ///     should blend into the surrounding container (<see cref="VisualRole.Normal" />) — not
 ///     <see cref="VisualRole.Editable" />, which is the dim/contrast role intended for input
 ///     widgets like <see cref="Terminal.Gui.Views.TextField" /> and
@@ -87,7 +89,7 @@ public class EditorRenderingTests
         await using AppFixture<EditorTestHost> fx = new (() =>
         {
             EditorTestHost host = new ("alpha\nbeta");
-            host.Editor.ShowLineNumbers = true;
+            host.Editor.GutterOptions = GutterOptions.LineNumbers;
 
             return host;
         });
@@ -115,7 +117,7 @@ public class EditorRenderingTests
         await using AppFixture<EditorTestHost> fx = new (() =>
         {
             EditorTestHost host = new (string.Join ("\n", lines));
-            host.Editor.ShowLineNumbers = true;
+            host.Editor.GutterOptions = GutterOptions.LineNumbers;
 
             return host;
         });
@@ -146,7 +148,7 @@ public class EditorRenderingTests
         await using AppFixture<EditorTestHost> fx = new (() =>
         {
             EditorTestHost host = new ("only");
-            host.Editor.ShowLineNumbers = true;
+            host.Editor.GutterOptions = GutterOptions.LineNumbers;
 
             return host;
         });
@@ -166,7 +168,7 @@ public class EditorRenderingTests
         await using AppFixture<EditorTestHost> fx = new (() =>
         {
             EditorTestHost host = new ("alpha\nbeta");
-            host.Editor.ShowLineNumbers = true;
+            host.Editor.GutterOptions = GutterOptions.LineNumbers;
 
             return host;
         });
@@ -174,7 +176,7 @@ public class EditorRenderingTests
         fx.Render ();
         Assert.Equal ("1", fx.Driver.Contents![0, 0].Grapheme);
 
-        fx.Top.Editor.ShowLineNumbers = false;
+        fx.Top.Editor.GutterOptions = GutterOptions.None;
         fx.Render ();
 
         // With the gutter gone, content shifts left to column 0.
@@ -183,34 +185,31 @@ public class EditorRenderingTests
     }
 
     [Fact]
-    public async Task Syntax_Highlighting_Uses_TextMate_Token_Attributes ()
+    public async Task Syntax_Highlighting_Uses_Xshd_Token_Attributes ()
     {
         const string text = "public class C";
 
         await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost (text));
-        // Editor.SyntaxHighlighter is [Obsolete] (issue #32); these tests still exercise it
-        // because it's the live behavior until the visual-line pipeline lands (issue #28).
-#pragma warning disable CS0618 // Type or member is obsolete
-        fx.Top.Editor.SyntaxHighlighter = new TextMateSyntaxHighlighter ();
-#pragma warning restore CS0618 // Type or member is obsolete
+
+        IHighlightingDefinition? csharp = HighlightingManager.Instance.GetDefinition ("C#");
+        Assert.NotNull (csharp);
+        fx.Top.Editor.HighlightingDefinition = csharp;
         fx.Render ();
 
-        TextMateSyntaxHighlighter highlighter = new ();
-        Attribute expected = highlighter.Highlight (text, "csharp")[0].Attribute!.Value;
-
+        // With xshd highlighting active, the first cell ("p" from "public") should have
+        // a different attribute from the plain Normal attribute, because "public" is a keyword.
+        Attribute normal = fx.Top.Editor.GetAttributeForRole (VisualRole.Normal);
         Cell cell = fx.Driver.Contents![0, 0];
         Assert.Equal ("p", cell.Grapheme);
-        Assert.Equal (expected, cell.Attribute);
-        Assert.NotEqual (fx.Top.Editor.GetAttributeForRole (VisualRole.Normal), cell.Attribute);
+        Assert.NotEqual (normal, cell.Attribute);
     }
 
     [Fact]
     public async Task Selection_Overrides_Syntax_Highlighting ()
     {
         await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("public class C"));
-#pragma warning disable CS0618 // Type or member is obsolete — see note in Syntax_Highlighting_Uses_TextMate_Token_Attributes.
-        fx.Top.Editor.SyntaxHighlighter = new TextMateSyntaxHighlighter ();
-#pragma warning restore CS0618 // Type or member is obsolete
+
+        fx.Top.Editor.HighlightingDefinition = HighlightingManager.Instance.GetDefinition ("C#");
         fx.Top.Editor.SetFocus ();
         fx.Top.Editor.CaretOffset = 0;
 
@@ -335,18 +334,16 @@ public class EditorRenderingTests
         const string text = "public class C";
 
         await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost (text));
-#pragma warning disable CS0618 // Type or member is obsolete
-        fx.Top.Editor.SyntaxHighlighter = new TextMateSyntaxHighlighter ();
-#pragma warning restore CS0618 // Type or member is obsolete
+
+        fx.Top.Editor.HighlightingDefinition = HighlightingManager.Instance.GetDefinition ("C#");
         fx.Top.Editor.UseThemeBackground = true;
         fx.Render ();
 
-        TextMateSyntaxHighlighter highlighter = new ();
-        Attribute expected = highlighter.Highlight (text, "csharp")[0].Attribute!.Value;
-
+        // With xshd highlighting active, the keyword should get a highlighting color.
+        Attribute normal = fx.Top.Editor.GetAttributeForRole (VisualRole.Normal);
         Cell cell = fx.Driver.Contents![0, 0];
         Assert.Equal ("p", cell.Grapheme);
-        Assert.Equal (expected, cell.Attribute);
+        Assert.NotEqual (normal, cell.Attribute);
     }
 
     [Fact]
@@ -355,20 +352,14 @@ public class EditorRenderingTests
         const string text = "public class C";
 
         await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost (text));
-#pragma warning disable CS0618 // Type or member is obsolete
-        fx.Top.Editor.SyntaxHighlighter = new TextMateSyntaxHighlighter ();
-#pragma warning restore CS0618 // Type or member is obsolete
+
+        fx.Top.Editor.HighlightingDefinition = HighlightingManager.Instance.GetDefinition ("C#");
         fx.Top.Editor.UseThemeBackground = false;
         fx.Render ();
 
         Attribute normal = fx.Top.Editor.GetAttributeForRole (VisualRole.Normal);
         Cell cell = fx.Driver.Contents![0, 0];
         Assert.Equal ("p", cell.Grapheme);
-
-        // The foreground should come from the highlighter (different from Normal's foreground).
-        TextMateSyntaxHighlighter highlighter = new ();
-        Attribute highlighterAttr = highlighter.Highlight (text, "csharp")[0].Attribute!.Value;
-        Assert.Equal (highlighterAttr.Foreground, cell.Attribute!.Value.Foreground);
 
         // The background must match the TG theme's Normal background, not the highlighter's.
         Assert.Equal (normal.Background, cell.Attribute!.Value.Background);

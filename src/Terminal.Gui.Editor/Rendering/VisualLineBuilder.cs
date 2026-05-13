@@ -2,7 +2,7 @@ using Terminal.Gui.Document;
 using Terminal.Gui.Drawing;
 using Attribute = Terminal.Gui.Drawing.Attribute;
 
-namespace Terminal.Gui.Views.Rendering;
+namespace Terminal.Gui.Editor.Rendering;
 
 /// <summary>Builds terminal-cell visual lines from document lines.</summary>
 public sealed class VisualLineBuilder
@@ -26,7 +26,30 @@ public sealed class VisualLineBuilder
             transformer.Transform (visualLine);
         }
 
+        // Apply selection AFTER transformers so highlighting colors don't overwrite selection.
+        if (context.HasSelection)
+        {
+            ApplySelection (visualLine, context);
+        }
+
         return visualLine;
+    }
+
+    /// <summary>
+    ///     Overwrites <see cref="CellVisualLineElement.Attribute" /> with the selected attribute
+    ///     for elements that fall within the selection range. Runs after transformers so that
+    ///     highlighting colors don't override selection.
+    /// </summary>
+    private static void ApplySelection (CellVisualLine visualLine, VisualLineBuildContext context)
+    {
+        foreach (CellVisualLineElement element in visualLine.Elements)
+        {
+            if (element.DocumentOffset < context.SelectionEnd
+                && element.DocumentEndOffset > context.SelectionStart)
+            {
+                element.Attribute = context.SelectedAttribute;
+            }
+        }
     }
 
     /// <summary>
@@ -55,13 +78,6 @@ public sealed class VisualLineBuilder
 
             Attribute attribute = GetAttribute (context, segmentIndex);
             var documentOffset = documentLine.Offset + i;
-
-            if (context.HasSelection
-                && documentOffset < context.SelectionEnd
-                && documentOffset + 1 > context.SelectionStart)
-            {
-                attribute = context.SelectedAttribute;
-            }
 
             if (text[i] == '\t')
             {
@@ -103,13 +119,6 @@ public sealed class VisualLineBuilder
             Attribute attribute = GetAttribute (context, segmentIndex);
             var documentOffset = documentLine.Offset + logicalColumn;
             var documentLength = grapheme.Length;
-
-            if (context.HasSelection
-                && documentOffset < context.SelectionEnd
-                && documentOffset + documentLength > context.SelectionStart)
-            {
-                attribute = context.SelectedAttribute;
-            }
 
             if (grapheme == "\t")
             {

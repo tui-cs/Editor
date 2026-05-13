@@ -2,12 +2,12 @@
 
 using System.Drawing;
 using Ted;
-using Terminal.Gui.Drawing;
 using Terminal.Gui.Editor.IntegrationTests.Testing;
+using Terminal.Gui.Highlighting;
 using Terminal.Gui.Input;
 using Terminal.Gui.Testing;
+using Terminal.Gui.Editor;
 using Terminal.Gui.Views;
-using TextMateSharp.Grammars;
 using Xunit;
 
 namespace Terminal.Gui.Editor.IntegrationTests;
@@ -239,19 +239,18 @@ public class TedAppTests
     }
 
     [Fact]
-    public async Task Theme_StatusBar_DropDown_Changes_Editor_Syntax_Theme ()
+    public async Task Highlighting_Auto_Detects_From_File_Extension ()
     {
         await using AppFixture<TedApp> fx = new (() => new TedApp ());
 
-        fx.Top.ThemeDropDown.Value = ThemeName.LightPlus;
+        // Default is C# (set in constructor).
+        Assert.NotNull (fx.Top.Editor.HighlightingDefinition);
+        Assert.Equal ("C#", fx.Top.Editor.HighlightingDefinition!.Name);
 
-        // CS0618: Editor.SyntaxHighlighter is the [Obsolete] stopgap surface (issue #32);
-        // ted's theme drop-down is its UI, so this test must read it.
-#pragma warning disable CS0618 // Type or member is obsolete
-        TextMateSyntaxHighlighter highlighter =
-            Assert.IsType<TextMateSyntaxHighlighter> (fx.Top.Editor.SyntaxHighlighter);
-#pragma warning restore CS0618 // Type or member is obsolete
-        Assert.Equal (ThemeName.LightPlus, highlighter.ThemeName);
+        // Switching to XML highlighting works.
+        fx.Top.Editor.HighlightingDefinition = HighlightingManager.Instance.GetDefinitionByExtension (".xml");
+        Assert.NotNull (fx.Top.Editor.HighlightingDefinition);
+        Assert.Equal ("XML", fx.Top.Editor.HighlightingDefinition!.Name);
     }
 
     [Fact]
@@ -345,7 +344,7 @@ public class TedAppTests
     public async Task OptionsMenu_TogglesLineNumbers_ViaKeyboard ()
     {
         await using AppFixture<TedApp> fx = new (() => new TedApp ());
-        Assert.True (fx.Top.Editor.ShowLineNumbers);
+        Assert.True (fx.Top.Editor.GutterOptions.HasFlag (GutterOptions.LineNumbers));
 
         InputInjectionOptions options = new () { Mode = InputInjectionMode.Direct };
         fx.Injector.InjectKey (Key.O.WithAlt, options);
@@ -358,7 +357,7 @@ public class TedAppTests
         fx.Injector.InjectKey (Key.Enter, options);
         fx.Render ();
 
-        Assert.False (fx.Top.Editor.ShowLineNumbers);
+        Assert.False (fx.Top.Editor.GutterOptions.HasFlag (GutterOptions.LineNumbers));
 
         fx.Injector.InjectKey (Key.O.WithAlt, options);
         fx.Render ();
@@ -368,7 +367,7 @@ public class TedAppTests
         fx.Injector.InjectKey (Key.Enter, options);
         fx.Render ();
 
-        Assert.True (fx.Top.Editor.ShowLineNumbers);
+        Assert.True (fx.Top.Editor.GutterOptions.HasFlag (GutterOptions.LineNumbers));
     }
 
     [Fact]

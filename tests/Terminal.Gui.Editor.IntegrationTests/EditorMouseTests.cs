@@ -4,6 +4,7 @@ using System.Drawing;
 using Terminal.Gui.Editor.IntegrationTests.Testing;
 using Terminal.Gui.Input;
 using Terminal.Gui.Testing;
+using Terminal.Gui.Editor;
 using Xunit;
 
 namespace Terminal.Gui.Editor.IntegrationTests;
@@ -231,7 +232,7 @@ public class EditorMouseTests
         await using AppFixture<EditorTestHost> fx = new (() =>
         {
             EditorTestHost host = new ("alpha\nbeta\ngamma");
-            host.Editor.ShowLineNumbers = true;
+            host.Editor.GutterOptions = GutterOptions.LineNumbers;
 
             return host;
         });
@@ -251,7 +252,7 @@ public class EditorMouseTests
         await using AppFixture<EditorTestHost> fx = new (() =>
         {
             EditorTestHost host = new ("alpha\nbeta\ngamma");
-            host.Editor.ShowLineNumbers = true;
+            host.Editor.GutterOptions = GutterOptions.LineNumbers;
 
             return host;
         });

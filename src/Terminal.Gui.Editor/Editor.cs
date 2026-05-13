@@ -1,12 +1,14 @@
-using System.ComponentModel;
 using System.Drawing;
 using Terminal.Gui.Document;
+using Terminal.Gui.Document.Folding;
 using Terminal.Gui.Drawing;
+using Terminal.Gui.Highlighting;
+using Terminal.Gui.Text.Indentation;
 using Terminal.Gui.ViewBase;
-using Terminal.Gui.Views.Rendering;
+using Terminal.Gui.Editor.Rendering;
 using Attribute = Terminal.Gui.Drawing.Attribute;
 
-namespace Terminal.Gui.Views;
+namespace Terminal.Gui.Editor;
 
 /// <summary>
 ///     Single-document text editor View backed by <see cref="TextDocument" />. Renders multi-line
@@ -37,6 +39,8 @@ public partial class Editor : View
     private TextAnchor? _caretAnchor;
     private TextDocument? _document;
     private Gutter? _gutter;
+    private DocumentHighlighter? _highlighter;
+    private HighlightingColorizer? _highlightingColorizer;
     private int _lastKnownCaretOffset;
 
     // Incremental max-width tracking: avoids the O(N) all-lines walk that UpdateContentSize
@@ -46,8 +50,7 @@ public partial class Editor : View
     private int _maxVisualWidth;
     private bool _maxWidthDirty = true;
     private int _maxWidthLineNumber;
-    private bool _showLineNumbers;
-    private ISyntaxHighlighter? _syntaxHighlighter;
+    private GutterOptions _gutterOptions;
 
     /// <summary>
     ///     Sticky column for vertical caret moves. Tracks the column the user *intends* to be in,
@@ -92,11 +95,14 @@ public partial class Editor : View
             _lastKnownCaretOffset = caretOffset;
             _selectionAnchor = null;
             ClearVisualLineCaches ();
+            _cachedVisibleLineNumbers = null;
             _maxWidthDirty = true;
+
+            InstallHighlighter ();
 
             _virtualCaretColumn = GetCaretColumn ();
             UpdateContentSize ();
-            UpdateLineNumberPadding ();
+            UpdateGutterWidth ();
 
             if (hadSelection)
             {
@@ -118,20 +124,21 @@ public partial class Editor : View
     }
 
     /// <summary>
-    ///     Gets or sets whether one-based line numbers are rendered in the editor's left padding.
+    ///     Gets or sets which elements the gutter displays. Combine flags to show multiple elements:
+    ///     <c>GutterOptions.LineNumbers | GutterOptions.Folding</c>.
     /// </summary>
-    public bool ShowLineNumbers
+    public GutterOptions GutterOptions
     {
-        get => _showLineNumbers;
+        get => _gutterOptions;
         set
         {
-            if (_showLineNumbers == value)
+            if (_gutterOptions == value)
             {
                 return;
             }
 
-            _showLineNumbers = value;
-            UpdateLineNumberPadding ();
+            _gutterOptions = value;
+            UpdateGutterWidth ();
             SetNeedsDraw ();
         }
     }
@@ -143,67 +150,31 @@ public partial class Editor : View
     public bool ReadOnly { get; set; }
 
     /// <summary>
-    ///     Optional syntax highlighter used when drawing document text.
-    ///     Optional syntax highlighter used when drawing document text.
+    ///     Gets or sets the highlighting definition used for syntax coloring. When set, a
+    ///     <see cref="HighlightingColorizer" /> is automatically added to
+    ///     <see cref="LineTransformers" />. Set to <see langword="null" /> to disable
+    ///     syntax highlighting.
     /// </summary>
     /// <remarks>
-    ///     <para>
-    ///         <b>Stopgap.</b> This property reuses Terminal.Gui's
-    ///         <see cref="ISyntaxHighlighter" /> from <c>Terminal.Gui.Drawing.Markdown</c>, which is
-    ///         shaped for Markdown rendering — not for an editor's per-line / per-visual-line
-    ///         highlighting pipeline. It will be removed when <c>specs/00-plan.md</c> Phase 6 lifts
-    ///         AvaloniaEdit's <c>Highlighting/</c> folder and the editor switches to a
-    ///         <c>HighlightingColorizer : IVisualLineTransformer</c> running over the
-    ///         <see cref="DocumentLine" /> → visual-line pipeline tracked by issue #28.
-    ///     </para>
-    ///     <para>
-    ///         External code should not take a hard dependency on this contract.
-    ///     </para>
+    ///     Use <see cref="HighlightingManager.Instance" /> to look up definitions by name
+    ///     or file extension:
+    ///     <code>editor.HighlightingDefinition = HighlightingManager.Instance.GetDefinitionByExtension (".cs");</code>
     /// </remarks>
-    [Obsolete (
-        "Stopgap reusing Terminal.Gui's Markdown ISyntaxHighlighter; will be replaced by HighlightingColorizer when specs/00-plan.md Phase 6 lifts AvaloniaEdit's Highlighting/ folder. See issue #28 for the visual-line pipeline that replaces this. Tracked by issue #32.")]
-    [EditorBrowsable (EditorBrowsableState.Never)]
-    public ISyntaxHighlighter? SyntaxHighlighter
-    {
-        get => _syntaxHighlighter;
-        set
-        {
-            if (ReferenceEquals (_syntaxHighlighter, value))
-            {
-                return;
-            }
-
-            _syntaxHighlighter = value;
-            _syntaxHighlighter?.ResetState ();
-            SetNeedsDraw ();
-        }
-    }
-
-    /// <summary>The language identifier passed to <see cref="SyntaxHighlighter" />. Defaults to C#.</summary>
-    /// <remarks>
-    ///     Obsolete for the same reason as <see cref="SyntaxHighlighter" /> — this is part of the
-    ///     temporary Markdown-shaped surface that Phase 6 will replace. See issue #28 / #32.
-    /// </remarks>
-    [Obsolete (
-        "Stopgap reusing Terminal.Gui's Markdown ISyntaxHighlighter; will be replaced by HighlightingColorizer when specs/00-plan.md Phase 6 lifts AvaloniaEdit's Highlighting/ folder. See issue #28 for the visual-line pipeline that replaces this. Tracked by issue #32.")]
-    [EditorBrowsable (EditorBrowsableState.Never)]
-    public string SyntaxLanguage
+    public IHighlightingDefinition? HighlightingDefinition
     {
         get;
         set
         {
-            ArgumentNullException.ThrowIfNull (value);
-
             if (field == value)
             {
                 return;
             }
 
             field = value;
-            _syntaxHighlighter?.ResetState ();
+            InstallHighlighter ();
             SetNeedsDraw ();
         }
-    } = "csharp";
+    }
 
     /// <summary>Width of one indentation unit, in terminal cells. Defaults to 4.</summary>
     public int IndentationSize
@@ -230,6 +201,15 @@ public partial class Editor : View
 
     /// <summary>Whether pressing Tab inserts spaces instead of a tab character.</summary>
     public bool ConvertTabsToSpaces { get; set; }
+
+    /// <summary>
+    ///     Gets or sets the indentation strategy applied when Enter is pressed.
+    ///     When non-null, the strategy's <see cref="IIndentationStrategy.IndentLine" /> is called
+    ///     on the newly created line to copy (or compute) indentation from the previous line.
+    ///     Defaults to <see cref="DefaultIndentationStrategy" />.
+    ///     Set to <see langword="null" /> to disable auto-indent on Enter.
+    /// </summary>
+    public IIndentationStrategy? IndentationStrategy { get; set; } = new DefaultIndentationStrategy ();
 
     /// <summary>
     ///     When <see langword="true" /> (the default), syntax-highlighted tokens keep both their
@@ -277,6 +257,80 @@ public partial class Editor : View
     /// <summary>Background renderers drawn before visual-line elements.</summary>
     public IList<IBackgroundRenderer> BackgroundRenderers { get; } = [];
 
+    /// <summary>
+    ///     Gets or sets the <see cref="Document.Folding.FoldingManager" /> that tracks collapsible regions.
+    ///     Setting this installs a <see cref="FoldingTransformer" /> and subscribes to fold change events.
+    /// </summary>
+    public FoldingManager? FoldingManager
+    {
+        get;
+        set
+        {
+            if (field == value)
+            {
+                return;
+            }
+
+            if (field is not null)
+            {
+                field.FoldingChanged -= OnFoldingChanged;
+
+                // Remove the folding transformer installed by the previous manager.
+                for (var i = LineTransformers.Count - 1; i >= 0; i--)
+                {
+                    if (LineTransformers[i] is FoldingTransformer)
+                    {
+                        LineTransformers.RemoveAt (i);
+                    }
+                }
+            }
+
+            field = value;
+
+            if (field is not null)
+            {
+                field.FoldingChanged += OnFoldingChanged;
+                LineTransformers.Insert (0, new FoldingTransformer (field));
+            }
+
+            ClearVisualLineCaches ();
+            UpdateContentSize ();
+            UpdateGutterWidth ();
+            SetNeedsDraw ();
+        }
+    }
+
+    private void OnFoldingChanged (object? sender, EventArgs e)
+    {
+        ClearVisualLineCaches ();
+        _cachedVisibleLineNumbers = null;
+        _maxWidthDirty = true;
+        UpdateContentSize ();
+        SetNeedsDraw ();
+        _gutter?.SetNeedsDraw ();
+    }
+
+    /// <summary>
+    ///     If the caret is inside a collapsed fold, expand it so the caret stays visible.
+    /// </summary>
+    private void EnsureCaretNotInFold ()
+    {
+        if (FoldingManager is not { } fm)
+        {
+            return;
+        }
+
+        var caretOffset = CaretOffset;
+
+        foreach (FoldingSection fs in fm.GetFoldingsContaining (caretOffset))
+        {
+            if (fs.IsFolded && fs.StartOffset < caretOffset && caretOffset < fs.EndOffset)
+            {
+                fs.IsFolded = false;
+            }
+        }
+    }
+
     /// <summary>Raised whenever <see cref="CaretOffset" /> changes.</summary>
     public event EventHandler? CaretChanged;
 
@@ -300,6 +354,7 @@ public partial class Editor : View
         }
 
         EnsureCaretVisible ();
+        EnsureCaretNotInFold ();
         SetNeedsDraw ();
 
         if (changed)
@@ -333,9 +388,10 @@ public partial class Editor : View
         // Cheap: usually one or a handful of entries; correctness > saving a few cache hits.
         InvalidateVisualLineCaches (e);
         InvalidateHighlighterState (e);
+        _cachedVisibleLineNumbers = null;
         UpdateMaxWidthIncremental (e);
         UpdateContentSize ();
-        UpdateLineNumberPadding ();
+        UpdateGutterWidth ();
 
         var current = CaretOffset;
 
@@ -364,7 +420,8 @@ public partial class Editor : View
         }
 
         // +1 column lets the caret sit just past the end-of-line.
-        SetContentSize (new Size (_maxVisualWidth + 1, _document.LineCount));
+        var visibleLines = _document.LineCount - (FoldingManager?.GetHiddenLineCount () ?? 0);
+        SetContentSize (new Size (_maxVisualWidth + 1, Math.Max (1, visibleLines)));
     }
 
     /// <summary>Full O(N) recompute — only called on Document swap, IndentationSize change, etc.</summary>
@@ -476,28 +533,43 @@ public partial class Editor : View
     }
 
     /// <summary>
-    ///     Resets the incremental highlighter state when a document change occurs at or before
-    ///     the prepared-up-to line. Edits after the prepared region don't affect tokenizer state
-    ///     for lines that have already been processed.
+    ///     Invalidates the <see cref="DocumentHighlighter" /> state when a document change
+    ///     occurs. The <see cref="DocumentHighlighter" /> implements <see cref="ILineTracker" />
+    ///     and handles incremental invalidation internally, so no per-edit work is needed here
+    ///     beyond clearing the visual-line caches (handled separately).
     /// </summary>
     private void InvalidateHighlighterState (DocumentChangeEventArgs e)
     {
-        if (_highlighterPreparedUpToLine < 0 || _document is null)
+        // DocumentHighlighter (an ILineTracker) is notified of edits automatically
+        // by the TextDocument. No explicit invalidation needed.
+    }
+
+    /// <summary>
+    ///     Creates or tears down the <see cref="DocumentHighlighter" /> and
+    ///     <see cref="HighlightingColorizer" /> when the highlighting definition or document
+    ///     changes. Keeps <see cref="LineTransformers" /> in sync.
+    /// </summary>
+    private void InstallHighlighter ()
+    {
+        // Remove old colorizer if present.
+        if (_highlightingColorizer is not null)
+        {
+            LineTransformers.Remove (_highlightingColorizer);
+            _highlightingColorizer = null;
+        }
+
+        _highlighter?.Dispose ();
+        _highlighter = null;
+
+        if (HighlightingDefinition is null || _document is null)
         {
             return;
         }
 
-        DocumentLine affectedLine = _document.GetLineByOffset (Math.Min (e.Offset, _document.TextLength));
-        var affectedLineIndex = affectedLine.LineNumber - 1;
-
-        if (affectedLineIndex < _highlighterPreparedUpToLine)
-        {
-            // Edit was before/within the prepared region — must re-prepare from line 0.
-            // Setting to 0 (not -1) so PrepareSyntaxHighlighter's comparison triggers a
-            // ResetState() call on the next draw frame.
-            _highlighterPreparedUpToLine = 0;
-            _highlighterPreparedInstance = null;
-        }
+        _highlighter = new DocumentHighlighter (_document, HighlightingDefinition);
+        Attribute normal = HasFocus ? GetAttributeForRole (VisualRole.Normal) : Attribute.Default;
+        _highlightingColorizer = new HighlightingColorizer (_highlighter, normal, UseThemeBackground);
+        LineTransformers.Insert (0, _highlightingColorizer);
     }
 
     private void InvalidateVisualLineCaches (DocumentChangeEventArgs e)
@@ -581,10 +653,10 @@ public partial class Editor : View
         }
     }
 
-    private void UpdateLineNumberPadding ()
+    private void UpdateGutterWidth ()
     {
         Thickness thickness = Padding.Thickness;
-        var left = _showLineNumbers && _document is not null ? GetLineNumberPaddingWidth () : 0;
+        var left = _gutterOptions != GutterOptions.None && _document is not null ? GetGutterWidth () : 0;
 
         if (thickness.Left != left)
         {
@@ -611,10 +683,12 @@ public partial class Editor : View
                     Height = Dim.Fill ()
                 };
                 Padding.GetOrCreateView ().Add (_gutter);
+                _gutter.SyncLayout ();
             }
             else
             {
                 _gutter.Width = left;
+                _gutter.SyncLayout ();
                 _gutter.SetNeedsDraw ();
             }
         }
@@ -626,11 +700,23 @@ public partial class Editor : View
         }
     }
 
-    private int GetLineNumberPaddingWidth ()
+    private int GetGutterWidth ()
     {
-        var lineCount = Math.Max (1, _document?.LineCount ?? 1);
+        var width = 0;
 
-        return lineCount.ToString ().Length + 1;
+        if (_gutterOptions.HasFlag (GutterOptions.LineNumbers))
+        {
+            var lineCount = Math.Max (1, _document?.LineCount ?? 1);
+            width = lineCount.ToString ().Length + 1;
+        }
+
+        // Add 2 columns for fold indicator when folding is active.
+        if (_gutterOptions.HasFlag (GutterOptions.Folding) && FoldingManager is not null)
+        {
+            width += 2;
+        }
+
+        return width;
     }
 
     private int GetCaretColumn ()
@@ -644,6 +730,20 @@ public partial class Editor : View
     private int GetCaretLineIndex ()
     {
         return _document?.GetLineByOffset (CaretOffset).LineNumber - 1 ?? 0;
+    }
+
+    /// <summary>
+    ///     Returns the caret's position as an index into the visible-line list (i.e. the coordinate
+    ///     system used by <c>Viewport.Y</c>). Falls back to <see cref="GetCaretLineIndex" /> when
+    ///     no folding is active.
+    /// </summary>
+    private int GetCaretVisibleLineIndex ()
+    {
+        var docLineNumber = (_document?.GetLineByOffset (CaretOffset).LineNumber ?? 1);
+        List<int> visible = GetVisibleLineNumbers ();
+        var idx = visible.IndexOf (docLineNumber);
+
+        return idx >= 0 ? idx : GetCaretLineIndex ();
     }
 
     /// <summary>
@@ -768,7 +868,7 @@ public partial class Editor : View
             return;
         }
 
-        var caretLine = GetCaretLineIndex ();
+        var caretLine = GetCaretVisibleLineIndex ();
         var caretCol = GetCaretColumn ();
         var newY = viewport.Y;
         var newX = viewport.X;
