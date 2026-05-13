@@ -1,8 +1,9 @@
 // Claude - claude-opus-4-7
 
 using Terminal.Gui.Drawing;
-using Terminal.Gui.ViewBase;
 using Terminal.Gui.Views;
+using Terminal.Gui.ViewBase;
+using Terminal.Gui.Editor;
 
 namespace Terminal.Gui.Editor.IntegrationTests.Testing;
 
@@ -29,5 +30,5 @@ public sealed class EditorTestHost : Window
     }
 
     /// <summary>The editor under test.</summary>
-    public Views.Editor Editor { get; }
+    public Editor Editor { get; }
 }

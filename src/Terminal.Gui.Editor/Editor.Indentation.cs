@@ -1,7 +1,7 @@
 using Terminal.Gui.Document;
-using Terminal.Gui.Views.Rendering;
+using Terminal.Gui.Editor.Rendering;
 
-namespace Terminal.Gui.Views;
+namespace Terminal.Gui.Editor;
 
 public partial class Editor
 {

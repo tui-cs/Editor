@@ -4,13 +4,14 @@ using Terminal.Gui.Drawing;
 using Terminal.Gui.Drivers;
 using Terminal.Gui.Testing;
 using Terminal.Gui.ViewBase;
+using Terminal.Gui.Editor;
 using Terminal.Gui.Views;
 
 namespace Terminal.Gui.Editor.Benchmarks;
 
 /// <summary>
 ///     Lightweight harness that boots an <see cref="IApplication" /> on the ANSI driver,
-///     hosts an <see cref="Views.Editor" /> filling the viewport, and exposes synchronous
+///     hosts an <see cref="Editor" /> filling the viewport, and exposes synchronous
 ///     input injection and rendering. Mirrors the test fixture but without async disposal
 ///     so BenchmarkDotNet can manage its lifetime.
 /// </summary>
@@ -35,7 +36,7 @@ internal sealed class EditorHarness : IDisposable
 
     public IApplication App { get; }
 
-    public Views.Editor Editor => _host.Editor;
+    public Editor Editor => _host.Editor;
 
     public IInputInjector Injector => App.GetInputInjector ();
 
@@ -60,7 +61,7 @@ internal sealed class EditorHarness : IDisposable
         public EditorHost (string text)
         {
             BorderStyle = LineStyle.None;
-            Editor = new Views.Editor
+            Editor = new Editor
             {
                 Document = new TextDocument (text),
                 X = 0,
@@ -71,6 +72,6 @@ internal sealed class EditorHarness : IDisposable
             Add (Editor);
         }
 
-        public Views.Editor Editor { get; }
+        public Editor Editor { get; }
     }
 }

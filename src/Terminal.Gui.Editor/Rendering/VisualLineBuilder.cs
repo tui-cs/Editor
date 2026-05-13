@@ -2,7 +2,7 @@ using Terminal.Gui.Document;
 using Terminal.Gui.Drawing;
 using Attribute = Terminal.Gui.Drawing.Attribute;
 
-namespace Terminal.Gui.Views.Rendering;
+namespace Terminal.Gui.Editor.Rendering;
 
 /// <summary>Builds terminal-cell visual lines from document lines.</summary>
 public sealed class VisualLineBuilder

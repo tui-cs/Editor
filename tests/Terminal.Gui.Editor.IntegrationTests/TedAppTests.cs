@@ -6,6 +6,7 @@ using Terminal.Gui.Editor.IntegrationTests.Testing;
 using Terminal.Gui.Highlighting;
 using Terminal.Gui.Input;
 using Terminal.Gui.Testing;
+using Terminal.Gui.Editor;
 using Terminal.Gui.Views;
 using Xunit;
 
@@ -343,7 +344,7 @@ public class TedAppTests
     public async Task OptionsMenu_TogglesLineNumbers_ViaKeyboard ()
     {
         await using AppFixture<TedApp> fx = new (() => new TedApp ());
-        Assert.True (fx.Top.Editor.ShowLineNumbers);
+        Assert.True (fx.Top.Editor.GutterOptions.HasFlag (GutterOptions.LineNumbers));
 
         InputInjectionOptions options = new () { Mode = InputInjectionMode.Direct };
         fx.Injector.InjectKey (Key.O.WithAlt, options);
@@ -356,7 +357,7 @@ public class TedAppTests
         fx.Injector.InjectKey (Key.Enter, options);
         fx.Render ();
 
-        Assert.False (fx.Top.Editor.ShowLineNumbers);
+        Assert.False (fx.Top.Editor.GutterOptions.HasFlag (GutterOptions.LineNumbers));
 
         fx.Injector.InjectKey (Key.O.WithAlt, options);
         fx.Render ();
@@ -366,7 +367,7 @@ public class TedAppTests
         fx.Injector.InjectKey (Key.Enter, options);
         fx.Render ();
 
-        Assert.True (fx.Top.Editor.ShowLineNumbers);
+        Assert.True (fx.Top.Editor.GutterOptions.HasFlag (GutterOptions.LineNumbers));
     }
 
     [Fact]

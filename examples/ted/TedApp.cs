@@ -1,11 +1,13 @@
 using Terminal.Gui.App;
 using Terminal.Gui.Configuration;
 using Terminal.Gui.Document;
+using Terminal.Gui.Document.Folding;
 using Terminal.Gui.Drawing;
 using Terminal.Gui.Highlighting;
 using Terminal.Gui.Input;
 using Terminal.Gui.Resources;
 using Terminal.Gui.ViewBase;
+using Terminal.Gui.Editor;
 using Terminal.Gui.Views;
 
 namespace Ted;
@@ -17,6 +19,7 @@ namespace Ted;
 /// </summary>
 public sealed partial class TedApp : Window
 {
+    private readonly BraceFoldingStrategy _braceFoldingStrategy;
     private readonly Shortcut _fileNameShortcut;
 
     /// <summary>Initializes a new <see cref="TedApp" />.</summary>
@@ -29,7 +32,7 @@ public sealed partial class TedApp : Window
         // Editor's KeyBindings (any commands the editor doesn't claim fall back to Application).
         Editor = new Editor
         {
-            ShowLineNumbers = true,
+            GutterOptions = GutterOptions.LineNumbers | GutterOptions.Folding,
             ConvertTabsToSpaces = true,
             ReadOnly = readOnly,
 
@@ -38,6 +41,10 @@ public sealed partial class TedApp : Window
             // Default to C# highlighting from the built-in xshd definitions.
             HighlightingDefinition = HighlightingManager.Instance.GetDefinition ("C#")
         };
+
+        // Enable brace-based folding. The strategy re-scans on each document change.
+        _braceFoldingStrategy = new BraceFoldingStrategy ();
+        InstallFolding ();
 
         ShowOpenDialog = ShowDefaultOpenDialog;
         ShowSaveDialog = ShowDefaultSaveDialog;
@@ -53,7 +60,15 @@ public sealed partial class TedApp : Window
             AllowCheckStateNone = false,
             CanFocus = false,
             Text = "_Line Numbers",
-            Value = Editor.ShowLineNumbers ? CheckState.Checked : CheckState.UnChecked
+            Value = Editor.GutterOptions.HasFlag (GutterOptions.LineNumbers) ? CheckState.Checked : CheckState.UnChecked
+        };
+
+        CheckBox foldIndicatorsCheckBox = new ()
+        {
+            AllowCheckStateNone = false,
+            CanFocus = false,
+            Text = "_Fold Indicators",
+            Value = Editor.GutterOptions.HasFlag (GutterOptions.Folding) ? CheckState.Checked : CheckState.UnChecked
         };
 
         CheckBox convertTabsToSpacesCheckBox = new ()
@@ -167,11 +182,37 @@ public sealed partial class TedApp : Window
                 {
                     Action = () =>
                     {
-                        Editor.ShowLineNumbers = lineNumbersCheckBox.Value == CheckState.Checked;
+                        if (lineNumbersCheckBox.Value == CheckState.Checked)
+                        {
+                            Editor.GutterOptions |= GutterOptions.LineNumbers;
+                        }
+                        else
+                        {
+                            Editor.GutterOptions &= ~GutterOptions.LineNumbers;
+                        }
+
                         Editor.SetNeedsDraw ();
                     },
                     CommandView = lineNumbersCheckBox,
                     HelpText = "Show line numbers"
+                },
+                new MenuItem
+                {
+                    Action = () =>
+                    {
+                        if (foldIndicatorsCheckBox.Value == CheckState.Checked)
+                        {
+                            Editor.GutterOptions |= GutterOptions.Folding;
+                        }
+                        else
+                        {
+                            Editor.GutterOptions &= ~GutterOptions.Folding;
+                        }
+
+                        Editor.SetNeedsDraw ();
+                    },
+                    CommandView = foldIndicatorsCheckBox,
+                    HelpText = "Show fold indicators in the gutter"
                 },
                 new MenuItem
                 {
@@ -317,5 +358,30 @@ public sealed partial class TedApp : Window
     private static string FormatLoc (int line, int column)
     {
         return $"Ln: {line}, Ch: {column}";
+    }
+
+    /// <summary>
+    ///     Creates a <see cref="FoldingManager" /> for the current document and wires up
+    ///     automatic fold updates on document changes.
+    /// </summary>
+    private void InstallFolding ()
+    {
+        if (Editor.Document is null)
+        {
+            return;
+        }
+
+        FoldingManager fm = new (Editor.Document);
+        Editor.FoldingManager = fm;
+        _braceFoldingStrategy.UpdateFoldings (fm, Editor.Document);
+        Editor.Document.Changed += (_, _) => UpdateFoldings ();
+    }
+
+    private void UpdateFoldings ()
+    {
+        if (Editor.FoldingManager is not null && Editor.Document is not null)
+        {
+            _braceFoldingStrategy.UpdateFoldings (Editor.FoldingManager, Editor.Document);
+        }
     }
 }
