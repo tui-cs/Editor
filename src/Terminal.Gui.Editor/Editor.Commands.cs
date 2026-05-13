@@ -177,21 +177,26 @@ public partial class Editor
             return true;
         }
 
-        if (HasSelection)
+        // Wrap both the newline insertion and the auto-indent in a single undo group
+        // so that one Ctrl+Z undoes the entire Enter operation.
+        using (_document!.RunUpdate ())
         {
-            ReplaceSelection ("\n");
-        }
-        else
-        {
-            _document!.Insert (CaretOffset, "\n");
-        }
+            if (HasSelection)
+            {
+                ReplaceSelection ("\n");
+            }
+            else
+            {
+                _document.Insert (CaretOffset, "\n");
+            }
 
-        // After the newline is inserted the caret sits at the start of the new line.
-        // Ask the indentation strategy to fill in leading whitespace.
-        if (IndentationStrategy is { } strategy && _document is not null)
-        {
-            DocumentLine newLine = _document.GetLineByOffset (CaretOffset);
-            strategy.IndentLine (_document, newLine);
+            // After the newline is inserted the caret sits at the start of the new line.
+            // Ask the indentation strategy to fill in leading whitespace.
+            if (IndentationStrategy is { } strategy)
+            {
+                DocumentLine newLine = _document.GetLineByOffset (CaretOffset);
+                strategy.IndentLine (_document, newLine);
+            }
         }
 
         return true;
