@@ -18,6 +18,7 @@ modification we made. Re-syncs are deliberate, manual, and against this log — 
 | `src/AvaloniaEdit/Document/` | → | `src/Terminal.Gui.Editor/Document/` |
 | `src/AvaloniaEdit/Utils/` (subset) | → | `src/Terminal.Gui.Editor/Utils/` |
 | `src/AvaloniaEdit/Search/` (subset) | → | `src/Terminal.Gui.Editor/Search/` |
+| `src/AvaloniaEdit/Indentation/` (subset) | → | `src/Terminal.Gui.Editor/Indentation/` |
 
 ## Skipped from `Document/`
 
@@ -41,6 +42,10 @@ The Avalonia-UI-specific helpers that the document layer doesn't depend on:
 - `RichTextWriter.cs` — Avalonia.Media.
 - `TextFormatterFactory.cs` — Avalonia.Media.TextFormatting.
 
+## Skipped from `Indentation/`
+
+- `CSharp/` — C#-specific smart indentation. Language-specific strategies are out of scope for the initial lift (see `specs/indentation/spec.md`).
+
 ## Modifications to lifted files
 
 Each lifted file carries `// Adapted for Terminal.Gui from AvaloniaEdit d7a6b63` as its first line, above the original copyright header (which is preserved verbatim). Beyond that:
@@ -48,6 +53,8 @@ Each lifted file carries `// Adapted for Terminal.Gui from AvaloniaEdit d7a6b63`
 | File | Modification |
 |---|---|
 | All `Document/*.cs`, `Utils/*.cs`, `Search/*.cs` | `namespace AvaloniaEdit.Document` → `namespace Terminal.Gui.Document`; `namespace AvaloniaEdit.Utils` → `namespace Terminal.Gui.Document.Utils`; `namespace AvaloniaEdit.Search` → `namespace Terminal.Gui.Document.Search`; `using AvaloniaEdit.Document` / `using AvaloniaEdit.Utils` rewritten to match. |
+| All `Indentation/*.cs` | `namespace AvaloniaEdit.Indentation` → `namespace Terminal.Gui.Text.Indentation`; `using AvaloniaEdit.Document` → `using Terminal.Gui.Document`. |
+| `Indentation/DefaultIndentationStrategy.cs` | Replaced `ArgumentNullException` throws with `ArgumentNullException.ThrowIfNull` (modern pattern). Replaced `var previousLine = line.PreviousLine;` with `DocumentLine? previousLine = line.PreviousLine;` (house style: explicit type for non-built-in). Null-check replaced with pattern match (`is null`). |
 | `Document/DocumentLineTree.cs` | Stripped `using Avalonia.Threading;` and the five `Dispatcher.UIThread.VerifyAccess()` call sites (commented out with rationale). The document is no longer thread-affined — that's a UI concern, owned by `Terminal.Gui.Editor`. |
 | `Document/TextSegmentCollection.cs` | Same `Avalonia.Threading` strip + one `VerifyAccess()` site stripped. |
 | `Search/ISearchStrategy.cs` | Namespace transform only. No Avalonia references upstream. |
