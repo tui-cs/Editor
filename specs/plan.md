@@ -63,14 +63,17 @@ src/Terminal.Gui.Editor/           # the View
   Editor.cs / .Drawing / .Keyboard / .Mouse / .Selection / .Commands
   Rendering/                       # rendering pipeline types
 tests/
-  Terminal.Gui.Editor.Tests/         (parallel, pure)
-  Terminal.Gui.Editor.Tests/       (parallel, logic)
-  Terminal.Gui.Editor.IntegrationTests/  (parallel, per-test IApplication.Create())
+  Terminal.Gui.Editor.Tests/         (parallel, pure)               — ci.yml
+  Terminal.Gui.Editor.IntegrationTests/  (parallel, IApplication)  — ci.yml
+  Terminal.Gui.Editor.PerformanceTests/(stopwatch perf smoke)      — perf.yml (ubuntu, Release only)
+benchmarks/
+  Terminal.Gui.Editor.Benchmarks/      (BenchmarkDotNet suite)     — perf.yml
+  baseline.json                        (gated metrics)
+  compare-baseline.sh                  (CI compare script)
 examples/
-  ted/                             (TG demo app)
-  EditorBenchmarks/                (placeholder)
+  ted/                                 (TG demo app)
 third_party/AvaloniaEdit/
-  LICENSE  UPSTREAM.md             (commit d7a6b63 pinned)
+  LICENSE  UPSTREAM.md                 (commit d7a6b63 pinned)
 ```
 
 ## Dependencies
@@ -104,7 +107,7 @@ Each criterion is testable. This is the merge-to-`main` gate.
 
 - [ ] All features merged: drawing-overhaul, caret-anchors, read-only, find-and-replace, auto-indent, folding-ui, syntax-colorizer, word-wrap, multi-caret, clipboard.
 - [ ] `dotnet build Terminal.Gui.Editor.slnx` clean on Linux/macOS/Windows on net10.0.
-- [ ] All three test projects pass. Coverage: `Text.Tests` ≥ 90%, `Editor.Tests` ≥ 75%.
+- [ ] All test projects pass. Coverage: `Editor.Tests` ≥ 90%. `PerformanceTests` smoke tests + the `*VisualLineBuild*` BenchmarkDotNet gate stay within 3× of `benchmarks/baseline.json`.
 - [ ] `Editor.OnDrawingContent` does not iterate `text` by `char`. R1, R2, R4, R5 hold.
 - [ ] `Editor.TabWidth`, `Editor.SyntaxHighlighter`, `Editor.SyntaxLanguage` all removed.
 - [ ] No file under `src/Terminal.Gui.Editor/` references `Terminal.Gui`.

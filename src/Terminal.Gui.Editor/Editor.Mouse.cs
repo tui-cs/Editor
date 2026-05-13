@@ -97,8 +97,11 @@ public partial class Editor
             return 0;
         }
 
-        var lineIndex = Math.Clamp (Viewport.Y + viewPos.Y, 0, _document.LineCount - 1);
-        DocumentLine line = _document.GetLineByNumber (lineIndex + 1);
+        // Map viewport row to document line via visible-line list (respects folding).
+        List<int> visibleLines = GetVisibleLineNumbers ();
+        var visibleIndex = Math.Clamp (Viewport.Y + viewPos.Y, 0, visibleLines.Count - 1);
+        var lineNumber = visibleLines[visibleIndex];
+        DocumentLine line = _document.GetLineByNumber (lineNumber);
         var col = Math.Max (0, Viewport.X + viewPos.X);
         var colInLine = GetOrBuildDefaultVisualLine (line).GetRelativeOffset (col);
 

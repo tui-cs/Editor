@@ -253,7 +253,7 @@ public partial class Editor
         }
 
         Rectangle viewport = Viewport;
-        var caretLine = GetCaretLineIndex ();
+        var caretLine = GetCaretVisibleLineIndex ();
         var caretCol = GetCaretColumn ();
         var row = caretLine - viewport.Y;
         var col = caretCol - viewport.X;

@@ -3,6 +3,7 @@ using System.Drawing;
 using Terminal.Gui.Document;
 using Terminal.Gui.Document.Folding;
 using Terminal.Gui.Drawing;
+using Terminal.Gui.Text.Indentation;
 using Terminal.Gui.ViewBase;
 using Terminal.Gui.Views.Rendering;
 using Attribute = Terminal.Gui.Drawing.Attribute;
@@ -232,6 +233,15 @@ public partial class Editor : View
 
     /// <summary>Whether pressing Tab inserts spaces instead of a tab character.</summary>
     public bool ConvertTabsToSpaces { get; set; }
+
+    /// <summary>
+    ///     Gets or sets the indentation strategy applied when Enter is pressed.
+    ///     When non-null, the strategy's <see cref="IIndentationStrategy.IndentLine" /> is called
+    ///     on the newly created line to copy (or compute) indentation from the previous line.
+    ///     Defaults to <see cref="DefaultIndentationStrategy" />.
+    ///     Set to <see langword="null" /> to disable auto-indent on Enter.
+    /// </summary>
+    public IIndentationStrategy? IndentationStrategy { get; set; } = new DefaultIndentationStrategy ();
 
     /// <summary>
     ///     When <see langword="true" /> (the default), syntax-highlighted tokens keep both their
@@ -735,6 +745,20 @@ public partial class Editor : View
     }
 
     /// <summary>
+    ///     Returns the caret's position as an index into the visible-line list (i.e. the coordinate
+    ///     system used by <c>Viewport.Y</c>). Falls back to <see cref="GetCaretLineIndex" /> when
+    ///     no folding is active.
+    /// </summary>
+    private int GetCaretVisibleLineIndex ()
+    {
+        var docLineNumber = (_document?.GetLineByOffset (CaretOffset).LineNumber ?? 1);
+        List<int> visible = GetVisibleLineNumbers ();
+        var idx = visible.IndexOf (docLineNumber);
+
+        return idx >= 0 ? idx : GetCaretLineIndex ();
+    }
+
+    /// <summary>
     ///     Moves the caret <paramref name="delta" /> lines, preserving the sticky virtual column when
     ///     traversing shorter lines (i.e. snap back to the original column on the next long-enough line).
     /// </summary>
@@ -856,7 +880,7 @@ public partial class Editor : View
             return;
         }
 
-        var caretLine = GetCaretLineIndex ();
+        var caretLine = GetCaretVisibleLineIndex ();
         var caretCol = GetCaretColumn ();
         var newY = viewport.Y;
         var newX = viewport.X;

@@ -38,7 +38,12 @@ Tests are xUnit.v3 and run as **executables** (each test project sets `<OutputTy
 dotnet run --project tests/Terminal.Gui.Editor.Tests
 dotnet run --project tests/Terminal.Gui.Editor.Tests
 dotnet run --project tests/Terminal.Gui.Editor.IntegrationTests
+dotnet run --project tests/Terminal.Gui.Editor.PerformanceTests -c Release
 ```
+
+The `PerformanceTests` project is stopwatch-based and only meaningful in Release. It runs in
+the dedicated `.github/workflows/perf.yml` workflow (ubuntu-latest only), separately from the
+correctness-focused `ci.yml`. See the "Testing tiers" section below.
 
 Run a single test by passing xUnit.v3 filter args after `--`:
 
@@ -165,15 +170,24 @@ private void ExtendCaretBy (int delta)
 
 ## Testing tiers
 
-Three test projects, mirroring Terminal.Gui's convention. **All three run fully in parallel** — Terminal.Gui's `Application` lifetime is per-instance (`Application.Create()` returns an `IApplication` whose `Init`/`Begin`/`End`/`Dispose` track via `ThreadLocal<>`, not process globals). Tests must never call the static `Application.Init()` shortcut, and must never enable `ConfigurationManager` (`CM.Enable(...)`) — both reach for process-global state and would force serialization.
+Four test projects, mirroring Terminal.Gui's convention. **The correctness projects all run fully in parallel** — Terminal.Gui's `Application` lifetime is per-instance (`Application.Create()` returns an `IApplication` whose `Init`/`Begin`/`End`/`Dispose` track via `ThreadLocal<>`, not process globals). Tests must never call the static `Application.Init()` shortcut, and must never enable `ConfigurationManager` (`CM.Enable(...)`) — both reach for process-global state and would force serialization.
 
-- `Terminal.Gui.Editor.Tests` — pure, no UI, no static state. Target ≥90% coverage.
-- `Terminal.Gui.Editor.Tests` — visual-line builder, wrap, caret/selection math, command handlers — anything that doesn't need an `IApplication`. Target ≥75%.
-- `Terminal.Gui.Editor.IntegrationTests` — full key-input → render scenarios via `AppFixture<T>`, which boots a per-test `IApplication` from `Application.Create()`. Parallel by default.
+- `Terminal.Gui.Editor.Tests` — pure, no UI, no static state. Target ≥90% coverage. Runs in `ci.yml`.
+- `Terminal.Gui.Editor.IntegrationTests` — full key-input → render scenarios via `AppFixture<T>`, which boots a per-test `IApplication` from `Application.Create()`. Parallel by default. Runs in `ci.yml`.
+- `Terminal.Gui.Editor.PerformanceTests` — stopwatch-based perf smoke tests. **Release only, ubuntu-latest only.** Lives in its own project and its own workflow (`.github/workflows/perf.yml`) because Windows/macOS GitHub-hosted runners are too noisy for wall-time assertions. The BenchmarkDotNet suite in `benchmarks/` runs from the same workflow.
 
-New tests default to the parallel-by-name project. Promote to `IntegrationTests` only when an `IApplication` (driver, input injection, full layout/draw) is genuinely needed.
+New tests default to the parallel-by-name project. Promote to `IntegrationTests` only when an `IApplication` (driver, input injection, full layout/draw) is genuinely needed. Promote to `PerformanceTests` only when you need a wall-time assertion — and remember it won't run on Windows/macOS CI, so don't put correctness checks there.
 
 **The one allowed exception:** a test that legitimately mutates a process-global (e.g. `Logging.Logger`, `Trace.EnabledCategories`, anything `static`) must opt out of cross-collection parallelism via a `[CollectionDefinition(name, DisableParallelization = true)]` + `[Collection(name)]` pair. See `tests/Terminal.Gui.Editor.IntegrationTests/HostingTests.cs` for the canonical example. Do **not** add an assembly-wide `xunit.runner.json` to make the whole project serial — that's the wrong tool for one offending class.
+
+### Performance gates
+
+Two layers, both in `.github/workflows/perf.yml`:
+
+1. **`Terminal.Gui.Editor.PerformanceTests`** — stopwatch smoke tests with deliberately loose thresholds (~5× typical wall time). They catch catastrophic regressions, not 10% drift.
+2. **`benchmarks/compare-baseline.sh`** — runs the focused `*VisualLineBuild*` BenchmarkDotNet filter and compares against `benchmarks/baseline.json`. Fails on >3× regression, celebrates on <0.8× improvement. **Run `--job short`** (lowercase) — `ShortRun` makes BDN reject it and the comparison silently no-ops.
+
+The full BenchmarkDotNet matrix (`Scrolling`, `EndToEndScroll`, `CaretMovement`, `DocumentAccess`) is opt-in via `workflow_dispatch` on the perf workflow with `full-suite: true`. That's the operator path for refreshing `baseline.json` — run, download artifact, commit the numbers.
 
 ### Diagnosing parallel-test hangs
 

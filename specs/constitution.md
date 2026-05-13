@@ -137,17 +137,19 @@ The fork is **hard** — re-syncs are manual and deliberate, triggered only by u
 
 ## VI. Testing Tiers
 
-Three test projects mirroring Terminal.Gui's convention:
+Four test projects mirroring Terminal.Gui's convention:
 
-| Project | Parallel | Purpose | Coverage Target |
-|---------|----------|---------|-----------------|
-| `Terminal.Gui.Editor.Tests` | ✅ | Pure, no UI, no static state | ≥ 90% |
-| `Terminal.Gui.Editor.Tests` | ✅ | Visual-line builder, wrap, caret/selection, commands | ≥ 75% |
-| `Terminal.Gui.Editor.IntegrationTests` | ✅ | Full key-input → render via `AppFixture<T>` (per-test `IApplication.Create()`) | Informational |
+| Project | Workflow | OS matrix | Purpose | Coverage Target |
+|---------|----------|-----------|---------|-----------------|
+| `Terminal.Gui.Editor.Tests` | `ci.yml` | ubuntu, macos, windows | Pure, no UI, no static state | ≥ 90% |
+| `Terminal.Gui.Editor.IntegrationTests` | `ci.yml` | ubuntu, macos, windows | Full key-input → render via `AppFixture<T>` (per-test `IApplication.Create()`) | Informational |
+| `Terminal.Gui.Editor.PerformanceTests` | `perf.yml` | ubuntu only, Release only | Stopwatch perf smoke tests + BenchmarkDotNet baseline gate | Wall-time guards |
 
-The lone exception: a class that mutates a process-global static (e.g. `HostingTests`) opts out of cross-collection parallelism via `[CollectionDefinition(..., DisableParallelization = true)]` + `[Collection(...)]`. Never disable parallelism at the assembly level.
+The three correctness projects run **in parallel** within each assembly. The lone exception: a class that mutates a process-global static (e.g. `HostingTests`) opts out of cross-collection parallelism via `[CollectionDefinition(..., DisableParallelization = true)]` + `[Collection(...)]`. Never disable parallelism at the assembly level.
 
-Tests run as **executables** (xUnit.v3): `dotnet run --project tests/<project>`.
+`PerformanceTests` lives in its own workflow because Windows / macOS GitHub-hosted runners share hosts with neighbour VMs — wall-time assertions there are too noisy to gate on. Ubuntu runners are still noisy but consistent enough that a >3× BenchmarkDotNet baseline ratio is a real signal. The full BenchmarkDotNet matrix runs only on `workflow_dispatch` (`full-suite: true`); that's the operator path for refreshing `benchmarks/baseline.json`.
+
+Tests run as **executables** (xUnit.v3): `dotnet run --project tests/<project>`. `PerformanceTests` always runs with `-c Release`.
 
 ## VII. Coding Standards
 
