@@ -152,6 +152,7 @@ public partial class Editor
         }
 
         // Clear per-caret selections after edit.
+        // Editing collapses per-caret selections, matching single-caret behavior.
         ClearAdditionalCaretSelections ();
 
         return true;
@@ -352,10 +353,10 @@ public partial class Editor
     }
 
     /// <summary>Transient struct used during multi-caret edit iteration.</summary>
-    private struct CaretEditInfo
+    private readonly struct CaretEditInfo
     {
-        public int Offset;
-        public bool IsPrimary;
-        public TextAnchor? SelectionAnchor;
+        public required int Offset { get; init; }
+        public required bool IsPrimary { get; init; }
+        public TextAnchor? SelectionAnchor { get; init; }
     }
 }

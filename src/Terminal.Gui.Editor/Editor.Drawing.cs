@@ -249,9 +249,9 @@ public partial class Editor
             return;
         }
 
-        // Use the Active role (selection attribute) to highlight additional caret positions —
-        // this makes them visible as inverted cells.
-        Attribute caretAttr = GetAttributeForRole (VisualRole.Active);
+        // Invert the normal attribute (swap foreground/background) to visually distinguish
+        // additional carets from selected text.
+        Attribute caretAttr = new (normal.Background, normal.Foreground);
         List<int> visibleLineNumbers = GetVisibleLineNumbers ();
 
         foreach (var offset in AdditionalCaretOffsets)
