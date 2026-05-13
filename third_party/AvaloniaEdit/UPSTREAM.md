@@ -18,6 +18,7 @@ modification we made. Re-syncs are deliberate, manual, and against this log — 
 | `src/AvaloniaEdit/Document/` | → | `src/Terminal.Gui.Editor/Document/` |
 | `src/AvaloniaEdit/Utils/` (subset) | → | `src/Terminal.Gui.Editor/Utils/` |
 | `src/AvaloniaEdit/Search/` (subset) | → | `src/Terminal.Gui.Editor/Search/` |
+| `src/AvaloniaEdit/Folding/` (subset) | → | `src/Terminal.Gui.Editor/Folding/` |
 
 ## Skipped from `Document/`
 
@@ -30,6 +31,14 @@ modification we made. Re-syncs are deliberate, manual, and against this log — 
 - `SearchCommands.cs` — Avalonia routed commands. Replaced by Terminal.Gui key bindings in `Terminal.Gui.Editor`.
 - `SearchPanel.cs` / `SearchPanel.xaml` — Avalonia `TemplatedControl`. Replaced by `ted`'s `FindReplaceDialog`.
 - `SearchResultBackgroundRenderer.cs` — Avalonia `IBackgroundRenderer`. Will be reimplemented atop Terminal.Gui.Editor's `IBackgroundRenderer` pipeline as part of find-and-replace.
+
+## Skipped from `Folding/`
+
+`src/AvaloniaEdit/Folding/` contains both the data model and Avalonia UI rendering. Only the data model is lifted:
+
+- `FoldingElementGenerator.cs` — Avalonia `VisualLineElementGenerator`. Replaced by `FoldingTransformer : IVisualLineTransformer` in `Terminal.Gui.Editor`.
+- `FoldingMargin.cs` — Avalonia `AbstractMargin`. Replaced by fold indicator UI in `Gutter : View`.
+- `FoldingMarginMarker.cs` — Avalonia `Control`. Not needed; fold markers rendered directly in `Gutter.OnDrawingContent`.
 
 ## Skipped from `Utils/`
 
@@ -53,6 +62,11 @@ Each lifted file carries `// Adapted for Terminal.Gui from AvaloniaEdit d7a6b63`
 | `Search/ISearchStrategy.cs` | Namespace transform only. No Avalonia references upstream. |
 | `Search/RegexSearchStrategy.cs` | Namespace transform; `using AvaloniaEdit.Document` → `using Terminal.Gui.Document`. No Avalonia references upstream. Contains both `RegexSearchStrategy` and `SearchResult` (kept as a single file matching upstream layout). Added `#nullable disable` directive after the "Adapted for" line — upstream predates nullable reference types (`IEquatable<T>.Equals` override, `SearchResult.Data` auto-property, and `FindAll().FirstOrDefault()` all trip CS warnings under nullable enable; suppressing per-file matches the fork policy of "minimal targeted edits to lifted source"). **Correctness deviation**: `Equals(ISearchStrategy)` now includes `_matchWholeWords` in the comparison. Upstream omits it, so two strategies that differ only by whole-word matching compare equal — breaks consumer caching/dedup. Surfaced in Copilot review of PR #76. **Perf deviation** (gui-cs/Text#82): `FindAll` now drives the regex engine via `Regex.Match(text, startat)` + `NextMatch()` from `offset` instead of `_searchPattern.Matches(text)` over the whole document followed by post-filtering. Upstream re-scans the prefix `[0, offset)` on every call — wasted work for incremental advancing search (one FindNext per F3 keystroke). The .NET regex engine preserves `RegexOptions.Multiline` `^` / `$` semantics across `startat` (anchoring at the start position only when it is 0 or follows a newline). Worth mirroring upstream at AvaloniaEdit. |
 | `Search/SearchStrategyFactory.cs` | Namespace transform only. No Avalonia references upstream. Required to construct `RegexSearchStrategy` (which is `internal` upstream and remains so here). **Correctness deviation**: `Create` now rejects empty patterns with `ArgumentException`. Upstream accepts them, compiling to a regex that matches at every position (`TextLength+1` zero-length results) — a DoS hazard in `FindAll` / `ReplaceAll`. Whitespace patterns remain legitimate (they match literal whitespace in Normal mode and the space character in Regex mode). Surfaced in Copilot review of PR #76. |
+| All `Folding/*.cs` | `namespace AvaloniaEdit.Folding` → `namespace Terminal.Gui.Document.Folding`; `using AvaloniaEdit.Document` → `using Terminal.Gui.Document`. |
+| `Folding/FoldingManager.cs` | Stripped `using Avalonia.Threading;`, `using AvaloniaEdit.Editing;`, `using AvaloniaEdit.Rendering;`. Removed `Dispatcher.UIThread.VerifyAccess()` calls (2 sites). Removed entire `#region Manage TextViews` (AddToTextView/RemoveFromTextView/Redraw — Avalonia `TextView` coupling). Removed entire `#region Install` (FoldingManagerInstallation, FoldingMargin, FoldingElementGenerator — Avalonia UI wiring). Replaced with `FoldingChanged` event for UI notification. Added helper methods: `GetHiddenLineCount()`, `IsLineHidden()`, `GetFoldingAtLine()`, `GetNextVisibleLineNumber()`. |
+| `Folding/FoldingSection.cs` | Stripped `using AvaloniaEdit.Rendering;`, `using AvaloniaEdit.Utils;`. Removed `CollapsedLineSection[]` field and `ValidateCollapsedLineSections()` method (Avalonia `CollapsedLineSection` coupling). `IsFolded` setter now raises `_manager.RaiseFoldingChanged()` instead of calling `ValidateCollapsedLineSections()` + `_manager.Redraw()`. `OnSegmentChanged` simplified to call `RaiseFoldingChanged`. Removed `RemoveCollapsedLineSection()` method. |
+| `Folding/NewFolding.cs` | Namespace transform only. |
+| `Folding/XmlFoldingStrategy.cs` | Namespace transform only. |
 
 ## New supporting files
 

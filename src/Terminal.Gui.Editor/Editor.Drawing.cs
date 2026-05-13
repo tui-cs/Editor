@@ -1,5 +1,6 @@
 using System.Drawing;
 using Terminal.Gui.Document;
+using Terminal.Gui.Document.Folding;
 using Terminal.Gui.Drawing;
 using Terminal.Gui.Drivers;
 using Terminal.Gui.ViewBase;
@@ -11,6 +12,9 @@ namespace Terminal.Gui.Views;
 
 public partial class Editor
 {
+    /// <summary>Cached visible-line mapping; cleared when folds change or the document changes.</summary>
+    private List<int>? _cachedVisibleLineNumbers;
+
     private ISyntaxHighlighter? _highlighterPreparedInstance;
 
     // Syntax highlighter state optimization: tracks how far we've prepared so incremental
@@ -84,18 +88,23 @@ public partial class Editor
         var visibleStart = viewport.X;
         var visibleEnd = viewport.X + viewport.Width;
 
+        // Build a mapping from viewport row → document line number (1-based),
+        // skipping lines hidden by collapsed folds.
+        List<int> visibleLineNumbers = GetVisibleLineNumbers ();
+
         PrepareSyntaxHighlighter (syntaxHighlighter, viewport.Y);
 
         for (var row = 0; row < viewport.Height; row++)
         {
-            var lineIndex = viewport.Y + row;
+            var visibleIndex = viewport.Y + row;
 
-            if (lineIndex < 0 || lineIndex >= _document!.LineCount)
+            if (visibleIndex < 0 || visibleIndex >= visibleLineNumbers.Count)
             {
                 break;
             }
 
-            DocumentLine line = _document.GetLineByNumber (lineIndex + 1);
+            var lineNumber = visibleLineNumbers[visibleIndex];
+            DocumentLine line = _document!.GetLineByNumber (lineNumber);
 #pragma warning disable CS0618 // Type or member is obsolete — see PrepareSyntaxHighlighter.
             IReadOnlyList<StyledSegment>? segments =
                 syntaxHighlighter?.Highlight (_document.GetText (line), SyntaxLanguage);
@@ -103,6 +112,60 @@ public partial class Editor
 
             DrawVisualLine (row, line, visibleStart, visibleEnd, segments, normal, selected, selStart, selEnd);
         }
+    }
+
+    /// <summary>
+    ///     Returns a list of 1-based document line numbers that are visible (not hidden by folds),
+    ///     in order. Cached until folds change.
+    /// </summary>
+    internal List<int> GetVisibleLineNumbers ()
+    {
+        if (_cachedVisibleLineNumbers is not null)
+        {
+            return _cachedVisibleLineNumbers;
+        }
+
+        List<int> result = new ();
+
+        if (_document is null)
+        {
+            _cachedVisibleLineNumbers = result;
+
+            return result;
+        }
+
+        FoldingManager? fm = FoldingManager;
+        var lineNumber = 1;
+
+        while (lineNumber <= _document.LineCount)
+        {
+            result.Add (lineNumber);
+
+            if (fm is not null)
+            {
+                // If there's a folded section starting on this line, skip its hidden lines.
+                FoldingSection? fold = fm.GetFoldingAtLine (lineNumber);
+
+                if (fold is { IsFolded: true })
+                {
+                    DocumentLine endLine =
+                        fm.Document.GetLineByOffset (Math.Clamp (fold.EndOffset, 0, fm.Document.TextLength));
+
+                    if (endLine.LineNumber > lineNumber)
+                    {
+                        lineNumber = endLine.LineNumber + 1;
+
+                        continue;
+                    }
+                }
+            }
+
+            lineNumber++;
+        }
+
+        _cachedVisibleLineNumbers = result;
+
+        return result;
     }
 
     private void PrepareSyntaxHighlighter (ISyntaxHighlighter? syntaxHighlighter, int firstVisibleLineIndex)

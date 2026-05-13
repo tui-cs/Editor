@@ -1,6 +1,7 @@
 using Terminal.Gui.App;
 using Terminal.Gui.Configuration;
 using Terminal.Gui.Document;
+using Terminal.Gui.Document.Folding;
 using Terminal.Gui.Drawing;
 using Terminal.Gui.Input;
 using Terminal.Gui.Resources;
@@ -17,6 +18,7 @@ namespace Ted;
 /// </summary>
 public sealed partial class TedApp : Window
 {
+    private readonly BraceFoldingStrategy _braceFoldingStrategy;
     private readonly Shortcut _fileNameShortcut;
 
     /// <summary>Initializes a new <see cref="TedApp" />.</summary>
@@ -43,6 +45,10 @@ public sealed partial class TedApp : Window
 #pragma warning disable CS0618 // Type or member is obsolete
         Editor.SyntaxHighlighter = new TextMateSyntaxHighlighter ();
 #pragma warning restore CS0618 // Type or member is obsolete
+
+        // Enable brace-based folding. The strategy re-scans on each document change.
+        _braceFoldingStrategy = new BraceFoldingStrategy ();
+        InstallFolding ();
         ShowOpenDialog = ShowDefaultOpenDialog;
         ShowSaveDialog = ShowDefaultSaveDialog;
         ShowSaveChangesDialog = ShowDefaultSaveChangesDialog;
@@ -262,7 +268,7 @@ public sealed partial class TedApp : Window
     private void ShowAboutDialog ()
     {
         Dialog dialog = new ()
-        { Title = "About ted", Buttons = [new Button { Title = Strings.btnOk, IsDefault = true }] };
+            { Title = "About ted", Buttons = [new Button { Title = Strings.btnOk, IsDefault = true }] };
 
         dialog.Border.Settings &= ~BorderSettings.Title;
 
@@ -330,5 +336,30 @@ public sealed partial class TedApp : Window
     private static string FormatLoc (int line, int column)
     {
         return $"Ln: {line}, Ch: {column}";
+    }
+
+    /// <summary>
+    ///     Creates a <see cref="FoldingManager" /> for the current document and wires up
+    ///     automatic fold updates on document changes.
+    /// </summary>
+    private void InstallFolding ()
+    {
+        if (Editor.Document is null)
+        {
+            return;
+        }
+
+        FoldingManager fm = new (Editor.Document);
+        Editor.FoldingManager = fm;
+        _braceFoldingStrategy.UpdateFoldings (fm, Editor.Document);
+        Editor.Document.Changed += (_, _) => UpdateFoldings ();
+    }
+
+    private void UpdateFoldings ()
+    {
+        if (Editor.FoldingManager is not null && Editor.Document is not null)
+        {
+            _braceFoldingStrategy.UpdateFoldings (Editor.FoldingManager, Editor.Document);
+        }
     }
 }

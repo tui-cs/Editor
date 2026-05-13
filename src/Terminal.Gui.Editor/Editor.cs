@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Drawing;
 using Terminal.Gui.Document;
+using Terminal.Gui.Document.Folding;
 using Terminal.Gui.Drawing;
 using Terminal.Gui.ViewBase;
 using Terminal.Gui.Views.Rendering;
@@ -277,6 +278,80 @@ public partial class Editor : View
     /// <summary>Background renderers drawn before visual-line elements.</summary>
     public IList<IBackgroundRenderer> BackgroundRenderers { get; } = [];
 
+    /// <summary>
+    ///     Gets or sets the <see cref="Document.Folding.FoldingManager" /> that tracks collapsible regions.
+    ///     Setting this installs a <see cref="FoldingTransformer" /> and subscribes to fold change events.
+    /// </summary>
+    public FoldingManager? FoldingManager
+    {
+        get;
+        set
+        {
+            if (field == value)
+            {
+                return;
+            }
+
+            if (field is not null)
+            {
+                field.FoldingChanged -= OnFoldingChanged;
+
+                // Remove the folding transformer installed by the previous manager.
+                for (var i = LineTransformers.Count - 1; i >= 0; i--)
+                {
+                    if (LineTransformers[i] is FoldingTransformer)
+                    {
+                        LineTransformers.RemoveAt (i);
+                    }
+                }
+            }
+
+            field = value;
+
+            if (field is not null)
+            {
+                field.FoldingChanged += OnFoldingChanged;
+                LineTransformers.Insert (0, new FoldingTransformer (field));
+            }
+
+            ClearVisualLineCaches ();
+            UpdateContentSize ();
+            SetNeedsDraw ();
+        }
+    }
+
+    private void OnFoldingChanged (object? sender, EventArgs e)
+    {
+        ClearVisualLineCaches ();
+        _cachedVisibleLineNumbers = null;
+        _maxWidthDirty = true;
+        UpdateContentSize ();
+        EnsureCaretNotInFold ();
+        SetNeedsDraw ();
+        _gutter?.SetNeedsDraw ();
+    }
+
+    /// <summary>
+    ///     If the caret is inside a collapsed fold, expand it so the caret stays visible.
+    /// </summary>
+    private void EnsureCaretNotInFold ()
+    {
+        if (FoldingManager is not { } fm)
+        {
+            return;
+        }
+
+        var caretOffset = CaretOffset;
+
+        foreach (FoldingSection fs in fm.GetFoldingsContaining (caretOffset))
+        {
+            if (fs.IsFolded && fs.StartOffset < caretOffset && caretOffset < fs.EndOffset)
+            {
+                fs.IsFolded = false;
+            }
+        }
+    }
+
     /// <summary>Raised whenever <see cref="CaretOffset" /> changes.</summary>
     public event EventHandler? CaretChanged;
 
@@ -333,6 +408,7 @@ public partial class Editor : View
         // Cheap: usually one or a handful of entries; correctness > saving a few cache hits.
         InvalidateVisualLineCaches (e);
         InvalidateHighlighterState (e);
+        _cachedVisibleLineNumbers = null;
         UpdateMaxWidthIncremental (e);
         UpdateContentSize ();
         UpdateLineNumberPadding ();
@@ -364,7 +440,8 @@ public partial class Editor : View
         }
 
         // +1 column lets the caret sit just past the end-of-line.
-        SetContentSize (new Size (_maxVisualWidth + 1, _document.LineCount));
+        var visibleLines = _document.LineCount - (FoldingManager?.GetHiddenLineCount () ?? 0);
+        SetContentSize (new Size (_maxVisualWidth + 1, Math.Max (1, visibleLines)));
     }
 
     /// <summary>Full O(N) recompute — only called on Document swap, IndentationSize change, etc.</summary>
@@ -629,8 +706,15 @@ public partial class Editor : View
     private int GetLineNumberPaddingWidth ()
     {
         var lineCount = Math.Max (1, _document?.LineCount ?? 1);
+        var digitWidth = lineCount.ToString ().Length + 1;
 
-        return lineCount.ToString ().Length + 1;
+        // Add 2 columns for fold indicator when folding is active.
+        if (FoldingManager is not null)
+        {
+            digitWidth += 2;
+        }
+
+        return digitWidth;
     }
 
     private int GetCaretColumn ()

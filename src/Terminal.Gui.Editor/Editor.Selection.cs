@@ -243,7 +243,7 @@ public partial class Editor
             return;
         }
 
-        var lineNumber = Math.Clamp (Viewport.Y + row + 1, 1, _document.LineCount);
+        var lineNumber = ViewRowToLineNumber (row);
         SelectLines (lineNumber, lineNumber);
     }
 
@@ -268,7 +268,20 @@ public partial class Editor
             return 1;
         }
 
-        return Math.Clamp (Viewport.Y + row + 1, 1, _document.LineCount);
+        List<int> visibleLines = GetVisibleLineNumbers ();
+        var visibleIndex = Viewport.Y + row;
+
+        if (visibleIndex < 0 || visibleLines.Count == 0)
+        {
+            return 1;
+        }
+
+        if (visibleIndex >= visibleLines.Count)
+        {
+            return visibleLines[^1];
+        }
+
+        return visibleLines[visibleIndex];
     }
 
     private bool IsIdentifierWordCharAt (int offset)

@@ -18,6 +18,13 @@ public sealed class CellVisualLine (DocumentLine documentLine)
         _elements.Add (element);
     }
 
+    /// <summary>Replaces all elements with the given list. Used by transformers that restructure the line.</summary>
+    public void ReplaceElements (IReadOnlyList<CellVisualLineElement> elements)
+    {
+        _elements.Clear ();
+        _elements.AddRange (elements);
+    }
+
     public int GetVisualColumn (int logicalColumn)
     {
         var clamped = Math.Clamp (logicalColumn, 0, DocumentLine.Length);

@@ -103,6 +103,7 @@ public sealed partial class TedApp
         Editor.CaretOffset = 0;
         CurrentFilePath = filePath;
         UpdateFileNameShortcut ();
+        InstallFolding ();
         Editor.SetNeedsDraw ();
     }
 

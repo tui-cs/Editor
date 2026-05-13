@@ -1,4 +1,5 @@
 using Terminal.Gui.Document;
+using Terminal.Gui.Document.Folding;
 using Terminal.Gui.Input;
 using Terminal.Gui.ViewBase;
 
@@ -25,7 +26,8 @@ public partial class Editor
         [Command.DeleteCharLeft] = Bind.All (Key.Backspace),
         [Command.DeleteCharRight] = Bind.All (Key.Delete),
         [Command.Undo] = Bind.All (Key.Z.WithCtrl),
-        [Command.Redo] = Bind.All (Key.Y.WithCtrl, Key.Z.WithCtrl.WithShift)
+        [Command.Redo] = Bind.All (Key.Y.WithCtrl, Key.Z.WithCtrl.WithShift),
+        [Command.Collapse] = Bind.All (Key.M.WithCtrl)
     };
 
     private void CreateCommandsAndBindings ()
@@ -111,6 +113,9 @@ public partial class Editor
 
             return true;
         });
+
+        // Folding
+        AddCommand (Command.Collapse, ToggleFoldUnderCaret);
 
         ApplyKeyBindings (View.DefaultKeyBindings, DefaultKeyBindings);
 
@@ -250,6 +255,38 @@ public partial class Editor
     {
         DocumentLine line = _document!.GetLineByOffset (CaretOffset);
         CaretOffset = line.Offset + line.Length;
+
+        return true;
+    }
+
+    private bool? ToggleFoldUnderCaret ()
+    {
+        if (FoldingManager is not { } fm || _document is null)
+        {
+            return true;
+        }
+
+        var caretOffset = CaretOffset;
+        DocumentLine caretLine = _document.GetLineByOffset (caretOffset);
+
+        // First, try to find a fold starting on this line.
+        FoldingSection? fold = fm.GetFoldingAtLine (caretLine.LineNumber);
+
+        // If none, try folds containing the caret.
+        if (fold is null)
+        {
+            foreach (FoldingSection fs in fm.GetFoldingsContaining (caretOffset))
+            {
+                fold = fs;
+
+                break;
+            }
+        }
+
+        if (fold is not null)
+        {
+            fold.IsFolded = !fold.IsFolded;
+        }
 
         return true;
     }
