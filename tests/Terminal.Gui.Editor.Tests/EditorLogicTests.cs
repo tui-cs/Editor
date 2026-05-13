@@ -321,4 +321,32 @@ public class EditorLogicTests
         editor.HighlightingDefinition = null;
         Assert.Empty (editor.LineTransformers);
     }
+
+    [Fact]
+    public void GetVisibleLineNumbers_Skips_Deepest_Fold_When_Multiple_Start_On_Same_Line ()
+    {
+        // Lines: 1="a{", 2="b", 3="c", 4="d{", 5="e", 6="f}", 7="g}"
+        // Two folds start on line 1: short (lines 1-4) and long (lines 1-7).
+        // When both are collapsed, only line 1 should be visible.
+        var text = "a{\nb\nc\nd{\ne\nf}\ng}";
+        Views.Editor editor = new () { Document = new TextDocument (text) };
+        var fm = new Terminal.Gui.Document.Folding.FoldingManager (editor.Document!);
+        editor.GutterOptions = GutterOptions.LineNumbers | GutterOptions.Folding;
+        editor.FoldingManager = fm;
+
+        // Create two folded sections starting on line 1 with different end offsets.
+        // Short fold: offset 0 (line 1) to offset 8 (line 4 "d{")
+        var shortFold = fm.CreateFolding (0, 8);
+        shortFold.IsFolded = true;
+
+        // Long fold: offset 0 (line 1) to offset 16 (line 7 "g}")
+        var longFold = fm.CreateFolding (0, text.Length);
+        longFold.IsFolded = true;
+
+        List<int> visible = editor.GetVisibleLineNumbers ();
+
+        // Only line 1 should be visible — the long fold hides lines 2-7.
+        Assert.Single (visible);
+        Assert.Equal (1, visible[0]);
+    }
 }

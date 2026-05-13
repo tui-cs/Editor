@@ -13,8 +13,8 @@ namespace Terminal.Gui.Views;
 public sealed class Gutter : View
 {
     private readonly Editor _editor;
-    private LineNumberGutter? _lineNumbers;
     private FoldingGutter? _foldingGutter;
+    private LineNumberGutter? _lineNumbers;
 
     /// <summary>Initializes a new <see cref="Gutter" /> for <paramref name="editor" />.</summary>
     public Gutter (Editor editor)
@@ -328,7 +328,7 @@ internal sealed class FoldingGutter : View
         }
 
         // Determine which row was clicked from the last mouse position.
-        int row = _lastMouseRow;
+        var row = _lastMouseRow;
         var lineNumber = _editor.ViewRowToLineNumber (row);
         FoldingSection? fold = fm.GetFoldingAtLine (lineNumber);
 
@@ -342,4 +342,3 @@ internal sealed class FoldingGutter : View
         return true;
     }
 }
-

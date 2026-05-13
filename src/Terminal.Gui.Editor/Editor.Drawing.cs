@@ -126,20 +126,38 @@ public partial class Editor
 
             if (fm is not null)
             {
-                // If there's a folded section starting on this line, skip its hidden lines.
-                FoldingSection? fold = fm.GetFoldingAtLine (lineNumber);
+                // If there are folded sections starting on this line, skip past the deepest one.
+                var maxEndLine = lineNumber;
 
-                if (fold is { IsFolded: true })
+                foreach (FoldingSection fs in fm.AllFoldings)
                 {
-                    DocumentLine endLine =
-                        fm.Document.GetLineByOffset (Math.Clamp (fold.EndOffset, 0, fm.Document.TextLength));
-
-                    if (endLine.LineNumber > lineNumber)
+                    if (!fs.IsFolded)
                     {
-                        lineNumber = endLine.LineNumber + 1;
-
                         continue;
                     }
+
+                    DocumentLine startLine =
+                        fm.Document.GetLineByOffset (Math.Clamp (fs.StartOffset, 0, fm.Document.TextLength));
+
+                    if (startLine.LineNumber != lineNumber)
+                    {
+                        continue;
+                    }
+
+                    DocumentLine endLine =
+                        fm.Document.GetLineByOffset (Math.Clamp (fs.EndOffset, 0, fm.Document.TextLength));
+
+                    if (endLine.LineNumber > maxEndLine)
+                    {
+                        maxEndLine = endLine.LineNumber;
+                    }
+                }
+
+                if (maxEndLine > lineNumber)
+                {
+                    lineNumber = maxEndLine + 1;
+
+                    continue;
                 }
             }
 
