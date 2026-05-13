@@ -1,9 +1,12 @@
 using Terminal.Gui.Drawing;
 using Terminal.Gui.Editor.IntegrationTests.Testing;
+using Terminal.Gui.Editor.Rendering;
 using Terminal.Gui.Input;
 using Terminal.Gui.Testing;
 using Terminal.Gui.Editor;
+using Terminal.Gui.ViewBase;
 using Xunit;
+using Attribute = Terminal.Gui.Drawing.Attribute;
 
 namespace Terminal.Gui.Editor.IntegrationTests;
 
@@ -126,5 +129,87 @@ public class EditorWordWrapTests
         fx.Render ();
 
         Assert.Equal (12, fx.Top.Editor.CaretOffset);
+    }
+
+    /// <summary>
+    ///     Proves P1: wrap map must rebuild when the viewport width changes. Previously,
+    ///     the map was cached unconditionally and a viewport resize (changing the wrap column)
+    ///     would leave stale segment indices that could crash or produce wrong output.
+    /// </summary>
+    [Fact]
+    public async Task WrapMap_Rebuilds_On_Viewport_Width_Change ()
+    {
+        var longLine = new string ('a', 30);
+
+        // Start with a 20-column viewport — "a×30" wraps into 2 visual lines.
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost (longLine), 20, 5);
+        fx.Render ();
+
+        fx.Top.Editor.WordWrap = true;
+        fx.Render ();
+
+        // Second row should have content (wrap at col 20).
+        Cell row1 = fx.Driver.Contents![1, 0];
+        Assert.Equal ("a", row1.Grapheme);
+
+        // Now resize to 40 columns — entire line fits on one row, no wrap needed.
+        fx.App.Driver!.SetScreenSize (40, 5);
+        fx.Render ();
+
+        // After resize, second row should be blank (line fits in one visual row).
+        Cell row1After = fx.Driver.Contents![1, 0];
+        Assert.NotEqual ("a", row1After.Grapheme);
+    }
+
+    /// <summary>
+    ///     Proves P2: selection attributes must survive transformers in wrapped mode.
+    ///     Previously, selection was applied before transformers, so a
+    ///     <see cref="IVisualLineTransformer" /> (e.g. syntax highlighter) would overwrite the
+    ///     selection attribute.
+    /// </summary>
+    [Fact]
+    public async Task Selection_Survives_Transformers_In_Wrapped_Mode ()
+    {
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("hello world"), 20, 5);
+        fx.Top.Editor.SetFocus ();
+        fx.Render ();
+
+        // Add a transformer that paints everything red — simulates syntax highlighting.
+        Attribute redAttr = new (new Color (255, 0, 0), new Color (0, 0, 0));
+        fx.Top.Editor.LineTransformers.Add (new OverwriteTransformer (redAttr));
+
+        fx.Top.Editor.WordWrap = true;
+        fx.Top.Editor.CaretOffset = 0;
+        fx.Render ();
+
+        // Select "hel" (first 3 chars) using Shift+Right.
+        fx.Injector.InjectKey (Key.CursorRight.WithShift, Direct);
+        fx.Injector.InjectKey (Key.CursorRight.WithShift, Direct);
+        fx.Injector.InjectKey (Key.CursorRight.WithShift, Direct);
+        fx.Render ();
+
+        Attribute active = fx.Top.Editor.GetAttributeForRole (VisualRole.Active);
+
+        // The selected cell should have the Active (selection) attribute, NOT the red one.
+        Cell cell = fx.Driver.Contents![0, 0];
+        Assert.Equal ("h", cell.Grapheme);
+        Assert.Equal (active, cell.Attribute);
+
+        // Unselected cell should have the transformer's attribute (red).
+        Cell unselected = fx.Driver.Contents![0, 4];
+        Assert.Equal ("o", unselected.Grapheme);
+        Assert.Equal (redAttr, unselected.Attribute);
+    }
+
+    /// <summary>Transformer that overwrites all element attributes with a fixed value.</summary>
+    private sealed class OverwriteTransformer (Attribute attr) : IVisualLineTransformer
+    {
+        public void Transform (CellVisualLine line)
+        {
+            foreach (CellVisualLineElement element in line.Elements)
+            {
+                element.Attribute = attr;
+            }
+        }
     }
 }

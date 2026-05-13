@@ -162,23 +162,17 @@ public partial class Editor
         for (var i = 0; i < segmentText.Length; i++)
         {
             var documentOffset = documentLine.Offset + segmentStartOffset + i;
-            Attribute attribute = normal;
-
-            if (selStart < selEnd && documentOffset >= selStart && documentOffset < selEnd)
-            {
-                attribute = selected;
-            }
 
             if (segmentText[i] == '\t')
             {
                 var width = VisualLineBuilder.GetTabExpansionWidth (visualColumn, IndentationSize);
                 visualLine.AddElement (
-                    new TabElement (documentOffset, visualColumn, width, ShowTabs, attribute));
+                    new TabElement (documentOffset, visualColumn, width, ShowTabs, normal));
                 visualColumn += width;
             }
             else if (segmentText[i] <= 127)
             {
-                TextRunElement element = new (documentOffset, 1, visualColumn, segmentText.Substring (i, 1), attribute);
+                TextRunElement element = new (documentOffset, 1, visualColumn, segmentText.Substring (i, 1), normal);
                 visualLine.AddElement (element);
                 visualColumn += 1;
             }
@@ -190,15 +184,7 @@ public partial class Editor
                 foreach (var grapheme in GraphemeHelper.GetGraphemes (remaining))
                 {
                     var gDocOffset = documentLine.Offset + segmentStartOffset + i;
-
-                    Attribute gAttribute = normal;
-
-                    if (selStart < selEnd && gDocOffset >= selStart && gDocOffset < selEnd)
-                    {
-                        gAttribute = selected;
-                    }
-
-                    TextRunElement gElement = new (gDocOffset, grapheme.Length, visualColumn, grapheme, gAttribute);
+                    TextRunElement gElement = new (gDocOffset, grapheme.Length, visualColumn, grapheme, normal);
                     visualLine.AddElement (gElement);
                     visualColumn += gElement.VisualLength;
                     i += grapheme.Length;
@@ -210,10 +196,22 @@ public partial class Editor
             }
         }
 
-        // Apply transformers.
+        // Apply transformers BEFORE selection so highlighting doesn't overwrite selection.
         foreach (IVisualLineTransformer transformer in LineTransformers)
         {
             transformer.Transform (visualLine);
+        }
+
+        // Apply selection AFTER transformers (same order as the non-wrapped path).
+        if (selStart < selEnd)
+        {
+            foreach (CellVisualLineElement element in visualLine.Elements)
+            {
+                if (element.DocumentOffset < selEnd && element.DocumentEndOffset > selStart)
+                {
+                    element.Attribute = selected;
+                }
+            }
         }
 
         return visualLine;

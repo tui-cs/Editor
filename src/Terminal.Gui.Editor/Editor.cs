@@ -55,8 +55,10 @@ public partial class Editor : View
 
     // Word-wrap map: when WordWrap == true, maps visual row indices to (lineNumber, segmentIndex)
     // pairs. Lazily built and cached. Cleared on any document change or property change that
-    // affects wrapping.
+    // affects wrapping. _wrapMapColumn tracks the wrap column used to build the map so we
+    // can detect viewport-width changes and rebuild.
     private List<WrapMapEntry>? _wrapMap;
+    private int _wrapMapColumn;
 
     /// <summary>
     ///     Sticky column for vertical caret moves. Tracks the column the user *intends* to be in,
@@ -337,6 +339,7 @@ public partial class Editor : View
     {
         ClearVisualLineCaches ();
         _cachedVisibleLineNumbers = null;
+        _wrapMap = null;
         _maxWidthDirty = true;
         UpdateContentSize ();
         SetNeedsDraw ();
@@ -1130,23 +1133,26 @@ public partial class Editor : View
 
     /// <summary>
     ///     Returns the wrap map, building it lazily. Each entry corresponds to one visual row
-    ///     in the document when word wrap is active.
+    ///     in the document when word wrap is active. Automatically rebuilds if the wrap column
+    ///     has changed (viewport resize) or visible lines have been invalidated (fold toggle).
     /// </summary>
     private List<WrapMapEntry> GetWrapMap ()
     {
-        if (_wrapMap is not null)
+        var wrapColumn = GetWrapColumn ();
+
+        if (_wrapMap is not null && _wrapMapColumn == wrapColumn)
         {
             return _wrapMap;
         }
 
         _wrapMap = [];
+        _wrapMapColumn = wrapColumn;
 
         if (_document is null)
         {
             return _wrapMap;
         }
 
-        var wrapColumn = GetWrapColumn ();
         List<int> visibleLineNumbers = GetVisibleLineNumbers ();
 
         foreach (var lineNumber in visibleLineNumbers)
