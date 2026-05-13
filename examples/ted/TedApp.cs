@@ -62,6 +62,14 @@ public sealed partial class TedApp : Window
             Value = Editor.GutterOptions.HasFlag (GutterOptions.LineNumbers) ? CheckState.Checked : CheckState.UnChecked
         };
 
+        CheckBox foldIndicatorsCheckBox = new ()
+        {
+            AllowCheckStateNone = false,
+            CanFocus = false,
+            Text = "_Fold Indicators",
+            Value = Editor.GutterOptions.HasFlag (GutterOptions.Folding) ? CheckState.Checked : CheckState.UnChecked
+        };
+
         CheckBox convertTabsToSpacesCheckBox = new ()
         {
             AllowCheckStateNone = false,
@@ -186,6 +194,24 @@ public sealed partial class TedApp : Window
                     },
                     CommandView = lineNumbersCheckBox,
                     HelpText = "Show line numbers"
+                },
+                new MenuItem
+                {
+                    Action = () =>
+                    {
+                        if (foldIndicatorsCheckBox.Value == CheckState.Checked)
+                        {
+                            Editor.GutterOptions |= GutterOptions.Folding;
+                        }
+                        else
+                        {
+                            Editor.GutterOptions &= ~GutterOptions.Folding;
+                        }
+
+                        Editor.SetNeedsDraw ();
+                    },
+                    CommandView = foldIndicatorsCheckBox,
+                    HelpText = "Show fold indicators in the gutter"
                 },
                 new MenuItem
                 {
