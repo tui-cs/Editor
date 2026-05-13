@@ -1,4 +1,4 @@
-# gui-cs/Text — MLP Plan
+# gui-cs/Editor — MLP Plan
 
 **Updated**: 2026-05-10 | **Target**: Alpha (MLP — Minimum Lovable Product)
 
@@ -6,7 +6,7 @@
 
 ## MLP Definition
 
-The alpha release of `gui-cs/Text` ships when `Editor` reaches MLP:
+The alpha release of `gui-cs/Editor` ships when `Editor` reaches MLP:
 
 - **Most of what people expect from a TUI code editor is in place and works.** Typing, selection, multi-caret, find/replace, syntax highlighting, folding, soft wrap, line numbers, indentation, clipboard, mouse, undo with sane granularity, large-file responsiveness.
 - **`examples/ted` is a TUI editor someone would actually want to use.** Open, edit, save, close. Find. Replace. Toggle wrap. Pick a theme.
@@ -18,7 +18,7 @@ The textmate-grammars feature ships in the release **after** alpha.
 
 ### Done
 
-- **Repo + CI**: solution (`Terminal.Gui.Text.slnx`), two src csprojs, three test csprojs, `examples/ted`, `examples/EditorBenchmarks` placeholder, GitHub Actions. net10.0, xUnit.v3 exe-style tests.
+- **Repo + CI**: solution (`Terminal.Gui.Editor.slnx`), two src csprojs, three test csprojs, `examples/ted`, `examples/EditorBenchmarks` placeholder, GitHub Actions. net10.0, xUnit.v3 exe-style tests.
 - **AvaloniaEdit fork**: pinned at `d7a6b63`; `Document/` and `Utils/` lifted; `UPSTREAM.md` tracks modifications.
 - **Editor partials**: `Editor.cs`, `Editor.Commands.cs`, `Editor.Keyboard.cs`, `Editor.Mouse.cs`, `Editor.Drawing.cs`, `Editor.Selection.cs`, `Editor.FindReplace.cs`. Caret, sticky virtual column, navigation, editing, undo/redo, selection, mouse, line numbers, find/replace (bespoke, pre-`ISearchStrategy`).
 - **rendering-pipeline — Rendering pipeline** ✅: `VisualLineBuilder` → `CellVisualLine` → `CellVisualLineElement` (`TextRunElement`, `TabElement`). `IVisualLineTransformer`, `IBackgroundRenderer` interfaces. Grapheme-aware via `GraphemeHelper`. `Editor.LineTransformers` and `BackgroundRenderers` exposed. (Codex branch, merged with tweaks.)
@@ -30,21 +30,18 @@ The textmate-grammars feature ships in the release **after** alpha.
 
 ### Remaining (per-feature specs in `specs/<name>/spec.md`)
 
-| Feature | Status | Blocked by |
-|---------|--------|------------|
-| [folding](folding/spec.md) | Ready | — |
-| [search](search/spec.md) | Ready | — |
-| [indentation](indentation/spec.md) | Ready | — |
-| [syntax-highlighting](syntax-highlighting/spec.md) | Ready | — |
-| [word-wrap](word-wrap/spec.md) | Ready | — |
-| [multi-caret](multi-caret/spec.md) | Ready | — |
-| [clipboard](clipboard/spec.md) | Ready | — |
-| [find-and-replace](find-and-replace/spec.md) | Blocked | search |
-| [word-wrap-toggle](word-wrap-toggle/spec.md) | Blocked | word-wrap |
-| [folding-ui](folding-ui/spec.md) | Blocked | folding |
-| [auto-indent](auto-indent/spec.md) | Blocked | indentation |
-| [syntax-colorizer](syntax-colorizer/spec.md) | Blocked | syntax-highlighting |
-| [textmate-grammars](textmate-grammars/spec.md) | Blocked | syntax-colorizer |
+**Composition rule** (constitution R9): every feature listed here is end-to-end — `Terminal.Gui.Editor` model layer + `Terminal.Gui.Editor` consumer + `examples/ted` UI wiring, in a single PR. AvaloniaEdit lifts and pure-plumbing sub-features (the old `search`, `indentation`, `folding`, `syntax-highlighting` rows) are subsumed into the feature that ships them to the user. Lift-only PRs are not accepted.
+
+| Feature | Status | Bundles | Notes |
+|---------|--------|---------|-------|
+| [find-and-replace](find-and-replace/spec.md) | In progress | `Search/` lift (done) + `Editor.SearchStrategy` + ted toggles + `SearchHitRenderer` + keybindings | Lift plumbing landed; engine swap + ted UI in flight. |
+| [auto-indent](auto-indent/spec.md) | Ready | `Indentation/` lift + `Editor.IndentationStrategy` + Enter wiring + ted demo | |
+| [folding-ui](folding-ui/spec.md) | Ready | `Folding/` lift + `FoldingTransformer` + click-to-toggle + ted demo | |
+| [syntax-colorizer](syntax-colorizer/spec.md) | Ready | `Highlighting/` lift (xshd) + colorizer transformer + ted theme integration | Blocks textmate-grammars (post-alpha). |
+| [word-wrap](word-wrap/spec.md) | Ready | `VisualLineBuilder` wrap + `Editor.WordWrap` + ted toggle | |
+| [multi-caret](multi-caret/spec.md) | Ready | Anchor-based multi-caret + ted demo | |
+| [clipboard](clipboard/spec.md) | Ready | Cut/Copy/Paste commands + ted menu wiring | |
+| [textmate-grammars](textmate-grammars/spec.md) | Post-alpha | TextMate parser + colorizer integration | Ships in release after alpha. |
 
 ## Repository Layout
 
@@ -59,64 +56,61 @@ specs/                              # spec-kit structure
   <name>/spec.md                    # per-feature specifications
   runs/                            # experiment run data
   archive/                         # superseded docs
-src/Terminal.Gui.Text/             # UI-independent document layer
+src/Terminal.Gui.Editor/             # UI-independent document layer
   Document/  Utils/  Extensions/  Properties/
   (Folding/, Search/, Indentation/, Highlighting/ pending)
 src/Terminal.Gui.Editor/           # the View
   Editor.cs / .Drawing / .Keyboard / .Mouse / .Selection / .Commands
   Rendering/                       # rendering pipeline types
 tests/
-  Terminal.Gui.Text.Tests/         (parallel, pure)
-  Terminal.Gui.Editor.Tests/       (parallel, logic)
-  Terminal.Gui.Editor.IntegrationTests/  (parallel, per-test IApplication.Create())
+  Terminal.Gui.Editor.Tests/         (parallel, pure)               — ci.yml
+  Terminal.Gui.Editor.IntegrationTests/  (parallel, IApplication)  — ci.yml
+  Terminal.Gui.Editor.PerformanceTests/(stopwatch perf smoke)      — perf.yml (ubuntu, Release only)
+benchmarks/
+  Terminal.Gui.Editor.Benchmarks/      (BenchmarkDotNet suite)     — perf.yml
+  baseline.json                        (gated metrics)
+  compare-baseline.sh                  (CI compare script)
 examples/
-  ted/                             (TG demo app)
-  EditorBenchmarks/                (placeholder)
+  ted/                                 (TG demo app)
 third_party/AvaloniaEdit/
-  LICENSE  UPSTREAM.md             (commit d7a6b63 pinned)
+  LICENSE  UPSTREAM.md                 (commit d7a6b63 pinned)
 ```
 
 ## Dependencies
 
-The diagram shows **must-finish-before** edges. Features not shown are independent.
+The diagram shows **must-finish-before** edges between user-visible features. Features not shown are independent. AvaloniaEdit lifts are not standalone nodes — they ride inside the feature that ships them.
 
 ```
-   ┌── folding ─────────┐
-   │                    │
-   ├── search ──────────┼── ██ rendering-pipeline DONE ██ ─┬─ ██ drawing-overhaul DONE ██ ─┬─ syntax-colorizer ── textmate-grammars
-   │                    │                                  │                    │
-   ├── indentation ─────┘                                  └─ word-wrap ── word-wrap-toggle
-   │
-   └── syntax-highlighting ─────────────────────────────────────────────────────┘
+   ██ rendering-pipeline DONE ██ ─┬─ ██ drawing-overhaul DONE ██ ─┬─ syntax-colorizer ── textmate-grammars
+                                  │                               │
+                                  └─ word-wrap                    └─ folding-ui
 
    ██ caret-anchors DONE ██ ── multi-caret
 
    ██ tab-handling DONE ██
-   ██ read-only DONE ██ ── independent
-   clipboard            ── independent
-   find-and-replace     ── needs search
-   folding-ui           ── needs folding
-   auto-indent          ── needs indentation
+   ██ read-only DONE ██
+
+   clipboard          ── independent
+   find-and-replace   ── independent (search lift already landed)
+   auto-indent        ── independent
 ```
 
-### Ready start state (post drawing-overhaul merge)
+### Ready start state
 
-All of these can be picked up immediately: **folding, search, indentation, syntax-highlighting, word-wrap, multi-caret, clipboard**.
+All of these are end-to-end (model + Editor + ted) and can be picked up immediately: **find-and-replace, auto-indent, folding-ui, syntax-colorizer, word-wrap, multi-caret, clipboard**.
 
-syntax-highlighting is the remaining dependency before syntax-colorizer can start.
-
-Second wave (after their dependencies): **find-and-replace** (after search), **word-wrap-toggle** (after word-wrap), **folding-ui** (after folding), **auto-indent** (after indentation), **syntax-colorizer** (after syntax-highlighting).
+`textmate-grammars` ships post-alpha and follows `syntax-colorizer`.
 
 ## MLP Definition of Done
 
 Each criterion is testable. This is the merge-to-`main` gate.
 
-- [ ] All features merged: folding, search, indentation, syntax-highlighting, drawing-overhaul, word-wrap, caret-anchors, multi-caret, read-only, clipboard, find-and-replace, word-wrap-toggle, folding-ui, auto-indent, syntax-colorizer.
-- [ ] `dotnet build Terminal.Gui.Text.slnx` clean on Linux/macOS/Windows on net10.0.
-- [ ] All three test projects pass. Coverage: `Text.Tests` ≥ 90%, `Editor.Tests` ≥ 75%.
+- [ ] All features merged: drawing-overhaul, caret-anchors, read-only, find-and-replace, auto-indent, folding-ui, syntax-colorizer, word-wrap, multi-caret, clipboard.
+- [ ] `dotnet build Terminal.Gui.Editor.slnx` clean on Linux/macOS/Windows on net10.0.
+- [ ] All test projects pass. Coverage: `Editor.Tests` ≥ 90%. `PerformanceTests` smoke tests + the `*VisualLineBuild*` BenchmarkDotNet gate stay within 3× of `benchmarks/baseline.json`.
 - [ ] `Editor.OnDrawingContent` does not iterate `text` by `char`. R1, R2, R4, R5 hold.
 - [ ] `Editor.TabWidth`, `Editor.SyntaxHighlighter`, `Editor.SyntaxLanguage` all removed.
-- [ ] No file under `src/Terminal.Gui.Text/` references `Terminal.Gui`.
+- [ ] No file under `src/Terminal.Gui.Editor/` references `Terminal.Gui`.
 - [ ] ted exercises: typing, selection, multi-caret, undo/redo, find/replace, folding, word wrap, line numbers, mouse, large-file (10 MB < 200 ms initial render).
 - [ ] `specs/public-api.md` and `specs/decisions.md` populated; every open decision resolved.
 - [ ] README documents MIT licensing, AvaloniaEdit attribution, targets, install, usage example.

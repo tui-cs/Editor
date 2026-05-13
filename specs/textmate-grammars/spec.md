@@ -35,8 +35,8 @@ This is a **post-MLP** item — it ships in the release after alpha.
 
 ## Files in Scope
 
-- `src/Terminal.Gui.Text/Highlighting/TextMate/*.cs` (new)
-- Tests in `tests/Terminal.Gui.Text.Tests/Highlighting/TextMate/`
+- `src/Terminal.Gui.Editor/Highlighting/TextMate/*.cs` (new)
+- Tests in `tests/Terminal.Gui.Editor.Tests/Highlighting/TextMate/`
 - `third_party/AvaloniaEdit/UPSTREAM.md` (append rows)
 
 ## Definition of Done

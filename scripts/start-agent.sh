@@ -12,7 +12,7 @@ usage () {
 Usage: ./scripts/start-agent.sh codex
 
 Feeds the Codex autonomous-sprint kickoff prompt into the Codex CLI in
-$HOME/s/Terminal.Gui.Text/codex/.
+$HOME/s/Terminal.Gui.Editor/codex/.
 EOF
 }
 
@@ -26,7 +26,7 @@ case "$AGENT" in
   *) echo "error: agent must be codex" >&2; exit 1 ;;
 esac
 
-WORK="$HOME/s/Terminal.Gui.Text/$AGENT"
+WORK="$HOME/s/Terminal.Gui.Editor/$AGENT"
 if [[ ! -d "$WORK/.git" ]]; then
   echo "error: $WORK not set up. Run ./scripts/setup-agent-clone.sh $AGENT first." >&2
   exit 1
@@ -76,7 +76,7 @@ If you think one of those needs changing, write the proposal into your final rep
 Spec files may be updated when required by R8, resolved decisions, or feature status changes.
 
 A full clone of Terminal.Gui is at \`../Terminal.Gui\` (absolute path:
-\`$HOME/s/Terminal.Gui.Text/Terminal.Gui\`, \`develop\` branch). **Before using it,
+\`$HOME/s/Terminal.Gui.Editor/Terminal.Gui\`, \`develop\` branch). **Before using it,
 verify the clone is complete:** \`git -C ../Terminal.Gui status\` should succeed
 and show a clean working tree. If the directory is missing or \`git status\` fails,
 the clone is still in progress — wait and retry. Once ready you can read its

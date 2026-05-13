@@ -5,13 +5,12 @@
     <AssemblyName>Terminal.Gui.Editor</AssemblyName>
 
     <PackageId>Terminal.Gui.Editor</PackageId>
-    <Description>Editor View for Terminal.Gui — multi-caret, folding, search, optional TextMate highlighting; built on Terminal.Gui.Text.</Description>
-    <PackageTags>terminal-gui;tui;editor;text-editor;folding;multi-caret</PackageTags>
+    <Description>Full-featured text editor View for Terminal.Gui — rope-backed document model, multi-caret, folding, search, undo/redo, optional TextMate highlighting. Adapted from AvaloniaEdit.</Description>
+    <PackageTags>terminal-gui;tui;editor;text-editor;document;rope;folding;multi-caret;avaloniaedit</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Terminal.Gui.Text\Terminal.Gui.Text.csproj" />
     <PackageReference Include="Terminal.Gui" Version="$(TerminalGuiVersion)" />
   </ItemGroup>
 

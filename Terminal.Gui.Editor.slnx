@@ -1,0 +1,36 @@
+<Solution>
+  <Folder Name="/Docs/">
+    <File Path="CLAUDE.md" />
+    <File Path="LICENSE" />
+    <File Path="README.md" />
+    <File Path="specs/00-plan.md" />
+    <File Path="specs/10-autonomous-three-agent.md" />
+  </Folder>
+  <Folder Name="/Settings/">
+    <File Path=".claude/hooks/cleanup-cs.ps1" />
+    <File Path=".claude/settings.json" />
+    <File Path=".config/dotnet-tools.json" />
+    <File Path=".editorconfig" />
+    <File Path=".gitattributes" />
+    <File Path=".github/workflows/ci.yml" />
+    <File Path=".github/workflows/perf.yml" />
+    <File Path=".github/workflows/release.yml" />
+    <File Path=".gitignore" />
+    <File Path="Directory.Build.props" />
+    <File Path="Terminal.Gui.Editor.slnx.DotSettings" />
+  </Folder>
+  <Folder Name="/Scripts/">
+    <File Path="scripts/README.md" />
+    <File Path="scripts/collect-run.sh" />
+    <File Path="scripts/create-test-run-issues.sh" />
+    <File Path="scripts/setup-agent-clone.sh" />
+    <File Path="scripts/setup-host.sh" />
+    <File Path="scripts/start-agent.sh" />
+  </Folder>
+  <Project Path="benchmarks/Terminal.Gui.Editor.Benchmarks/Terminal.Gui.Editor.Benchmarks.csproj" />
+  <Project Path="examples/ted/ted.csproj" />
+  <Project Path="src/Terminal.Gui.Editor/Terminal.Gui.Editor.csproj" />
+  <Project Path="tests/Terminal.Gui.Editor.IntegrationTests/Terminal.Gui.Editor.IntegrationTests.csproj" />
+  <Project Path="tests/Terminal.Gui.Editor.PerformanceTests/Terminal.Gui.Editor.PerformanceTests.csproj" />
+  <Project Path="tests/Terminal.Gui.Editor.Tests/Terminal.Gui.Editor.Tests.csproj" />
+</Solution>

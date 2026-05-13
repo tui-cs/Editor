@@ -1,5 +1,5 @@
+using Terminal.Gui.Document;
 using Terminal.Gui.Drawing;
-using Terminal.Gui.Text.Document;
 using Attribute = Terminal.Gui.Drawing.Attribute;
 
 namespace Terminal.Gui.Views.Rendering;
@@ -157,8 +157,16 @@ public sealed class VisualLineBuilder
             return context.NormalAttribute;
         }
 
-        return context.StyledSegments[Math.Min (segmentIndex, context.StyledSegments.Count - 1)].Attribute
-               ?? context.NormalAttribute;
+        Attribute segmentAttribute =
+            context.StyledSegments[Math.Min (segmentIndex, context.StyledSegments.Count - 1)].Attribute
+            ?? context.NormalAttribute;
+
+        if (!context.UseThemeBackground)
+        {
+            return new Attribute (segmentAttribute.Foreground, context.NormalAttribute.Background);
+        }
+
+        return segmentAttribute;
     }
 
     private static int GetSegmentEnd (IReadOnlyList<StyledSegment>? segments, int segmentIndex)

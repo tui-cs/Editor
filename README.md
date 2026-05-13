@@ -1,24 +1,32 @@
-# Terminal.Gui.Text
+# Terminal.Gui.Editor
 
-Terminal-native text-editing stack for [Terminal.Gui](https://github.com/gui-cs/Terminal.Gui), built on a hard fork of [AvaloniaEdit](https://github.com/AvaloniaUI/AvaloniaEdit)'s pure-data layers (Document, Folding, Search, Indentation, Highlighting).
+![Terminal.Gui.Editor — ted demo app](docs/images/hero.png)
 
-Two NuGet packages:
+A full-featured text editor `View` for [Terminal.Gui](https://github.com/gui-cs/Terminal.Gui), built on a hard fork of [AvaloniaEdit](https://github.com/AvaloniaUI/AvaloniaEdit)'s pure-data layers (Document, Folding, Search, Indentation, Highlighting).
 
-- **`Terminal.Gui.Text`** — UI-framework-independent document model: rope-backed `TextDocument`, `TextAnchor`, `UndoStack`, `FoldingManager`, search, indentation, highlighting. No Terminal.Gui dependency; reusable from other front-ends.
-- **`Terminal.Gui.Editor`** — a `View` subclass (`Editor`) consuming `Terminal.Gui.Text` and rendering on a cell grid, with multi-caret, folding, search, and (post-MVP) TextMate highlighting.
+Ships as a single NuGet package: **`Terminal.Gui.Editor`**.
+
+- **Document layer** (`Terminal.Gui.Document` namespace) — UI-framework-independent: rope-backed `TextDocument`, `TextAnchor`, `UndoStack`, `FoldingManager`, search, indentation, highlighting.
+- **Editor view** (`Terminal.Gui.Views` namespace) — an `Editor : View` subclass consuming the document layer and rendering on a cell grid, with selection, multi-caret, folding, search, and (post-MVP) TextMate highlighting.
 
 `Editor` ships alongside `TextView`. It is **not** a drop-in replacement and has no source-compat obligation to it.
 
+The project includes a complete TUI editor called `ted` as an example.
+
+For a pre-built, production-ready, editor, see clet, which provides a rich TUI editoe based on this library. 
+
 ## Status
 
-Pre-alpha. Repo bootstrap only — see [`specs/00-plan.md`](specs/00-plan.md) for the full implementation plan, phased milestones, and open decisions.
+Pre-alpha — see [`specs/00-plan.md`](specs/00-plan.md) for the full implementation plan, phased milestones, and open decisions.
 
 ## Repository layout
 
 ```
-specs/    Planning and design docs
-src/      Library projects (Terminal.Gui.Text, Terminal.Gui.Editor)
-tests/    xUnit.v3 test projects
+specs/        Planning and design docs
+src/          Terminal.Gui.Editor library (document layer + Editor view)
+tests/        xUnit.v3 test projects (correctness + perf smoke)
+benchmarks/   BenchmarkDotNet suite + CI baseline
+examples/     ted — standalone demo app
 ```
 
 ## Build
@@ -26,15 +34,26 @@ tests/    xUnit.v3 test projects
 Requires the .NET 10 SDK (preview).
 
 ```sh
-dotnet restore
-dotnet build
-dotnet run --project tests/Terminal.Gui.Text.Tests
+dotnet restore Terminal.Gui.Editor.slnx
+dotnet build   Terminal.Gui.Editor.slnx
+
+# Correctness suites — run on every push/PR across ubuntu/macos/windows.
 dotnet run --project tests/Terminal.Gui.Editor.Tests
 dotnet run --project tests/Terminal.Gui.Editor.IntegrationTests
+
+# Perf smoke + BenchmarkDotNet baseline gate — ubuntu-latest only in CI
+# (.github/workflows/perf.yml). Run locally in Release config.
+dotnet run --project tests/Terminal.Gui.Editor.PerformanceTests -c Release
+```
+
+Run the demo:
+
+```sh
+dotnet run --project examples/ted
 ```
 
 ## License
 
 MIT — see [`LICENSE`](LICENSE).
 
-Portions of `Terminal.Gui.Text` are adapted from [AvaloniaEdit](https://github.com/AvaloniaUI/AvaloniaEdit) (MIT). See [`specs/00-plan.md` §5](specs/00-plan.md) for fork policy and attribution; per-file headers identify lifted code.
+Portions of the document layer are adapted from [AvaloniaEdit](https://github.com/AvaloniaUI/AvaloniaEdit) (MIT). See [`third_party/AvaloniaEdit/UPSTREAM.md`](third_party/AvaloniaEdit/UPSTREAM.md) for the pinned upstream commit and per-file modification log.

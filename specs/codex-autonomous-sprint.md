@@ -1,6 +1,6 @@
 # Codex Autonomous Sprint
 
-This is the current autonomous-execution plan for `gui-cs/Text`: one OpenAI Codex CLI session works the MLP roadmap in `specs/plan.md`.
+This is the current autonomous-execution plan for `gui-cs/Editor`: one OpenAI Codex CLI session works the MLP roadmap in `specs/plan.md`.
 
 This replaces the old three-agent comparison harness for active development. The comparison plan remains archived at `specs/archive/10-autonomous-three-agent.md`; it is historical evidence, not the current runbook.
 
@@ -31,13 +31,13 @@ Codex should:
 ```
                  Mac mini / operator host
 
-      $HOME/s/Terminal.Gui.Text/operator/  # normal human clone
-      $HOME/s/Terminal.Gui.Text/codex/     # Codex autonomous clone
+      $HOME/s/Terminal.Gui.Editor/operator/  # normal human clone
+      $HOME/s/Terminal.Gui.Editor/codex/     # Codex autonomous clone
 
                          pushes branches
                               |
                               v
-                 github.com/gui-cs/Text
+                 github.com/gui-cs/Editor
 
       experiment/codex/develop    # Codex shadow develop, final-check branch
       experiment/codex/<feature>  # feature branches, integrated into shadow develop
@@ -68,7 +68,7 @@ gh auth login
 ./scripts/setup-agent-clone.sh codex
 ```
 
-`gh auth status` in the Codex clone must show an identity that can push branches and open PRs on `gui-cs/Text`.
+`gh auth status` in the Codex clone must show an identity that can push branches and open PRs on `gui-cs/Editor`.
 
 ## 6. Kickoff
 
@@ -137,7 +137,7 @@ The operator should run final checks from that branch, compare it against `origi
 
 ## 10. Terminal.Gui Bugs
 
-`TG.Text` is part of TG, so suspected Terminal.Gui bugs are handled with a high bar.
+`TG.Editor` is part of TG, so suspected Terminal.Gui bugs are handled with a high bar.
 
 When Codex suspects a Terminal.Gui bug:
 

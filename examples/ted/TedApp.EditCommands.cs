@@ -39,7 +39,7 @@ public sealed partial class TedApp
 
         IClipboard? clipboard = App?.Clipboard;
 
-        if (clipboard is null || !clipboard.TryGetClipboardData (out string contents))
+        if (clipboard is null || !clipboard.TryGetClipboardData (out var contents))
         {
             return;
         }

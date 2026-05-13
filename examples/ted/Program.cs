@@ -16,7 +16,7 @@ using IApplication app = Application.Create ();
 app.Init ();
 
 var readOnly = args.Any (static arg => arg is "--read-only" or "-r");
-string? requestedPath = args.FirstOrDefault (static arg => arg is not ("--read-only" or "-r"));
+var requestedPath = args.FirstOrDefault (static arg => arg is not ("--read-only" or "-r"));
 
 using TedApp ted = new (readOnly);
 
@@ -48,7 +48,7 @@ static string? FindRepoRoot (string? directory)
 {
     while (directory is not null)
     {
-        if (File.Exists (Path.Combine (directory, "Terminal.Gui.Text.slnx")))
+        if (File.Exists (Path.Combine (directory, "Terminal.Gui.Editor.slnx")))
         {
             return directory;
         }

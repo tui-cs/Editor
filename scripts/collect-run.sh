@@ -50,7 +50,7 @@ else
   echo "origin/experiment/codex/develop not found" > "$OUT/integration-diffstat.txt"
 fi
 
-WORK="$HOME/s/Terminal.Gui.Text/codex"
+WORK="$HOME/s/Terminal.Gui.Editor/codex"
 if [[ -f "$WORK/specs/runs/codex-final.md" ]]; then
   cp "$WORK/specs/runs/codex-final.md" "$OUT/codex-final.md"
 elif [[ -f "$WORK/specs/runs/$RUN/codex-final.md" ]]; then

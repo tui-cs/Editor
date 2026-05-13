@@ -25,38 +25,43 @@ Active development happens on **`develop`**. `main` is the release/stable branch
 
 ## Build and test
 
-Requires the .NET 10 SDK (preview). Solution file is `Terminal.Gui.Text.slnx` (XML solution format, not `.sln`).
+Requires the .NET 10 SDK (preview). Solution file is `Terminal.Gui.Editor.slnx` (XML solution format, not `.sln`).
 
 ```sh
-dotnet restore Terminal.Gui.Text.slnx
-dotnet build   Terminal.Gui.Text.slnx
+dotnet restore Terminal.Gui.Editor.slnx
+dotnet build   Terminal.Gui.Editor.slnx
 ```
 
 Tests are xUnit.v3 and run as **executables** (each test project sets `<OutputType>Exe</OutputType>`). Use `dotnet run`, not `dotnet test`:
 
 ```sh
-dotnet run --project tests/Terminal.Gui.Text.Tests
+dotnet run --project tests/Terminal.Gui.Editor.Tests
 dotnet run --project tests/Terminal.Gui.Editor.Tests
 dotnet run --project tests/Terminal.Gui.Editor.IntegrationTests
+dotnet run --project tests/Terminal.Gui.Editor.PerformanceTests -c Release
 ```
+
+The `PerformanceTests` project is stopwatch-based and only meaningful in Release. It runs in
+the dedicated `.github/workflows/perf.yml` workflow (ubuntu-latest only), separately from the
+correctness-focused `ci.yml`. See the "Testing tiers" section below.
 
 Run a single test by passing xUnit.v3 filter args after `--`:
 
 ```sh
-dotnet run --project tests/Terminal.Gui.Text.Tests -- -method "*MyTestName*"
+dotnet run --project tests/Terminal.Gui.Editor.Tests -- -method "*MyTestName*"
 ```
 
-CI verifies formatting with `dotnet format Terminal.Gui.Text.slnx --verify-no-changes --exclude third_party/`. Run the same locally before pushing if you've touched C# files outside `third_party/`.
+CI verifies formatting with `dotnet format Terminal.Gui.Editor.slnx --verify-no-changes --exclude third_party/`. Run the same locally before pushing if you've touched C# files outside `third_party/`.
 
 ## Architecture
 
 Two NuGet packages with a strict dependency direction:
 
-- **`src/Terminal.Gui.Text`** — UI-framework-independent document model. Namespace `Terminal.Gui.Text` and subnamespaces. **Must not reference Terminal.Gui.** Holds the rope-backed `TextDocument`, `DocumentLine`, `TextAnchor`, `UndoStack`, `ITextSource`, `TextSegment`, the `Rope`, and supporting utility types. Lifted from AvaloniaEdit (see fork policy below) — `Document/` and `Utils/` are landed; `Folding/`, `Search/`, `Indentation/`, `Highlighting/` are follow-up phases per `specs/00-plan.md`.
-- **`src/Terminal.Gui.Editor`** — the `Editor : View` and cell-grid rendering pipeline. Namespace `Terminal.Gui.Views` (matches Terminal.Gui convention, deliberately not `Terminal.Gui.Editor`). References `Terminal.Gui` (version pinned via `$(TerminalGuiVersion)` in `Directory.Build.props`) and `Terminal.Gui.Text`. Split into partials: `Editor.cs` (core: `Document`, `CaretOffset`, edit-tracking arithmetic, content-size + scroll), `Editor.Drawing.cs` (`OnDrawingContent` + cursor positioning), `Editor.Keyboard.cs` (`OnKeyDown` switch — navigation / editing / undo+redo). No selection / folding / highlighting / multi-caret yet.
+- **`src/Terminal.Gui.Editor`** — UI-framework-independent document model. Namespace `Terminal.Gui.Editor` and subnamespaces. **Must not reference Terminal.Gui.** Holds the rope-backed `TextDocument`, `DocumentLine`, `TextAnchor`, `UndoStack`, `ITextSource`, `TextSegment`, the `Rope`, and supporting utility types. Lifted from AvaloniaEdit (see fork policy below) — `Document/` and `Utils/` are landed; `Folding/`, `Search/`, `Indentation/`, `Highlighting/` are follow-up phases per `specs/00-plan.md`.
+- **`src/Terminal.Gui.Editor`** — the `Editor : View` and cell-grid rendering pipeline. Namespace `Terminal.Gui.Views` (matches Terminal.Gui convention, deliberately not `Terminal.Gui.Editor`). References `Terminal.Gui` (version pinned via `$(TerminalGuiVersion)` in `Directory.Build.props`) and `Terminal.Gui.Editor`. Split into partials: `Editor.cs` (core: `Document`, `CaretOffset`, edit-tracking arithmetic, content-size + scroll), `Editor.Drawing.cs` (`OnDrawingContent` + cursor positioning), `Editor.Keyboard.cs` (`OnKeyDown` switch — navigation / editing / undo+redo). No selection / folding / highlighting / multi-caret yet.
 - **`examples/ted`** — standalone TG demo app exercising `Editor`. Not packed; not a NuGet artifact. Has a File menu, the `Editor` View, and a status bar; grows with the View. Run via `dotnet run --project examples/ted`.
 
-The boundary matters: anything that takes a dependency on `Terminal.Gui` types belongs in `Terminal.Gui.Editor`, never in `Terminal.Gui.Text`.
+The boundary matters: anything that takes a dependency on `Terminal.Gui` types belongs in `Terminal.Gui.Editor`, never in `Terminal.Gui.Editor`.
 
 ### Rendering pipeline
 
@@ -68,7 +73,7 @@ See `specs/00-plan.md` §6 for the planned pipeline and full `Editor` public API
 
 ## AvaloniaEdit fork policy
 
-Code is lifted from AvaloniaEdit into the relevant `src/Terminal.Gui.Text/` subfolders (`Document/`, `Utils/` so far; `Folding/`, `Search/`, `Indentation/`, `Highlighting/` to follow). The pinned upstream commit and per-file modification log live in `third_party/AvaloniaEdit/UPSTREAM.md` (with the upstream MIT `LICENSE` alongside).
+Code is lifted from AvaloniaEdit into the relevant `src/Terminal.Gui.Editor/` subfolders (`Document/`, `Utils/` so far; `Folding/`, `Search/`, `Indentation/`, `Highlighting/` to follow). The pinned upstream commit and per-file modification log live in `third_party/AvaloniaEdit/UPSTREAM.md` (with the upstream MIT `LICENSE` alongside).
 
 For lifted files:
 
@@ -84,10 +89,10 @@ The fork is **hard** — re-syncs are manual and deliberate, triggered only by u
 Adopts Terminal.Gui's house style. Three enforcement layers:
 
 1. **`.editorconfig` + `dotnet format`** — formatting, var, expression-bodied, collection expressions, modern syntax preferences. CI runs `dotnet format --verify-no-changes`.
-2. **`Terminal.Gui.Text.slnx.DotSettings` + `dotnet jb cleanupcode`** — ReSharper-driven cleanup ("TG.Text Full Cleanup" profile). Catches what `dotnet format` misses (XML doc spacing, using sorting, name qualifier removal, expression-bodied conversions). CI runs `dotnet jb cleanupcode` and fails on any diff.
+2. **`Terminal.Gui.Editor.slnx.DotSettings` + `dotnet jb cleanupcode`** — ReSharper-driven cleanup ("TG.Editor Full Cleanup" profile). Catches what `dotnet format` misses (XML doc spacing, using sorting, name qualifier removal, expression-bodied conversions). CI runs `dotnet jb cleanupcode` and fails on any diff.
 3. **A Stop hook in `.claude/settings.json`** that runs both tools on .cs files modified during the session before the agent reports done. Output is suppressed unless the cleanup actually changed something.
 
-**Before declaring work complete, an agent must run `dotnet tool restore && dotnet format Terminal.Gui.Text.slnx --exclude third_party/ && dotnet jb cleanupcode Terminal.Gui.Text.slnx --profile="TG.Text Full Cleanup"` (the Stop hook does this automatically). If the cleanup adjusts files, those changes are part of the work — re-stage and continue.**
+**Before declaring work complete, an agent must run `dotnet tool restore && dotnet format Terminal.Gui.Editor.slnx --exclude third_party/ && dotnet jb cleanupcode Terminal.Gui.Editor.slnx --profile="TG.Editor Full Cleanup"` (the Stop hook does this automatically). If the cleanup adjusts files, those changes are part of the work — re-stage and continue.**
 
 ### Formatting and spacing
 
@@ -157,23 +162,32 @@ private void ExtendCaretBy (int delta)
 - **One public or internal type per file.** No nested types except inside the file that owns the outer type, and only when the nested type is a private implementation detail (`DocumentLine.LineNode`-style). If a nested type grows interesting, promote it to its own file.
 - **No file longer than 1000 lines.** When a file approaches that, split — by partial class (`Editor.Drawing.cs`, `Editor.Mouse.cs`), by helper extraction, or by genuinely splitting the type. The cleanup hook does not enforce this; the reviewer does.
 - **C# 14 `extension` blocks**: prefer extension blocks over a static class full of `this`-prefixed extension methods when the extensions form a coherent group on a single receiver type.
-- **Namespace per folder.** `src/Terminal.Gui.Text/Document/` ⇒ `Terminal.Gui.Text.Document`; `src/Terminal.Gui.Editor/Rendering/` ⇒ `Terminal.Gui.Views.Rendering`. Don't put unrelated types in the same namespace just because they share a folder.
+- **Namespace per folder.** `src/Terminal.Gui.Editor/Document/` ⇒ `Terminal.Gui.Document`; `src/Terminal.Gui.Editor/Rendering/` ⇒ `Terminal.Gui.Views.Rendering`. Don't put unrelated types in the same namespace just because they share a folder.
 
 ### Testing convention
 
-- **AI-generated tests** marked `// Claude - <model>` or `// CoPilot - <model>` at the top of the file (see `tests/Terminal.Gui.Text.Tests/SmokeTests.cs` for the format).
+- **AI-generated tests** marked `// Claude - <model>` or `// CoPilot - <model>` at the top of the file (see `tests/Terminal.Gui.Editor.Tests/SmokeTests.cs` for the format).
 
 ## Testing tiers
 
-Three test projects, mirroring Terminal.Gui's convention. **All three run fully in parallel** — Terminal.Gui's `Application` lifetime is per-instance (`Application.Create()` returns an `IApplication` whose `Init`/`Begin`/`End`/`Dispose` track via `ThreadLocal<>`, not process globals). Tests must never call the static `Application.Init()` shortcut, and must never enable `ConfigurationManager` (`CM.Enable(...)`) — both reach for process-global state and would force serialization.
+Four test projects, mirroring Terminal.Gui's convention. **The correctness projects all run fully in parallel** — Terminal.Gui's `Application` lifetime is per-instance (`Application.Create()` returns an `IApplication` whose `Init`/`Begin`/`End`/`Dispose` track via `ThreadLocal<>`, not process globals). Tests must never call the static `Application.Init()` shortcut, and must never enable `ConfigurationManager` (`CM.Enable(...)`) — both reach for process-global state and would force serialization.
 
-- `Terminal.Gui.Text.Tests` — pure, no UI, no static state. Target ≥90% coverage.
-- `Terminal.Gui.Editor.Tests` — visual-line builder, wrap, caret/selection math, command handlers — anything that doesn't need an `IApplication`. Target ≥75%.
-- `Terminal.Gui.Editor.IntegrationTests` — full key-input → render scenarios via `AppFixture<T>`, which boots a per-test `IApplication` from `Application.Create()`. Parallel by default.
+- `Terminal.Gui.Editor.Tests` — pure, no UI, no static state. Target ≥90% coverage. Runs in `ci.yml`.
+- `Terminal.Gui.Editor.IntegrationTests` — full key-input → render scenarios via `AppFixture<T>`, which boots a per-test `IApplication` from `Application.Create()`. Parallel by default. Runs in `ci.yml`.
+- `Terminal.Gui.Editor.PerformanceTests` — stopwatch-based perf smoke tests. **Release only, ubuntu-latest only.** Lives in its own project and its own workflow (`.github/workflows/perf.yml`) because Windows/macOS GitHub-hosted runners are too noisy for wall-time assertions. The BenchmarkDotNet suite in `benchmarks/` runs from the same workflow.
 
-New tests default to the parallel-by-name project. Promote to `IntegrationTests` only when an `IApplication` (driver, input injection, full layout/draw) is genuinely needed.
+New tests default to the parallel-by-name project. Promote to `IntegrationTests` only when an `IApplication` (driver, input injection, full layout/draw) is genuinely needed. Promote to `PerformanceTests` only when you need a wall-time assertion — and remember it won't run on Windows/macOS CI, so don't put correctness checks there.
 
 **The one allowed exception:** a test that legitimately mutates a process-global (e.g. `Logging.Logger`, `Trace.EnabledCategories`, anything `static`) must opt out of cross-collection parallelism via a `[CollectionDefinition(name, DisableParallelization = true)]` + `[Collection(name)]` pair. See `tests/Terminal.Gui.Editor.IntegrationTests/HostingTests.cs` for the canonical example. Do **not** add an assembly-wide `xunit.runner.json` to make the whole project serial — that's the wrong tool for one offending class.
+
+### Performance gates
+
+Two layers, both in `.github/workflows/perf.yml`:
+
+1. **`Terminal.Gui.Editor.PerformanceTests`** — stopwatch smoke tests with deliberately loose thresholds (~5× typical wall time). They catch catastrophic regressions, not 10% drift.
+2. **`benchmarks/compare-baseline.sh`** — runs the focused `*VisualLineBuild*` BenchmarkDotNet filter and compares against `benchmarks/baseline.json`. Fails on >3× regression, celebrates on <0.8× improvement. **Run `--job short`** (lowercase) — `ShortRun` makes BDN reject it and the comparison silently no-ops.
+
+The full BenchmarkDotNet matrix (`Scrolling`, `EndToEndScroll`, `CaretMovement`, `DocumentAccess`) is opt-in via `workflow_dispatch` on the perf workflow with `full-suite: true`. That's the operator path for refreshing `baseline.json` — run, download artifact, commit the numbers.
 
 ### Diagnosing parallel-test hangs
 

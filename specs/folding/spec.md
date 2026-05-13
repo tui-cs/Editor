@@ -7,7 +7,7 @@
 
 ## Overview
 
-Bring `FoldingManager`, `FoldingSection`, and `FoldingSectionCollection` from AvaloniaEdit into `src/Terminal.Gui.Text/Folding/`. This gives the document model a UI-framework-independent folding layer that tracks collapsible regions as anchored segments. The lift follows the same fork policy as the existing `Document/` and `Utils/` imports: namespace transform, Avalonia dependency removal, and modification logging in `UPSTREAM.md`.
+Bring `FoldingManager`, `FoldingSection`, and `FoldingSectionCollection` from AvaloniaEdit into `src/Terminal.Gui.Editor/Folding/`. This gives the document model a UI-framework-independent folding layer that tracks collapsible regions as anchored segments. The lift follows the same fork policy as the existing `Document/` and `Utils/` imports: namespace transform, Avalonia dependency removal, and modification logging in `UPSTREAM.md`.
 
 Source: AvaloniaEdit at the SHA pinned in `third_party/AvaloniaEdit/UPSTREAM.md`. Limited to `src/AvaloniaEdit/Folding/*.cs`, excluding any class that references `Avalonia.Controls` or `Avalonia.Media`.
 
@@ -42,15 +42,15 @@ Source: AvaloniaEdit at the SHA pinned in `third_party/AvaloniaEdit/UPSTREAM.md`
 
 ## Files in Scope
 
-- `src/Terminal.Gui.Text/Folding/*.cs`
+- `src/Terminal.Gui.Editor/Folding/*.cs`
 - `third_party/AvaloniaEdit/UPSTREAM.md` (append rows)
 
 ## Definition of Done
 
 - [ ] All folding types compile and are in `Terminal.Gui.Text.Folding` namespace
-- [ ] Tests in `tests/Terminal.Gui.Text.Tests/Folding/` pass — ported from AvaloniaEdit's `FoldingTests`: create/remove sections, edits inside/across folds keep anchored offsets correct, manager survives whole-document replace
+- [ ] Tests in `tests/Terminal.Gui.Editor.Tests/Folding/` pass — ported from AvaloniaEdit's `FoldingTests`: create/remove sections, edits inside/across folds keep anchored offsets correct, manager survives whole-document replace
 - [ ] `UPSTREAM.md` updated with per-file modification log
-- [ ] No Avalonia residue (`grep -r "using Avalonia" src/Terminal.Gui.Text/Folding/` returns nothing)
+- [ ] No Avalonia residue (`grep -r "using Avalonia" src/Terminal.Gui.Editor/Folding/` returns nothing)
 
 ## Out of Scope
 
@@ -59,5 +59,5 @@ Source: AvaloniaEdit at the SHA pinned in `third_party/AvaloniaEdit/UPSTREAM.md`
 
 ## Notes
 
-- This is a pure document-model lift with no dependency on `Terminal.Gui`. It belongs entirely in the `Terminal.Gui.Text` package.
+- This is a pure document-model lift with no dependency on `Terminal.Gui`. It belongs entirely in the `Terminal.Gui.Editor` package.
 - Can be done in parallel with search, indentation, and syntax-highlighting.
