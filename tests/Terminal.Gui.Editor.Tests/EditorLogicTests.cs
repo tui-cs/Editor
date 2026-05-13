@@ -180,10 +180,10 @@ public class EditorLogicTests
 
         Assert.Equal (0, editor.Padding.Thickness.Left);
 
-        editor.ShowLineNumbers = true;
+        editor.GutterOptions = GutterOptions.LineNumbers;
         Assert.Equal (2, editor.Padding.Thickness.Left);
 
-        editor.ShowLineNumbers = false;
+        editor.GutterOptions = GutterOptions.None;
         Assert.Equal (0, editor.Padding.Thickness.Left);
     }
 
@@ -191,7 +191,7 @@ public class EditorLogicTests
     public void ShowLineNumbers_Updates_Padding_When_LineCount_DigitWidth_Changes ()
     {
         Views.Editor editor = new () { Document = new TextDocument (string.Join ('\n', Enumerable.Range (1, 9))) };
-        editor.ShowLineNumbers = true;
+        editor.GutterOptions = GutterOptions.LineNumbers;
 
         Assert.Equal (2, editor.Padding.Thickness.Left);
 

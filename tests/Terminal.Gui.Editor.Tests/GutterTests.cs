@@ -29,7 +29,7 @@ public class GutterTests
     {
         Views.Editor editor = new () { Document = new TextDocument ("a\nb") };
 
-        editor.ShowLineNumbers = true;
+        editor.GutterOptions = GutterOptions.LineNumbers;
 
         IReadOnlyCollection<View> subViews = PaddingSubViewsOf (editor);
         Assert.Single (subViews);
@@ -40,10 +40,10 @@ public class GutterTests
     public void Disabling_Removes_Gutter_From_Padding ()
     {
         Views.Editor editor = new () { Document = new TextDocument ("a\nb") };
-        editor.ShowLineNumbers = true;
+        editor.GutterOptions = GutterOptions.LineNumbers;
         Assert.Single (PaddingSubViewsOf (editor));
 
-        editor.ShowLineNumbers = false;
+        editor.GutterOptions = GutterOptions.None;
 
         Assert.Empty (PaddingSubViewsOf (editor));
     }
@@ -55,11 +55,11 @@ public class GutterTests
 
         for (var i = 0; i < 5; i++)
         {
-            editor.ShowLineNumbers = true;
-            editor.ShowLineNumbers = false;
+            editor.GutterOptions = GutterOptions.LineNumbers;
+            editor.GutterOptions = GutterOptions.None;
         }
 
-        editor.ShowLineNumbers = true;
+        editor.GutterOptions = GutterOptions.LineNumbers;
 
         Assert.Single (PaddingSubViewsOf (editor));
     }
@@ -68,7 +68,7 @@ public class GutterTests
     public void Width_Tracks_Padding_Thickness_When_LineCount_Grows ()
     {
         Views.Editor editor = new () { Document = new TextDocument (string.Join ('\n', Enumerable.Range (1, 9))) };
-        editor.ShowLineNumbers = true;
+        editor.GutterOptions = GutterOptions.LineNumbers;
 
         Gutter view = (Gutter)PaddingSubViewsOf (editor).Single ();
         Assert.Equal (Dim.Absolute (2), view.Width);
@@ -99,7 +99,7 @@ public class GutterTests
     public void Gutter_Has_LineNumberGutter_SubView_Without_Folding ()
     {
         Views.Editor editor = new () { Document = new TextDocument ("a\nb\nc") };
-        editor.ShowLineNumbers = true;
+        editor.GutterOptions = GutterOptions.LineNumbers;
 
         Gutter gutter = (Gutter)PaddingSubViewsOf (editor).Single ();
 
@@ -112,7 +112,7 @@ public class GutterTests
     public void Gutter_Has_Both_SubViews_With_Folding ()
     {
         Views.Editor editor = new () { Document = new TextDocument ("{\n  a\n}\n") };
-        editor.ShowLineNumbers = true;
+        editor.GutterOptions = GutterOptions.LineNumbers | GutterOptions.Folding;
         editor.FoldingManager = new Terminal.Gui.Document.Folding.FoldingManager (editor.Document!);
 
         Gutter gutter = (Gutter)PaddingSubViewsOf (editor).Single ();
@@ -127,7 +127,7 @@ public class GutterTests
     public void LineNumberGutter_Width_Is_Fill_Not_Zero ()
     {
         Views.Editor editor = new () { Document = new TextDocument ("{\n  a\n}\n") };
-        editor.ShowLineNumbers = true;
+        editor.GutterOptions = GutterOptions.LineNumbers | GutterOptions.Folding;
         editor.FoldingManager = new Terminal.Gui.Document.Folding.FoldingManager (editor.Document!);
 
         Gutter gutter = (Gutter)PaddingSubViewsOf (editor).Single ();
@@ -141,7 +141,7 @@ public class GutterTests
     public void FoldingGutter_Has_Toggle_MouseBinding ()
     {
         Views.Editor editor = new () { Document = new TextDocument ("{\n  a\n}\n") };
-        editor.ShowLineNumbers = true;
+        editor.GutterOptions = GutterOptions.LineNumbers | GutterOptions.Folding;
         editor.FoldingManager = new Terminal.Gui.Document.Folding.FoldingManager (editor.Document!);
 
         Gutter gutter = (Gutter)PaddingSubViewsOf (editor).Single ();
@@ -150,6 +150,31 @@ public class GutterTests
         // FoldingGutter should have a mouse binding for LeftButtonClicked → Toggle.
         var bindings = foldingGutter.MouseBindings.GetAllFromCommands (Command.Toggle);
         Assert.NotEmpty (bindings);
+    }
+
+    [Fact]
+    public void Folding_Only_Shows_FoldingGutter_Without_LineNumbers ()
+    {
+        Views.Editor editor = new () { Document = new TextDocument ("{\n  a\n}\n") };
+        editor.GutterOptions = GutterOptions.Folding;
+        editor.FoldingManager = new Terminal.Gui.Document.Folding.FoldingManager (editor.Document!);
+
+        Assert.Equal (2, editor.Padding.Thickness.Left);
+
+        Gutter gutter = (Gutter)PaddingSubViewsOf (editor).Single ();
+        Assert.Single (gutter.SubViews);
+        Assert.IsType<FoldingGutter> (gutter.SubViews.First ());
+    }
+
+    [Fact]
+    public void Folding_Flag_Without_FoldingManager_Has_No_Effect ()
+    {
+        Views.Editor editor = new () { Document = new TextDocument ("a\nb") };
+        editor.GutterOptions = GutterOptions.Folding;
+
+        // No FoldingManager set — padding should remain 0 (folding flag alone is not enough).
+        Assert.Equal (0, editor.Padding.Thickness.Left);
+        Assert.Empty (PaddingSubViewsOf (editor));
     }
 
     private static IReadOnlyCollection<View> PaddingSubViewsOf (Views.Editor editor)

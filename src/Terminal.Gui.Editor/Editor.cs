@@ -50,7 +50,7 @@ public partial class Editor : View
     private int _maxVisualWidth;
     private bool _maxWidthDirty = true;
     private int _maxWidthLineNumber;
-    private bool _showLineNumbers;
+    private GutterOptions _gutterOptions;
 
     /// <summary>
     ///     Sticky column for vertical caret moves. Tracks the column the user *intends* to be in,
@@ -124,19 +124,20 @@ public partial class Editor : View
     }
 
     /// <summary>
-    ///     Gets or sets whether one-based line numbers are rendered in the editor's left padding.
+    ///     Gets or sets which elements the gutter displays. Combine flags to show multiple elements:
+    ///     <c>GutterOptions.LineNumbers | GutterOptions.Folding</c>.
     /// </summary>
-    public bool ShowLineNumbers
+    public GutterOptions GutterOptions
     {
-        get => _showLineNumbers;
+        get => _gutterOptions;
         set
         {
-            if (_showLineNumbers == value)
+            if (_gutterOptions == value)
             {
                 return;
             }
 
-            _showLineNumbers = value;
+            _gutterOptions = value;
             UpdateLineNumberPadding ();
             SetNeedsDraw ();
         }
@@ -655,7 +656,7 @@ public partial class Editor : View
     private void UpdateLineNumberPadding ()
     {
         Thickness thickness = Padding.Thickness;
-        var left = _showLineNumbers && _document is not null ? GetLineNumberPaddingWidth () : 0;
+        var left = _gutterOptions != GutterOptions.None && _document is not null ? GetLineNumberPaddingWidth () : 0;
 
         if (thickness.Left != left)
         {
@@ -701,16 +702,21 @@ public partial class Editor : View
 
     private int GetLineNumberPaddingWidth ()
     {
-        var lineCount = Math.Max (1, _document?.LineCount ?? 1);
-        var digitWidth = lineCount.ToString ().Length + 1;
+        var width = 0;
 
-        // Add 2 columns for fold indicator when folding is active.
-        if (FoldingManager is not null)
+        if (_gutterOptions.HasFlag (GutterOptions.LineNumbers))
         {
-            digitWidth += 2;
+            var lineCount = Math.Max (1, _document?.LineCount ?? 1);
+            width = lineCount.ToString ().Length + 1;
         }
 
-        return digitWidth;
+        // Add 2 columns for fold indicator when folding is active.
+        if (_gutterOptions.HasFlag (GutterOptions.Folding) && FoldingManager is not null)
+        {
+            width += 2;
+        }
+
+        return width;
     }
 
     private int GetCaretColumn ()

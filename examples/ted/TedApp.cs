@@ -31,7 +31,7 @@ public sealed partial class TedApp : Window
         // Editor's KeyBindings (any commands the editor doesn't claim fall back to Application).
         Editor = new Editor
         {
-            ShowLineNumbers = true,
+            GutterOptions = GutterOptions.LineNumbers | GutterOptions.Folding,
             ConvertTabsToSpaces = true,
             ReadOnly = readOnly,
 
@@ -59,7 +59,7 @@ public sealed partial class TedApp : Window
             AllowCheckStateNone = false,
             CanFocus = false,
             Text = "_Line Numbers",
-            Value = Editor.ShowLineNumbers ? CheckState.Checked : CheckState.UnChecked
+            Value = Editor.GutterOptions.HasFlag (GutterOptions.LineNumbers) ? CheckState.Checked : CheckState.UnChecked
         };
 
         CheckBox convertTabsToSpacesCheckBox = new ()
@@ -173,7 +173,15 @@ public sealed partial class TedApp : Window
                 {
                     Action = () =>
                     {
-                        Editor.ShowLineNumbers = lineNumbersCheckBox.Value == CheckState.Checked;
+                        if (lineNumbersCheckBox.Value == CheckState.Checked)
+                        {
+                            Editor.GutterOptions |= GutterOptions.LineNumbers;
+                        }
+                        else
+                        {
+                            Editor.GutterOptions &= ~GutterOptions.LineNumbers;
+                        }
+
                         Editor.SetNeedsDraw ();
                     },
                     CommandView = lineNumbersCheckBox,

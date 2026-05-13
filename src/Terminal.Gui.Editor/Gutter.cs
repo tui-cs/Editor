@@ -7,13 +7,13 @@ using Terminal.Gui.ViewBase;
 namespace Terminal.Gui.Views;
 
 /// <summary>
-///     Composite gutter hosting a <see cref="LineNumberGutter" /> and an optional <see cref="FoldingGutter" />.
+///     Composite gutter hosting an optional <see cref="LineNumberGutter" /> and an optional <see cref="FoldingGutter" />.
 ///     Hosted as a SubView of the <see cref="Editor" />'s <see cref="Padding" />.
 /// </summary>
 public sealed class Gutter : View
 {
     private readonly Editor _editor;
-    private readonly LineNumberGutter _lineNumbers;
+    private LineNumberGutter? _lineNumbers;
     private FoldingGutter? _foldingGutter;
 
     /// <summary>Initializes a new <see cref="Gutter" /> for <paramref name="editor" />.</summary>
@@ -23,15 +23,6 @@ public sealed class Gutter : View
 
         _editor = editor;
         CanFocus = false;
-
-        _lineNumbers = new LineNumberGutter (editor)
-        {
-            X = 0,
-            Y = 0,
-            Width = Dim.Fill (),
-            Height = Dim.Fill ()
-        };
-        Add (_lineNumbers);
     }
 
     /// <summary>
@@ -39,9 +30,37 @@ public sealed class Gutter : View
     /// </summary>
     internal void SyncLayout ()
     {
-        var hasFolding = _editor.FoldingManager is not null;
+        GutterOptions options = _editor.GutterOptions;
+        var showLineNumbers = options.HasFlag (GutterOptions.LineNumbers);
+        var showFolding = options.HasFlag (GutterOptions.Folding) && _editor.FoldingManager is not null;
 
-        if (hasFolding)
+        // --- Line numbers ---
+        if (showLineNumbers)
+        {
+            if (_lineNumbers is null)
+            {
+                _lineNumbers = new LineNumberGutter (_editor)
+                {
+                    X = 0,
+                    Y = 0,
+                    Width = Dim.Fill (),
+                    Height = Dim.Fill ()
+                };
+                Add (_lineNumbers);
+            }
+        }
+        else
+        {
+            if (_lineNumbers is not null)
+            {
+                Remove (_lineNumbers);
+                _lineNumbers.Dispose ();
+                _lineNumbers = null;
+            }
+        }
+
+        // --- Folding ---
+        if (showFolding)
         {
             if (_foldingGutter is null)
             {
@@ -53,11 +72,6 @@ public sealed class Gutter : View
                 };
                 Add (_foldingGutter);
             }
-
-            // Line numbers on the left, fold indicators on the right.
-            _lineNumbers.X = 0;
-            _lineNumbers.Width = Dim.Fill (2);
-            _foldingGutter.X = Pos.Right (_lineNumbers);
         }
         else
         {
@@ -67,9 +81,24 @@ public sealed class Gutter : View
                 _foldingGutter.Dispose ();
                 _foldingGutter = null;
             }
+        }
 
+        // Adjust widths depending on which subviews are present.
+        if (_lineNumbers is not null && _foldingGutter is not null)
+        {
+            // Line numbers on the left, fold indicators on the right.
+            _lineNumbers.X = 0;
+            _lineNumbers.Width = Dim.Fill (2);
+            _foldingGutter.X = Pos.Right (_lineNumbers);
+        }
+        else if (_lineNumbers is not null)
+        {
             _lineNumbers.X = 0;
             _lineNumbers.Width = Dim.Fill ();
+        }
+        else if (_foldingGutter is not null)
+        {
+            _foldingGutter.X = 0;
         }
     }
 }
