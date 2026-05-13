@@ -93,6 +93,7 @@ public partial class Editor : View
             _lastKnownCaretOffset = caretOffset;
             _selectionAnchor = null;
             ClearVisualLineCaches ();
+            _cachedVisibleLineNumbers = null;
             _maxWidthDirty = true;
 
             _virtualCaretColumn = GetCaretColumn ();
@@ -326,7 +327,6 @@ public partial class Editor : View
         _cachedVisibleLineNumbers = null;
         _maxWidthDirty = true;
         UpdateContentSize ();
-        EnsureCaretNotInFold ();
         SetNeedsDraw ();
         _gutter?.SetNeedsDraw ();
     }
@@ -375,6 +375,7 @@ public partial class Editor : View
         }
 
         EnsureCaretVisible ();
+        EnsureCaretNotInFold ();
         SetNeedsDraw ();
 
         if (changed)

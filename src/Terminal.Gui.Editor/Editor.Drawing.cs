@@ -92,7 +92,13 @@ public partial class Editor
         // skipping lines hidden by collapsed folds.
         List<int> visibleLineNumbers = GetVisibleLineNumbers ();
 
-        PrepareSyntaxHighlighter (syntaxHighlighter, viewport.Y);
+        // Prime the highlighter from the first visible *document* line, not the viewport row index,
+        // so that folded regions above the viewport don't leave the highlighter in stale state.
+        var firstVisibleIndex = viewport.Y;
+        var firstDocLine = firstVisibleIndex >= 0 && firstVisibleIndex < visibleLineNumbers.Count
+            ? visibleLineNumbers[firstVisibleIndex] - 1
+            : viewport.Y;
+        PrepareSyntaxHighlighter (syntaxHighlighter, firstDocLine);
 
         for (var row = 0; row < viewport.Height; row++)
         {

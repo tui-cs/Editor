@@ -291,11 +291,13 @@ public class FoldingManager
     #region Helpers
 
     /// <summary>
-    ///     Returns the number of document lines hidden by collapsed folds.
+    ///     Returns the total number of document lines hidden by collapsed folds,
+    ///     correctly computing the union of hidden ranges to avoid double-counting nested folds.
     /// </summary>
     public int GetHiddenLineCount ()
     {
-        var hidden = 0;
+        List<(int start, int end)> ranges = [];
+
         foreach (FoldingSection fs in _foldings)
         {
             if (!fs.IsFolded)
@@ -305,11 +307,39 @@ public class FoldingManager
 
             DocumentLine startLine = Document.GetLineByOffset (Math.Clamp (fs.StartOffset, 0, Document.TextLength));
             DocumentLine endLine = Document.GetLineByOffset (Math.Clamp (fs.EndOffset, 0, Document.TextLength));
-            if (endLine.LineNumber > startLine.LineNumber)
+            var hiddenStart = startLine.LineNumber + 1;
+            var hiddenEnd = endLine.LineNumber;
+
+            if (hiddenEnd >= hiddenStart)
             {
-                hidden += endLine.LineNumber - startLine.LineNumber;
+                ranges.Add ((hiddenStart, hiddenEnd));
             }
         }
+
+        if (ranges.Count == 0)
+        {
+            return 0;
+        }
+
+        // Sort and merge overlapping/adjacent ranges to avoid double-counting nested folds.
+        ranges.Sort ((a, b) => a.start != b.start ? a.start.CompareTo (b.start) : a.end.CompareTo (b.end));
+        var hidden = 0;
+        (int start, int end) current = ranges[0];
+
+        for (var i = 1; i < ranges.Count; i++)
+        {
+            if (ranges[i].start <= current.end + 1)
+            {
+                current.end = Math.Max (current.end, ranges[i].end);
+            }
+            else
+            {
+                hidden += current.end - current.start + 1;
+                current = ranges[i];
+            }
+        }
+
+        hidden += current.end - current.start + 1;
 
         return hidden;
     }
