@@ -14,4 +14,9 @@
     <PackageReference Include="Terminal.Gui" Version="$(TerminalGuiVersion)" />
   </ItemGroup>
 
+  <ItemGroup>
+    <EmbeddedResource Include="Highlighting\Resources\*.xshd" />
+    <EmbeddedResource Include="Highlighting\Resources\*.xsd" />
+  </ItemGroup>
+
 </Project>
