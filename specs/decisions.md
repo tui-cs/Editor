@@ -46,6 +46,16 @@ Decisions are recorded here when an open question from the plan is resolved. Eac
 
 ---
 
+### DEC-005: No-selection behavior for Cut/Copy (FR-005)
+
+**Decision**: When there is no selection, Cut and Copy are **no-ops** (do nothing).
+
+**Rationale**: VS Code's most-common preset (the default) copies/cuts the current line when there is no selection, but this is a power-user feature that surprises newcomers and makes accidental clipboard overwrites common. Matching the "no-op on empty selection" behavior is safer, simpler to implement, and avoids the implicit "current line" semantic that would require additional UI feedback. This can be revisited later as an opt-in `ClipboardLineMode` property if demand arises.
+
+**Date**: 2026-05-13
+
+---
+
 ## Open
 
 ### OPEN-001: Independent `Terminal.Gui.Editor` NuGet from day one
@@ -85,3 +95,13 @@ Decisions are recorded here when an open question from the plan is resolved. Eac
 **Question**: `HighlightingColor` carries Bold/Italic/Underline. Confirmed mapping target is `Terminal.Gui.TextStyle`. Verify all xshd attributes are representable; if not, document drops.
 
 **Affected features**: syntax-highlighting, syntax-colorizer.
+
+---
+
+### DEC-005: Word-wrap continuation-line indent policy
+
+**Decision**: Continuation lines render flush at column 0 for v1 (no leading indent).
+
+**Rationale**: Matches VS Code's default behavior with `editor.wrappingIndent: "none"`. Simplifies implementation — no need to compute or track the original line's indentation level for each wrap segment. Revisit in a future version if users need indented continuation lines.
+
+**Date**: 2026-05-13

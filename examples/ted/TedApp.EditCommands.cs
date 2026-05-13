@@ -18,9 +18,9 @@ public sealed partial class TedApp
             new MenuItem { Command = Command.Undo, Action = Undo, Key = KeyFor (Command.Undo) },
             new MenuItem { Command = Command.Redo, Action = Redo, Key = KeyFor (Command.Redo) },
             new Line (),
-            new MenuItem { Command = Command.Cut, Action = Cut, Key = KeyFor (Command.Cut) },
-            new MenuItem { Command = Command.Copy, Action = Copy, Key = KeyFor (Command.Copy) },
-            new MenuItem { Command = Command.Paste, Action = Paste, Key = KeyFor (Command.Paste) },
+            new MenuItem { Command = Command.Cut, Key = KeyFor (Command.Cut) },
+            new MenuItem { Command = Command.Copy, Key = KeyFor (Command.Copy) },
+            new MenuItem { Command = Command.Paste, Key = KeyFor (Command.Paste) },
             new MenuItem { Command = Command.SelectAll, Action = SelectAll, Key = KeyFor (Command.SelectAll) }
         ];
     }
@@ -30,51 +30,6 @@ public sealed partial class TedApp
     private void Replace () { ShowFindReplaceDialog (true); }
 
     private void SelectAll () { Editor.SelectAll (); }
-
-    private void Paste ()
-    {
-        if (Editor.ReadOnly)
-        {
-            return;
-        }
-
-        IClipboard? clipboard = App?.Clipboard;
-
-        if (clipboard is null || !clipboard.TryGetClipboardData (out var contents))
-        {
-            return;
-        }
-
-        if (Editor.HasSelection)
-        {
-            Editor.ReplaceSelection (contents);
-        }
-        else
-        {
-            Editor.Document?.Insert (Editor.CaretOffset, contents);
-        }
-    }
-
-    private void Copy ()
-    {
-        if (!Editor.HasSelection)
-        {
-            return;
-        }
-
-        App?.Clipboard?.TrySetClipboardData (Editor.SelectedText);
-    }
-
-    private void Cut ()
-    {
-        if (Editor.ReadOnly || !Editor.HasSelection)
-        {
-            return;
-        }
-
-        Copy ();
-        Editor.ReplaceSelection (string.Empty);
-    }
 
     private void Undo ()
     {

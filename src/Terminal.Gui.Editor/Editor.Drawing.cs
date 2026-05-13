@@ -77,6 +77,13 @@ public partial class Editor
         var visibleStart = viewport.X;
         var visibleEnd = viewport.X + viewport.Width;
 
+        if (WordWrap)
+        {
+            DrawWrappedLines (viewport, normal, selected, selStart, selEnd);
+
+            return;
+        }
+
         // Build a mapping from viewport row → document line number (1-based),
         // skipping lines hidden by collapsed folds.
         List<int> visibleLineNumbers = GetVisibleLineNumbers ();
@@ -95,6 +102,119 @@ public partial class Editor
 
             DrawVisualLine (row, line, visibleStart, visibleEnd, null, normal, selected, selStart, selEnd);
         }
+    }
+
+    private void DrawWrappedLines (Rectangle viewport, Attribute normal, Attribute selected, int selStart, int selEnd)
+    {
+        List<WrapMapEntry> map = GetWrapMap ();
+        var wrapColumn = GetWrapColumn ();
+
+        for (var row = 0; row < viewport.Height; row++)
+        {
+            var visibleIndex = viewport.Y + row;
+
+            if (visibleIndex < 0 || visibleIndex >= map.Count)
+            {
+                break;
+            }
+
+            WrapMapEntry entry = map[visibleIndex];
+            DocumentLine line = _document!.GetLineByNumber (entry.LineNumber);
+            var text = _document.GetText (line);
+            IReadOnlyList<WrapSegment> segments =
+                WordWrapStrategy.ComputeSegments (text, wrapColumn, IndentationSize);
+            WrapSegment seg = segments[entry.SegmentIndex];
+
+            var segText = text.Substring (seg.StartOffset, seg.Length);
+
+            CellVisualLine visualLine = BuildWrappedSegmentVisualLine (
+                line, seg.StartOffset, segText, normal, selected, selStart, selEnd);
+
+            foreach (IBackgroundRenderer renderer in BackgroundRenderers)
+            {
+                renderer.Draw (this, visualLine, row, viewport);
+            }
+
+            foreach (CellVisualLineElement element in visualLine.Elements)
+            {
+                if (element.VisualColumn >= viewport.Width)
+                {
+                    break;
+                }
+
+                element.Draw (this, 0, row, 0, viewport.Width);
+            }
+        }
+    }
+
+    private CellVisualLine BuildWrappedSegmentVisualLine (
+        DocumentLine documentLine,
+        int segmentStartOffset,
+        string segmentText,
+        Attribute normal,
+        Attribute selected,
+        int selStart,
+        int selEnd)
+    {
+        CellVisualLine visualLine = new (documentLine);
+        var visualColumn = 0;
+
+        for (var i = 0; i < segmentText.Length; i++)
+        {
+            var documentOffset = documentLine.Offset + segmentStartOffset + i;
+
+            if (segmentText[i] == '\t')
+            {
+                var width = VisualLineBuilder.GetTabExpansionWidth (visualColumn, IndentationSize);
+                visualLine.AddElement (
+                    new TabElement (documentOffset, visualColumn, width, ShowTabs, normal));
+                visualColumn += width;
+            }
+            else if (segmentText[i] <= 127)
+            {
+                TextRunElement element = new (documentOffset, 1, visualColumn, segmentText.Substring (i, 1), normal);
+                visualLine.AddElement (element);
+                visualColumn += 1;
+            }
+            else
+            {
+                // Handle multi-byte graphemes — fall through to grapheme path for remainder.
+                var remaining = segmentText[i..];
+
+                foreach (var grapheme in GraphemeHelper.GetGraphemes (remaining))
+                {
+                    var gDocOffset = documentLine.Offset + segmentStartOffset + i;
+                    TextRunElement gElement = new (gDocOffset, grapheme.Length, visualColumn, grapheme, normal);
+                    visualLine.AddElement (gElement);
+                    visualColumn += gElement.VisualLength;
+                    i += grapheme.Length;
+                }
+
+                i--; // Compensate for the for-loop increment.
+
+                break;
+            }
+        }
+
+        // Apply transformers BEFORE selection so highlighting doesn't overwrite selection.
+        foreach (IVisualLineTransformer transformer in LineTransformers)
+        {
+            transformer.Transform (visualLine);
+        }
+
+        // Apply selection AFTER transformers (same order as the non-wrapped path).
+        if (selStart < selEnd)
+        {
+            foreach (CellVisualLineElement element in visualLine.Elements)
+            {
+                if (element.DocumentOffset < selEnd && element.DocumentEndOffset > selStart)
+                {
+                    element.Attribute = selected;
+                }
+            }
+        }
+
+        return visualLine;
     }
 
     /// <summary>

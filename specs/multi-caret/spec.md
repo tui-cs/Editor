@@ -1,9 +1,10 @@
 # Feature Specification: Multi-Caret Editing
 
-**Status**: Blocked
+**Status**: Ready — tracked in issue #103
 **Created**: 2026-05-10
-**Depends on**: caret-anchors
-**Blocked by**: caret-anchors
+**Last updated**: 2026-05-13
+**Depends on**: caret-anchors ✅
+**Blocked by**: —
 
 ## Overview
 

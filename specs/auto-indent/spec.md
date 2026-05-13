@@ -1,9 +1,10 @@
 # Feature Specification: Auto-Indent
 
-**Status**: Blocked
+**Status**: Done — shipped in PR #95 (merged into `develop` 2026-05-11)
 **Created**: 2026-05-10
-**Depends on**: indentation
-**Blocked by**: indentation
+**Last updated**: 2026-05-13
+**Depends on**: indentation ✅
+**Blocked by**: —
 
 ## Overview
 

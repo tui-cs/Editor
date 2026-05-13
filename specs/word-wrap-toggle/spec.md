@@ -1,9 +1,10 @@
 # Feature Specification: Word Wrap Toggle
 
-**Status**: Blocked
+**Status**: Subsumed — folded into [word-wrap](../word-wrap/spec.md) per constitution R9 (the ted toggle ships in the same PR as the engine). Retained for historical reference only.
 **Created**: 2026-05-10
+**Last updated**: 2026-05-13
 **Depends on**: word-wrap
-**Blocked by**: word-wrap
+**Blocked by**: —
 
 ## Overview
 
