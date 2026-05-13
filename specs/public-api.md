@@ -39,6 +39,9 @@ public class Editor : View
     public IList<IVisualLineTransformer> LineTransformers { get; }  // exists (codex merge)
     public IList<IBackgroundRenderer> BackgroundRenderers { get; }  // exists (codex merge)
 
+    // --- Syntax highlighting (syntax-colorizer ✅) ---
+    public IHighlightingDefinition? HighlightingDefinition { get; set; } // exists (syntax-colorizer)
+
     // --- Folding ---
     public FoldingManager? FoldingManager { get; set; }           // folding-ui (needs folding + rendering-pipeline ✅)
 

@@ -19,6 +19,9 @@ modification we made. Re-syncs are deliberate, manual, and against this log — 
 | `src/AvaloniaEdit/Utils/` (subset) | → | `src/Terminal.Gui.Editor/Utils/` |
 | `src/AvaloniaEdit/Search/` (subset) | → | `src/Terminal.Gui.Editor/Search/` |
 | `src/AvaloniaEdit/Folding/` (subset) | → | `src/Terminal.Gui.Editor/Folding/` |
+| `src/AvaloniaEdit/Highlighting/` (subset) | → | `src/Terminal.Gui.Editor/Highlighting/` |
+| `src/AvaloniaEdit/Highlighting/Xshd/` | → | `src/Terminal.Gui.Editor/Highlighting/Xshd/` |
+| `src/AvaloniaEdit/Highlighting/Resources/` (subset) | → | `src/Terminal.Gui.Editor/Highlighting/Resources/` |
 | `src/AvaloniaEdit/Indentation/` (subset) | → | `src/Terminal.Gui.Editor/Indentation/` |
 
 ## Skipped from `Document/`
@@ -51,6 +54,19 @@ The Avalonia-UI-specific helpers that the document layer doesn't depend on:
 - `RichTextWriter.cs` — Avalonia.Media.
 - `TextFormatterFactory.cs` — Avalonia.Media.TextFormatting.
 
+## Skipped from `Highlighting/`
+
+- `HighlightingColorizer.cs` — Avalonia `DocumentColorizingTransformer`. Replaced by a new `HighlightingColorizer : IVisualLineTransformer` in `Rendering/` that uses the cell-grid pipeline.
+- `HighlightingDefinitionTypeConverter.cs` — `System.ComponentModel` type converter. Not needed.
+- `HtmlClipboard.cs` — Avalonia clipboard interop.
+- `HtmlOptions.cs` — References `TextArea` for tab size.
+- `HtmlRichTextWriter.cs` — HTML serialization.
+- `RichText.cs`, `RichTextModel.cs`, `RichTextModelWriter.cs` — Rich text model types. Not needed for cell-grid rendering.
+- `RichTextColorizer.cs` — Avalonia rendering bridge.
+
+## Skipped from `Highlighting/Resources/`
+
+- `ASPX-Mode.xshd`, `Boo.xshd`, `Coco-Mode.xshd`, `Patch-Mode.xshd`, `PHP-Mode.xshd`, `Tex-Mode.xshd`, `MarkDownWithFontSize.xshd` — Less commonly used languages. Can be added on demand.
 ## Skipped from `Indentation/`
 
 - `CSharp/` — C#-specific smart indentation. Language-specific strategies are out of scope for the initial lift (see `specs/indentation/spec.md`).
@@ -74,6 +90,36 @@ Each lifted file carries `// Adapted for Terminal.Gui from AvaloniaEdit d7a6b63`
 | `Folding/FoldingSection.cs` | Stripped `using AvaloniaEdit.Rendering;`, `using AvaloniaEdit.Utils;`. Removed `CollapsedLineSection[]` field and `ValidateCollapsedLineSections()` method (Avalonia `CollapsedLineSection` coupling). `IsFolded` setter now raises `_manager.RaiseFoldingChanged()` instead of calling `ValidateCollapsedLineSections()` + `_manager.Redraw()`. `OnSegmentChanged` simplified to call `RaiseFoldingChanged`. Removed `RemoveCollapsedLineSection()` method. |
 | `Folding/NewFolding.cs` | Namespace transform only. |
 | `Folding/XmlFoldingStrategy.cs` | Namespace transform only. |
+| All `Highlighting/*.cs`, `Highlighting/Xshd/*.cs` | `namespace AvaloniaEdit.Highlighting` → `namespace Terminal.Gui.Highlighting`; `namespace AvaloniaEdit.Highlighting.Xshd` → `namespace Terminal.Gui.Highlighting.Xshd`; `using AvaloniaEdit.*` rewritten to match. Added `#nullable disable` after the "Adapted for" line — upstream predates NRT and dozens of declarations trip CS8xxx warnings under nullable enable. |
+| `Highlighting/HighlightingBrush.cs` | **Complete rewrite.** Replaced the abstract class hierarchy (`HighlightingBrush` / `SimpleHighlightingBrush` / `SystemColorHighlightingBrush`) based on Avalonia `IBrush` with a simple sealed class wrapping `Terminal.Gui.Drawing.Color?`. TUI has no notion of brushes, gradients, or system-theme-resolved colors — a single `Color?` is the correct replacement. |
+| `Highlighting/HighlightingColor.cs` | Dropped `FontFamily` and `FontSize` (irrelevant in TUI). Replaced `FontWeight?` with `bool? Bold`, `FontStyle?` with `bool? Italic`. Updated `Equals` / `GetHashCode` / `MergeWith` / `IsEmptyForMerge` / `ToCss` accordingly. |
+| `Highlighting/HighlightedLine.cs` | Stripped `WriteTo`, `ToHtml`, `ToRichTextModel`, `ToRichText` methods — all depend on skipped Avalonia types (`RichTextWriter`, `HtmlRichTextWriter`, `HtmlOptions`, `RichTextModel`, `RichText`). |
+| `Highlighting/DocumentHighlighter.cs` | Stripped `Dispatcher.UIThread.VerifyAccess()` call sites. The highlighting engine is no longer thread-affined — thread safety is the caller's responsibility. |
+| `Highlighting/HighlightingEngine.cs` | Namespace transforms; `SpanStack` alias updated for `Terminal.Gui.Highlighting` namespace. |
+| `Highlighting/HighlightingManager.cs` | Namespace transforms. Stripped `TypeConverter` attribute from `IHighlightingDefinition`. |
+| `Highlighting/Resources/Resources.cs` | Changed embedded resource prefix from `AvaloniaEdit.Highlighting.Resources.` to `Terminal.Gui.Editor.Highlighting.Resources.` (matches assembly name). Removed registrations for ASPX, Boo, Coco, Patch, PHP, TeX, MarkDownWithFontSize (not lifted). |
+| `Highlighting/Xshd/V2Loader.cs` | `ParseFontWeight` → returns `bool?` (maps "Bold"/"ExtraBold"/"Black"/"Heavy" → `true`, everything else → `false`). `ParseFontStyle` → returns `bool?` (maps "Italic"/"Oblique" → `true`). `ParseColor` → uses `new HighlightingBrush(Color.Parse(color))` instead of Avalonia's `SimpleHighlightingBrush`. `AddRange` calls replaced with `foreach` loops (`IList<T>` doesn't have `AddRange`). Added `XmlReaderExtensions.GetBoolAttribute` extension (lifted from AvaloniaEdit's `Utils/ExtensionMethods.cs`). |
+| `Highlighting/Xshd/XmlHighlightingDefinition.cs` | `VisitColor` updated to assign `Bold`/`Italic` instead of `FontWeight`/`FontStyle`. `AddRange` calls in `Merge` replaced with `foreach` loops. |
+| `Highlighting/Xshd/XshdColor.cs` | Replaced `FontWeight?` / `FontStyle?` / `FontFamily` / `FontSize` with `bool? Bold` / `bool? Italic`. |
+| `Highlighting/Xshd/SaveXshdVisitor.cs` | `WriteColorAttributes` updated to write `bold`/`italic` boolean attributes instead of `fontWeight`/`fontStyle`/`fontFamily`/`fontSize`. |
+| `Highlighting/Xshd/V1Loader.cs` | Commented-out stub — V1 format is obsolete and unused by any carried `.xshd` file. Kept as placeholder for future lift if needed. |
+
+## Skipped from `Highlighting/`
+
+The Avalonia-UI-specific types that the terminal highlighting engine doesn't need:
+
+- `HighlightingColorizer.cs` — Avalonia `DocumentColorizingTransformer`. Will be reimplemented atop Terminal.Gui.Editor's cell-grid rendering pipeline.
+- `HtmlClipboard.cs` — Avalonia clipboard HTML formatting.
+- `HtmlOptions.cs` — HTML export options (depends on Avalonia `FontFamily`).
+- `HtmlRichTextWriter.cs` — HTML rich-text writer (Avalonia `IBrush` dependencies).
+- `RichText.cs` / `RichTextModel.cs` / `RichTextModelWriter.cs` — Avalonia rich-text pipeline. Replaced by Terminal.Gui.Editor's `Attribute`-based rendering.
+- `HighlightedLine.WriteTo` / `ToHtml` / `ToRichTextModel` / `ToRichText` methods stripped from `HighlightedLine.cs` (depend on skipped types above).
+
+## Skipped from `Highlighting/Resources/`
+
+Resources for languages not yet carried (can be added later by dropping in the `.xshd` and registering in `Resources.cs`):
+
+- `ASPX.xshd`, `Boo.xshd`, `Coco-Mode.xshd`, `Patch-Mode.xshd`, `PHP-Mode.xshd`, `TeX-Mode.xshd`, `MarkDownWithFontSize.xshd`
 
 ## New supporting files
 

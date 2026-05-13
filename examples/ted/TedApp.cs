@@ -3,11 +3,11 @@ using Terminal.Gui.Configuration;
 using Terminal.Gui.Document;
 using Terminal.Gui.Document.Folding;
 using Terminal.Gui.Drawing;
+using Terminal.Gui.Highlighting;
 using Terminal.Gui.Input;
 using Terminal.Gui.Resources;
 using Terminal.Gui.ViewBase;
 using Terminal.Gui.Views;
-using TextMateSharp.Grammars;
 
 namespace Ted;
 
@@ -35,20 +35,16 @@ public sealed partial class TedApp : Window
             ConvertTabsToSpaces = true,
             ReadOnly = readOnly,
 
-            ViewportSettings = ViewportSettingsFlags.HasScrollBars
-        };
+            ViewportSettings = ViewportSettingsFlags.HasScrollBars,
 
-        // ted is the demo for the stopgap Editor.SyntaxHighlighter / SyntaxLanguage surface
-        // (issue #32). The CS0618 warning is intentional on the public API; suppressed here
-        // because exercising the API is exactly this app's job until issue #28 ships the
-        // visual-line HighlightingColorizer pipeline.
-#pragma warning disable CS0618 // Type or member is obsolete
-        Editor.SyntaxHighlighter = new TextMateSyntaxHighlighter ();
-#pragma warning restore CS0618 // Type or member is obsolete
+            // Default to C# highlighting from the built-in xshd definitions.
+            HighlightingDefinition = HighlightingManager.Instance.GetDefinition ("C#")
+        };
 
         // Enable brace-based folding. The strategy re-scans on each document change.
         _braceFoldingStrategy = new BraceFoldingStrategy ();
         InstallFolding ();
+
         ShowOpenDialog = ShowDefaultOpenDialog;
         ShowSaveDialog = ShowDefaultSaveDialog;
         ShowSaveChangesDialog = ShowDefaultSaveChangesDialog;
@@ -102,39 +98,7 @@ public sealed partial class TedApp : Window
             Value = Editor.UseThemeBackground ? CheckState.Checked : CheckState.UnChecked
         };
 
-        ThemeDropDown = new DropDownList<ThemeName>
-        {
-            Value = ThemeName.DarkPlus,
-            ReadOnly = true,
-            CanFocus = false
-        };
-
-        ThemeDropDown.ValueChanged += (_, e) =>
-        {
-            if (e.Value is not { } themeName)
-            {
-                return;
-            }
-
-            // CS0618: Editor.SyntaxHighlighter is the stopgap API
-            // ted exists to exercise. See issue #32.
-#pragma warning disable CS0618 // Type or member is obsolete
-            if (Editor.SyntaxHighlighter is TextMateSyntaxHighlighter highlighter)
-            {
-                if (highlighter.ThemeName == themeName)
-                {
-                    return;
-                }
-
-                highlighter.SetTheme (themeName);
-                Editor.SetNeedsDraw ();
-
-                return;
-            }
-
-            Editor.SyntaxHighlighter = new TextMateSyntaxHighlighter (themeName);
-#pragma warning restore CS0618 // Type or member is obsolete
-        };
+        LanguageShortcut = new Shortcut (Key.Empty, "C#", null) { MouseHighlightStates = MouseState.None };
 
         IndentationSizeUpDown = new NumericUpDown<int>
         {
@@ -167,7 +131,7 @@ public sealed partial class TedApp : Window
 
         StatusBar statusBar =
             new ([
-                new Shortcut { Title = "Themes", CommandView = ThemeDropDown },
+                new Shortcut { Title = "Language", CommandView = LanguageShortcut },
                 new Shortcut
                     { Text = "Indent", CommandView = IndentationSizeUpDown, MouseHighlightStates = MouseState.None },
                 new Shortcut { CommandView = ShowTabsCheckBox },
@@ -259,8 +223,8 @@ public sealed partial class TedApp : Window
     /// <summary>The editor View at the centre of the app. Exposed for tests and future commands.</summary>
     public Editor Editor { get; }
 
-    /// <summary>The syntax-highlighting theme selector shown in the status bar.</summary>
-    public DropDownList<ThemeName> ThemeDropDown { get; }
+    /// <summary>The status-bar shortcut that displays the current syntax-highlighting language name.</summary>
+    public Shortcut LanguageShortcut { get; }
 
     /// <summary>The indentation-size selector shown in the status bar.</summary>
     public NumericUpDown<int> IndentationSizeUpDown { get; }
@@ -288,7 +252,10 @@ public sealed partial class TedApp : Window
     private void ShowAboutDialog ()
     {
         Dialog dialog = new ()
-        { Title = "About ted", Buttons = [new Button { Title = Strings.btnOk, IsDefault = true }] };
+        {
+            Title = "About ted",
+            Buttons = [new Button { Title = Strings.btnOk, IsDefault = true }]
+        };
 
         dialog.Border.Settings &= ~BorderSettings.Title;
 

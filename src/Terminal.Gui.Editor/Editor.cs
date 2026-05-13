@@ -1,8 +1,8 @@
-using System.ComponentModel;
 using System.Drawing;
 using Terminal.Gui.Document;
 using Terminal.Gui.Document.Folding;
 using Terminal.Gui.Drawing;
+using Terminal.Gui.Highlighting;
 using Terminal.Gui.Text.Indentation;
 using Terminal.Gui.ViewBase;
 using Terminal.Gui.Views.Rendering;
@@ -39,6 +39,8 @@ public partial class Editor : View
     private TextAnchor? _caretAnchor;
     private TextDocument? _document;
     private Gutter? _gutter;
+    private DocumentHighlighter? _highlighter;
+    private HighlightingColorizer? _highlightingColorizer;
     private int _lastKnownCaretOffset;
 
     // Incremental max-width tracking: avoids the O(N) all-lines walk that UpdateContentSize
@@ -49,7 +51,6 @@ public partial class Editor : View
     private bool _maxWidthDirty = true;
     private int _maxWidthLineNumber;
     private bool _showLineNumbers;
-    private ISyntaxHighlighter? _syntaxHighlighter;
 
     /// <summary>
     ///     Sticky column for vertical caret moves. Tracks the column the user *intends* to be in,
@@ -96,6 +97,8 @@ public partial class Editor : View
             ClearVisualLineCaches ();
             _cachedVisibleLineNumbers = null;
             _maxWidthDirty = true;
+
+            InstallHighlighter ();
 
             _virtualCaretColumn = GetCaretColumn ();
             UpdateContentSize ();
@@ -146,67 +149,31 @@ public partial class Editor : View
     public bool ReadOnly { get; set; }
 
     /// <summary>
-    ///     Optional syntax highlighter used when drawing document text.
-    ///     Optional syntax highlighter used when drawing document text.
+    ///     Gets or sets the highlighting definition used for syntax coloring. When set, a
+    ///     <see cref="HighlightingColorizer" /> is automatically added to
+    ///     <see cref="LineTransformers" />. Set to <see langword="null" /> to disable
+    ///     syntax highlighting.
     /// </summary>
     /// <remarks>
-    ///     <para>
-    ///         <b>Stopgap.</b> This property reuses Terminal.Gui's
-    ///         <see cref="ISyntaxHighlighter" /> from <c>Terminal.Gui.Drawing.Markdown</c>, which is
-    ///         shaped for Markdown rendering — not for an editor's per-line / per-visual-line
-    ///         highlighting pipeline. It will be removed when <c>specs/00-plan.md</c> Phase 6 lifts
-    ///         AvaloniaEdit's <c>Highlighting/</c> folder and the editor switches to a
-    ///         <c>HighlightingColorizer : IVisualLineTransformer</c> running over the
-    ///         <see cref="DocumentLine" /> → visual-line pipeline tracked by issue #28.
-    ///     </para>
-    ///     <para>
-    ///         External code should not take a hard dependency on this contract.
-    ///     </para>
+    ///     Use <see cref="HighlightingManager.Instance" /> to look up definitions by name
+    ///     or file extension:
+    ///     <code>editor.HighlightingDefinition = HighlightingManager.Instance.GetDefinitionByExtension (".cs");</code>
     /// </remarks>
-    [Obsolete (
-        "Stopgap reusing Terminal.Gui's Markdown ISyntaxHighlighter; will be replaced by HighlightingColorizer when specs/00-plan.md Phase 6 lifts AvaloniaEdit's Highlighting/ folder. See issue #28 for the visual-line pipeline that replaces this. Tracked by issue #32.")]
-    [EditorBrowsable (EditorBrowsableState.Never)]
-    public ISyntaxHighlighter? SyntaxHighlighter
-    {
-        get => _syntaxHighlighter;
-        set
-        {
-            if (ReferenceEquals (_syntaxHighlighter, value))
-            {
-                return;
-            }
-
-            _syntaxHighlighter = value;
-            _syntaxHighlighter?.ResetState ();
-            SetNeedsDraw ();
-        }
-    }
-
-    /// <summary>The language identifier passed to <see cref="SyntaxHighlighter" />. Defaults to C#.</summary>
-    /// <remarks>
-    ///     Obsolete for the same reason as <see cref="SyntaxHighlighter" /> — this is part of the
-    ///     temporary Markdown-shaped surface that Phase 6 will replace. See issue #28 / #32.
-    /// </remarks>
-    [Obsolete (
-        "Stopgap reusing Terminal.Gui's Markdown ISyntaxHighlighter; will be replaced by HighlightingColorizer when specs/00-plan.md Phase 6 lifts AvaloniaEdit's Highlighting/ folder. See issue #28 for the visual-line pipeline that replaces this. Tracked by issue #32.")]
-    [EditorBrowsable (EditorBrowsableState.Never)]
-    public string SyntaxLanguage
+    public IHighlightingDefinition? HighlightingDefinition
     {
         get;
         set
         {
-            ArgumentNullException.ThrowIfNull (value);
-
             if (field == value)
             {
                 return;
             }
 
             field = value;
-            _syntaxHighlighter?.ResetState ();
+            InstallHighlighter ();
             SetNeedsDraw ();
         }
-    } = "csharp";
+    }
 
     /// <summary>Width of one indentation unit, in terminal cells. Defaults to 4.</summary>
     public int IndentationSize
@@ -565,28 +532,43 @@ public partial class Editor : View
     }
 
     /// <summary>
-    ///     Resets the incremental highlighter state when a document change occurs at or before
-    ///     the prepared-up-to line. Edits after the prepared region don't affect tokenizer state
-    ///     for lines that have already been processed.
+    ///     Invalidates the <see cref="DocumentHighlighter" /> state when a document change
+    ///     occurs. The <see cref="DocumentHighlighter" /> implements <see cref="ILineTracker" />
+    ///     and handles incremental invalidation internally, so no per-edit work is needed here
+    ///     beyond clearing the visual-line caches (handled separately).
     /// </summary>
     private void InvalidateHighlighterState (DocumentChangeEventArgs e)
     {
-        if (_highlighterPreparedUpToLine < 0 || _document is null)
+        // DocumentHighlighter (an ILineTracker) is notified of edits automatically
+        // by the TextDocument. No explicit invalidation needed.
+    }
+
+    /// <summary>
+    ///     Creates or tears down the <see cref="DocumentHighlighter" /> and
+    ///     <see cref="HighlightingColorizer" /> when the highlighting definition or document
+    ///     changes. Keeps <see cref="LineTransformers" /> in sync.
+    /// </summary>
+    private void InstallHighlighter ()
+    {
+        // Remove old colorizer if present.
+        if (_highlightingColorizer is not null)
+        {
+            LineTransformers.Remove (_highlightingColorizer);
+            _highlightingColorizer = null;
+        }
+
+        _highlighter?.Dispose ();
+        _highlighter = null;
+
+        if (HighlightingDefinition is null || _document is null)
         {
             return;
         }
 
-        DocumentLine affectedLine = _document.GetLineByOffset (Math.Min (e.Offset, _document.TextLength));
-        var affectedLineIndex = affectedLine.LineNumber - 1;
-
-        if (affectedLineIndex < _highlighterPreparedUpToLine)
-        {
-            // Edit was before/within the prepared region — must re-prepare from line 0.
-            // Setting to 0 (not -1) so PrepareSyntaxHighlighter's comparison triggers a
-            // ResetState() call on the next draw frame.
-            _highlighterPreparedUpToLine = 0;
-            _highlighterPreparedInstance = null;
-        }
+        _highlighter = new DocumentHighlighter (_document, HighlightingDefinition);
+        Attribute normal = HasFocus ? GetAttributeForRole (VisualRole.Normal) : Attribute.Default;
+        _highlightingColorizer = new HighlightingColorizer (_highlighter, normal, UseThemeBackground);
+        LineTransformers.Insert (0, _highlightingColorizer);
     }
 
     private void InvalidateVisualLineCaches (DocumentChangeEventArgs e)

@@ -1,4 +1,5 @@
 using Terminal.Gui.Document;
+using Terminal.Gui.Highlighting;
 using Terminal.Gui.Resources;
 using Terminal.Gui.Views;
 
@@ -102,6 +103,23 @@ public sealed partial class TedApp
         Editor.Document = new TextDocument (text);
         Editor.CaretOffset = 0;
         CurrentFilePath = filePath;
+
+        // Auto-detect highlighting from file extension.
+        IHighlightingDefinition? def = null;
+
+        if (filePath is not null)
+        {
+            var ext = Path.GetExtension (filePath);
+
+            if (!string.IsNullOrEmpty (ext))
+            {
+                def = HighlightingManager.Instance.GetDefinitionByExtension (ext);
+            }
+        }
+
+        Editor.HighlightingDefinition = def;
+        LanguageShortcut.Title = def?.Name ?? "Plain Text";
+
         UpdateFileNameShortcut ();
         InstallFolding ();
         Editor.SetNeedsDraw ();
@@ -152,7 +170,7 @@ public sealed partial class TedApp
             "Save changes?",
             "The document has unsaved changes. Save before quitting?",
             Strings.btnCancel,
-            "Do_n't Save",
+            "_Don't Save",
             Strings.btnSave);
 
         return result switch
