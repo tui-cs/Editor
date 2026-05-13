@@ -688,10 +688,12 @@ public partial class Editor : View
                     Height = Dim.Fill ()
                 };
                 Padding.GetOrCreateView ().Add (_gutter);
+                _gutter.SyncLayout ();
             }
             else
             {
                 _gutter.Width = left;
+                _gutter.SyncLayout ();
                 _gutter.SetNeedsDraw ();
             }
         }

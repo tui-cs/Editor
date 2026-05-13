@@ -7,26 +7,79 @@ using Terminal.Gui.ViewBase;
 namespace Terminal.Gui.Views;
 
 /// <summary>
-///     Renders line number and folding UI for an associated <see cref="Editor" />. Hosted as a SubView
-///     of the <see cref="Editor" />'s <see cref="Padding" /> so it participates in the View hierarchy
-///     and is correctly clipped beneath popovers, menus, and other overlay surfaces.
+///     Composite gutter hosting a <see cref="LineNumberGutter" /> and an optional <see cref="FoldingGutter" />.
+///     Hosted as a SubView of the <see cref="Editor" />'s <see cref="Padding" />.
 /// </summary>
-/// <remarks>
-///     The view tracks its parent <see cref="Editor" />'s viewport and document changes, redrawing
-///     itself when either changes. When the editor has a <see cref="FoldingManager" />, the last
-///     column of the gutter shows fold indicators: <c>▾</c> for expanded folds, <c>▸</c> for
-///     collapsed folds. Clicking the fold indicator toggles the fold.
-/// </remarks>
 public sealed class Gutter : View
 {
     private readonly Editor _editor;
-    private int? _selectionAnchorLineNumber;
+    private readonly LineNumberGutter _lineNumbers;
+    private FoldingGutter? _foldingGutter;
 
     /// <summary>Initializes a new <see cref="Gutter" /> for <paramref name="editor" />.</summary>
     public Gutter (Editor editor)
     {
         ArgumentNullException.ThrowIfNull (editor);
 
+        _editor = editor;
+        CanFocus = false;
+
+        _lineNumbers = new LineNumberGutter (editor)
+        {
+            X = 0,
+            Y = 0,
+            Height = Dim.Fill ()
+        };
+        Add (_lineNumbers);
+    }
+
+    /// <summary>
+    ///     Synchronizes the internal layout. Called by the editor when the gutter width changes.
+    /// </summary>
+    internal void SyncLayout ()
+    {
+        var hasFolding = _editor.FoldingManager is not null;
+
+        if (hasFolding)
+        {
+            if (_foldingGutter is null)
+            {
+                _foldingGutter = new FoldingGutter (_editor)
+                {
+                    X = Pos.Right (_lineNumbers),
+                    Y = 0,
+                    Width = 2,
+                    Height = Dim.Fill ()
+                };
+                Add (_foldingGutter);
+            }
+
+            _lineNumbers.Width = Viewport.Width - 2;
+        }
+        else
+        {
+            if (_foldingGutter is not null)
+            {
+                Remove (_foldingGutter);
+                _foldingGutter.Dispose ();
+                _foldingGutter = null;
+            }
+
+            _lineNumbers.Width = Viewport.Width;
+        }
+    }
+}
+
+/// <summary>
+///     Renders line numbers and handles line-selection mouse interactions.
+/// </summary>
+internal sealed class LineNumberGutter : View
+{
+    private readonly Editor _editor;
+    private int? _selectionAnchorLineNumber;
+
+    internal LineNumberGutter (Editor editor)
+    {
         _editor = editor;
         CanFocus = false;
     }
@@ -48,13 +101,9 @@ public sealed class Gutter : View
             return true;
         }
 
-        FoldingManager? fm = _editor.FoldingManager;
         List<int> visibleLines = _editor.GetVisibleLineNumbers ();
         var firstVisibleIndex = _editor.Viewport.Y;
         var visibleHeight = _editor.Viewport.Height;
-        var hasFolding = fm is not null;
-        // Reserve one column for the fold indicator when folding is active.
-        var numberWidth = hasFolding ? viewport.Width - 2 : viewport.Width - 1;
 
         for (var row = 0; row < viewport.Height; row++)
         {
@@ -69,55 +118,7 @@ public sealed class Gutter : View
             }
 
             var lineNumber = visibleLines[visibleIndex];
-
-            // PadLeft to right-align the digits, then add the fold indicator column.
-            var lineText = lineNumber.ToString ().PadLeft (numberWidth);
-
-            if (hasFolding)
-            {
-                FoldingSection? fold = fm!.GetFoldingAtLine (lineNumber);
-
-                if (fold is not null)
-                {
-                    lineText += fold.IsFolded ? " ▸" : " ▾";
-                }
-                else if (fm.IsLineHidden (lineNumber))
-                {
-                    lineText += " │";
-                }
-                else
-                {
-                    // Check if this line is inside a fold (continuation).
-                    var isContinuation = false;
-
-                    foreach (FoldingSection fs in fm.AllFoldings)
-                    {
-                        if (fs.IsFolded)
-                        {
-                            continue;
-                        }
-
-                        DocumentLine startLine =
-                            document.GetLineByOffset (Math.Clamp (fs.StartOffset, 0, document.TextLength));
-
-                        DocumentLine endLine =
-                            document.GetLineByOffset (Math.Clamp (fs.EndOffset, 0, document.TextLength));
-
-                        if (lineNumber > startLine.LineNumber && lineNumber <= endLine.LineNumber)
-                        {
-                            isContinuation = true;
-
-                            break;
-                        }
-                    }
-
-                    lineText += isContinuation ? " │" : "  ";
-                }
-            }
-            else
-            {
-                lineText += " ";
-            }
+            var lineText = lineNumber.ToString ().PadLeft (viewport.Width - 1) + " ";
 
             Move (0, row);
             AddStr (lineText);
@@ -132,22 +133,6 @@ public sealed class Gutter : View
         if (mouse.Position is not { } pos)
         {
             return false;
-        }
-
-        FoldingManager? fm = _editor.FoldingManager;
-
-        // Check if click is on the fold indicator column (last column).
-        if (fm is not null && mouse.Flags.HasFlag (MouseFlags.LeftButtonClicked))
-        {
-            var lineNumber = _editor.ViewRowToLineNumber (pos.Y);
-            FoldingSection? fold = fm.GetFoldingAtLine (lineNumber);
-
-            if (fold is not null && pos.X >= Viewport.Width - 2)
-            {
-                fold.IsFolded = !fold.IsFolded;
-
-                return true;
-            }
         }
 
         if (mouse.Flags.HasFlag (MouseFlags.LeftButtonPressed) && mouse.Flags.HasFlag (MouseFlags.PositionReport))
@@ -183,3 +168,136 @@ public sealed class Gutter : View
         return true;
     }
 }
+
+/// <summary>
+///     Renders fold indicators (▸/▾/│) and toggles folds via <see cref="Command.Toggle" /> bound to
+///     <see cref="MouseFlags.LeftButtonClicked" />.
+/// </summary>
+internal sealed class FoldingGutter : View
+{
+    private readonly Editor _editor;
+    private int _lastMouseRow;
+
+    internal FoldingGutter (Editor editor)
+    {
+        _editor = editor;
+        CanFocus = false;
+
+        AddCommand (Command.Toggle, OnToggleFold);
+        MouseBindings.Add (MouseFlags.LeftButtonClicked, Command.Toggle);
+    }
+
+    /// <inheritdoc />
+    protected override bool OnMouseEvent (Mouse mouse)
+    {
+        if (mouse.Position is { } pos)
+        {
+            _lastMouseRow = pos.Y;
+        }
+
+        return base.OnMouseEvent (mouse);
+    }
+
+    /// <inheritdoc />
+    protected override bool OnDrawingContent (DrawContext? context)
+    {
+        TextDocument? document = _editor.Document;
+        FoldingManager? fm = _editor.FoldingManager;
+
+        if (document is null || fm is null)
+        {
+            return true;
+        }
+
+        Rectangle viewport = Viewport;
+
+        if (viewport.Width <= 0 || viewport.Height <= 0)
+        {
+            return true;
+        }
+
+        List<int> visibleLines = _editor.GetVisibleLineNumbers ();
+        var firstVisibleIndex = _editor.Viewport.Y;
+        var visibleHeight = _editor.Viewport.Height;
+
+        for (var row = 0; row < viewport.Height; row++)
+        {
+            var visibleIndex = firstVisibleIndex + row;
+
+            if (row >= visibleHeight || visibleIndex < 0 || visibleIndex >= visibleLines.Count)
+            {
+                Move (0, row);
+                AddStr ("  ");
+
+                continue;
+            }
+
+            var lineNumber = visibleLines[visibleIndex];
+            FoldingSection? fold = fm.GetFoldingAtLine (lineNumber);
+            string indicator;
+
+            if (fold is not null)
+            {
+                indicator = fold.IsFolded ? "▸ " : "▾ ";
+            }
+            else
+            {
+                // Check if line is a continuation of an expanded fold.
+                var isContinuation = false;
+
+                foreach (FoldingSection fs in fm.AllFoldings)
+                {
+                    if (fs.IsFolded)
+                    {
+                        continue;
+                    }
+
+                    DocumentLine startLine =
+                        document.GetLineByOffset (Math.Clamp (fs.StartOffset, 0, document.TextLength));
+
+                    DocumentLine endLine =
+                        document.GetLineByOffset (Math.Clamp (fs.EndOffset, 0, document.TextLength));
+
+                    if (lineNumber > startLine.LineNumber && lineNumber <= endLine.LineNumber)
+                    {
+                        isContinuation = true;
+
+                        break;
+                    }
+                }
+
+                indicator = isContinuation ? "│ " : "  ";
+            }
+
+            Move (0, row);
+            AddStr (indicator);
+        }
+
+        return true;
+    }
+
+    private bool? OnToggleFold ()
+    {
+        FoldingManager? fm = _editor.FoldingManager;
+
+        if (fm is null)
+        {
+            return false;
+        }
+
+        // Determine which row was clicked from the last mouse position.
+        int row = _lastMouseRow;
+        var lineNumber = _editor.ViewRowToLineNumber (row);
+        FoldingSection? fold = fm.GetFoldingAtLine (lineNumber);
+
+        if (fold is null)
+        {
+            return false;
+        }
+
+        fold.IsFolded = !fold.IsFolded;
+
+        return true;
+    }
+}
+
