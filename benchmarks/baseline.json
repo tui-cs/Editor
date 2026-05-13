@@ -1,62 +1,77 @@
 {
-  "description": "Baseline benchmark results. Updated by running: dotnet run --project benchmarks/Terminal.Gui.Editor.Benchmarks -c Release -- --filter '*VisualLineBuild*' --exporters json",
-  "date": "2026-05-11",
-  "environment": "Apple M4 Max, .NET 10.0.5, Arm64 RyuJIT",
+  "description": "Baseline benchmark results. Updated by running: dotnet run --project benchmarks/Terminal.Gui.Editor.Benchmarks -c Release -- --job short --exporters json --artifacts BenchmarkDotNet.Artifacts",
+  "date": "2026-05-13",
+  "environment": "Ubuntu 24.04.4 LTS, AMD EPYC 9V74, .NET 10.0.5, X64 RyuJIT AVX2",
   "results": {
     "BuildLine_Short": {
-      "mean_us": 2.6,
-      "allocated_kb": 11.64,
+      "mean_us": 5.8,
+      "allocated_kb": 11.54,
       "description": "Short ASCII (~40 chars)"
     },
     "BuildLine_Long": {
-      "mean_us": 15.7,
-      "allocated_kb": 71.98,
+      "mean_us": 35.4,
+      "allocated_kb": 71.88,
       "description": "Long ASCII (~200 chars)"
     },
     "BuildLine_Tabs": {
-      "mean_us": 3.0,
-      "allocated_kb": 13.13,
+      "mean_us": 6.1,
+      "allocated_kb": 12.94,
       "description": "Tabbed line (4 tabs + code)"
     },
     "BuildLine_Emoji": {
-      "mean_us": 2.7,
+      "mean_us": 6.4,
       "allocated_kb": 10.36,
       "description": "Emoji / ZWJ clusters"
     },
     "BuildLine_Mixed": {
-      "mean_us": 2.6,
+      "mean_us": 6.2,
       "allocated_kb": 10.45,
       "description": "Mixed: tabs + CJK + emoji"
     },
     "BuildViewport_Top_10K_24": {
-      "mean_us": 86,
-      "allocated_kb": 394,
+      "mean_us": 205,
+      "allocated_kb": 391,
       "description": "Viewport at top (10K lines, 24 rows)"
     },
     "FullScroll_1K_24": {
-      "mean_us": 4076,
-      "allocated_kb": 18159,
+      "mean_us": 10224,
+      "allocated_kb": 18024,
       "description": "Full scroll 1K lines (24-row viewport)"
     },
     "DocLookup_Sequential_100K": {
-      "mean_ns": 326,
+      "mean_ns": 754,
       "allocated_bytes": 0,
       "description": "GetLineByNumber × 50 sequential (100K lines)"
     },
     "DocLookup_Random_100K": {
-      "mean_ns": 825,
+      "mean_ns": 2578,
       "allocated_bytes": 304,
       "description": "GetLineByNumber × 50 random (100K lines)"
     },
     "E2E_ArrowDown_500": {
-      "mean_ms": 752,
-      "allocated_mb": 2983,
+      "mean_ms": 1983,
+      "allocated_mb": 2631,
       "description": "Arrow ↓ to bottom (500 lines)"
     },
     "E2E_PageDown_5K": {
-      "mean_ms": 353,
-      "allocated_mb": 1387,
+      "mean_ms": 1223,
+      "allocated_mb": 1367,
       "description": "PageDown to bottom (5K lines)"
+    },
+    "Caret_Down_1K": {
+      "mean_ms": 3475,
+      "allocated_mb": 4712,
+      "description": "Caret ↓ with scroll counting (1K lines)"
+    },
+    "Caret_Right_1K": {
+      "mean_ms": 164,
+      "allocated_mb": 222,
+      "description": "Caret → horizontal scroll (1K lines)"
+    },
+    "Caret_CtrlHomeEnd_1K": {
+      "mean_ms": 373,
+      "allocated_mb": 489,
+      "description": "Ctrl+Home/End oscillation × 100 (1K lines)"
     }
   }
 }
