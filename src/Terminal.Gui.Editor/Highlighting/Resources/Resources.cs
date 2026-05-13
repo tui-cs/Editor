@@ -26,7 +26,7 @@ namespace Terminal.Gui.Highlighting;
 
 internal static class Resources
 {
-    private const string Prefix = "Terminal.Gui.Editor.Highlighting.Resources.";
+    private const string Prefix = "Terminal.Gui.Views.Highlighting.Resources.";
 
     public static Stream OpenStream (string name)
     {

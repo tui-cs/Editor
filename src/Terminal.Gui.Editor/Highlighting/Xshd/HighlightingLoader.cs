@@ -81,7 +81,7 @@ public static class HighlightingLoader
 
     internal static XmlReader GetValidatingReader (XmlReader input, bool ignoreWhitespace)
     {
-        XmlReaderSettings settings = new()
+        XmlReaderSettings settings = new ()
         {
             CloseInput = true,
             IgnoreComments = true,

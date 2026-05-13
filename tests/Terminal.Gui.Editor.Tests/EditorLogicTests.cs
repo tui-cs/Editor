@@ -1,9 +1,10 @@
 // Claude - claude-opus-4-7
 
 using System.Drawing;
-using System.Reflection;
 using Terminal.Gui.Document;
+using Terminal.Gui.Highlighting;
 using Terminal.Gui.Views;
+using Terminal.Gui.Views.Rendering;
 using Xunit;
 
 namespace Terminal.Gui.Editor.Tests;
@@ -282,35 +283,42 @@ public class EditorLogicTests
         Assert.Equal (5, editor.Viewport.X);
     }
 
-    // The Editor.SyntaxHighlighter / Editor.SyntaxLanguage surface reuses Terminal.Gui's
-    // Markdown ISyntaxHighlighter as a stopgap until specs/00-plan.md Phase 6 lifts the
-    // AvaloniaEdit Highlighting/ pipeline (HighlightingColorizer : IVisualLineTransformer,
-    // tracked by issue #28). Mark the property [Obsolete] so external code knows not to
-    // take a hard dependency on the temporary contract. See issue #32.
-    //
-    // The CS0618 suppressions here exist so the compiler doesn't fight the test's purpose,
-    // which is to *verify* the obsoletion is wired up.
+    // The Editor.HighlightingDefinition property replaced the obsolete SyntaxHighlighter /
+    // SyntaxLanguage stopgap (issues #28, #32). It drives a HighlightingColorizer transformer
+    // through the visual-line pipeline.
     [Fact]
-    public void SyntaxHighlighter_Is_Obsolete ()
+    public void HighlightingDefinition_Is_Null_By_Default ()
     {
-#pragma warning disable CS0618 // Type or member is obsolete
-        PropertyInfo prop = typeof (Views.Editor).GetProperty (nameof (Views.Editor.SyntaxHighlighter))!;
-#pragma warning restore CS0618 // Type or member is obsolete
-        ObsoleteAttribute? attr = prop.GetCustomAttribute<ObsoleteAttribute> ();
+        Views.Editor editor = new ();
 
-        Assert.NotNull (attr);
-        Assert.Contains ("28", attr.Message ?? string.Empty);
+        Assert.Null (editor.HighlightingDefinition);
     }
 
     [Fact]
-    public void SyntaxLanguage_Is_Obsolete ()
+    public void HighlightingDefinition_Adds_Colorizer_To_LineTransformers ()
     {
-#pragma warning disable CS0618 // Type or member is obsolete
-        PropertyInfo prop = typeof (Views.Editor).GetProperty (nameof (Views.Editor.SyntaxLanguage))!;
-#pragma warning restore CS0618 // Type or member is obsolete
-        ObsoleteAttribute? attr = prop.GetCustomAttribute<ObsoleteAttribute> ();
+        Views.Editor editor = new ();
+        editor.Document = new TextDocument ("public class Foo { }");
 
-        Assert.NotNull (attr);
-        Assert.Contains ("28", attr.Message ?? string.Empty);
+        IHighlightingDefinition? csharp = HighlightingManager.Instance.GetDefinition ("C#");
+        Assert.NotNull (csharp);
+
+        editor.HighlightingDefinition = csharp;
+
+        Assert.Single (editor.LineTransformers);
+        Assert.IsType<HighlightingColorizer> (editor.LineTransformers[0]);
+    }
+
+    [Fact]
+    public void HighlightingDefinition_Set_Null_Removes_Colorizer ()
+    {
+        Views.Editor editor = new ();
+        editor.Document = new TextDocument ("public class Foo { }");
+
+        editor.HighlightingDefinition = HighlightingManager.Instance.GetDefinition ("C#");
+        Assert.Single (editor.LineTransformers);
+
+        editor.HighlightingDefinition = null;
+        Assert.Empty (editor.LineTransformers);
     }
 }

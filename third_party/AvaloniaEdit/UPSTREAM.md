@@ -21,6 +21,9 @@ modification we made. Re-syncs are deliberate, manual, and against this log — 
 | `src/AvaloniaEdit/Highlighting/` (subset) | → | `src/Terminal.Gui.Editor/Highlighting/` |
 | `src/AvaloniaEdit/Highlighting/Xshd/` | → | `src/Terminal.Gui.Editor/Highlighting/Xshd/` |
 | `src/AvaloniaEdit/Highlighting/Resources/` (subset) | → | `src/Terminal.Gui.Editor/Highlighting/Resources/` |
+| `src/AvaloniaEdit/Highlighting/` (subset) | → | `src/Terminal.Gui.Editor/Highlighting/` |
+| `src/AvaloniaEdit/Highlighting/Xshd/` | → | `src/Terminal.Gui.Editor/Highlighting/Xshd/` |
+| `src/AvaloniaEdit/Highlighting/Resources/` (subset) | → | `src/Terminal.Gui.Editor/Highlighting/Resources/` |
 
 ## Skipped from `Document/`
 
@@ -43,6 +46,20 @@ The Avalonia-UI-specific helpers that the document layer doesn't depend on:
 - `PixelSnapHelpers.cs` — Avalonia visual.
 - `RichTextWriter.cs` — Avalonia.Media.
 - `TextFormatterFactory.cs` — Avalonia.Media.TextFormatting.
+
+## Skipped from `Highlighting/`
+
+- `HighlightingColorizer.cs` — Avalonia `DocumentColorizingTransformer`. Replaced by a new `HighlightingColorizer : IVisualLineTransformer` in `Rendering/` that uses the cell-grid pipeline.
+- `HighlightingDefinitionTypeConverter.cs` — `System.ComponentModel` type converter. Not needed.
+- `HtmlClipboard.cs` — Avalonia clipboard interop.
+- `HtmlOptions.cs` — References `TextArea` for tab size.
+- `HtmlRichTextWriter.cs` — HTML serialization.
+- `RichText.cs`, `RichTextModel.cs`, `RichTextModelWriter.cs` — Rich text model types. Not needed for cell-grid rendering.
+- `RichTextColorizer.cs` — Avalonia rendering bridge.
+
+## Skipped from `Highlighting/Resources/`
+
+- `ASPX-Mode.xshd`, `Boo.xshd`, `Coco-Mode.xshd`, `Patch-Mode.xshd`, `PHP-Mode.xshd`, `Tex-Mode.xshd`, `MarkDownWithFontSize.xshd` — Less commonly used languages. Can be added on demand.
 
 ## Modifications to lifted files
 

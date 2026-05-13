@@ -46,7 +46,7 @@ internal static class V2Loader
     private static XshdSyntaxDefinition ParseDefinition (XmlReader reader)
     {
         Debug.Assert (reader.LocalName == "SyntaxDefinition");
-        XshdSyntaxDefinition def = new() { Name = reader.GetAttribute ("name") };
+        XshdSyntaxDefinition def = new () { Name = reader.GetAttribute ("name") };
         var extensions = reader.GetAttribute ("extensions");
         if (extensions != null)
         {

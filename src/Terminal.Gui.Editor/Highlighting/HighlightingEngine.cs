@@ -260,7 +260,7 @@ public class HighlightingEngine
         _position = until;
     }
 
-    private static readonly HighlightingRuleSet EmptyRuleSet = new() { Name = "EmptyRuleSet" };
+    private static readonly HighlightingRuleSet EmptyRuleSet = new () { Name = "EmptyRuleSet" };
 
     private HighlightingRuleSet CurrentRuleSet
     {
@@ -320,7 +320,7 @@ public class HighlightingEngine
         }
         else
         {
-            HighlightedSection hs = new()
+            HighlightedSection hs = new ()
             {
                 Offset = _position + _lineStartOffset,
                 Color = color
