@@ -2,6 +2,7 @@ using System.Drawing;
 using Terminal.Gui.Document;
 using Terminal.Gui.Drawing;
 using Terminal.Gui.Drivers;
+using Terminal.Gui.Highlighting;
 using Terminal.Gui.ViewBase;
 using Terminal.Gui.Views.Rendering;
 using Attribute = Terminal.Gui.Drawing.Attribute;
@@ -11,12 +12,6 @@ namespace Terminal.Gui.Views;
 
 public partial class Editor
 {
-    private ISyntaxHighlighter? _highlighterPreparedInstance;
-
-    // Syntax highlighter state optimization: tracks how far we've prepared so incremental
-    // scrolling doesn't re-highlight from line 0 every frame.
-    private int _highlighterPreparedUpToLine = -1;
-
     /// <inheritdoc />
     protected override bool OnDrawingContent (DrawContext? context)
     {
@@ -29,6 +24,9 @@ public partial class Editor
         Attribute normal = GetAttributeForRole (VisualRole.Normal);
         Attribute selected = GetAttributeForRole (VisualRole.Active);
 
+        // Ensure the colorizer sees the current attribute (scheme may have changed since install).
+        EnsureColorizerAttribute (normal);
+
         FillViewportBackground (viewport, normal);
         DrawVisibleLines (viewport, normal, selected);
         SetAttribute (normal);
@@ -38,9 +36,9 @@ public partial class Editor
     }
 
     /// <summary>
-    ///     When <see cref="UseThemeBackground" /> is <see langword="true" /> and a syntax highlighter
-    ///     provides a <see cref="ISyntaxHighlighter.DefaultBackground" />, fills the viewport with
-    ///     that background so empty cells match per-token backgrounds.
+    ///     When <see cref="UseThemeBackground" /> is <see langword="true" /> and a highlighting
+    ///     definition has a default background color, fills the viewport with that background
+    ///     so empty cells match per-token backgrounds.
     /// </summary>
     private void FillViewportBackground (Rectangle viewport, Attribute normal)
     {
@@ -49,9 +47,7 @@ public partial class Editor
             return;
         }
 
-#pragma warning disable CS0618 // Type or member is obsolete
-        Color? themeBg = SyntaxHighlighter?.DefaultBackground;
-#pragma warning restore CS0618 // Type or member is obsolete
+        Color? themeBg = _highlighter?.DefaultTextColor?.Background?.Color;
 
         if (themeBg is not { } bg)
         {
@@ -71,20 +67,11 @@ public partial class Editor
 
     private void DrawVisibleLines (Rectangle viewport, Attribute normal, Attribute selected)
     {
-        // The CS0618 here is the API's purpose: SyntaxHighlighter is [Obsolete] to warn
-        // external callers that this is a stopgap (issue #32). The editor itself still has to
-        // honor the property until Phase 6 lifts AvaloniaEdit's Highlighting/ pipeline (#28).
-#pragma warning disable CS0618 // Type or member is obsolete
-        ISyntaxHighlighter? syntaxHighlighter = SyntaxHighlighter;
-#pragma warning restore CS0618 // Type or member is obsolete
-
         var hasSelection = HasSelection;
         var selStart = hasSelection ? SelectionStart : 0;
         var selEnd = hasSelection ? SelectionEnd : 0;
         var visibleStart = viewport.X;
         var visibleEnd = viewport.X + viewport.Width;
-
-        PrepareSyntaxHighlighter (syntaxHighlighter, viewport.Y);
 
         for (var row = 0; row < viewport.Height; row++)
         {
@@ -96,43 +83,42 @@ public partial class Editor
             }
 
             DocumentLine line = _document.GetLineByNumber (lineIndex + 1);
-#pragma warning disable CS0618 // Type or member is obsolete — see PrepareSyntaxHighlighter.
-            IReadOnlyList<StyledSegment>? segments =
-                syntaxHighlighter?.Highlight (_document.GetText (line), SyntaxLanguage);
-#pragma warning restore CS0618 // Type or member is obsolete
 
-            DrawVisualLine (row, line, visibleStart, visibleEnd, segments, normal, selected, selStart, selEnd);
+            DrawVisualLine (row, line, visibleStart, visibleEnd, null, normal, selected, selStart, selEnd);
         }
     }
 
-    private void PrepareSyntaxHighlighter (ISyntaxHighlighter? syntaxHighlighter, int firstVisibleLineIndex)
+    /// <summary>
+    ///     Rebuilds the <see cref="HighlightingColorizer" /> if the editor's normal attribute
+    ///     has changed (e.g. after a scheme swap or focus change). Keeps the same underlying
+    ///     <see cref="DocumentHighlighter" />.
+    /// </summary>
+    private void EnsureColorizerAttribute (Attribute normal)
     {
-        if (syntaxHighlighter is null || _document is null)
+        if (_highlightingColorizer is null)
         {
             return;
         }
 
-        // If the highlighter instance changed or viewport scrolled backward, reset from scratch.
-        if (!ReferenceEquals (syntaxHighlighter, _highlighterPreparedInstance)
-            || firstVisibleLineIndex < _highlighterPreparedUpToLine)
+        HighlightingColorizer replacement = _highlightingColorizer.WithDefaultAttribute (normal, UseThemeBackground);
+
+        if (ReferenceEquals (replacement, _highlightingColorizer))
         {
-            syntaxHighlighter.ResetState ();
-            _highlighterPreparedInstance = syntaxHighlighter;
-            _highlighterPreparedUpToLine = 0;
+            return;
         }
 
-        // Incrementally highlight from where we left off to the first visible line.
-        for (var lineIndex = _highlighterPreparedUpToLine;
-             lineIndex < firstVisibleLineIndex && lineIndex < _document.LineCount;
-             lineIndex++)
+        var index = LineTransformers.IndexOf (_highlightingColorizer);
+
+        if (index >= 0)
         {
-            DocumentLine line = _document.GetLineByNumber (lineIndex + 1);
-#pragma warning disable CS0618 // Type or member is obsolete — see note in OnDrawingContent.
-            syntaxHighlighter.Highlight (_document.GetText (line), SyntaxLanguage);
-#pragma warning restore CS0618 // Type or member is obsolete
+            LineTransformers[index] = replacement;
+        }
+        else
+        {
+            LineTransformers.Insert (0, replacement);
         }
 
-        _highlighterPreparedUpToLine = firstVisibleLineIndex;
+        _highlightingColorizer = replacement;
     }
 
     private void DrawVisualLine (
