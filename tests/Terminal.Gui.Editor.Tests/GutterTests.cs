@@ -133,8 +133,8 @@ public class GutterTests
         Gutter gutter = (Gutter)PaddingSubViewsOf (editor).Single ();
         View lineNumbers = gutter.SubViews.First (v => v is LineNumberGutter);
 
-        // LineNumberGutter.Width must be Dim.Fill(), never Dim.Absolute(0).
-        Assert.Equal (Dim.Fill (), lineNumbers.Width);
+        // LineNumberGutter.Width must be Dim.Fill(2) to leave room for the 2-col FoldingGutter.
+        Assert.Equal (Dim.Fill (2), lineNumbers.Width);
     }
 
     [Fact]
