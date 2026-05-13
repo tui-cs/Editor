@@ -24,7 +24,10 @@ public sealed class FoldingTransformer : IVisualLineTransformer
         var lineStartOffset = docLine.Offset;
         var lineEndOffset = docLine.Offset + docLine.Length;
 
-        // Find folded sections that start on this line.
+        // Collect all folded sections that start on this line, deduplicated and sorted by start offset.
+        // This avoids double-processing from GetFoldingsContaining + AllFoldings overlap.
+        SortedDictionary<int, FoldingSection> foldsByStart = [];
+
         foreach (FoldingSection fs in _foldingManager.GetFoldingsContaining (lineStartOffset))
         {
             if (!fs.IsFolded)
@@ -34,35 +37,34 @@ public sealed class FoldingTransformer : IVisualLineTransformer
 
             DocumentLine startLine = _foldingManager.Document.GetLineByOffset (fs.StartOffset);
 
-            if (startLine.LineNumber != docLine.LineNumber)
+            if (startLine.LineNumber == docLine.LineNumber)
             {
-                continue;
+                foldsByStart.TryAdd (fs.StartOffset, fs);
             }
-
-            ReplaceFoldedRange (line, fs);
         }
 
-        // Also check foldings that start within the line but not at its beginning offset.
         foreach (FoldingSection fs in _foldingManager.AllFoldings)
         {
-            if (!fs.IsFolded)
-            {
-                continue;
-            }
-
-            if (fs.StartOffset < lineStartOffset || fs.StartOffset >= lineEndOffset)
+            if (!fs.IsFolded || fs.StartOffset < lineStartOffset || fs.StartOffset >= lineEndOffset)
             {
                 continue;
             }
 
             DocumentLine startLine = _foldingManager.Document.GetLineByOffset (fs.StartOffset);
 
-            if (startLine.LineNumber != docLine.LineNumber)
+            if (startLine.LineNumber == docLine.LineNumber)
             {
-                continue;
+                foldsByStart.TryAdd (fs.StartOffset, fs);
             }
+        }
 
+        // Apply only the first (leftmost) fold — once collapsed, the tail is hidden
+        // and any subsequent folds on the same line are subsumed.
+        foreach (FoldingSection fs in foldsByStart.Values)
+        {
             ReplaceFoldedRange (line, fs);
+
+            break;
         }
     }
 
