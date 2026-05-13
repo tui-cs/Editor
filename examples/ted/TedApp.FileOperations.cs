@@ -169,7 +169,7 @@ public sealed partial class TedApp
             "Save changes?",
             "The document has unsaved changes. Save before quitting?",
             Strings.btnCancel,
-            "Do_n't Save",
+            "_Don't Save",
             Strings.btnSave);
 
         return result switch
