@@ -84,6 +84,11 @@ public sealed class HighlightingColorizer : IVisualLineTransformer
     /// <summary>Updates the default attribute (e.g. when the editor's color scheme changes).</summary>
     public HighlightingColorizer WithDefaultAttribute (Attribute defaultAttribute, bool useThemeBackground)
     {
+        if (_defaultAttribute == defaultAttribute && _useThemeBackground == useThemeBackground)
+        {
+            return this;
+        }
+
         return new HighlightingColorizer (Highlighter, defaultAttribute, useThemeBackground);
     }
 

@@ -246,6 +246,37 @@ public class HighlightingTests
         }
     }
 
+    [Fact]
+    public void Colorizer_WithDefaultAttribute_Unchanged_Returns_Same_Instance ()
+    {
+        TextDocument doc = new ("public");
+        IHighlightingDefinition csharp = HighlightingManager.Instance.GetDefinition ("C#")!;
+        using DocumentHighlighter highlighter = new (doc, csharp);
+
+        Attribute defaultAttr = new (Color.White, Color.Black);
+        HighlightingColorizer colorizer = new (highlighter, defaultAttr, true);
+
+        HighlightingColorizer updated = colorizer.WithDefaultAttribute (defaultAttr, true);
+
+        Assert.Same (colorizer, updated);
+    }
+
+    [Fact]
+    public void Highlighter_DefaultTextColor_Uses_Default_Named_Color ()
+    {
+        TextDocument doc = new ("text");
+        HighlightingColor defaultColor = new ()
+        {
+            Name = "Default",
+            Background = new HighlightingBrush (Color.Blue),
+            Foreground = new HighlightingBrush (Color.White)
+        };
+        IHighlightingDefinition definition = new TestHighlightingDefinition (defaultColor);
+        using DocumentHighlighter highlighter = new (doc, definition);
+
+        Assert.Same (defaultColor, highlighter.DefaultTextColor);
+    }
+
     // ── Editor.HighlightingDefinition ──────────────────────────────────────
 
     [Fact]
@@ -307,5 +338,30 @@ public class HighlightingTests
         editor.Document = new TextDocument ("second");
         Assert.Single (editor.LineTransformers);
         Assert.NotSame (firstColorizer, editor.LineTransformers[0]);
+    }
+
+    private sealed class TestHighlightingDefinition : IHighlightingDefinition
+    {
+        private readonly HighlightingColor _defaultColor;
+
+        public TestHighlightingDefinition (HighlightingColor defaultColor)
+        {
+            _defaultColor = defaultColor;
+        }
+
+        public string Name => "Test";
+        public HighlightingRuleSet MainRuleSet { get; } = new ();
+        public IEnumerable<HighlightingColor> NamedHighlightingColors => [_defaultColor];
+        public IDictionary<string, string> Properties { get; } = new Dictionary<string, string> ();
+
+        public HighlightingRuleSet GetNamedRuleSet (string name)
+        {
+            return string.IsNullOrEmpty (name) ? MainRuleSet : null!;
+        }
+
+        public HighlightingColor GetNamedColor (string name)
+        {
+            return name == _defaultColor.Name ? _defaultColor : null!;
+        }
     }
 }

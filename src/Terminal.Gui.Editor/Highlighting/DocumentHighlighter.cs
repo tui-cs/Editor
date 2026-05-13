@@ -139,7 +139,7 @@ public class DocumentHighlighter : ILineTracker, IHighlighter
     public event HighlightingStateChangedEventHandler HighlightingStateChanged;
 
     /// <inheritdoc />
-    public HighlightingColor DefaultTextColor => null;
+    public HighlightingColor DefaultTextColor => _definition.GetNamedColor ("Default");
 
     /// <inheritdoc />
     public void BeginHighlighting ()
