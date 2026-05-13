@@ -1,6 +1,6 @@
 using Terminal.Gui.Document;
 
-namespace Terminal.Gui.Views.Rendering;
+namespace Terminal.Gui.Editor.Rendering;
 
 /// <summary>A single document line projected into terminal-cell elements.</summary>
 public sealed class CellVisualLine (DocumentLine documentLine)
@@ -16,6 +16,13 @@ public sealed class CellVisualLine (DocumentLine documentLine)
     public void AddElement (CellVisualLineElement element)
     {
         _elements.Add (element);
+    }
+
+    /// <summary>Replaces all elements with the given list. Used by transformers that restructure the line.</summary>
+    public void ReplaceElements (IReadOnlyList<CellVisualLineElement> elements)
+    {
+        _elements.Clear ();
+        _elements.AddRange (elements);
     }
 
     public int GetVisualColumn (int logicalColumn)

@@ -3,14 +3,14 @@
 using System.Reflection;
 using Terminal.Gui.Document;
 using Terminal.Gui.Drawing;
-using Terminal.Gui.Views.Rendering;
+using Terminal.Gui.Editor.Rendering;
 using Xunit;
 using Attribute = Terminal.Gui.Drawing.Attribute;
 
 namespace Terminal.Gui.Editor.Tests;
 
 /// <summary>
-///     Vets the default-args <see cref="CellVisualLine" /> cache on <see cref="Views.Editor" />.
+///     Vets the default-args <see cref="CellVisualLine" /> cache on <see cref="Editor" />.
 ///     The cache is a private detail — these tests reach into it via reflection because the
 ///     invariants are about identity (cache hit returns same instance, invalidation drops it),
 ///     which the public surface alone can't observe.
@@ -20,7 +20,7 @@ public class EditorVisualLineCacheTests
     [Fact]
     public void Caret_Math_Hits_Cache_For_Repeated_Reads ()
     {
-        Views.Editor editor = new () { Document = new TextDocument ("alpha\nbeta\ngamma") };
+        Editor editor = new () { Document = new TextDocument ("alpha\nbeta\ngamma") };
 
         // GetCaretColumn() reads the cache. Two reads against the same line, no doc change,
         // must return the same CellVisualLine instance.
@@ -36,7 +36,7 @@ public class EditorVisualLineCacheTests
     [Fact]
     public void Document_Edit_Drops_Affected_Line_From_Cache ()
     {
-        Views.Editor editor = new () { Document = new TextDocument ("alpha\nbeta\ngamma") };
+        Editor editor = new () { Document = new TextDocument ("alpha\nbeta\ngamma") };
         editor.CaretOffset = 0;
         ForceCachePopulation (editor);
 
@@ -55,7 +55,7 @@ public class EditorVisualLineCacheTests
     [Fact]
     public void Document_Edit_Drops_Downstream_Line_Entries ()
     {
-        Views.Editor editor = new () { Document = new TextDocument ("alpha\nbeta\ngamma") };
+        Editor editor = new () { Document = new TextDocument ("alpha\nbeta\ngamma") };
         ForceCachePopulation (editor);
         CellVisualLine line3Before = ReadCache (editor, 3)!;
 
@@ -71,7 +71,7 @@ public class EditorVisualLineCacheTests
     [Fact]
     public void IndentationSize_Change_Drops_Stale_Cached_Lines ()
     {
-        Views.Editor editor = new () { Document = new TextDocument ("\talpha\n\tbeta") };
+        Editor editor = new () { Document = new TextDocument ("\talpha\n\tbeta") };
         ForceCachePopulation (editor);
         CellVisualLine line1Before = ReadCache (editor, 1)!;
         var widthBefore = line1Before.VisualLength;
@@ -88,7 +88,7 @@ public class EditorVisualLineCacheTests
     [Fact]
     public void ShowTabs_Change_Drops_Stale_Cached_Lines ()
     {
-        Views.Editor editor = new () { Document = new TextDocument ("\ta") };
+        Editor editor = new () { Document = new TextDocument ("\ta") };
         ForceCachePopulation (editor);
         CellVisualLine before = ReadCache (editor, 1)!;
 
@@ -101,7 +101,7 @@ public class EditorVisualLineCacheTests
     [Fact]
     public void Document_Swap_Replaces_Cached_Lines ()
     {
-        Views.Editor editor = new () { Document = new TextDocument ("alpha") };
+        Editor editor = new () { Document = new TextDocument ("alpha") };
         ForceCachePopulation (editor);
         CellVisualLine line1Before = ReadCache (editor, 1)!;
 
@@ -113,7 +113,7 @@ public class EditorVisualLineCacheTests
         Assert.NotEqual (line1Before.VisualLength, line1After!.VisualLength);
     }
 
-    private static CellVisualLine? ReadCache (Views.Editor editor, int lineNumber)
+    private static CellVisualLine? ReadCache (Editor editor, int lineNumber)
     {
         // Trigger a cache fill via the public API path (caret column → GetOrBuildDefaultVisualLine).
         DocumentLine line = editor.Document!.GetLineByNumber (lineNumber);
@@ -124,7 +124,7 @@ public class EditorVisualLineCacheTests
         return cache.GetValueOrDefault (lineNumber);
     }
 
-    private static void ForceCachePopulation (Views.Editor editor)
+    private static void ForceCachePopulation (Editor editor)
     {
         // Walk the caret across every line so each one's default visual line is built and cached.
         for (var i = 1; i <= editor.Document!.LineCount; i++)
@@ -134,14 +134,14 @@ public class EditorVisualLineCacheTests
         }
     }
 
-    private static IReadOnlyCollection<int> ReadCacheKeys (Views.Editor editor)
+    private static IReadOnlyCollection<int> ReadCacheKeys (Editor editor)
     {
         return GetCache (editor).Keys.ToArray ();
     }
 
-    private static Dictionary<int, CellVisualLine> GetCache (Views.Editor editor)
+    private static Dictionary<int, CellVisualLine> GetCache (Editor editor)
     {
-        FieldInfo field = typeof (Views.Editor)
+        FieldInfo field = typeof (Editor)
                               .GetField ("_defaultVisualLineCache", BindingFlags.Instance | BindingFlags.NonPublic)
                           ?? throw new InvalidOperationException ("_defaultVisualLineCache field is missing");
 
@@ -149,7 +149,7 @@ public class EditorVisualLineCacheTests
     }
 
     /// <summary>
-    ///     Cherry-picked from PR #54: <see cref="Views.Editor.OnDrawingContent" /> can also cache
+    ///     Cherry-picked from PR #54: <see cref="Editor.OnDrawingContent" /> can also cache
     ///     when there's no syntax highlighter, no selection, and no transformers. The cache is
     ///     separate from the default-args cache so the two paths don't thrash each other.
     /// </summary>
@@ -158,7 +158,7 @@ public class EditorVisualLineCacheTests
         [Fact]
         public void Repeated_Draw_Of_Same_Line_With_Same_Attributes_Reuses_Entry ()
         {
-            Views.Editor editor = new () { Document = new TextDocument ("alpha") };
+            Editor editor = new () { Document = new TextDocument ("alpha") };
             DocumentLine line = editor.Document!.GetLineByNumber (1);
 
             CellVisualLine first = InvokeDrawBuild (editor, line);
@@ -170,7 +170,7 @@ public class EditorVisualLineCacheTests
         [Fact]
         public void Different_Attributes_Bypass_Cache ()
         {
-            Views.Editor editor = new () { Document = new TextDocument ("alpha") };
+            Editor editor = new () { Document = new TextDocument ("alpha") };
             DocumentLine line = editor.Document!.GetLineByNumber (1);
 
             Attribute red = new (Color.Red, Color.Black);
@@ -185,7 +185,7 @@ public class EditorVisualLineCacheTests
         [Fact]
         public void Selection_Bypasses_Cache ()
         {
-            Views.Editor editor = new () { Document = new TextDocument ("alpha") };
+            Editor editor = new () { Document = new TextDocument ("alpha") };
             DocumentLine line = editor.Document!.GetLineByNumber (1);
 
             CellVisualLine first = InvokeDrawBuild (editor, line);
@@ -199,7 +199,7 @@ public class EditorVisualLineCacheTests
         [Fact]
         public void Document_Edit_Drops_Draw_Cache_From_Affected_Line ()
         {
-            Views.Editor editor = new () { Document = new TextDocument ("alpha\nbeta") };
+            Editor editor = new () { Document = new TextDocument ("alpha\nbeta") };
             DocumentLine line2 = editor.Document!.GetLineByNumber (2);
             CellVisualLine before = InvokeDrawBuild (editor, line2);
 
@@ -212,14 +212,14 @@ public class EditorVisualLineCacheTests
         }
 
         private static CellVisualLine InvokeDrawBuild (
-            Views.Editor editor,
+            Editor editor,
             DocumentLine line,
             Attribute? normal = null,
             Attribute? selected = null,
             int selStart = 0,
             int selEnd = 0)
         {
-            MethodInfo method = typeof (Views.Editor)
+            MethodInfo method = typeof (Editor)
                                     .GetMethod (
                                         "GetOrBuildDrawVisualLine",
                                         BindingFlags.Instance | BindingFlags.NonPublic)

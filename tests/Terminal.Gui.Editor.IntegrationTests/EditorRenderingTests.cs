@@ -7,13 +7,14 @@ using Terminal.Gui.Highlighting;
 using Terminal.Gui.Input;
 using Terminal.Gui.Testing;
 using Terminal.Gui.Text;
+using Terminal.Gui.Editor;
 using Xunit;
 using Attribute = Terminal.Gui.Drawing.Attribute;
 
 namespace Terminal.Gui.Editor.IntegrationTests;
 
 /// <summary>
-///     Asserts the visual roles used by <see cref="Views.Editor" /> when rendering. Unselected text
+///     Asserts the visual roles used by <see cref="Editor" /> when rendering. Unselected text
 ///     should blend into the surrounding container (<see cref="VisualRole.Normal" />) — not
 ///     <see cref="VisualRole.Editable" />, which is the dim/contrast role intended for input
 ///     widgets like <see cref="Terminal.Gui.Views.TextField" /> and
@@ -88,7 +89,7 @@ public class EditorRenderingTests
         await using AppFixture<EditorTestHost> fx = new (() =>
         {
             EditorTestHost host = new ("alpha\nbeta");
-            host.Editor.ShowLineNumbers = true;
+            host.Editor.GutterOptions = GutterOptions.LineNumbers;
 
             return host;
         });
@@ -116,7 +117,7 @@ public class EditorRenderingTests
         await using AppFixture<EditorTestHost> fx = new (() =>
         {
             EditorTestHost host = new (string.Join ("\n", lines));
-            host.Editor.ShowLineNumbers = true;
+            host.Editor.GutterOptions = GutterOptions.LineNumbers;
 
             return host;
         });
@@ -147,7 +148,7 @@ public class EditorRenderingTests
         await using AppFixture<EditorTestHost> fx = new (() =>
         {
             EditorTestHost host = new ("only");
-            host.Editor.ShowLineNumbers = true;
+            host.Editor.GutterOptions = GutterOptions.LineNumbers;
 
             return host;
         });
@@ -167,7 +168,7 @@ public class EditorRenderingTests
         await using AppFixture<EditorTestHost> fx = new (() =>
         {
             EditorTestHost host = new ("alpha\nbeta");
-            host.Editor.ShowLineNumbers = true;
+            host.Editor.GutterOptions = GutterOptions.LineNumbers;
 
             return host;
         });
@@ -175,7 +176,7 @@ public class EditorRenderingTests
         fx.Render ();
         Assert.Equal ("1", fx.Driver.Contents![0, 0].Grapheme);
 
-        fx.Top.Editor.ShowLineNumbers = false;
+        fx.Top.Editor.GutterOptions = GutterOptions.None;
         fx.Render ();
 
         // With the gutter gone, content shifts left to column 0.

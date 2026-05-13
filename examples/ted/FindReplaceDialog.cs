@@ -1,5 +1,6 @@
 using Terminal.Gui.Document.Search;
 using Terminal.Gui.ViewBase;
+using Terminal.Gui.Editor;
 using Terminal.Gui.Views;
 
 namespace Ted;

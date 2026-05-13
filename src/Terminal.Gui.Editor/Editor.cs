@@ -1,13 +1,14 @@
 using System.Drawing;
 using Terminal.Gui.Document;
+using Terminal.Gui.Document.Folding;
 using Terminal.Gui.Drawing;
 using Terminal.Gui.Highlighting;
 using Terminal.Gui.Text.Indentation;
 using Terminal.Gui.ViewBase;
-using Terminal.Gui.Views.Rendering;
+using Terminal.Gui.Editor.Rendering;
 using Attribute = Terminal.Gui.Drawing.Attribute;
 
-namespace Terminal.Gui.Views;
+namespace Terminal.Gui.Editor;
 
 /// <summary>
 ///     Single-document text editor View backed by <see cref="TextDocument" />. Renders multi-line
@@ -49,7 +50,7 @@ public partial class Editor : View
     private int _maxVisualWidth;
     private bool _maxWidthDirty = true;
     private int _maxWidthLineNumber;
-    private bool _showLineNumbers;
+    private GutterOptions _gutterOptions;
 
     /// <summary>
     ///     Sticky column for vertical caret moves. Tracks the column the user *intends* to be in,
@@ -94,13 +95,14 @@ public partial class Editor : View
             _lastKnownCaretOffset = caretOffset;
             _selectionAnchor = null;
             ClearVisualLineCaches ();
+            _cachedVisibleLineNumbers = null;
             _maxWidthDirty = true;
 
             InstallHighlighter ();
 
             _virtualCaretColumn = GetCaretColumn ();
             UpdateContentSize ();
-            UpdateLineNumberPadding ();
+            UpdateGutterWidth ();
 
             if (hadSelection)
             {
@@ -122,20 +124,21 @@ public partial class Editor : View
     }
 
     /// <summary>
-    ///     Gets or sets whether one-based line numbers are rendered in the editor's left padding.
+    ///     Gets or sets which elements the gutter displays. Combine flags to show multiple elements:
+    ///     <c>GutterOptions.LineNumbers | GutterOptions.Folding</c>.
     /// </summary>
-    public bool ShowLineNumbers
+    public GutterOptions GutterOptions
     {
-        get => _showLineNumbers;
+        get => _gutterOptions;
         set
         {
-            if (_showLineNumbers == value)
+            if (_gutterOptions == value)
             {
                 return;
             }
 
-            _showLineNumbers = value;
-            UpdateLineNumberPadding ();
+            _gutterOptions = value;
+            UpdateGutterWidth ();
             SetNeedsDraw ();
         }
     }
@@ -254,6 +257,80 @@ public partial class Editor : View
     /// <summary>Background renderers drawn before visual-line elements.</summary>
     public IList<IBackgroundRenderer> BackgroundRenderers { get; } = [];
 
+    /// <summary>
+    ///     Gets or sets the <see cref="Document.Folding.FoldingManager" /> that tracks collapsible regions.
+    ///     Setting this installs a <see cref="FoldingTransformer" /> and subscribes to fold change events.
+    /// </summary>
+    public FoldingManager? FoldingManager
+    {
+        get;
+        set
+        {
+            if (field == value)
+            {
+                return;
+            }
+
+            if (field is not null)
+            {
+                field.FoldingChanged -= OnFoldingChanged;
+
+                // Remove the folding transformer installed by the previous manager.
+                for (var i = LineTransformers.Count - 1; i >= 0; i--)
+                {
+                    if (LineTransformers[i] is FoldingTransformer)
+                    {
+                        LineTransformers.RemoveAt (i);
+                    }
+                }
+            }
+
+            field = value;
+
+            if (field is not null)
+            {
+                field.FoldingChanged += OnFoldingChanged;
+                LineTransformers.Insert (0, new FoldingTransformer (field));
+            }
+
+            ClearVisualLineCaches ();
+            UpdateContentSize ();
+            UpdateGutterWidth ();
+            SetNeedsDraw ();
+        }
+    }
+
+    private void OnFoldingChanged (object? sender, EventArgs e)
+    {
+        ClearVisualLineCaches ();
+        _cachedVisibleLineNumbers = null;
+        _maxWidthDirty = true;
+        UpdateContentSize ();
+        SetNeedsDraw ();
+        _gutter?.SetNeedsDraw ();
+    }
+
+    /// <summary>
+    ///     If the caret is inside a collapsed fold, expand it so the caret stays visible.
+    /// </summary>
+    private void EnsureCaretNotInFold ()
+    {
+        if (FoldingManager is not { } fm)
+        {
+            return;
+        }
+
+        var caretOffset = CaretOffset;
+
+        foreach (FoldingSection fs in fm.GetFoldingsContaining (caretOffset))
+        {
+            if (fs.IsFolded && fs.StartOffset < caretOffset && caretOffset < fs.EndOffset)
+            {
+                fs.IsFolded = false;
+            }
+        }
+    }
+
     /// <summary>Raised whenever <see cref="CaretOffset" /> changes.</summary>
     public event EventHandler? CaretChanged;
 
@@ -277,6 +354,7 @@ public partial class Editor : View
         }
 
         EnsureCaretVisible ();
+        EnsureCaretNotInFold ();
         SetNeedsDraw ();
 
         if (changed)
@@ -310,9 +388,10 @@ public partial class Editor : View
         // Cheap: usually one or a handful of entries; correctness > saving a few cache hits.
         InvalidateVisualLineCaches (e);
         InvalidateHighlighterState (e);
+        _cachedVisibleLineNumbers = null;
         UpdateMaxWidthIncremental (e);
         UpdateContentSize ();
-        UpdateLineNumberPadding ();
+        UpdateGutterWidth ();
 
         var current = CaretOffset;
 
@@ -341,7 +420,8 @@ public partial class Editor : View
         }
 
         // +1 column lets the caret sit just past the end-of-line.
-        SetContentSize (new Size (_maxVisualWidth + 1, _document.LineCount));
+        var visibleLines = _document.LineCount - (FoldingManager?.GetHiddenLineCount () ?? 0);
+        SetContentSize (new Size (_maxVisualWidth + 1, Math.Max (1, visibleLines)));
     }
 
     /// <summary>Full O(N) recompute — only called on Document swap, IndentationSize change, etc.</summary>
@@ -573,10 +653,10 @@ public partial class Editor : View
         }
     }
 
-    private void UpdateLineNumberPadding ()
+    private void UpdateGutterWidth ()
     {
         Thickness thickness = Padding.Thickness;
-        var left = _showLineNumbers && _document is not null ? GetLineNumberPaddingWidth () : 0;
+        var left = _gutterOptions != GutterOptions.None && _document is not null ? GetGutterWidth () : 0;
 
         if (thickness.Left != left)
         {
@@ -603,10 +683,12 @@ public partial class Editor : View
                     Height = Dim.Fill ()
                 };
                 Padding.GetOrCreateView ().Add (_gutter);
+                _gutter.SyncLayout ();
             }
             else
             {
                 _gutter.Width = left;
+                _gutter.SyncLayout ();
                 _gutter.SetNeedsDraw ();
             }
         }
@@ -618,11 +700,23 @@ public partial class Editor : View
         }
     }
 
-    private int GetLineNumberPaddingWidth ()
+    private int GetGutterWidth ()
     {
-        var lineCount = Math.Max (1, _document?.LineCount ?? 1);
+        var width = 0;
 
-        return lineCount.ToString ().Length + 1;
+        if (_gutterOptions.HasFlag (GutterOptions.LineNumbers))
+        {
+            var lineCount = Math.Max (1, _document?.LineCount ?? 1);
+            width = lineCount.ToString ().Length + 1;
+        }
+
+        // Add 2 columns for fold indicator when folding is active.
+        if (_gutterOptions.HasFlag (GutterOptions.Folding) && FoldingManager is not null)
+        {
+            width += 2;
+        }
+
+        return width;
     }
 
     private int GetCaretColumn ()
@@ -636,6 +730,20 @@ public partial class Editor : View
     private int GetCaretLineIndex ()
     {
         return _document?.GetLineByOffset (CaretOffset).LineNumber - 1 ?? 0;
+    }
+
+    /// <summary>
+    ///     Returns the caret's position as an index into the visible-line list (i.e. the coordinate
+    ///     system used by <c>Viewport.Y</c>). Falls back to <see cref="GetCaretLineIndex" /> when
+    ///     no folding is active.
+    /// </summary>
+    private int GetCaretVisibleLineIndex ()
+    {
+        var docLineNumber = (_document?.GetLineByOffset (CaretOffset).LineNumber ?? 1);
+        List<int> visible = GetVisibleLineNumbers ();
+        var idx = visible.IndexOf (docLineNumber);
+
+        return idx >= 0 ? idx : GetCaretLineIndex ();
     }
 
     /// <summary>
@@ -760,7 +868,7 @@ public partial class Editor : View
             return;
         }
 
-        var caretLine = GetCaretLineIndex ();
+        var caretLine = GetCaretVisibleLineIndex ();
         var caretCol = GetCaretColumn ();
         var newY = viewport.Y;
         var newX = viewport.X;

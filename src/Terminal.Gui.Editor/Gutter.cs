@@ -1,23 +1,18 @@
-using System.Drawing;
-using Terminal.Gui.Document;
+using Terminal.Gui.Document.Folding;
 using Terminal.Gui.Input;
 using Terminal.Gui.ViewBase;
 
-namespace Terminal.Gui.Views;
+namespace Terminal.Gui.Editor;
 
 /// <summary>
-///     Renders line number and folding UI for an associated <see cref="Editor" />. Hosted as a SubView
-///     of the <see cref="Editor" />'s <see cref="Padding" /> so it participates in the View hierarchy
-///     and is correctly clipped beneath popovers, menus, and other overlay surfaces.
+///     Composite gutter hosting an optional <see cref="LineNumberGutter" /> and an optional <see cref="FoldingGutter" />.
+///     Hosted as a SubView of the <see cref="Editor" />'s <see cref="Padding" />.
 /// </summary>
-/// <remarks>
-///     The view tracks its parent <see cref="Editor" />'s viewport and document changes, redrawing
-///     itself when either changes.
-/// </remarks>
 public sealed class Gutter : View
 {
     private readonly Editor _editor;
-    private int? _selectionAnchorLineNumber;
+    private FoldingGutter? _foldingGutter;
+    private LineNumberGutter? _lineNumbers;
 
     /// <summary>Initializes a new <see cref="Gutter" /> for <paramref name="editor" />.</summary>
     public Gutter (Editor editor)
@@ -26,89 +21,85 @@ public sealed class Gutter : View
 
         _editor = editor;
         CanFocus = false;
+
+        MouseBindings.Add (MouseFlags.WheeledUp, Command.ScrollUp);
+        MouseBindings.Add (MouseFlags.WheeledDown, Command.ScrollDown);
     }
 
-    /// <inheritdoc />
-    protected override bool OnDrawingContent (DrawContext? context)
+    /// <summary>
+    ///     Synchronizes the internal layout. Called by the editor when the gutter width changes.
+    /// </summary>
+    internal void SyncLayout ()
     {
-        TextDocument? document = _editor.Document;
+        GutterOptions options = _editor.GutterOptions;
+        var showLineNumbers = options.HasFlag (GutterOptions.LineNumbers);
+        var showFolding = options.HasFlag (GutterOptions.Folding) && _editor.FoldingManager is not null;
 
-        if (document is null)
+        // --- Line numbers ---
+        if (showLineNumbers)
         {
-            return true;
-        }
-
-        Rectangle viewport = Viewport;
-
-        if (viewport.Width <= 0 || viewport.Height <= 0)
-        {
-            return true;
-        }
-
-        var firstVisibleLine = _editor.Viewport.Y;
-        var visibleHeight = _editor.Viewport.Height;
-
-        for (var row = 0; row < viewport.Height; row++)
-        {
-            var lineIndex = firstVisibleLine + row;
-            string text;
-
-            if (row >= visibleHeight || lineIndex < 0 || lineIndex >= document.LineCount)
+            if (_lineNumbers is null)
             {
-                text = new string (' ', viewport.Width);
+                _lineNumbers = new LineNumberGutter (_editor)
+                {
+                    X = 0,
+                    Y = 0,
+                    Width = Dim.Fill (),
+                    Height = Dim.Fill ()
+                };
+                Add (_lineNumbers);
             }
-            else
+        }
+        else
+        {
+            if (_lineNumbers is not null)
             {
-                // PadLeft to right-align the digits, then PadRight by one to leave a one-cell
-                // gutter between the number and the editor content.
-                text = (lineIndex + 1).ToString ().PadLeft (viewport.Width - 1).PadRight (viewport.Width);
+                Remove (_lineNumbers);
+                _lineNumbers.Dispose ();
+                _lineNumbers = null;
             }
-
-            Move (0, row);
-            AddStr (text);
         }
 
-        return true;
-    }
-
-    /// <inheritdoc />
-    protected override bool OnMouseEvent (Mouse mouse)
-    {
-        if (mouse.Position is not { } pos)
+        // --- Folding ---
+        if (showFolding)
         {
-            return false;
-        }
-
-        if (mouse.Flags.HasFlag (MouseFlags.LeftButtonPressed) && mouse.Flags.HasFlag (MouseFlags.PositionReport))
-        {
-            if (_selectionAnchorLineNumber is not { } anchor)
+            if (_foldingGutter is null)
             {
-                anchor = _editor.ViewRowToLineNumber (pos.Y);
-                _selectionAnchorLineNumber = anchor;
+                _foldingGutter = new FoldingGutter (_editor)
+                {
+                    Y = 0,
+                    Width = 2,
+                    Height = Dim.Fill ()
+                };
+                Add (_foldingGutter);
             }
-
-            _editor.SelectLines (anchor, _editor.ViewRowToLineNumber (pos.Y));
-
-            return true;
         }
-
-        if (mouse.Flags.HasFlag (MouseFlags.LeftButtonPressed))
+        else
         {
-            _selectionAnchorLineNumber = _editor.ViewRowToLineNumber (pos.Y);
-            _editor.SelectLineAtViewRow (pos.Y);
-            App?.Mouse.GrabMouse (this);
-
-            return true;
+            if (_foldingGutter is not null)
+            {
+                Remove (_foldingGutter);
+                _foldingGutter.Dispose ();
+                _foldingGutter = null;
+            }
         }
 
-        if (!mouse.Flags.HasFlag (MouseFlags.LeftButtonReleased))
+        // Adjust widths depending on which subviews are present.
+        if (_lineNumbers is not null && _foldingGutter is not null)
         {
-            return false;
+            // Line numbers on the left, fold indicators on the right.
+            _lineNumbers.X = 0;
+            _lineNumbers.Width = Dim.Fill (2);
+            _foldingGutter.X = Pos.Right (_lineNumbers);
         }
-
-        _selectionAnchorLineNumber = null;
-        App?.Mouse.UngrabMouse ();
-
-        return true;
+        else if (_lineNumbers is not null)
+        {
+            _lineNumbers.X = 0;
+            _lineNumbers.Width = Dim.Fill ();
+        }
+        else if (_foldingGutter is not null)
+        {
+            _foldingGutter.X = 0;
+        }
     }
 }

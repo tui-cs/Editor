@@ -7,7 +7,7 @@ A full-featured text editor `View` for [Terminal.Gui](https://github.com/gui-cs/
 Ships as a single NuGet package: **`Terminal.Gui.Editor`**.
 
 - **Document layer** (`Terminal.Gui.Document` namespace) — UI-framework-independent: rope-backed `TextDocument`, `TextAnchor`, `UndoStack`, `FoldingManager`, search, indentation, highlighting.
-- **Editor view** (`Terminal.Gui.Views` namespace) — an `Editor : View` subclass consuming the document layer and rendering on a cell grid, with selection, multi-caret, folding, search, and (post-MVP) TextMate highlighting.
+- **Editor view** (`Terminal.Gui.Editor` namespace) — an `Editor : View` subclass consuming the document layer and rendering on a cell grid, with selection, multi-caret, folding, search, and (post-MVP) TextMate highlighting.
 
 `Editor` ships alongside `TextView`. It is **not** a drop-in replacement and has no source-compat obligation to it.
 

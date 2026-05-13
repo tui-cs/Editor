@@ -1,6 +1,6 @@
 using Terminal.Gui.Document.Search;
 
-namespace Terminal.Gui.Views;
+namespace Terminal.Gui.Editor;
 
 public partial class Editor
 {

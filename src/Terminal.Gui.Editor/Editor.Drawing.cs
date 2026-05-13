@@ -1,17 +1,21 @@
 using System.Drawing;
 using Terminal.Gui.Document;
+using Terminal.Gui.Document.Folding;
 using Terminal.Gui.Drawing;
 using Terminal.Gui.Drivers;
 using Terminal.Gui.Highlighting;
 using Terminal.Gui.ViewBase;
-using Terminal.Gui.Views.Rendering;
+using Terminal.Gui.Editor.Rendering;
 using Attribute = Terminal.Gui.Drawing.Attribute;
 using Color = Terminal.Gui.Drawing.Color;
 
-namespace Terminal.Gui.Views;
+namespace Terminal.Gui.Editor;
 
 public partial class Editor
 {
+    /// <summary>Cached visible-line mapping; cleared when folds change or the document changes.</summary>
+    private List<int>? _cachedVisibleLineNumbers;
+
     /// <inheritdoc />
     protected override bool OnDrawingContent (DrawContext? context)
     {
@@ -73,19 +77,96 @@ public partial class Editor
         var visibleStart = viewport.X;
         var visibleEnd = viewport.X + viewport.Width;
 
+        // Build a mapping from viewport row → document line number (1-based),
+        // skipping lines hidden by collapsed folds.
+        List<int> visibleLineNumbers = GetVisibleLineNumbers ();
+
         for (var row = 0; row < viewport.Height; row++)
         {
-            var lineIndex = viewport.Y + row;
+            var visibleIndex = viewport.Y + row;
 
-            if (lineIndex < 0 || lineIndex >= _document!.LineCount)
+            if (visibleIndex < 0 || visibleIndex >= visibleLineNumbers.Count)
             {
                 break;
             }
 
-            DocumentLine line = _document.GetLineByNumber (lineIndex + 1);
+            var lineNumber = visibleLineNumbers[visibleIndex];
+            DocumentLine line = _document!.GetLineByNumber (lineNumber);
 
             DrawVisualLine (row, line, visibleStart, visibleEnd, null, normal, selected, selStart, selEnd);
         }
+    }
+
+    /// <summary>
+    ///     Returns a list of 1-based document line numbers that are visible (not hidden by folds),
+    ///     in order. Cached until folds change.
+    /// </summary>
+    internal List<int> GetVisibleLineNumbers ()
+    {
+        if (_cachedVisibleLineNumbers is not null)
+        {
+            return _cachedVisibleLineNumbers;
+        }
+
+        List<int> result = new ();
+
+        if (_document is null)
+        {
+            _cachedVisibleLineNumbers = result;
+
+            return result;
+        }
+
+        FoldingManager? fm = FoldingManager;
+        var lineNumber = 1;
+
+        while (lineNumber <= _document.LineCount)
+        {
+            result.Add (lineNumber);
+
+            if (fm is not null)
+            {
+                // If there are folded sections starting on this line, skip past the deepest one.
+                var maxEndLine = lineNumber;
+
+                foreach (FoldingSection fs in fm.AllFoldings)
+                {
+                    if (!fs.IsFolded)
+                    {
+                        continue;
+                    }
+
+                    DocumentLine startLine =
+                        fm.Document.GetLineByOffset (Math.Clamp (fs.StartOffset, 0, fm.Document.TextLength));
+
+                    if (startLine.LineNumber != lineNumber)
+                    {
+                        continue;
+                    }
+
+                    DocumentLine endLine =
+                        fm.Document.GetLineByOffset (Math.Clamp (fs.EndOffset, 0, fm.Document.TextLength));
+
+                    if (endLine.LineNumber > maxEndLine)
+                    {
+                        maxEndLine = endLine.LineNumber;
+                    }
+                }
+
+                if (maxEndLine > lineNumber)
+                {
+                    lineNumber = maxEndLine + 1;
+
+                    continue;
+                }
+            }
+
+            lineNumber++;
+        }
+
+        _cachedVisibleLineNumbers = result;
+
+        return result;
     }
 
     /// <summary>
@@ -170,7 +251,7 @@ public partial class Editor
         }
 
         Rectangle viewport = Viewport;
-        var caretLine = GetCaretLineIndex ();
+        var caretLine = GetCaretVisibleLineIndex ();
         var caretCol = GetCaretColumn ();
         var row = caretLine - viewport.Y;
         var col = caretCol - viewport.X;

@@ -1,6 +1,7 @@
 using Terminal.Gui.Document;
 using Terminal.Gui.Highlighting;
 using Terminal.Gui.Resources;
+using Terminal.Gui.Editor;
 using Terminal.Gui.Views;
 
 namespace Ted;
@@ -121,6 +122,7 @@ public sealed partial class TedApp
         LanguageShortcut.Title = def?.Name ?? "Plain Text";
 
         UpdateFileNameShortcut ();
+        InstallFolding ();
         Editor.SetNeedsDraw ();
     }
 
