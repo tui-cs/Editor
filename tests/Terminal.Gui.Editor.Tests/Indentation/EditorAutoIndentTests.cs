@@ -2,13 +2,13 @@
 
 using Terminal.Gui.Document;
 using Terminal.Gui.Text.Indentation;
-using Terminal.Gui.Views;
+using Terminal.Gui.Editor;
 using Xunit;
 
 namespace Terminal.Gui.Editor.Tests.Indentation;
 
 /// <summary>
-///     Tests for the <see cref="Views.Editor" /> auto-indent integration — verifying that
+///     Tests for the <see cref="Editor" /> auto-indent integration — verifying that
 ///     <see cref="IIndentationStrategy" /> is called after Enter and that <c>ted</c>-facing
 ///     properties work correctly.
 /// </summary>
@@ -17,7 +17,7 @@ public class EditorAutoIndentTests
     [Fact]
     public void IndentationStrategy_Defaults_To_DefaultIndentationStrategy ()
     {
-        Views.Editor editor = new ();
+        Editor editor = new ();
 
         Assert.IsType<DefaultIndentationStrategy> (editor.IndentationStrategy);
     }
@@ -25,7 +25,7 @@ public class EditorAutoIndentTests
     [Fact]
     public void IndentationStrategy_Can_Be_Set_To_Null ()
     {
-        Views.Editor editor = new () { IndentationStrategy = null };
+        Editor editor = new () { IndentationStrategy = null };
 
         Assert.Null (editor.IndentationStrategy);
     }
@@ -33,7 +33,7 @@ public class EditorAutoIndentTests
     [Fact]
     public void NewLine_Copies_Indentation_When_Strategy_Set ()
     {
-        Views.Editor editor = new ()
+        Editor editor = new ()
         {
             Document = new TextDocument ("    hello")
         };
@@ -53,7 +53,7 @@ public class EditorAutoIndentTests
     [Fact]
     public void NewLine_Does_Not_Indent_When_Strategy_Null ()
     {
-        Views.Editor editor = new ()
+        Editor editor = new ()
         {
             IndentationStrategy = null,
             Document = new TextDocument ("    hello")
@@ -71,7 +71,7 @@ public class EditorAutoIndentTests
     {
         var called = false;
 
-        Views.Editor editor = new ()
+        Editor editor = new ()
         {
             IndentationStrategy = new TestIndentationStrategy (() => called = true),
             Document = new TextDocument ("hello")

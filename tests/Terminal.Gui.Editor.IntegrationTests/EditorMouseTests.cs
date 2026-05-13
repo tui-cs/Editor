@@ -4,7 +4,7 @@ using System.Drawing;
 using Terminal.Gui.Editor.IntegrationTests.Testing;
 using Terminal.Gui.Input;
 using Terminal.Gui.Testing;
-using Terminal.Gui.Views;
+using Terminal.Gui.Editor;
 using Xunit;
 
 namespace Terminal.Gui.Editor.IntegrationTests;

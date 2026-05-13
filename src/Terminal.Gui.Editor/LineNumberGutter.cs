@@ -3,7 +3,7 @@ using Terminal.Gui.Document;
 using Terminal.Gui.Input;
 using Terminal.Gui.ViewBase;
 
-namespace Terminal.Gui.Views;
+namespace Terminal.Gui.Editor;
 
 /// <summary>
 ///     Renders line numbers and handles line-selection mouse interactions.

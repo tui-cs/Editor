@@ -7,6 +7,7 @@ using Terminal.Gui.Highlighting;
 using Terminal.Gui.Input;
 using Terminal.Gui.Resources;
 using Terminal.Gui.ViewBase;
+using Terminal.Gui.Editor;
 using Terminal.Gui.Views;
 
 namespace Ted;

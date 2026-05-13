@@ -4,7 +4,7 @@ using Terminal.Gui.Document.Folding;
 using Terminal.Gui.Input;
 using Terminal.Gui.ViewBase;
 
-namespace Terminal.Gui.Views;
+namespace Terminal.Gui.Editor;
 
 /// <summary>
 ///     Renders fold indicators (▸/▾/│) and toggles folds via <see cref="Command.Toggle" /> bound to

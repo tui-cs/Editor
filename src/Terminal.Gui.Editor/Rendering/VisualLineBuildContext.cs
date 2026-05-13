@@ -2,7 +2,7 @@ using Terminal.Gui.Document;
 using Terminal.Gui.Drawing;
 using Attribute = Terminal.Gui.Drawing.Attribute;
 
-namespace Terminal.Gui.Views.Rendering;
+namespace Terminal.Gui.Editor.Rendering;
 
 /// <summary>Options and styling inputs used to build a visual line.</summary>
 public sealed class VisualLineBuildContext (

@@ -6,6 +6,7 @@ using Terminal.Gui.Editor.IntegrationTests.Testing;
 using Terminal.Gui.Highlighting;
 using Terminal.Gui.Input;
 using Terminal.Gui.Testing;
+using Terminal.Gui.Editor;
 using Terminal.Gui.Views;
 using Xunit;
 

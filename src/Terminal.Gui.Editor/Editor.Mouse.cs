@@ -2,7 +2,7 @@ using System.Drawing;
 using Terminal.Gui.Document;
 using Terminal.Gui.Input;
 
-namespace Terminal.Gui.Views;
+namespace Terminal.Gui.Editor;
 
 public partial class Editor
 {

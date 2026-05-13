@@ -1,4 +1,4 @@
-namespace Terminal.Gui.Views;
+namespace Terminal.Gui.Editor;
 
 /// <summary>
 ///     Specifies which elements the <see cref="Gutter" /> displays.

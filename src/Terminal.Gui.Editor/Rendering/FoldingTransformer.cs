@@ -1,7 +1,7 @@
 using Terminal.Gui.Document;
 using Terminal.Gui.Document.Folding;
 
-namespace Terminal.Gui.Views.Rendering;
+namespace Terminal.Gui.Editor.Rendering;
 
 /// <summary>
 ///     An <see cref="IVisualLineTransformer" /> that replaces the content of collapsed

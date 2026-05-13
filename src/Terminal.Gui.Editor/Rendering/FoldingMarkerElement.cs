@@ -1,7 +1,7 @@
 using Terminal.Gui.ViewBase;
 using Attribute = Terminal.Gui.Drawing.Attribute;
 
-namespace Terminal.Gui.Views.Rendering;
+namespace Terminal.Gui.Editor.Rendering;
 
 /// <summary>
 ///     A visual-line element that renders the fold marker <c>"⋯"</c> in place of collapsed text.

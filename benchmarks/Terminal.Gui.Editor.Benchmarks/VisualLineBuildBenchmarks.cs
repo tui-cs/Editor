@@ -1,6 +1,6 @@
 using BenchmarkDotNet.Attributes;
 using Terminal.Gui.Document;
-using Terminal.Gui.Views.Rendering;
+using Terminal.Gui.Editor.Rendering;
 using Attribute = Terminal.Gui.Drawing.Attribute;
 
 namespace Terminal.Gui.Editor.Benchmarks;

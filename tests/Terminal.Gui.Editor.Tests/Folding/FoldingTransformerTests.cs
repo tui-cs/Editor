@@ -2,7 +2,7 @@
 
 using Terminal.Gui.Document;
 using Terminal.Gui.Document.Folding;
-using Terminal.Gui.Views.Rendering;
+using Terminal.Gui.Editor.Rendering;
 using Xunit;
 using Attribute = Terminal.Gui.Drawing.Attribute;
 
