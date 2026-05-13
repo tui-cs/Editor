@@ -36,7 +36,6 @@ public static class WordWrapStrategy
         {
             var visualColumn = 0;
             var lastWhitespaceOffset = -1;
-            var lastWhitespaceVisualColumn = 0;
             var currentOffset = segmentStart;
             var reachedEnd = false;
 
@@ -63,7 +62,7 @@ public static class WordWrapStrategy
                     {
                         // Break after the last whitespace.
                         var segLength = lastWhitespaceOffset - segmentStart;
-                        segments.Add (new WrapSegment (segmentStart, segLength, segments.Count > 0 ? 0 : 0));
+                        segments.Add (new WrapSegment (segmentStart, segLength, 0));
                         segmentStart = lastWhitespaceOffset;
                         // Skip whitespace at the start of the next segment.
                         segmentStart = SkipWhitespace (text, segmentStart);
@@ -72,7 +71,7 @@ public static class WordWrapStrategy
                     {
                         // Hard break — no whitespace found before the wrap column.
                         var segLength = currentOffset - segmentStart;
-                        segments.Add (new WrapSegment (segmentStart, segLength, segments.Count > 0 ? 0 : 0));
+                        segments.Add (new WrapSegment (segmentStart, segLength, 0));
                         segmentStart = currentOffset;
                     }
 
@@ -86,7 +85,6 @@ public static class WordWrapStrategy
                 {
                     // The break point is right after this whitespace character.
                     lastWhitespaceOffset = currentOffset + grapheme.Length;
-                    lastWhitespaceVisualColumn = visualColumn + width;
                 }
 
                 visualColumn += width;
@@ -101,7 +99,7 @@ public static class WordWrapStrategy
 
                 if (remaining > 0)
                 {
-                    segments.Add (new WrapSegment (segmentStart, remaining, segments.Count > 0 ? 0 : 0));
+                    segments.Add (new WrapSegment (segmentStart, remaining, 0));
                 }
 
                 break;

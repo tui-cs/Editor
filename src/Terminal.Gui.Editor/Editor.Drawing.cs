@@ -125,12 +125,8 @@ public partial class Editor
                 WordWrapStrategy.ComputeSegments (text, wrapColumn, IndentationSize);
             WrapSegment seg = segments[entry.SegmentIndex];
 
-            // Build a visual line for just this segment.
             var segText = text.Substring (seg.StartOffset, seg.Length);
-            TextDocument tempDoc = new (segText);
-            DocumentLine tempLine = tempDoc.GetLineByNumber (1);
 
-            // We build with the real document offset so selection works.
             CellVisualLine visualLine = BuildWrappedSegmentVisualLine (
                 line, seg.StartOffset, segText, normal, selected, selStart, selEnd);
 

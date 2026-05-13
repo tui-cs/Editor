@@ -4,6 +4,7 @@ using Terminal.Gui.Document.Folding;
 using Terminal.Gui.Drawing;
 using Terminal.Gui.Highlighting;
 using Terminal.Gui.Text.Indentation;
+using Terminal.Gui.Text;
 using Terminal.Gui.ViewBase;
 using Terminal.Gui.Editor.Rendering;
 using Attribute = Terminal.Gui.Drawing.Attribute;
@@ -789,16 +790,9 @@ public partial class Editor : View
             if (offsetInLine >= segments[i].StartOffset)
             {
                 var localOffset = offsetInLine - segments[i].StartOffset;
-                // Build a mini visual line for just this segment to get accurate column.
                 var segText = text.Substring (segments[i].StartOffset, segments[i].Length);
-                TextDocument tempDoc = new (segText);
-                DocumentLine tempLine = tempDoc.GetLineByNumber (1);
-                VisualLineBuildContext ctx = new (
-                    tempDoc, IndentationSize, ShowTabs, Drawing.Attribute.Default,
-                    Drawing.Attribute.Default, null, 0, 0, []);
-                CellVisualLine vl = _visualLineBuilder.Build (tempLine, ctx);
 
-                return vl.GetVisualColumn (Math.Min (localOffset, segText.Length));
+                return ComputeVisualColumnDirect (segText, localOffset);
             }
         }
 
@@ -870,13 +864,7 @@ public partial class Editor : View
 
         // Resolve the virtual column within this segment.
         var segText = text.Substring (seg.StartOffset, seg.Length);
-        TextDocument tempDoc = new (segText);
-        DocumentLine tempLine = tempDoc.GetLineByNumber (1);
-        VisualLineBuildContext ctx = new (
-            tempDoc, IndentationSize, ShowTabs, Drawing.Attribute.Default,
-            Drawing.Attribute.Default, null, 0, 0, []);
-        CellVisualLine vl = _visualLineBuilder.Build (tempLine, ctx);
-        var localOffset = vl.GetRelativeOffset (_virtualCaretColumn);
+        var localOffset = ComputeRelativeOffsetDirect (segText, _virtualCaretColumn);
 
         SetCaretOffset (line.Offset + seg.StartOffset + localOffset, false);
     }
@@ -1068,6 +1056,74 @@ public partial class Editor : View
     }
 
     private readonly record struct DrawCacheEntry (CellVisualLine Line, Attribute Normal, Attribute Selected);
+
+    /// <summary>
+    ///     Computes the visual column for a character offset within a text segment without
+    ///     allocating a <see cref="TextDocument" />. Walks graphemes and accumulates widths.
+    /// </summary>
+    private int ComputeVisualColumnDirect (string segmentText, int targetOffset)
+    {
+        var visualCol = 0;
+        var logicalCol = 0;
+
+        foreach (var grapheme in Terminal.Gui.Drawing.GraphemeHelper.GetGraphemes (segmentText))
+        {
+            if (logicalCol >= targetOffset)
+            {
+                break;
+            }
+
+            if (grapheme == "\t")
+            {
+                var remainder = visualCol % IndentationSize;
+                visualCol += remainder == 0 ? IndentationSize : IndentationSize - remainder;
+            }
+            else
+            {
+                visualCol += Math.Max (0, grapheme.GetColumns ());
+            }
+
+            logicalCol += grapheme.Length;
+        }
+
+        return visualCol;
+    }
+
+    /// <summary>
+    ///     Computes the character offset closest to a target visual column within a text segment
+    ///     without allocating a <see cref="TextDocument" />. Inverse of
+    ///     <see cref="ComputeVisualColumnDirect" />.
+    /// </summary>
+    private int ComputeRelativeOffsetDirect (string segmentText, int targetVisualColumn)
+    {
+        var visualCol = 0;
+        var logicalCol = 0;
+
+        foreach (var grapheme in Terminal.Gui.Drawing.GraphemeHelper.GetGraphemes (segmentText))
+        {
+            int width;
+
+            if (grapheme == "\t")
+            {
+                var remainder = visualCol % IndentationSize;
+                width = remainder == 0 ? IndentationSize : IndentationSize - remainder;
+            }
+            else
+            {
+                width = Math.Max (0, grapheme.GetColumns ());
+            }
+
+            if (visualCol + width > targetVisualColumn)
+            {
+                return logicalCol;
+            }
+
+            visualCol += width;
+            logicalCol += grapheme.Length;
+        }
+
+        return logicalCol;
+    }
 
     /// <summary>Maps a visual row (in the wrap map) to a document line and segment within that line.</summary>
     private readonly record struct WrapMapEntry (int LineNumber, int SegmentIndex, int SegmentStartOffset);
