@@ -23,6 +23,9 @@ public sealed class Gutter : View
 
         _editor = editor;
         CanFocus = false;
+
+        MouseBindings.Add (MouseFlags.WheeledUp, Command.ScrollUp);
+        MouseBindings.Add (MouseFlags.WheeledDown, Command.ScrollDown);
     }
 
     /// <summary>
@@ -115,6 +118,9 @@ internal sealed class LineNumberGutter : View
     {
         _editor = editor;
         CanFocus = false;
+
+        MouseBindings.Add (MouseFlags.WheeledUp, Command.ScrollUp);
+        MouseBindings.Add (MouseFlags.WheeledDown, Command.ScrollDown);
     }
 
     /// <inheritdoc />
@@ -218,6 +224,9 @@ internal sealed class FoldingGutter : View
 
         AddCommand (Command.Toggle, OnToggleFold);
         MouseBindings.Add (MouseFlags.LeftButtonClicked, Command.Toggle);
+
+        MouseBindings.Add (MouseFlags.WheeledUp, Command.ScrollUp);
+        MouseBindings.Add (MouseFlags.WheeledDown, Command.ScrollDown);
     }
 
     /// <inheritdoc />

@@ -128,6 +128,9 @@ public partial class Editor
         MouseBindings.Add (MouseFlags.WheeledDown, Command.ScrollDown);
         MouseBindings.Add (MouseFlags.WheeledLeft, Command.ScrollLeft);
         MouseBindings.Add (MouseFlags.WheeledRight, Command.ScrollRight);
+
+        // Allow scroll commands from gutter subviews (hosted in Padding) to bubble up to this Editor.
+        CommandsToBubbleUp = [Command.ScrollUp, Command.ScrollDown, Command.ScrollLeft, Command.ScrollRight];
     }
 
     private bool? ExtendCommand (Action extend)

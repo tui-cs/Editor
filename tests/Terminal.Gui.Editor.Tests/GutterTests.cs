@@ -1,6 +1,7 @@
 // Claude - claude-opus-4-7
 
 using Terminal.Gui.Document;
+using Terminal.Gui.Document.Folding;
 using Terminal.Gui.Input;
 using Terminal.Gui.ViewBase;
 using Terminal.Gui.Views;
@@ -113,7 +114,7 @@ public class GutterTests
     {
         Views.Editor editor = new () { Document = new TextDocument ("{\n  a\n}\n") };
         editor.GutterOptions = GutterOptions.LineNumbers | GutterOptions.Folding;
-        editor.FoldingManager = new Terminal.Gui.Document.Folding.FoldingManager (editor.Document!);
+        editor.FoldingManager = new FoldingManager (editor.Document!);
 
         Gutter gutter = (Gutter)PaddingSubViewsOf (editor).Single ();
 
@@ -128,7 +129,7 @@ public class GutterTests
     {
         Views.Editor editor = new () { Document = new TextDocument ("{\n  a\n}\n") };
         editor.GutterOptions = GutterOptions.LineNumbers | GutterOptions.Folding;
-        editor.FoldingManager = new Terminal.Gui.Document.Folding.FoldingManager (editor.Document!);
+        editor.FoldingManager = new FoldingManager (editor.Document!);
 
         Gutter gutter = (Gutter)PaddingSubViewsOf (editor).Single ();
         View lineNumbers = gutter.SubViews.First (v => v is LineNumberGutter);
@@ -142,13 +143,13 @@ public class GutterTests
     {
         Views.Editor editor = new () { Document = new TextDocument ("{\n  a\n}\n") };
         editor.GutterOptions = GutterOptions.LineNumbers | GutterOptions.Folding;
-        editor.FoldingManager = new Terminal.Gui.Document.Folding.FoldingManager (editor.Document!);
+        editor.FoldingManager = new FoldingManager (editor.Document!);
 
         Gutter gutter = (Gutter)PaddingSubViewsOf (editor).Single ();
         View foldingGutter = gutter.SubViews.First (v => v is FoldingGutter);
 
         // FoldingGutter should have a mouse binding for LeftButtonClicked → Toggle.
-        var bindings = foldingGutter.MouseBindings.GetAllFromCommands (Command.Toggle);
+        IEnumerable<MouseFlags> bindings = foldingGutter.MouseBindings.GetAllFromCommands (Command.Toggle);
         Assert.NotEmpty (bindings);
     }
 
@@ -157,7 +158,7 @@ public class GutterTests
     {
         Views.Editor editor = new () { Document = new TextDocument ("{\n  a\n}\n") };
         editor.GutterOptions = GutterOptions.Folding;
-        editor.FoldingManager = new Terminal.Gui.Document.Folding.FoldingManager (editor.Document!);
+        editor.FoldingManager = new FoldingManager (editor.Document!);
 
         Assert.Equal (2, editor.Padding.Thickness.Left);
 
@@ -175,6 +176,33 @@ public class GutterTests
         // No FoldingManager set — padding should remain 0 (folding flag alone is not enough).
         Assert.Equal (0, editor.Padding.Thickness.Left);
         Assert.Empty (PaddingSubViewsOf (editor));
+    }
+
+    [Fact]
+    public void Gutter_Has_Scroll_MouseBindings ()
+    {
+        Views.Editor editor = new () { Document = new TextDocument ("a\nb\nc") };
+        editor.GutterOptions = GutterOptions.LineNumbers;
+
+        Gutter gutter = (Gutter)PaddingSubViewsOf (editor).Single ();
+
+        // Gutter itself should have wheel bindings.
+        Assert.NotEmpty (gutter.MouseBindings.GetAllFromCommands (Command.ScrollUp));
+        Assert.NotEmpty (gutter.MouseBindings.GetAllFromCommands (Command.ScrollDown));
+
+        // LineNumberGutter subview should also have wheel bindings.
+        View lineNumbers = gutter.SubViews.First (v => v is LineNumberGutter);
+        Assert.NotEmpty (lineNumbers.MouseBindings.GetAllFromCommands (Command.ScrollUp));
+        Assert.NotEmpty (lineNumbers.MouseBindings.GetAllFromCommands (Command.ScrollDown));
+    }
+
+    [Fact]
+    public void Editor_Has_ScrollCommands_In_CommandsToBubbleUp ()
+    {
+        Views.Editor editor = new ();
+
+        Assert.Contains (Command.ScrollUp, editor.CommandsToBubbleUp);
+        Assert.Contains (Command.ScrollDown, editor.CommandsToBubbleUp);
     }
 
     private static IReadOnlyCollection<View> PaddingSubViewsOf (Views.Editor editor)
