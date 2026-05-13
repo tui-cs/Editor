@@ -75,6 +75,41 @@ public class EditorSearchHitTests
     }
 
     [Fact]
+    public async Task SearchHitRenderer_Partial_Selection_Overlap_Still_Uses_Active ()
+    {
+        // "hello" is a search hit at offset 0-4. Select only "hel" (offset 0-2).
+        // The selected portion must still show Active, not Highlight.
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("hello world hello"));
+        fx.Top.Editor.SetFocus ();
+        fx.Top.Editor.SearchStrategy = SearchStrategyFactory.Create ("hello", false, false, SearchMode.Normal);
+
+        // Select "hel" (first 3 chars)
+        fx.Top.Editor.CaretOffset = 0;
+        fx.Injector.InjectKey (Key.CursorRight.WithShift, Direct);
+        fx.Injector.InjectKey (Key.CursorRight.WithShift, Direct);
+        fx.Injector.InjectKey (Key.CursorRight.WithShift, Direct);
+        fx.Render ();
+
+        Attribute active = fx.Top.Editor.GetAttributeForRole (VisualRole.Active);
+        Attribute highlight = fx.Top.Editor.GetAttributeForRole (VisualRole.Highlight);
+
+        // "h" at column 0 — inside selection → Active
+        Cell cell0 = fx.Driver.Contents![0, 0];
+        Assert.Equal ("h", cell0.Grapheme);
+        Assert.Equal (active, cell0.Attribute);
+
+        // "l" at column 2 — inside selection → Active
+        Cell cell2 = fx.Driver.Contents![0, 2];
+        Assert.Equal ("l", cell2.Grapheme);
+        Assert.Equal (active, cell2.Attribute);
+
+        // "l" at column 3 — outside selection but inside search hit → Highlight
+        Cell cell3 = fx.Driver.Contents![0, 3];
+        Assert.Equal ("l", cell3.Grapheme);
+        Assert.Equal (highlight, cell3.Attribute);
+    }
+
+    [Fact]
     public async Task SearchHitRenderer_Invalidates_After_Edit ()
     {
         await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("hello world hello"));

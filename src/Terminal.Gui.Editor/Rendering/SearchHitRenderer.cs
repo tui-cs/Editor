@@ -39,8 +39,8 @@ public sealed class SearchHitRenderer : IBackgroundRenderer
 
         // Compute the document-offset range for the visible viewport (all visible lines).
         DocumentLine docLine = line.DocumentLine;
-        var lineStart = docLine.Offset;
-        var lineEnd = docLine.EndOffset;
+        var lineStartOffset = docLine.Offset;
+        var lineEndOffset = docLine.EndOffset;
 
         // Get matches for the visible viewport (lazily cached across lines within the same draw pass).
         ISearchResult[] hits = GetHits (editor, strategy, document);
@@ -60,29 +60,29 @@ public sealed class SearchHitRenderer : IBackgroundRenderer
         foreach (ISearchResult hit in hits)
         {
             // Skip hits that don't intersect this line.
-            if (hit.Offset >= lineEnd || hit.Offset + hit.Length <= lineStart)
+            if (hit.Offset >= lineEndOffset || hit.Offset + hit.Length <= lineStartOffset)
             {
                 continue;
             }
 
             // Clamp hit range to this line.
-            var hitStart = Math.Max (hit.Offset, lineStart);
-            var hitEnd = Math.Min (hit.Offset + hit.Length, lineEnd);
+            var hitStartOffset = Math.Max (hit.Offset, lineStartOffset);
+            var hitEndOffset = Math.Min (hit.Offset + hit.Length, lineEndOffset);
 
             // Walk elements and override their attribute for the hit range.
             foreach (CellVisualLineElement element in line.Elements)
             {
-                var elemStart = element.DocumentOffset;
-                var elemEnd = element.DocumentEndOffset;
+                var elemStartOffset = element.DocumentOffset;
+                var elemEndOffset = element.DocumentEndOffset;
 
                 // Skip elements outside the hit range.
-                if (elemEnd <= hitStart || elemStart >= hitEnd)
+                if (elemEndOffset <= hitStartOffset || elemStartOffset >= hitEndOffset)
                 {
                     continue;
                 }
 
-                // If selection covers this element entirely, selection wins.
-                if (hasSelection && elemStart >= selStart && elemEnd <= selEnd)
+                // If selection covers this element (any overlap), selection wins.
+                if (hasSelection && elemStartOffset < selEnd && elemEndOffset > selStart)
                 {
                     continue;
                 }
