@@ -1,6 +1,6 @@
 # Terminal.Gui.Editor
 
-![Terminal.Gui.Editor — ted demo app](docs/images/hero.png)
+![Terminal.Gui.Editor — ted demo app](docs/images/hero.gif)
 
 A full-featured text editor `View` for [Terminal.Gui](https://github.com/gui-cs/Terminal.Gui), built on a hard fork of [AvaloniaEdit](https://github.com/AvaloniaUI/AvaloniaEdit)'s pure-data layers (Document, Folding, Search, Indentation, Highlighting).
 
