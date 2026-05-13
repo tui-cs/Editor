@@ -2,13 +2,12 @@
 
 using Terminal.Gui.Document;
 using Terminal.Gui.ViewBase;
-using Terminal.Gui.Views;
 using Xunit;
 
 namespace Terminal.Gui.Editor.Tests;
 
 /// <summary>
-///     Tests for <see cref="Gutter" /> life-cycle and the <see cref="Views.Editor" />
+///     Tests for <see cref="Gutter" /> life-cycle and the <see cref="Editor" />
 ///     wiring that hosts it as a SubView of <see cref="Padding" />. Rendering / clipping behavior
 ///     that needs a driver lives in the IntegrationTests project.
 /// </summary>
@@ -17,7 +16,7 @@ public class GutterTests
     [Fact]
     public void Disabled_By_Default ()
     {
-        Views.Editor editor = new ();
+        Editor editor = new ();
 
         Assert.Equal (0, editor.Padding.Thickness.Left);
         Assert.Empty (PaddingSubViewsOf (editor));
@@ -26,7 +25,7 @@ public class GutterTests
     [Fact]
     public void Enabled_Adds_Gutter_As_PaddingSubView ()
     {
-        Views.Editor editor = new () { Document = new TextDocument ("a\nb") };
+        Editor editor = new () { Document = new TextDocument ("a\nb") };
 
         editor.ShowLineNumbers = true;
 
@@ -38,7 +37,7 @@ public class GutterTests
     [Fact]
     public void Disabling_Removes_Gutter_From_Padding ()
     {
-        Views.Editor editor = new () { Document = new TextDocument ("a\nb") };
+        Editor editor = new () { Document = new TextDocument ("a\nb") };
         editor.ShowLineNumbers = true;
         Assert.Single (PaddingSubViewsOf (editor));
 
@@ -50,7 +49,7 @@ public class GutterTests
     [Fact]
     public void Toggling_Repeatedly_Does_Not_Leak_SubViews ()
     {
-        Views.Editor editor = new () { Document = new TextDocument ("a\nb") };
+        Editor editor = new () { Document = new TextDocument ("a\nb") };
 
         for (var i = 0; i < 5; i++)
         {
@@ -66,7 +65,7 @@ public class GutterTests
     [Fact]
     public void Width_Tracks_Padding_Thickness_When_LineCount_Grows ()
     {
-        Views.Editor editor = new () { Document = new TextDocument (string.Join ('\n', Enumerable.Range (1, 9))) };
+        Editor editor = new () { Document = new TextDocument (string.Join ('\n', Enumerable.Range (1, 9))) };
         editor.ShowLineNumbers = true;
 
         Gutter view = (Gutter)PaddingSubViewsOf (editor).Single ();
@@ -88,13 +87,13 @@ public class GutterTests
     [Fact]
     public void Gutter_CanFocus_Is_False ()
     {
-        Views.Editor editor = new () { Document = new TextDocument ("a") };
+        Editor editor = new () { Document = new TextDocument ("a") };
         Gutter view = new (editor);
 
         Assert.False (view.CanFocus);
     }
 
-    private static IReadOnlyCollection<View> PaddingSubViewsOf (Views.Editor editor)
+    private static IReadOnlyCollection<View> PaddingSubViewsOf (Editor editor)
     {
         // Avoid forcing AdornmentView allocation in the "no padding" case so we can also assert
         // that subviews are absent without observing GetOrCreateView side-effects.

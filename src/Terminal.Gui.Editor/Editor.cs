@@ -1,13 +1,13 @@
 using System.Drawing;
 using Terminal.Gui.Document;
 using Terminal.Gui.Drawing;
+using Terminal.Gui.Editor.Rendering;
 using Terminal.Gui.Highlighting;
 using Terminal.Gui.Text.Indentation;
 using Terminal.Gui.ViewBase;
-using Terminal.Gui.Views.Rendering;
 using Attribute = Terminal.Gui.Drawing.Attribute;
 
-namespace Terminal.Gui.Views;
+namespace Terminal.Gui.Editor;
 
 /// <summary>
 ///     Single-document text editor View backed by <see cref="TextDocument" />. Renders multi-line

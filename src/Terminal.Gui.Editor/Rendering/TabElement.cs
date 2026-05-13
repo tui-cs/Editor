@@ -1,7 +1,7 @@
 using Terminal.Gui.ViewBase;
 using Attribute = Terminal.Gui.Drawing.Attribute;
 
-namespace Terminal.Gui.Views.Rendering;
+namespace Terminal.Gui.Editor.Rendering;
 
 /// <summary>A tab character expanded to the next indentation stop at render time.</summary>
 public sealed class TabElement (

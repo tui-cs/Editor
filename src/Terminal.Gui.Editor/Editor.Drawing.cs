@@ -2,13 +2,13 @@ using System.Drawing;
 using Terminal.Gui.Document;
 using Terminal.Gui.Drawing;
 using Terminal.Gui.Drivers;
+using Terminal.Gui.Editor.Rendering;
 using Terminal.Gui.Highlighting;
 using Terminal.Gui.ViewBase;
-using Terminal.Gui.Views.Rendering;
 using Attribute = Terminal.Gui.Drawing.Attribute;
 using Color = Terminal.Gui.Drawing.Color;
 
-namespace Terminal.Gui.Views;
+namespace Terminal.Gui.Editor;
 
 public partial class Editor
 {

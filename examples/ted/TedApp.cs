@@ -2,9 +2,11 @@ using Terminal.Gui.App;
 using Terminal.Gui.Configuration;
 using Terminal.Gui.Document;
 using Terminal.Gui.Drawing;
+using Terminal.Gui.Editor;
 using Terminal.Gui.Highlighting;
 using Terminal.Gui.Input;
 using Terminal.Gui.Resources;
+using Terminal.Gui.Text.Indentation;
 using Terminal.Gui.ViewBase;
 using Terminal.Gui.Views;
 
@@ -80,7 +82,7 @@ public sealed partial class TedApp : Window
         autoIndentCheckBox.ValueChanged += (_, e) =>
         {
             Editor.IndentationStrategy = e.NewValue == CheckState.Checked
-                ? new Terminal.Gui.Text.Indentation.DefaultIndentationStrategy ()
+                ? new DefaultIndentationStrategy ()
                 : null;
         };
 

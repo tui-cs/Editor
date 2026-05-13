@@ -2,7 +2,6 @@
 
 using Terminal.Gui.Document;
 using Terminal.Gui.Document.Search;
-using Terminal.Gui.Views;
 using Xunit;
 
 namespace Terminal.Gui.Editor.Tests;
@@ -19,7 +18,7 @@ public class EditorFindReplaceTests
     [Fact]
     public void ReplaceAll_Replaces_Every_Match_And_Returns_Count ()
     {
-        Views.Editor editor = new () { Document = new TextDocument ("foo bar foo baz foo") };
+        Editor editor = new () { Document = new TextDocument ("foo bar foo baz foo") };
 
         var n = editor.ReplaceAll ("foo", "qux");
 
@@ -33,7 +32,7 @@ public class EditorFindReplaceTests
         // Regression for the R5 violation called out in spec §3 / §8 D4: ReplaceAll used to
         // run N un-grouped Replace calls, so undo took N presses. RunUpdate () groups them.
         TextDocument doc = new ("foo foo foo foo foo");
-        Views.Editor editor = new () { Document = doc };
+        Editor editor = new () { Document = doc };
 
         var n = editor.ReplaceAll ("foo", "qux");
         Assert.Equal (5, n);
@@ -49,7 +48,7 @@ public class EditorFindReplaceTests
     public void ReplaceAll_With_Zero_Matches_Returns_Zero_And_Does_Not_Modify_Document ()
     {
         TextDocument doc = new ("hello world");
-        Views.Editor editor = new () { Document = doc };
+        Editor editor = new () { Document = doc };
 
         var n = editor.ReplaceAll ("xyz", "abc");
 
@@ -60,7 +59,7 @@ public class EditorFindReplaceTests
     [Fact]
     public void ReplaceNext_ReadOnly_Does_Not_Modify_Document ()
     {
-        Views.Editor editor = new () { Document = new TextDocument ("one two one"), ReadOnly = true };
+        Editor editor = new () { Document = new TextDocument ("one two one"), ReadOnly = true };
 
         Assert.False (editor.ReplaceNext ("one", "1"));
 
@@ -71,7 +70,7 @@ public class EditorFindReplaceTests
     [Fact]
     public void ReplaceAll_ReadOnly_Does_Not_Modify_Document ()
     {
-        Views.Editor editor = new () { Document = new TextDocument ("one two one"), ReadOnly = true };
+        Editor editor = new () { Document = new TextDocument ("one two one"), ReadOnly = true };
 
         Assert.Equal (0, editor.ReplaceAll ("one", "1"));
 
@@ -81,7 +80,7 @@ public class EditorFindReplaceTests
     [Fact]
     public void ReplaceAll_Throws_On_Null_Replacement ()
     {
-        Views.Editor editor = new () { Document = new TextDocument ("foo") };
+        Editor editor = new () { Document = new TextDocument ("foo") };
 
         Assert.Throws<ArgumentNullException> (() => editor.ReplaceAll ("foo", null!));
     }
@@ -89,7 +88,7 @@ public class EditorFindReplaceTests
     [Fact]
     public void FindNext_Selects_Next_Match_From_Caret ()
     {
-        Views.Editor editor = new () { Document = new TextDocument ("foo bar foo") };
+        Editor editor = new () { Document = new TextDocument ("foo bar foo") };
         editor.CaretOffset = 0;
 
         var found = editor.FindNext ("foo");
@@ -102,7 +101,7 @@ public class EditorFindReplaceTests
     [Fact]
     public void FindNext_Wraps_Around_When_Past_Last_Match ()
     {
-        Views.Editor editor = new () { Document = new TextDocument ("foo bar foo") };
+        Editor editor = new () { Document = new TextDocument ("foo bar foo") };
         editor.CaretOffset = editor.Document!.TextLength;
 
         var found = editor.FindNext ("foo");
@@ -116,7 +115,7 @@ public class EditorFindReplaceTests
     [Fact]
     public void SearchStrategy_Property_Round_Trips ()
     {
-        Views.Editor editor = new () { Document = new TextDocument ("hello") };
+        Editor editor = new () { Document = new TextDocument ("hello") };
         ISearchStrategy strategy = SearchStrategyFactory.Create ("hello", false, false, SearchMode.Normal);
 
         editor.SearchStrategy = strategy;
@@ -127,7 +126,7 @@ public class EditorFindReplaceTests
     [Fact]
     public void FindNext_NoArg_Returns_False_When_Strategy_Not_Set ()
     {
-        Views.Editor editor = new () { Document = new TextDocument ("hello") };
+        Editor editor = new () { Document = new TextDocument ("hello") };
 
         Assert.False (editor.FindNext ());
     }
@@ -136,7 +135,7 @@ public class EditorFindReplaceTests
     public void FindNext_Via_Strategy_Finds_Regex_Match ()
     {
         // The bespoke IndexOf engine cannot express this — regex is the whole point of the lift.
-        Views.Editor editor = new () { Document = new TextDocument ("abc 123 def 456") };
+        Editor editor = new () { Document = new TextDocument ("abc 123 def 456") };
         editor.SearchStrategy = SearchStrategyFactory.Create (@"\d+", false, false, SearchMode.RegEx);
 
         Assert.True (editor.FindNext ());
@@ -148,7 +147,7 @@ public class EditorFindReplaceTests
     [Fact]
     public void FindNext_Via_Strategy_Respects_Whole_Word ()
     {
-        Views.Editor editor = new () { Document = new TextDocument ("cat catalog scatter cat") };
+        Editor editor = new () { Document = new TextDocument ("cat catalog scatter cat") };
         editor.SearchStrategy = SearchStrategyFactory.Create ("cat", false, true, SearchMode.Normal);
 
         Assert.True (editor.FindNext ());
@@ -162,7 +161,7 @@ public class EditorFindReplaceTests
     [Fact]
     public void FindPrevious_Finds_Rightmost_Match_Before_Caret ()
     {
-        Views.Editor editor = new () { Document = new TextDocument ("foo bar foo baz foo") };
+        Editor editor = new () { Document = new TextDocument ("foo bar foo baz foo") };
         editor.CaretOffset = 15; // between "foo" #2 (offset 8-11) and "foo" #3 (offset 16-19)
 
         Assert.True (editor.FindPrevious ("foo"));
@@ -174,7 +173,7 @@ public class EditorFindReplaceTests
     [Fact]
     public void FindPrevious_Wraps_Around_When_Before_First_Match ()
     {
-        Views.Editor editor = new () { Document = new TextDocument ("foo bar foo") };
+        Editor editor = new () { Document = new TextDocument ("foo bar foo") };
         editor.CaretOffset = 0;
 
         Assert.True (editor.FindPrevious ("foo"));
@@ -185,7 +184,7 @@ public class EditorFindReplaceTests
     [Fact]
     public void ReplaceNext_Substitutes_Regex_Backreferences ()
     {
-        Views.Editor editor = new () { Document = new TextDocument ("count=42 size=7") };
+        Editor editor = new () { Document = new TextDocument ("count=42 size=7") };
         editor.SearchStrategy = SearchStrategyFactory.Create (@"(\w+)=(\d+)", false, false, SearchMode.RegEx);
 
         Assert.True (editor.ReplaceNext ("$2:$1"));
@@ -196,7 +195,7 @@ public class EditorFindReplaceTests
     [Fact]
     public void ReplaceAll_Via_Regex_Strategy_Replaces_All_Matches ()
     {
-        Views.Editor editor = new () { Document = new TextDocument ("abc 123 def 456 ghi 789") };
+        Editor editor = new () { Document = new TextDocument ("abc 123 def 456 ghi 789") };
         editor.SearchStrategy = SearchStrategyFactory.Create (@"\d+", false, false, SearchMode.RegEx);
 
         var n = editor.ReplaceAll ("#");
@@ -211,7 +210,7 @@ public class EditorFindReplaceTests
         // Reverse-iteration replace under a single RunUpdate () scope is the new path; verify the
         // R5 invariant (one user-visible undo step) holds even when the engine is regex.
         TextDocument doc = new ("a1 b2 c3 d4 e5");
-        Views.Editor editor = new () { Document = doc };
+        Editor editor = new () { Document = doc };
         editor.SearchStrategy = SearchStrategyFactory.Create (@"\d", false, false, SearchMode.RegEx);
 
         var n = editor.ReplaceAll ("X");
@@ -229,7 +228,7 @@ public class EditorFindReplaceTests
         // Reverse iteration is required because replacing forward would invalidate later offsets
         // as soon as the substitution differs in length from the match. This test would fail under
         // a naive forward loop because "$1:$2" expands the match.
-        Views.Editor editor = new () { Document = new TextDocument ("a=1 b=2 c=3") };
+        Editor editor = new () { Document = new TextDocument ("a=1 b=2 c=3") };
         editor.SearchStrategy = SearchStrategyFactory.Create (@"(\w)=(\d)", false, false, SearchMode.RegEx);
 
         var n = editor.ReplaceAll ("$1->$2");
@@ -244,7 +243,7 @@ public class EditorFindReplaceTests
     public void FindNext_ZeroLength_Caret_Regex_Cycles_Through_Line_Starts ()
     {
         // ^ matches at the start of each line: offsets 0, 6, 12 for "line1\nline2\nline3"
-        Views.Editor editor = new () { Document = new TextDocument ("line1\nline2\nline3") };
+        Editor editor = new () { Document = new TextDocument ("line1\nline2\nline3") };
         editor.SearchStrategy = SearchStrategyFactory.Create (@"^", false, false, SearchMode.RegEx);
         editor.CaretOffset = 0;
 
@@ -266,7 +265,7 @@ public class EditorFindReplaceTests
     public void FindNext_ZeroLength_WordBoundary_Cycles_Through_Positions ()
     {
         // \b on "ab cd" matches at: 0, 2, 3, 5
-        Views.Editor editor = new () { Document = new TextDocument ("ab cd") };
+        Editor editor = new () { Document = new TextDocument ("ab cd") };
         editor.SearchStrategy = SearchStrategyFactory.Create (@"\b", false, false, SearchMode.RegEx);
         editor.CaretOffset = 0;
 
@@ -287,7 +286,7 @@ public class EditorFindReplaceTests
     [Fact]
     public void FindPrevious_ZeroLength_Caret_Regex_Cycles_Backward ()
     {
-        Views.Editor editor = new () { Document = new TextDocument ("line1\nline2\nline3") };
+        Editor editor = new () { Document = new TextDocument ("line1\nline2\nline3") };
         editor.SearchStrategy = SearchStrategyFactory.Create (@"^", false, false, SearchMode.RegEx);
         editor.CaretOffset = 12;
 
@@ -309,7 +308,7 @@ public class EditorFindReplaceTests
     public void ReplaceNext_ZeroLength_Match_Inserts_At_Position ()
     {
         // Replace ^ with "// " — prepend comment marker to each line
-        Views.Editor editor = new () { Document = new TextDocument ("a\nb\nc") };
+        Editor editor = new () { Document = new TextDocument ("a\nb\nc") };
         editor.SearchStrategy = SearchStrategyFactory.Create (@"^", false, false, SearchMode.RegEx);
         editor.CaretOffset = 0;
 
@@ -327,7 +326,7 @@ public class EditorFindReplaceTests
     public void ReplaceAll_ZeroLength_Match_Inserts_At_All_Positions ()
     {
         // ReplaceAll with ^ — prepend comment marker to every line
-        Views.Editor editor = new () { Document = new TextDocument ("a\nb\nc") };
+        Editor editor = new () { Document = new TextDocument ("a\nb\nc") };
         editor.SearchStrategy = SearchStrategyFactory.Create (@"^", false, false, SearchMode.RegEx);
 
         var n = editor.ReplaceAll ("// ");
@@ -343,7 +342,7 @@ public class EditorFindReplaceTests
     {
         // Caret at offset 9 is inside the second "foo" (offsets 8..10).
         // FindPrevious should select [8, 11) — the in-progress match.
-        Views.Editor editor = new () { Document = new TextDocument ("foo bar foo") };
+        Editor editor = new () { Document = new TextDocument ("foo bar foo") };
         editor.CaretOffset = 9;
 
         Assert.True (editor.FindPrevious ("foo"));
@@ -356,7 +355,7 @@ public class EditorFindReplaceTests
     public void FindPrevious_Twice_From_InProgress_Moves_To_Prior_Hit ()
     {
         // First call lands on the in-progress match, second call lands on the earlier match.
-        Views.Editor editor = new () { Document = new TextDocument ("foo bar foo") };
+        Editor editor = new () { Document = new TextDocument ("foo bar foo") };
         editor.CaretOffset = 9;
 
         Assert.True (editor.FindPrevious ("foo"));
@@ -373,7 +372,7 @@ public class EditorFindReplaceTests
     [Fact]
     public void FindPrevious_WrapAround_False_Returns_False_When_No_Match_Before_Caret ()
     {
-        Views.Editor editor = new () { Document = new TextDocument ("foo bar foo") };
+        Editor editor = new () { Document = new TextDocument ("foo bar foo") };
         editor.CaretOffset = 0;
 
         Assert.False (editor.FindPrevious ("foo", false, false));

@@ -1,7 +1,7 @@
 using Terminal.Gui.ViewBase;
 using Attribute = Terminal.Gui.Drawing.Attribute;
 
-namespace Terminal.Gui.Views.Rendering;
+namespace Terminal.Gui.Editor.Rendering;
 
 /// <summary>A drawable span in a terminal-cell visual line.</summary>
 public abstract class CellVisualLineElement (

@@ -1,5 +1,6 @@
 // Claude - claude-opus-4-7
 
+using System.Drawing;
 using Terminal.Gui.Editor.IntegrationTests.Testing;
 using Terminal.Gui.Input;
 using Terminal.Gui.Testing;
@@ -9,7 +10,7 @@ namespace Terminal.Gui.Editor.IntegrationTests;
 
 /// <summary>
 ///     End-to-end tests that boot an <see cref="EditorTestHost" /> on the ANSI driver and exercise
-///     the <see cref="Views.Editor" /> via synthetic keyboard input. Asserts on <c>Driver.Contents</c>
+///     the <see cref="Editor" /> via synthetic keyboard input. Asserts on <c>Driver.Contents</c>
 ///     and the document state.
 /// </summary>
 public class EditorTests
@@ -19,7 +20,7 @@ public class EditorTests
     [Fact]
     public async Task Renders_InitialDocumentText ()
     {
-        await using AppFixture<EditorTestHost> fx = new (() => new ("Hello world"));
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("Hello world"));
 
         DriverAssert.ContentsContains (fx.Driver, "Hello world");
     }
@@ -27,7 +28,7 @@ public class EditorTests
     [Fact]
     public async Task Typing_ASCII_Inserts_Characters ()
     {
-        await using AppFixture<EditorTestHost> fx = new (() => new ());
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ());
         fx.Top.Editor.SetFocus ();
 
         fx.Injector.InjectKey (Key.H, Direct);
@@ -41,7 +42,7 @@ public class EditorTests
     [Fact]
     public async Task CursorLeft_Right_MovesCaret ()
     {
-        await using AppFixture<EditorTestHost> fx = new (() => new ("abc"));
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("abc"));
         fx.Top.Editor.SetFocus ();
         fx.Top.Editor.CaretOffset = 3;
 
@@ -63,7 +64,8 @@ public class EditorTests
     [Fact]
     public async Task CursorUp_Down_PreservesVirtualColumn_AcrossShortLines ()
     {
-        await using AppFixture<EditorTestHost> fx = new (() => new ("longer line\nshort\nanother long line"));
+        await using AppFixture<EditorTestHost> fx = new (() =>
+            new EditorTestHost ("longer line\nshort\nanother long line"));
         fx.Top.Editor.SetFocus ();
         fx.Top.Editor.CaretOffset = 8; // column 8 of "longer line"
 
@@ -84,7 +86,7 @@ public class EditorTests
     [Fact]
     public async Task CursorUp_Down_PreservesVirtualColumn_Across_Tab_Line ()
     {
-        await using AppFixture<EditorTestHost> fx = new (() => new ("abcde\n\t\nabcde"));
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("abcde\n\t\nabcde"));
         fx.Top.Editor.SetFocus ();
         fx.Top.Editor.CaretOffset = 3;
 
@@ -114,7 +116,7 @@ public class EditorTests
 
         var text = string.Join ("\n", LongTop, Short1, Empty, Short2, LongBottom);
 
-        await using AppFixture<EditorTestHost> fx = new (() => new (text));
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost (text));
         fx.Top.Editor.SetFocus ();
         fx.Top.Editor.CaretOffset = 12; // column 12 on the top long line
 
@@ -143,7 +145,7 @@ public class EditorTests
         // covers it, so the explicit `rune != default` guard in Editor.Keyboard.cs is redundant.
         // This test locks in the behavior so removing the redundant check can't silently start
         // inserting NUL into the document.
-        await using AppFixture<EditorTestHost> fx = new (() => new ("abc"));
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("abc"));
         fx.Top.Editor.SetFocus ();
         fx.Top.Editor.CaretOffset = 3;
 
@@ -159,7 +161,7 @@ public class EditorTests
     [Fact]
     public async Task Home_End_Move_WithinLine ()
     {
-        await using AppFixture<EditorTestHost> fx = new (() => new ("first\nsecond"));
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("first\nsecond"));
         fx.Top.Editor.SetFocus ();
         fx.Top.Editor.CaretOffset = "first\n".Length + 2; // line 2, col 2
 
@@ -173,7 +175,7 @@ public class EditorTests
     [Fact]
     public async Task Backspace_Removes_CharBefore_Caret ()
     {
-        await using AppFixture<EditorTestHost> fx = new (() => new ("abc"));
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("abc"));
         fx.Top.Editor.SetFocus ();
         fx.Top.Editor.CaretOffset = 3;
 
@@ -186,7 +188,7 @@ public class EditorTests
     [Fact]
     public async Task Delete_Removes_CharAt_Caret ()
     {
-        await using AppFixture<EditorTestHost> fx = new (() => new ("abc"));
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("abc"));
         fx.Top.Editor.SetFocus ();
         fx.Top.Editor.CaretOffset = 1;
 
@@ -199,7 +201,7 @@ public class EditorTests
     [Fact]
     public async Task Enter_Inserts_Newline ()
     {
-        await using AppFixture<EditorTestHost> fx = new (() => new ("ab"));
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("ab"));
         fx.Top.Editor.SetFocus ();
         fx.Top.Editor.CaretOffset = 1;
 
@@ -213,7 +215,7 @@ public class EditorTests
     [Fact]
     public async Task CtrlZ_Undoes_LastEdit ()
     {
-        await using AppFixture<EditorTestHost> fx = new (() => new ("abc"));
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("abc"));
         fx.Top.Editor.SetFocus ();
         fx.Top.Editor.Document?.Insert (3, "DEF");
 
@@ -227,7 +229,7 @@ public class EditorTests
     [Fact]
     public async Task CtrlY_Redoes_LastUndo ()
     {
-        await using AppFixture<EditorTestHost> fx = new (() => new ("abc"));
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("abc"));
         fx.Top.Editor.SetFocus ();
         fx.Top.Editor.Document?.Insert (3, "DEF");
         fx.Injector.InjectKey (Key.Z.WithCtrl, Direct);
@@ -242,7 +244,7 @@ public class EditorTests
     [Fact]
     public async Task MultiLine_Document_Renders_AllLines ()
     {
-        await using AppFixture<EditorTestHost> fx = new (() => new ("alpha\nbeta\ngamma"));
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("alpha\nbeta\ngamma"));
         fx.Render ();
 
         DriverAssert.ContentsContains (fx.Driver, "alpha");
@@ -260,7 +262,7 @@ public class EditorTests
             lines[i] = $"line-{i:00}";
         }
 
-        await using AppFixture<EditorTestHost> fx = new (() => new (string.Join ("\n", lines)));
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost (string.Join ("\n", lines)));
         fx.Top.Editor.SetFocus ();
 
         // Place caret on line index 40 (0-based).
@@ -286,17 +288,19 @@ public class EditorTests
             lines[i] = $"line-{i:00}";
         }
 
-        await using AppFixture<EditorTestHost> fx = new (() => new (string.Join ("\n", lines)), height: 6);
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost (string.Join ("\n", lines)),
+            height: 6);
         fx.Render ();
         DriverAssert.ContentsContains (fx.Driver, "line-00");
 
-        fx.Injector.InjectMouse (new () { ScreenPosition = new (1, 1), Flags = MouseFlags.WheeledDown }, Direct);
+        fx.Injector.InjectMouse (new Mouse { ScreenPosition = new Point (1, 1), Flags = MouseFlags.WheeledDown },
+            Direct);
         fx.Render ();
 
         Assert.True (fx.Top.Editor.Viewport.Y > 0);
         DriverAssert.ContentsDoesNotContain (fx.Driver, "line-00");
 
-        fx.Injector.InjectMouse (new () { ScreenPosition = new (1, 1), Flags = MouseFlags.WheeledUp }, Direct);
+        fx.Injector.InjectMouse (new Mouse { ScreenPosition = new Point (1, 1), Flags = MouseFlags.WheeledUp }, Direct);
         fx.Render ();
 
         Assert.Equal (0, fx.Top.Editor.Viewport.Y);

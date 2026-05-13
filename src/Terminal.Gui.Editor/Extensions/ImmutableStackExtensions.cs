@@ -22,7 +22,7 @@ using System.Collections.Immutable;
 namespace Terminal.Gui.Document.Utils;
 
 /// <summary>
-///     Helpers on <see cref="ImmutableStack{T}"/> that AvaloniaEdit's Rope/CharRope rely on. Lifted
+///     Helpers on <see cref="ImmutableStack{T}" /> that AvaloniaEdit's Rope/CharRope rely on. Lifted
 ///     from <c>AvaloniaEdit/Utils/ExtensionMethods.cs</c>, the only piece of that file the document
 ///     layer needs — the rest is Avalonia UI extension code we deliberately don't carry.
 /// </summary>

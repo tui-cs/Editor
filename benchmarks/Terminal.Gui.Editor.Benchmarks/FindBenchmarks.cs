@@ -6,7 +6,7 @@ namespace Terminal.Gui.Editor.Benchmarks;
 
 /// <summary>
 ///     Measures Find / Replace engine cost. The new <see cref="ISearchStrategy" />-driven path is
-///     compared against the legacy <c>document.Text.IndexOf</c> loop the <see cref="Views.Editor" /> used
+///     compared against the legacy <c>document.Text.IndexOf</c> loop the <see cref="Editor" /> used
 ///     before PR #76. Both paths operate directly on <see cref="TextDocument" /> — no <c>Editor</c>
 ///     wrapper, no event handlers, no visual-line caches — so the comparison isolates the engine
 ///     itself. The Editor's per-edit notification cost is real but separate, and would apply to

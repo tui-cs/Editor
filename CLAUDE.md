@@ -58,7 +58,7 @@ CI verifies formatting with `dotnet format Terminal.Gui.Editor.slnx --verify-no-
 Two NuGet packages with a strict dependency direction:
 
 - **`src/Terminal.Gui.Editor`** — UI-framework-independent document model. Namespace `Terminal.Gui.Editor` and subnamespaces. **Must not reference Terminal.Gui.** Holds the rope-backed `TextDocument`, `DocumentLine`, `TextAnchor`, `UndoStack`, `ITextSource`, `TextSegment`, the `Rope`, and supporting utility types. Lifted from AvaloniaEdit (see fork policy below) — `Document/` and `Utils/` are landed; `Folding/`, `Search/`, `Indentation/`, `Highlighting/` are follow-up phases per `specs/00-plan.md`.
-- **`src/Terminal.Gui.Editor`** — the `Editor : View` and cell-grid rendering pipeline. Namespace `Terminal.Gui.Views` (matches Terminal.Gui convention, deliberately not `Terminal.Gui.Editor`). References `Terminal.Gui` (version pinned via `$(TerminalGuiVersion)` in `Directory.Build.props`) and `Terminal.Gui.Editor`. Split into partials: `Editor.cs` (core: `Document`, `CaretOffset`, edit-tracking arithmetic, content-size + scroll), `Editor.Drawing.cs` (`OnDrawingContent` + cursor positioning), `Editor.Keyboard.cs` (`OnKeyDown` switch — navigation / editing / undo+redo). No selection / folding / highlighting / multi-caret yet.
+- **`src/Terminal.Gui.Editor`** — the `Editor : View` and cell-grid rendering pipeline. Namespace `Terminal.Gui.Editor` (matches the assembly name). References `Terminal.Gui` (version pinned via `$(TerminalGuiVersion)` in `Directory.Build.props`) and `Terminal.Gui.Editor`. Split into partials: `Editor.cs` (core: `Document`, `CaretOffset`, edit-tracking arithmetic, content-size + scroll), `Editor.Drawing.cs` (`OnDrawingContent` + cursor positioning), `Editor.Keyboard.cs` (`OnKeyDown` switch — navigation / editing / undo+redo). No selection / folding / highlighting / multi-caret yet.
 - **`examples/ted`** — standalone TG demo app exercising `Editor`. Not packed; not a NuGet artifact. Has a File menu, the `Editor` View, and a status bar; grows with the View. Run via `dotnet run --project examples/ted`.
 
 The boundary matters: anything that takes a dependency on `Terminal.Gui` types belongs in `Terminal.Gui.Editor`, never in `Terminal.Gui.Editor`.
@@ -162,7 +162,7 @@ private void ExtendCaretBy (int delta)
 - **One public or internal type per file.** No nested types except inside the file that owns the outer type, and only when the nested type is a private implementation detail (`DocumentLine.LineNode`-style). If a nested type grows interesting, promote it to its own file.
 - **No file longer than 1000 lines.** When a file approaches that, split — by partial class (`Editor.Drawing.cs`, `Editor.Mouse.cs`), by helper extraction, or by genuinely splitting the type. The cleanup hook does not enforce this; the reviewer does.
 - **C# 14 `extension` blocks**: prefer extension blocks over a static class full of `this`-prefixed extension methods when the extensions form a coherent group on a single receiver type.
-- **Namespace per folder.** `src/Terminal.Gui.Editor/Document/` ⇒ `Terminal.Gui.Document`; `src/Terminal.Gui.Editor/Rendering/` ⇒ `Terminal.Gui.Views.Rendering`. Don't put unrelated types in the same namespace just because they share a folder.
+- **Namespace per folder.** `src/Terminal.Gui.Editor/Document/` ⇒ `Terminal.Gui.Document`; `src/Terminal.Gui.Editor/Rendering/` ⇒ `Terminal.Gui.Editor.Rendering`. Don't put unrelated types in the same namespace just because they share a folder.
 
 ### Testing convention
 

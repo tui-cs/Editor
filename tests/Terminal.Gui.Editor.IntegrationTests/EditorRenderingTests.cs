@@ -13,7 +13,7 @@ using Attribute = Terminal.Gui.Drawing.Attribute;
 namespace Terminal.Gui.Editor.IntegrationTests;
 
 /// <summary>
-///     Asserts the visual roles used by <see cref="Views.Editor" /> when rendering. Unselected text
+///     Asserts the visual roles used by <see cref="Editor" /> when rendering. Unselected text
 ///     should blend into the surrounding container (<see cref="VisualRole.Normal" />) — not
 ///     <see cref="VisualRole.Editable" />, which is the dim/contrast role intended for input
 ///     widgets like <see cref="Terminal.Gui.Views.TextField" /> and

@@ -2,8 +2,8 @@
 
 using Terminal.Gui.Document;
 using Terminal.Gui.Drawing;
+using Terminal.Gui.Editor.Rendering;
 using Terminal.Gui.Highlighting;
-using Terminal.Gui.Views.Rendering;
 using Xunit;
 using Attribute = Terminal.Gui.Drawing.Attribute;
 
@@ -12,7 +12,7 @@ namespace Terminal.Gui.Editor.Tests;
 /// <summary>
 ///     Tests for the xshd-based highlighting engine lifted from AvaloniaEdit:
 ///     <see cref="HighlightingManager" />, <see cref="DocumentHighlighter" />,
-///     <see cref="HighlightingColorizer" />, and the <see cref="Views.Editor.HighlightingDefinition" />
+///     <see cref="HighlightingColorizer" />, and the <see cref="Editor.HighlightingDefinition" />
 ///     integration.
 /// </summary>
 public class HighlightingTests
@@ -282,14 +282,14 @@ public class HighlightingTests
     [Fact]
     public void Editor_HighlightingDefinition_Default_Is_Null ()
     {
-        Views.Editor editor = new ();
+        Editor editor = new ();
         Assert.Null (editor.HighlightingDefinition);
     }
 
     [Fact]
     public void Editor_HighlightingDefinition_Installs_Colorizer ()
     {
-        Views.Editor editor = new ();
+        Editor editor = new ();
         editor.Document = new TextDocument ("public class Foo { }");
 
         editor.HighlightingDefinition = HighlightingManager.Instance.GetDefinition ("C#");
@@ -301,7 +301,7 @@ public class HighlightingTests
     [Fact]
     public void Editor_HighlightingDefinition_Null_Removes_Colorizer ()
     {
-        Views.Editor editor = new ();
+        Editor editor = new ();
         editor.Document = new TextDocument ("public class Foo { }");
 
         editor.HighlightingDefinition = HighlightingManager.Instance.GetDefinition ("C#");
@@ -314,7 +314,7 @@ public class HighlightingTests
     [Fact]
     public void Editor_Switching_Definition_Replaces_Colorizer ()
     {
-        Views.Editor editor = new ();
+        Editor editor = new ();
         editor.Document = new TextDocument ("var x = 1;");
 
         editor.HighlightingDefinition = HighlightingManager.Instance.GetDefinition ("C#");
@@ -328,7 +328,7 @@ public class HighlightingTests
     [Fact]
     public void Editor_Document_Change_Reinstalls_Highlighter ()
     {
-        Views.Editor editor = new ();
+        Editor editor = new ();
         editor.Document = new TextDocument ("first");
         editor.HighlightingDefinition = HighlightingManager.Instance.GetDefinition ("C#");
 

@@ -1,6 +1,6 @@
 using Terminal.Gui.Document;
 
-namespace Terminal.Gui.Views;
+namespace Terminal.Gui.Editor;
 
 /// <summary>
 ///     Selection state and operations. Internal model is two anchors: <c>_selectionAnchor</c> is

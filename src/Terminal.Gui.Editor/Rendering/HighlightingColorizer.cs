@@ -2,7 +2,7 @@ using Terminal.Gui.Drawing;
 using Terminal.Gui.Highlighting;
 using Attribute = Terminal.Gui.Drawing.Attribute;
 
-namespace Terminal.Gui.Views.Rendering;
+namespace Terminal.Gui.Editor.Rendering;
 
 /// <summary>
 ///     An <see cref="IVisualLineTransformer" /> that applies syntax highlighting colors

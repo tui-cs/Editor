@@ -1,5 +1,6 @@
 // Claude - claude-opus-4-7
 
+using Terminal.Gui.Document;
 using Terminal.Gui.Drawing;
 using Terminal.Gui.ViewBase;
 using Terminal.Gui.Views;
@@ -17,9 +18,9 @@ public sealed class EditorTestHost : Window
     public EditorTestHost (string initialText = "")
     {
         BorderStyle = LineStyle.None;
-        Editor = new ()
+        Editor = new Editor
         {
-            Document = new (initialText),
+            Document = new TextDocument (initialText),
             X = 0,
             Y = 0,
             Width = Dim.Fill (),
@@ -29,5 +30,5 @@ public sealed class EditorTestHost : Window
     }
 
     /// <summary>The editor under test.</summary>
-    public Views.Editor Editor { get; }
+    public Editor Editor { get; }
 }

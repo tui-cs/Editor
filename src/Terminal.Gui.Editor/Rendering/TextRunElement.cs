@@ -4,7 +4,7 @@ using Terminal.Gui.Text;
 using Terminal.Gui.ViewBase;
 using Attribute = Terminal.Gui.Drawing.Attribute;
 
-namespace Terminal.Gui.Views.Rendering;
+namespace Terminal.Gui.Editor.Rendering;
 
 /// <summary>A grapheme cluster rendered as document text.</summary>
 public sealed class TextRunElement (

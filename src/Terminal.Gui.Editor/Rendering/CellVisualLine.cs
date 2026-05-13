@@ -1,6 +1,6 @@
 using Terminal.Gui.Document;
 
-namespace Terminal.Gui.Views.Rendering;
+namespace Terminal.Gui.Editor.Rendering;
 
 /// <summary>A single document line projected into terminal-cell elements.</summary>
 public sealed class CellVisualLine (DocumentLine documentLine)

@@ -3,7 +3,7 @@ using Terminal.Gui.Document;
 using Terminal.Gui.Input;
 using Terminal.Gui.ViewBase;
 
-namespace Terminal.Gui.Views;
+namespace Terminal.Gui.Editor;
 
 /// <summary>
 ///     Renders line number and folding UI for an associated <see cref="Editor" />. Hosted as a SubView

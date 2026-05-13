@@ -14,7 +14,7 @@ public class EditorTabTests
     [Fact]
     public async Task Tab_Inserts_Tab_Character_By_Default ()
     {
-        await using AppFixture<EditorTestHost> fx = new (() => new ());
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ());
         fx.Top.Editor.SetFocus ();
 
         fx.Injector.InjectKey (Key.Tab, Direct);
@@ -26,7 +26,7 @@ public class EditorTabTests
     [Fact]
     public async Task Tab_Inserts_Spaces_When_ConvertTabsToSpaces_Is_True ()
     {
-        await using AppFixture<EditorTestHost> fx = new (() => new ("a"));
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("a"));
         fx.Top.Editor.SetFocus ();
         fx.Top.Editor.CaretOffset = 1;
         fx.Top.Editor.ConvertTabsToSpaces = true;
@@ -40,7 +40,7 @@ public class EditorTabTests
     [Fact]
     public async Task Tab_On_Multiline_Selection_Indents_Block_In_One_Undo_Step ()
     {
-        await using AppFixture<EditorTestHost> fx = new (() => new ("one\ntwo"));
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("one\ntwo"));
         fx.Top.Editor.SetFocus ();
         fx.Top.Editor.SelectAll ();
 
@@ -58,7 +58,7 @@ public class EditorTabTests
     [Fact]
     public async Task ShiftTab_Unindents_Current_Line ()
     {
-        await using AppFixture<EditorTestHost> fx = new (() => new ("    alpha"));
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("    alpha"));
         fx.Top.Editor.SetFocus ();
         fx.Top.Editor.CaretOffset = 4;
 
@@ -71,7 +71,7 @@ public class EditorTabTests
     [Fact]
     public async Task ShiftTab_On_Multiline_Selection_Unindents_Block ()
     {
-        await using AppFixture<EditorTestHost> fx = new (() => new ("\tone\n    two"));
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("\tone\n    two"));
         fx.Top.Editor.SetFocus ();
         fx.Top.Editor.SelectAll ();
 
@@ -88,7 +88,7 @@ public class EditorTabTests
         // Selection that stays on one line must use single-line tab behavior (replace
         // selection with tab) rather than block-indent. This exercises the optimized
         // SelectionSpansMultipleLines path that avoids allocating a List<DocumentLine>.
-        await using AppFixture<EditorTestHost> fx = new (() => new ("one\ntwo"));
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("one\ntwo"));
         fx.Top.Editor.SetFocus ();
         fx.Top.Editor.CaretOffset = 0;
 
@@ -105,7 +105,7 @@ public class EditorTabTests
     {
         // Ensures the multi-line detection works: selection from line 1 into line 2
         // must trigger block-indent, not replacement.
-        await using AppFixture<EditorTestHost> fx = new (() => new ("aaa\nbbb"));
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("aaa\nbbb"));
         fx.Top.Editor.SetFocus ();
         fx.Top.Editor.CaretOffset = 0;
 
@@ -122,7 +122,7 @@ public class EditorTabTests
     [Fact]
     public async Task Backspace_At_End_Of_Leading_Whitespace_Removes_One_Indentation_Unit ()
     {
-        await using AppFixture<EditorTestHost> fx = new (() => new ("    alpha"));
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("    alpha"));
         fx.Top.Editor.SetFocus ();
         fx.Top.Editor.CaretOffset = 4;
 

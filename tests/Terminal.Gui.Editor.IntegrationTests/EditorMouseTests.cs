@@ -20,11 +20,11 @@ public class EditorMouseTests
     [Fact]
     public async Task LeftClick_Places_Caret ()
     {
-        await using AppFixture<EditorTestHost> fx = new (() => new ("hello world"));
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("hello world"));
         fx.Top.Editor.SetFocus ();
         fx.Top.Editor.CaretOffset = 0;
 
-        InjectClick (fx, new (5, 0));
+        InjectClick (fx, new Point (5, 0));
 
         Assert.Equal (5, fx.Top.Editor.CaretOffset);
         Assert.False (fx.Top.Editor.HasSelection);
@@ -33,10 +33,10 @@ public class EditorMouseTests
     [Fact]
     public async Task LeftClick_Past_LineEnd_Snaps_To_LineEnd ()
     {
-        await using AppFixture<EditorTestHost> fx = new (() => new ("abc"));
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("abc"));
         fx.Top.Editor.SetFocus ();
 
-        InjectClick (fx, new (50, 0));
+        InjectClick (fx, new Point (50, 0));
 
         Assert.Equal (3, fx.Top.Editor.CaretOffset);
     }
@@ -44,12 +44,12 @@ public class EditorMouseTests
     [Fact]
     public async Task LeftClick_Below_LastLine_Snaps_To_LastLine ()
     {
-        await using AppFixture<EditorTestHost> fx = new (() => new ("alpha\nbeta"));
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("alpha\nbeta"));
         fx.Top.Editor.SetFocus ();
 
         // Row 5 is below "beta" (line index 1) but still inside the 24-row viewport. Mouse events
         // outside the view's frame don't get routed to it, so we stay within bounds.
-        InjectClick (fx, new (2, 5));
+        InjectClick (fx, new Point (2, 5));
 
         // Last line is "beta" starting at offset 6; col 2 within it → offset 8.
         Assert.Equal (8, fx.Top.Editor.CaretOffset);
@@ -58,11 +58,11 @@ public class EditorMouseTests
     [Fact]
     public async Task LeftClick_Clears_Existing_Selection ()
     {
-        await using AppFixture<EditorTestHost> fx = new (() => new ("hello"));
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("hello"));
         fx.Top.Editor.SetFocus ();
         fx.Top.Editor.SelectAll ();
 
-        InjectClick (fx, new (2, 0));
+        InjectClick (fx, new Point (2, 0));
 
         Assert.False (fx.Top.Editor.HasSelection);
         Assert.Equal (2, fx.Top.Editor.CaretOffset);
@@ -71,19 +71,19 @@ public class EditorMouseTests
     [Fact]
     public async Task LeftDrag_Creates_Selection_From_Press_Point ()
     {
-        await using AppFixture<EditorTestHost> fx = new (() => new ("hello world"));
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("hello world"));
         fx.Top.Editor.SetFocus ();
 
         // Press at col 2.
         fx.Injector.InjectMouse (
-            new () { ScreenPosition = new (2, 0), Flags = MouseFlags.LeftButtonPressed, Timestamp = BaseTime },
+            new Mouse { ScreenPosition = new Point (2, 0), Flags = MouseFlags.LeftButtonPressed, Timestamp = BaseTime },
             Direct);
 
         // Drag to col 7 (LeftButtonPressed | PositionReport).
         fx.Injector.InjectMouse (
-            new ()
+            new Mouse
             {
-                ScreenPosition = new (7, 0),
+                ScreenPosition = new Point (7, 0),
                 Flags = MouseFlags.LeftButtonPressed | MouseFlags.PositionReport,
                 Timestamp = BaseTime.AddMilliseconds (50)
             },
@@ -98,17 +98,17 @@ public class EditorMouseTests
     [Fact]
     public async Task LeftDrag_Backwards_Selects_From_End_To_Start ()
     {
-        await using AppFixture<EditorTestHost> fx = new (() => new ("hello world"));
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("hello world"));
         fx.Top.Editor.SetFocus ();
 
         fx.Injector.InjectMouse (
-            new () { ScreenPosition = new (8, 0), Flags = MouseFlags.LeftButtonPressed, Timestamp = BaseTime },
+            new Mouse { ScreenPosition = new Point (8, 0), Flags = MouseFlags.LeftButtonPressed, Timestamp = BaseTime },
             Direct);
 
         fx.Injector.InjectMouse (
-            new ()
+            new Mouse
             {
-                ScreenPosition = new (3, 0),
+                ScreenPosition = new Point (3, 0),
                 Flags = MouseFlags.LeftButtonPressed | MouseFlags.PositionReport,
                 Timestamp = BaseTime.AddMilliseconds (50)
             },
@@ -123,14 +123,14 @@ public class EditorMouseTests
     [Fact]
     public async Task ShiftClick_Extends_Selection_From_Caret ()
     {
-        await using AppFixture<EditorTestHost> fx = new (() => new ("hello world"));
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("hello world"));
         fx.Top.Editor.SetFocus ();
         fx.Top.Editor.CaretOffset = 2;
 
         fx.Injector.InjectMouse (
-            new ()
+            new Mouse
             {
-                ScreenPosition = new (8, 0),
+                ScreenPosition = new Point (8, 0),
                 Flags = MouseFlags.LeftButtonPressed | MouseFlags.Shift,
                 Timestamp = BaseTime
             },
@@ -144,11 +144,11 @@ public class EditorMouseTests
     [Fact]
     public async Task LeftClick_Across_Lines_Picks_Correct_Offset ()
     {
-        await using AppFixture<EditorTestHost> fx = new (() => new ("alpha\nbeta\ngamma"));
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("alpha\nbeta\ngamma"));
         fx.Top.Editor.SetFocus ();
 
         // Click on line 1 (0-indexed), col 2 — within "beta".
-        InjectClick (fx, new (2, 1));
+        InjectClick (fx, new Point (2, 1));
 
         // "alpha\n".Length + 2 = 6 + 2 = 8
         Assert.Equal (8, fx.Top.Editor.CaretOffset);
@@ -157,14 +157,14 @@ public class EditorMouseTests
     [Fact]
     public async Task LeftClick_Inside_TabExpansion_Snaps_To_Nearest_Tab_Edge ()
     {
-        await using AppFixture<EditorTestHost> fx = new (() => new ("a\tb"));
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("a\tb"));
         fx.Top.Editor.SetFocus ();
 
-        InjectClick (fx, new (2, 0));
+        InjectClick (fx, new Point (2, 0));
 
         Assert.Equal (1, fx.Top.Editor.CaretOffset);
 
-        InjectClick (fx, new (3, 0));
+        InjectClick (fx, new Point (3, 0));
 
         Assert.Equal (2, fx.Top.Editor.CaretOffset);
     }
@@ -172,7 +172,7 @@ public class EditorMouseTests
     [Fact]
     public async Task ShiftClick_At_Current_Caret_Does_Not_Fire_SelectionChanged ()
     {
-        await using AppFixture<EditorTestHost> fx = new (() => new ("hello world"));
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("hello world"));
         fx.Top.Editor.SetFocus ();
         fx.Top.Editor.CaretOffset = 5;
         var fires = 0;
@@ -181,9 +181,9 @@ public class EditorMouseTests
         // Shift+click at the same column as the existing caret — neither caret nor selection
         // range actually changes, so SelectionChanged must not fire.
         fx.Injector.InjectMouse (
-            new ()
+            new Mouse
             {
-                ScreenPosition = new (5, 0),
+                ScreenPosition = new Point (5, 0),
                 Flags = MouseFlags.LeftButtonPressed | MouseFlags.Shift,
                 Timestamp = BaseTime
             },
@@ -196,11 +196,14 @@ public class EditorMouseTests
     [Fact]
     public async Task DoubleClick_Selects_Word_Under_Cursor ()
     {
-        await using AppFixture<EditorTestHost> fx = new (() => new ("hello world"));
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("hello world"));
         fx.Top.Editor.SetFocus ();
 
         fx.Injector.InjectMouse (
-            new () { ScreenPosition = new (1, 0), Flags = MouseFlags.LeftButtonDoubleClicked, Timestamp = BaseTime },
+            new Mouse
+            {
+                ScreenPosition = new Point (1, 0), Flags = MouseFlags.LeftButtonDoubleClicked, Timestamp = BaseTime
+            },
             Direct);
 
         Assert.True (fx.Top.Editor.HasSelection);
@@ -212,11 +215,14 @@ public class EditorMouseTests
     [Fact]
     public async Task TripleClick_Selects_Line_Under_Cursor ()
     {
-        await using AppFixture<EditorTestHost> fx = new (() => new ("alpha\nbeta"));
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("alpha\nbeta"));
         fx.Top.Editor.SetFocus ();
 
         fx.Injector.InjectMouse (
-            new () { ScreenPosition = new (2, 0), Flags = MouseFlags.LeftButtonTripleClicked, Timestamp = BaseTime },
+            new Mouse
+            {
+                ScreenPosition = new Point (2, 0), Flags = MouseFlags.LeftButtonTripleClicked, Timestamp = BaseTime
+            },
             Direct);
 
         Assert.True (fx.Top.Editor.HasSelection);
@@ -237,7 +243,7 @@ public class EditorMouseTests
         });
 
         fx.Top.Editor.SetFocus ();
-        InjectClick (fx, new (0, 1));
+        InjectClick (fx, new Point (0, 1));
 
         Assert.True (fx.Top.Editor.HasSelection);
         Assert.Equal (6, fx.Top.Editor.SelectionStart);
@@ -259,13 +265,13 @@ public class EditorMouseTests
         fx.Top.Editor.SetFocus ();
 
         fx.Injector.InjectMouse (
-            new () { ScreenPosition = new (0, 0), Flags = MouseFlags.LeftButtonPressed, Timestamp = BaseTime },
+            new Mouse { ScreenPosition = new Point (0, 0), Flags = MouseFlags.LeftButtonPressed, Timestamp = BaseTime },
             Direct);
 
         fx.Injector.InjectMouse (
-            new ()
+            new Mouse
             {
-                ScreenPosition = new (0, 2),
+                ScreenPosition = new Point (0, 2),
                 Flags = MouseFlags.LeftButtonPressed | MouseFlags.PositionReport,
                 Timestamp = BaseTime.AddMilliseconds (50)
             },
@@ -280,7 +286,7 @@ public class EditorMouseTests
     private static void InjectClick (AppFixture<EditorTestHost> fx, Point pos)
     {
         fx.Injector.InjectMouse (
-            new () { ScreenPosition = pos, Flags = MouseFlags.LeftButtonPressed, Timestamp = BaseTime },
+            new Mouse { ScreenPosition = pos, Flags = MouseFlags.LeftButtonPressed, Timestamp = BaseTime },
             Direct);
     }
 }
