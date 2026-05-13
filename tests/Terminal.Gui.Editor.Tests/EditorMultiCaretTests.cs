@@ -2,6 +2,7 @@
 
 using Terminal.Gui.Document;
 using Terminal.Gui.Editor;
+using Terminal.Gui.Input;
 using Xunit;
 
 namespace Terminal.Gui.Editor.Tests;
@@ -161,24 +162,14 @@ public class EditorMultiCaretTests
         editor.CaretOffset = 9;
         editor.ToggleCaretAt (19);
 
-        // Use RunUpdate + direct insert to simulate what MultiCaretNewLine does internally:
-        // This test verifies the actual method behavior.
-        using (editor.Document!.RunUpdate ())
-        {
-            // Higher offset first (offset 19 = end of "    line2")
-            editor.Document.Insert (19, "\n");
-            DocumentLine newLine2 = editor.Document.GetLineByOffset (20);
-            editor.IndentationStrategy!.IndentLine (editor.Document, newLine2);
-
-            // Lower offset (offset 9 = end of "    line1")
-            editor.Document.Insert (9, "\n");
-            DocumentLine newLine1 = editor.Document.GetLineByOffset (10);
-            editor.IndentationStrategy!.IndentLine (editor.Document, newLine1);
-        }
+        // Invoke the actual Command.NewLine which routes through MultiCaretNewLine.
+        editor.InvokeCommand (Command.NewLine);
 
         // After Enter with auto-indent, new lines should copy indentation from previous line.
-        // Expected: "    line1\n    \n    line2\n    "
-        Assert.Contains ("    line1\n    \n    line2\n    ", editor.Document.Text);
+        // "    line1" → "    line1\n    " and "    line2" → "    line2\n    "
+        var text = editor.Document!.Text;
+        Assert.Contains ("    line1\n    ", text);
+        Assert.Contains ("    line2\n    ", text);
     }
 
     [Fact]
@@ -196,18 +187,10 @@ public class EditorMultiCaretTests
         editor.CaretOffset = 4;
         editor.ToggleCaretAt (10);
 
-        // Before: "    a\n    b" — carets at indent boundaries.
-        // The smart backspace should delete 4 spaces (one indentation unit), not just 1 char.
-        using (editor.Document!.RunUpdate ())
-        {
-            // Process in descending order (offset 10 first, then 4).
-            // At offset 10: "    b" → caret at end of leading whitespace, delete indent unit → "b" (line becomes just "b")
-            editor.Document.Remove (6, 4); // removes the 4 spaces at line 2
+        // Invoke actual Command.DeleteCharLeft which routes through MultiCaretDeleteLeft.
+        editor.InvokeCommand (Command.DeleteCharLeft);
 
-            // At offset 4: "    a" → caret at end of leading whitespace, delete indent unit → "a"
-            editor.Document.Remove (0, 4); // removes the 4 spaces at line 1
-        }
-
-        Assert.Equal ("a\nb", editor.Document.Text);
+        // Smart backspace should delete full indentation unit (4 spaces), not just 1 char.
+        Assert.Equal ("a\nb", editor.Document!.Text);
     }
 }
