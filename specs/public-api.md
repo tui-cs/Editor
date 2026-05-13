@@ -23,6 +23,9 @@ public class Editor : View
 
     // --- Multi-caret ---
     public IReadOnlyList<int> AdditionalCaretOffsets { get; }     // multi-caret
+    public bool HasMultipleCarets { get; }                        // multi-caret
+    public void ToggleCaretAt (int offset);                       // multi-caret (Ctrl+Click toggle)
+    public void ClearAdditionalCarets ();                         // multi-caret (Esc collapse)
 
     // --- Display ---
     public bool ShowLineNumbers { get; set; }                     // exists

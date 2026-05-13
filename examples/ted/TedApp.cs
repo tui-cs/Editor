@@ -349,7 +349,14 @@ public sealed partial class TedApp : Window
         else
         {
             DocumentLine line = document.GetLineByOffset (Editor.CaretOffset);
-            LocShortcut.Title = FormatLoc (line.LineNumber, Editor.CaretOffset - line.Offset + 1);
+            var loc = FormatLoc (line.LineNumber, Editor.CaretOffset - line.Offset + 1);
+
+            if (Editor.HasMultipleCarets)
+            {
+                loc += $" ({Editor.AdditionalCaretOffsets.Count + 1} carets)";
+            }
+
+            LocShortcut.Title = loc;
         }
 
         LocShortcut.SetNeedsDraw ();

@@ -64,6 +64,7 @@ public partial class Editor : View
     {
         CanFocus = true;
         CreateCommandsAndBindings ();
+        BackgroundRenderers.Add (new Rendering.MultiCaretRenderer (this));
         Document = new TextDocument ();
     }
 
