@@ -1,9 +1,10 @@
 # Feature Specification: Folding UI
 
-**Status**: Blocked
+**Status**: Done — shipped in PR #96 (merged into `develop` 2026-05-11)
 **Created**: 2026-05-10
+**Last updated**: 2026-05-13
 **Depends on**: folding, rendering-pipeline ✅
-**Blocked by**: folding
+**Blocked by**: —
 
 ## Overview
 
