@@ -102,7 +102,7 @@ public partial class Editor : View
 
             _virtualCaretColumn = GetCaretColumn ();
             UpdateContentSize ();
-            UpdateLineNumberPadding ();
+            UpdateGutterWidth ();
 
             if (hadSelection)
             {
@@ -138,7 +138,7 @@ public partial class Editor : View
             }
 
             _gutterOptions = value;
-            UpdateLineNumberPadding ();
+            UpdateGutterWidth ();
             SetNeedsDraw ();
         }
     }
@@ -295,7 +295,7 @@ public partial class Editor : View
 
             ClearVisualLineCaches ();
             UpdateContentSize ();
-            UpdateLineNumberPadding ();
+            UpdateGutterWidth ();
             SetNeedsDraw ();
         }
     }
@@ -391,7 +391,7 @@ public partial class Editor : View
         _cachedVisibleLineNumbers = null;
         UpdateMaxWidthIncremental (e);
         UpdateContentSize ();
-        UpdateLineNumberPadding ();
+        UpdateGutterWidth ();
 
         var current = CaretOffset;
 
@@ -653,10 +653,10 @@ public partial class Editor : View
         }
     }
 
-    private void UpdateLineNumberPadding ()
+    private void UpdateGutterWidth ()
     {
         Thickness thickness = Padding.Thickness;
-        var left = _gutterOptions != GutterOptions.None && _document is not null ? GetLineNumberPaddingWidth () : 0;
+        var left = _gutterOptions != GutterOptions.None && _document is not null ? GetGutterWidth () : 0;
 
         if (thickness.Left != left)
         {
@@ -700,7 +700,7 @@ public partial class Editor : View
         }
     }
 
-    private int GetLineNumberPaddingWidth ()
+    private int GetGutterWidth ()
     {
         var width = 0;
 
