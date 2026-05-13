@@ -1,7 +1,8 @@
 # Feature Specification: Word Wrap
 
-**Status**: Ready
+**Status**: Ready — tracked in issue #102
 **Created**: 2026-05-10
+**Last updated**: 2026-05-13
 **Depends on**: rendering-pipeline ✅
 **Blocked by**: None
 

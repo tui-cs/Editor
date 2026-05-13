@@ -1,9 +1,10 @@
 # Feature Specification: Syntax Colorizer
 
-**Status**: Blocked
+**Status**: Done — shipped in PR #94 (merged into `develop` 2026-05-11)
 **Created**: 2026-05-10
-**Depends on**: syntax-highlighting, rendering-pipeline ✅, drawing-overhaul
-**Blocked by**: syntax-highlighting, drawing-overhaul
+**Last updated**: 2026-05-13
+**Depends on**: syntax-highlighting, rendering-pipeline ✅, drawing-overhaul ✅
+**Blocked by**: —
 
 ## Overview
 

@@ -1,8 +1,8 @@
 # Feature Specification: Find & Replace
 
-**Status**: Partial — engine + ted UI landed; hit-highlight + keybindings deferred
+**Status**: Partial — engine + ted UI landed; hit-highlight renderer + F3/Ctrl+F/Ctrl+H keybindings tracked in issue #100
 **Created**: 2026-05-10
-**Last updated**: 2026-05-12
+**Last updated**: 2026-05-13
 **Depends on**: search ✅ (lift landed in PR #76), rendering-pipeline ✅
 **Blocked by**: —
 
