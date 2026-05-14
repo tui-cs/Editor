@@ -190,38 +190,15 @@ public partial class Editor
         // Folding
         AddCommand (Command.Collapse, ToggleFoldUnderCaret);
 
-        // Indentation
+        // Indentation — InsertTab / Unindent return bool, wrapped for CommandImplementation (bool?).
         AddCommand (Command.InsertTab, () => InsertTab ());
         AddCommand (Command.Unindent, () => Unindent ());
 
         // Find / Replace
-        AddCommand (Command.Find, () =>
-        {
-            FindRequested?.Invoke (this, EventArgs.Empty);
-
-            return true;
-        });
-
-        AddCommand (Command.Replace, () =>
-        {
-            ReplaceRequested?.Invoke (this, EventArgs.Empty);
-
-            return true;
-        });
-
-        AddCommand (Command.FindNext, () =>
-        {
-            FindNext ();
-
-            return true;
-        });
-
-        AddCommand (Command.FindPrevious, () =>
-        {
-            FindPrevious ();
-
-            return true;
-        });
+        AddCommand (Command.Find, InvokeFindRequested);
+        AddCommand (Command.Replace, InvokeReplaceRequested);
+        AddCommand (Command.FindNext, FindNextCommand);
+        AddCommand (Command.FindPrevious, FindPreviousCommand);
 
         ApplyKeyBindings (View.DefaultKeyBindings, DefaultKeyBindings);
 
@@ -398,6 +375,34 @@ public partial class Editor
     {
         DocumentLine line = _document!.GetLineByOffset (CaretOffset);
         CaretOffset = line.Offset + line.Length;
+
+        return true;
+    }
+
+    private bool? InvokeFindRequested ()
+    {
+        FindRequested?.Invoke (this, EventArgs.Empty);
+
+        return true;
+    }
+
+    private bool? InvokeReplaceRequested ()
+    {
+        ReplaceRequested?.Invoke (this, EventArgs.Empty);
+
+        return true;
+    }
+
+    private bool? FindNextCommand ()
+    {
+        FindNext ();
+
+        return true;
+    }
+
+    private bool? FindPreviousCommand ()
+    {
+        FindPrevious ();
 
         return true;
     }
