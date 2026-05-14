@@ -43,6 +43,8 @@ internal sealed class LineNumberGutter : View
         var visibleHeight = _editor.Viewport.Height;
         var blank = new string (' ', viewport.Width);
 
+        var prevLineNumber = -1;
+
         for (var row = 0; row < viewport.Height; row++)
         {
             if (row >= visibleHeight)
@@ -56,8 +58,8 @@ internal sealed class LineNumberGutter : View
             var lineNumber = _editor.ViewRowToLineNumber (row);
 
             // For wrap-continuation rows, show blank instead of repeating the line number.
-            // A continuation row is identified by the previous row mapping to the same line number.
-            var isFirstSegment = row == 0 || _editor.ViewRowToLineNumber (row - 1) != lineNumber;
+            var isFirstSegment = lineNumber != prevLineNumber;
+            prevLineNumber = lineNumber;
 
             Move (0, row);
 
