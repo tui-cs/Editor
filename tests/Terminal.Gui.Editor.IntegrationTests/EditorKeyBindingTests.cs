@@ -15,8 +15,6 @@ namespace Terminal.Gui.Editor.IntegrationTests;
 /// </summary>
 public class EditorKeyBindingTests
 {
-    private static readonly InputInjectionOptions Direct = new () { Mode = InputInjectionMode.Direct };
-
     // ───────────────────── DefaultKeyBindings dictionary ─────────────────────
 
     [Theory]
@@ -156,7 +154,6 @@ public class EditorKeyBindingTests
         await using AppFixture<EditorTestHost> fx = new (() => new ());
         fx.Top.Editor.SetFocus ();
 
-        // Verify the key is bound to the InsertTab command (not handled via OnKeyDownNotHandled).
         Assert.Contains (Command.InsertTab, fx.Top.Editor.KeyBindings.GetCommands (Key.Tab));
     }
 
