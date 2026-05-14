@@ -374,9 +374,9 @@ public class EditorRenderingTests
     }
 
     [Fact]
-    public async Task MultiCaret_Renders_Inverted_Attribute_On_Text ()
+    public async Task MultiCaret_Renders_Underline_Blink_Attribute_On_Text ()
     {
-        // P1: MultiCaretRenderer must draw AFTER text elements so that the inverted caret
+        // P1: MultiCaretRenderer must draw AFTER text elements so that the caret
         // cell is not overwritten by the subsequent element.Draw call.
         await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("abcdef"));
 
@@ -386,9 +386,9 @@ public class EditorRenderingTests
         fx.Render ();
 
         Attribute normal = fx.Top.Editor.GetAttributeForRole (VisualRole.Normal);
-        Attribute caretAttr = new (normal.Background, normal.Foreground);
+        Attribute caretAttr = new (normal.Foreground, normal.Background, TextStyle.Underline | TextStyle.Blink);
 
-        // The cell at column 3 ('d') should have the inverted attribute, not the normal one.
+        // The cell at column 3 ('d') should have the underline+blink attribute, not the normal one.
         Cell cell = fx.Driver.Contents![0, 3];
         Assert.Equal ("d", cell.Grapheme);
         Assert.Equal (caretAttr, cell.Attribute);
@@ -426,9 +426,9 @@ public class EditorRenderingTests
         fx.Render ();
 
         Attribute normal = fx.Top.Editor.GetAttributeForRole (VisualRole.Normal);
-        Attribute caretAttr = new (normal.Background, normal.Foreground);
+        Attribute caretAttr = new (normal.Foreground, normal.Background, TextStyle.Underline | TextStyle.Blink);
 
-        // Column 0 (first '/') should have the inverted caret attribute.
+        // Column 0 (first '/') should have the underline+blink caret attribute.
         Cell cell0 = fx.Driver.Contents![0, 0];
         Assert.Equal ("/", cell0.Grapheme);
         Assert.Equal (caretAttr, cell0.Attribute);
@@ -460,7 +460,7 @@ public class EditorRenderingTests
         fx.Render ();
 
         Attribute normal = fx.Top.Editor.GetAttributeForRole (VisualRole.Normal);
-        Attribute caretAttr = new (normal.Background, normal.Foreground);
+        Attribute caretAttr = new (normal.Foreground, normal.Background, TextStyle.Underline | TextStyle.Blink);
 
         // Row 1, col 0 should show the caret attribute on 'f'.
         Cell row1FirstCol = fx.Driver.Contents![1, 0];
