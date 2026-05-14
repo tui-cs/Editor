@@ -67,7 +67,6 @@ public sealed partial class TedApp
             Width = Dim.Fill (),
             Height = Editor.Height,
             Text = Editor.Document?.Text ?? string.Empty,
-            CanFocus = false,
             ViewportSettings = ViewportSettingsFlags.HasScrollBars
         };
 
@@ -76,8 +75,9 @@ public sealed partial class TedApp
 
         Add (_markdownPreview);
 
-        // Sync editor scroll → preview scroll.
+        // Sync scrolling bidirectionally.
         Editor.ViewportChanged += OnEditorViewportChanged;
+        _markdownPreview.ViewportChanged += OnPreviewViewportChanged;
 
         // Update preview when document content changes.
         if (Editor.Document is not null)
@@ -94,6 +94,7 @@ public sealed partial class TedApp
         }
 
         Editor.ViewportChanged -= OnEditorViewportChanged;
+        _markdownPreview.ViewportChanged -= OnPreviewViewportChanged;
 
         if (Editor.Document is not null)
         {
@@ -133,6 +134,38 @@ public sealed partial class TedApp
                 : 0;
 
             _markdownPreview.Viewport = _markdownPreview.Viewport with { Y = Math.Clamp (newY, 0, maxPreviewY) };
+        }
+        finally
+        {
+            _syncingScroll = false;
+        }
+    }
+
+    private void OnPreviewViewportChanged (object? sender, DrawEventArgs e)
+    {
+        if (_markdownPreview is null || _syncingScroll)
+        {
+            return;
+        }
+
+        _syncingScroll = true;
+
+        try
+        {
+            var previewContentHeight = _markdownPreview.GetContentSize ().Height;
+            var previewViewportHeight = _markdownPreview.Viewport.Height;
+            var maxPreviewY = Math.Max (0, previewContentHeight - previewViewportHeight);
+            var previewY = _markdownPreview.Viewport.Y;
+
+            var editorContentHeight = Editor.GetContentSize ().Height;
+            var editorViewportHeight = Editor.Viewport.Height;
+            var maxEditorY = Math.Max (0, editorContentHeight - editorViewportHeight);
+
+            var newY = maxPreviewY > 0
+                ? (int)((long)previewY * maxEditorY / maxPreviewY)
+                : 0;
+
+            Editor.Viewport = Editor.Viewport with { Y = Math.Clamp (newY, 0, maxEditorY) };
         }
         finally
         {
