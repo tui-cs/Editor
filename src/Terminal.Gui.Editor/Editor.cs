@@ -72,6 +72,7 @@ public partial class Editor : View
     {
         CanFocus = true;
         CreateCommandsAndBindings ();
+        OverlayRenderers.Add (new Rendering.MultiCaretRenderer (this));
         Document = new TextDocument ();
     }
 
@@ -102,6 +103,7 @@ public partial class Editor : View
             _caretAnchor = CreateCaretAnchor (caretOffset);
             _lastKnownCaretOffset = caretOffset;
             _selectionAnchor = null;
+            _additionalCarets.Clear ();
             ClearVisualLineCaches ();
             _cachedVisibleLineNumbers = null;
             _maxWidthDirty = true;
@@ -292,6 +294,9 @@ public partial class Editor : View
     /// <summary>Background renderers drawn before visual-line elements.</summary>
     public IList<IBackgroundRenderer> BackgroundRenderers { get; } = [];
 
+    /// <summary>Overlay renderers drawn after visual-line elements (on top of text).</summary>
+    public IList<IOverlayRenderer> OverlayRenderers { get; } = [];
+
     /// <summary>
     ///     Gets or sets the <see cref="Document.Folding.FoldingManager" /> that tracks collapsible regions.
     ///     Setting this installs a <see cref="FoldingTransformer" /> and subscribes to fold change events.
@@ -411,6 +416,7 @@ public partial class Editor : View
             _lastKnownCaretOffset = CaretOffset;
             _caretAnchor = null;
             _selectionAnchor = null;
+            _additionalCarets.Clear ();
         }
 
         base.Dispose (disposing);
@@ -425,6 +431,7 @@ public partial class Editor : View
         InvalidateVisualLineCaches (e);
         InvalidateHighlighterState (e);
         _cachedVisibleLineNumbers = null;
+        _searchHitRenderer?.Invalidate ();
         _wrapMap = null;
         UpdateMaxWidthIncremental (e);
         UpdateContentSize ();

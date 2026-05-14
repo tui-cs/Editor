@@ -1,3 +1,4 @@
+using Terminal.Gui.App;
 using Terminal.Gui.Document;
 using Terminal.Gui.Document.Folding;
 using Terminal.Gui.Input;
@@ -27,6 +28,9 @@ public partial class Editor
         [Command.DeleteCharRight] = Bind.All (Key.Delete),
         [Command.Undo] = Bind.All (Key.Z.WithCtrl),
         [Command.Redo] = Bind.All (Key.Y.WithCtrl, Key.Z.WithCtrl.WithShift),
+        [Command.Cut] = Bind.All (Key.X.WithCtrl),
+        [Command.Copy] = Bind.All (Key.C.WithCtrl),
+        [Command.Paste] = Bind.All (Key.V.WithCtrl),
         [Command.Collapse] = Bind.All (Key.M.WithCtrl)
     };
 
@@ -82,10 +86,73 @@ public partial class Editor
             return true;
         });
 
-        // Editing — selection-aware
-        AddCommand (Command.NewLine, InsertNewLineWithAutoIndent);
-        AddCommand (Command.DeleteCharLeft, DeleteLeft);
-        AddCommand (Command.DeleteCharRight, DeleteRight);
+        // Clipboard
+        AddCommand (Command.Copy, () =>
+        {
+            if (!HasSelection)
+            {
+                return true;
+            }
+
+            App?.Clipboard?.TrySetClipboardData (SelectedText);
+
+            return true;
+        });
+
+        AddCommand (Command.Cut, () =>
+        {
+            if (ReadOnly || !HasSelection)
+            {
+                return true;
+            }
+
+            // Abort cut if clipboard write fails — never destroy text without placing it on the clipboard.
+            if (App?.Clipboard?.TrySetClipboardData (SelectedText) is not true)
+            {
+                return true;
+            }
+
+            using (_document!.RunUpdate ())
+            {
+                ReplaceSelection (string.Empty);
+            }
+
+            return true;
+        });
+
+        AddCommand (Command.Paste, () =>
+        {
+            if (ReadOnly)
+            {
+                return true;
+            }
+
+            IClipboard? clipboard = App?.Clipboard;
+
+            if (clipboard is null || !clipboard.TryGetClipboardData (out var contents))
+            {
+                return true;
+            }
+
+            using (_document!.RunUpdate ())
+            {
+                if (HasSelection)
+                {
+                    ReplaceSelection (contents);
+                }
+                else
+                {
+                    _document.Insert (CaretOffset, contents);
+                }
+            }
+
+            return true;
+        });
+
+        // Editing — selection-aware (multi-caret aware)
+        AddCommand (Command.NewLine, MultiCaretNewLine);
+        AddCommand (Command.DeleteCharLeft, MultiCaretDeleteLeft);
+        AddCommand (Command.DeleteCharRight, MultiCaretDeleteRight);
 
         // History
         AddCommand (Command.Undo, () =>

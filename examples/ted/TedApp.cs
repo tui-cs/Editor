@@ -3,11 +3,12 @@ using Terminal.Gui.Configuration;
 using Terminal.Gui.Document;
 using Terminal.Gui.Document.Folding;
 using Terminal.Gui.Drawing;
+using Terminal.Gui.Editor;
 using Terminal.Gui.Highlighting;
 using Terminal.Gui.Input;
 using Terminal.Gui.Resources;
+using Terminal.Gui.Text.Indentation;
 using Terminal.Gui.ViewBase;
-using Terminal.Gui.Editor;
 using Terminal.Gui.Views;
 
 namespace Ted;
@@ -95,7 +96,7 @@ public sealed partial class TedApp : Window
         autoIndentCheckBox.ValueChanged += (_, e) =>
         {
             Editor.IndentationStrategy = e.NewValue == CheckState.Checked
-                ? new Terminal.Gui.Text.Indentation.DefaultIndentationStrategy ()
+                ? new DefaultIndentationStrategy ()
                 : null;
         };
 
@@ -151,12 +152,15 @@ public sealed partial class TedApp : Window
             Editor.ShowTabs = e.NewValue == CheckState.Checked;
         };
 
+        PreviewCheckBox.ValueChanged += (_, _) => ToggleMarkdownPreview ();
+
         StatusBar statusBar =
             new ([
                 new Shortcut { Title = "Language", CommandView = LanguageShortcut },
                 new Shortcut
                     { Text = "Indent", CommandView = IndentationSizeUpDown, MouseHighlightStates = MouseState.None },
                 new Shortcut { CommandView = ShowTabsCheckBox },
+                new Shortcut { CommandView = PreviewCheckBox },
                 LocShortcut = new Shortcut (Key.Empty, FormatLoc (1, 1), null)
                     { MouseHighlightStates = MouseState.None }
             ])
@@ -270,6 +274,8 @@ public sealed partial class TedApp : Window
         // Editor.CaretChanged covers both user-driven movement and document edits that shift the
         // caret (insert/remove). Initial render seeds the value before any movement happens.
         Editor.CaretChanged += (_, _) => UpdateLocShortcut ();
+        Editor.FindRequested += (_, _) => ShowFindReplaceDialog (false);
+        Editor.ReplaceRequested += (_, _) => ShowFindReplaceDialog (true);
         UpdateLocShortcut ();
     }
 
@@ -367,7 +373,14 @@ public sealed partial class TedApp : Window
         else
         {
             DocumentLine line = document.GetLineByOffset (Editor.CaretOffset);
-            LocShortcut.Title = FormatLoc (line.LineNumber, Editor.CaretOffset - line.Offset + 1);
+            var loc = FormatLoc (line.LineNumber, Editor.CaretOffset - line.Offset + 1);
+
+            if (Editor.HasMultipleCarets)
+            {
+                loc += $" ({Editor.AdditionalCaretOffsets.Count + 1} carets)";
+            }
+
+            LocShortcut.Title = loc;
         }
 
         LocShortcut.SetNeedsDraw ();
