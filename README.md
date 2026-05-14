@@ -32,7 +32,7 @@ For a user-facing editor built on this library, se [clet](https:/github.com/gui-
 
 # Status
 
-**Alpha*, shipped 2026-05-12 of the `develop` rolling pre-release stream. Se [`specs/plan.md`](specs/plan.md) for the beta roadmap and remaining work (multi-caret is the headline item still in flight; `[Obsolete]` on TG `TextView` lands with the beta).
+**Alpha**, shipped 2026-05-12 of the `develop` rolling pre-release stream. See [`specs/plan.md`](specs/plan.md) for the beta roadmap and remaining work (`[Obsolete]` on TG `TextView` lands with the beta).
 
 ## Inherited from Terminal.Gui
 
@@ -54,6 +54,7 @@ For a user-facing editor built on this library, se [clet](https:/github.com/gui-
 - Clipboard: `Command.Cut`, `Command.Copy`, `Command.Paste`; selection-aware, single-step undo, aborts cut if the clipboard write fails. Uses TG's `IClipboard`, so cut/copy/paste interoperates with whatever the OS clipboard contains.
 - Undo / redo with sane granularity (`Command.Undo`, `Command.Redo`). Compound operations (Enter + auto-indent, replace-all, paste over selection) collapse into one undo step via `Document.RunUpdate ()`.
 - Read-only mode: `Editor.ReadOnly = true` blocks edits, undo/redo, and clipboard mutations while keeping navigation and selection live.
+- Multi-caret editing: **Ctrl+Click** to place additional carets; type, Backspace, Delete, or Enter at all of them simultaneously. Escape collapses back to one caret. Every multi-caret operation is a single undo step. See [`examples/ted/docs/multi-caret.md`](examples/ted/docs/multi-caret.md) for details.
 
 ### Indentation & tabs
 
