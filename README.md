@@ -23,19 +23,13 @@ It also isn't a replacement for Terminal.Gui's existing `TextView`. `Editor` shi
 
 ## Inherited from Terminal.Gui
 
-`Editor` is a `View`. Everything that's true of any other Terminal.Gui View is true here too; `Editor` doesn't reinvent input, layout, theming, or configuration; it integrates with them. If a feature feels obvious for a TG view to have, it's almost certainly already wired up.
+`Editor` is a `View`. The standard TG machinery applies:
 
-- **Command-based input.** Editing actions are `Command` values (`Command.Cut`, `Command.Copy`, `Command.NewLine`, `Command.Undo`, `Command.Collapse`, …); keys are bound to commands, not hard-coded. Every binding mentioned below is a *default* that consumers can remap. Mouse actions, scroll wheels, and shortcut activation all flow through the same command pipeline.
-- **ConfigurationManager.** Defaults (keybindings, scheme selection, theme) are JSON-configurable per-app and per-user. A consumer can ship a config file, or expose UI that writes one, and `Editor`'s defaults follow along without code changes.
-- **Themes / Schemes / VisualRoles.** Colors come from the active TG `Scheme` and its `VisualRole`s. Switch themes (Dark+, Light+, Solarized, custom) at runtime via the Configuration Manager and `Editor` reflows immediately. Syntax-highlight tokens layer on top via `UseThemeBackground` (keep the highlighter's background, or compose it under the TG scheme's `Normal` background).
-- **Layout.** `Pos` / `Dim` constraint-based layout: `editor.Y = Pos.Bottom (menu); editor.Width = Dim.Fill (); editor.Height = Dim.Fill (statusBar);`. Anchor, fill, center, stack the editor like any other view.
-- **Padding / Border / Margin.** Standard `Adornment`s. The line-number + folding gutter is itself a `View` hosted inside `Padding`, which is why popovers and menus clip it correctly.
-- **Scrollbars.** Set `ViewportSettings = ViewportSettingsFlags.HasScrollBars` and TG draws and drives them; `Editor` reports its content size so the bars track correctly.
-- **Popovers, menus, dialogs.** `MenuBar`, `StatusBar`, `PopoverMenu`, `Dialog` (see `ted`'s context menu, file dialogs, find/replace dialog) are TG primitives that `Editor` cooperates with; context menus reuse the same `Command` bindings as the keyboard.
-- **Clipboard, mouse, focus.** TG's `IClipboard` works on every driver; TG mouse handling delivers click / drag / wheel (incl. horizontal wheel) events the editor turns into caret moves / selection / scroll.
-- **Localization.** `Strings.menuFile`, `Strings.btnOk`, etc. come from TG's `Resources`; `ted`'s UI strings are already localizable through the standard TG mechanism.
-
-The defaults below are the ones `Editor` registers when you instantiate it. None of them are mandatory; override `DefaultKeyBindings`, plug your own `Command` handlers, or point ConfigurationManager at a different keymap and the editor follows.
+- **Commands + keybindings.** All editor actions are `Command` bindings, remappable via `KeyBindings` or ConfigurationManager.
+- **Themes.** Colors come from the active `Scheme`; switch themes at runtime and the editor reflows.
+- **Layout.** `Pos` / `Dim` constraints; `Padding` / `Border` / `Margin` adornments (the gutter is a `View` inside `Padding`).
+- **Scrollbars.** Set `ViewportSettings = ViewportSettingsFlags.HasScrollBars`.
+- **Mouse, clipboard, popovers, dialogs, localization.** TG primitives, no editor-side bridging.
 
 ## Features
 
