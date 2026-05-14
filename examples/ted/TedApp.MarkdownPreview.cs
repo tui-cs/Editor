@@ -1,5 +1,7 @@
+using Terminal.Gui.Drawing;
 using Terminal.Gui.ViewBase;
 using Terminal.Gui.Views;
+using TextMateSharp.Grammars;
 
 namespace Ted;
 
@@ -67,7 +69,8 @@ public sealed partial class TedApp
             Width = Dim.Fill (),
             Height = Editor.Height,
             Text = Editor.Document?.Text ?? string.Empty,
-            ViewportSettings = ViewportSettingsFlags.HasScrollBars
+            ViewportSettings = ViewportSettingsFlags.HasScrollBars,
+            SyntaxHighlighter = new TextMateSyntaxHighlighter (ThemeName.DarkPlus)
         };
 
         // Editor takes the left half, preview takes the right half.
