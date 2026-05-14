@@ -198,10 +198,12 @@ public sealed partial class TedApp
             return;
         }
 
-        // The previous document's Changed handler was already detached by the Editor.Document setter
-        // (or the old TextDocument was GC'd). Re-attach to the new document.
+        // Detach from the current document first to avoid duplicate subscriptions when
+        // RefreshPreviewDocument is called multiple times for the same document instance
+        // (e.g. Save As that keeps the .md extension).
         if (Editor.Document is not null)
         {
+            Editor.Document.Changed -= OnDocumentChangedForPreview;
             Editor.Document.Changed += OnDocumentChangedForPreview;
         }
 
