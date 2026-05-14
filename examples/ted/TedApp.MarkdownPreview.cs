@@ -123,14 +123,16 @@ public sealed partial class TedApp
             // Synchronise vertical scroll position. The Markdown view's content size may differ
             // from the editor's, so we use a proportional mapping.
             var editorContentHeight = Editor.GetContentSize ().Height;
+            var editorViewportHeight = Editor.Viewport.Height;
+            var maxEditorY = Math.Max (0, editorContentHeight - editorViewportHeight);
             var editorY = Editor.Viewport.Y;
 
             var previewContentHeight = _markdownPreview.GetContentSize ().Height;
             var previewViewportHeight = _markdownPreview.Viewport.Height;
             var maxPreviewY = Math.Max (0, previewContentHeight - previewViewportHeight);
 
-            var newY = editorContentHeight > 0
-                ? (int)((long)editorY * maxPreviewY / editorContentHeight)
+            var newY = maxEditorY > 0
+                ? (int)((long)editorY * maxPreviewY / maxEditorY)
                 : 0;
 
             _markdownPreview.Viewport = _markdownPreview.Viewport with { Y = Math.Clamp (newY, 0, maxPreviewY) };

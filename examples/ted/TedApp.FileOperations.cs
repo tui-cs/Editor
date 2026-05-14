@@ -80,6 +80,7 @@ public sealed partial class TedApp
         WriteAllText (filePath, GetEditorText ());
         Editor.Document!.UndoStack.MarkAsOriginalFile ();
         UpdateFileNameShortcut ();
+        UpdatePreviewVisibility ();
 
         return true;
     }
