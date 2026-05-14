@@ -255,6 +255,80 @@ public class EditorWordWrapTests
         Assert.Equal (3, fx.Top.Editor.CaretOffset);
     }
 
+    /// <summary>
+    ///     Clicking the line-number gutter on a wrap-continuation row should select the same document
+    ///     line, not the next one.
+    /// </summary>
+    [Fact]
+    public async Task GutterClick_On_Wrap_Continuation_Selects_Correct_Line ()
+    {
+        // "hello world\nbye" — 2 lines. Gutter = 2 cols (1-digit + space). Screen = 12 cols → editor = 10 cols.
+        // "hello world" (11 chars) wraps: row 0 = "hello worl", row 1 = "d", row 2 = "bye".
+        await using AppFixture<EditorTestHost> fx = new (() =>
+        {
+            EditorTestHost host = new ("hello world\nbye");
+            host.Editor.GutterOptions = GutterOptions.LineNumbers;
+            host.Editor.WordWrap = true;
+
+            return host;
+        }, 12, 5);
+
+        fx.Top.Editor.SetFocus ();
+        fx.Render ();
+
+        // Click gutter at row 1 (the wrap-continuation of line 1). Gutter occupies cols 0–1.
+        InjectClick (fx, new (0, 1));
+
+        Assert.True (fx.Top.Editor.HasSelection);
+
+        // Should select line 1 ("hello world\n"), NOT line 2 ("bye").
+        Assert.Equal (0, fx.Top.Editor.SelectionStart);
+        Assert.Equal (12, fx.Top.Editor.SelectionEnd);
+        Assert.Equal ("hello world\n", fx.Top.Editor.SelectedText);
+    }
+
+    /// <summary>
+    ///     Dragging in the gutter across wrap-continuation rows should select the correct lines,
+    ///     not over-select due to wrap rows being counted as separate lines.
+    /// </summary>
+    [Fact]
+    public async Task GutterDrag_Across_Wrap_Rows_Selects_Correct_Lines ()
+    {
+        // "hello world\nbye" — line 1 wraps into 2 visual rows, line 2 on row 2.
+        // Drag from row 0 to row 2: should select lines 1–2 (the entire document).
+        await using AppFixture<EditorTestHost> fx = new (() =>
+        {
+            EditorTestHost host = new ("hello world\nbye");
+            host.Editor.GutterOptions = GutterOptions.LineNumbers;
+            host.Editor.WordWrap = true;
+
+            return host;
+        }, 12, 5);
+
+        fx.Top.Editor.SetFocus ();
+        fx.Render ();
+
+        // Press on gutter row 0 (line 1).
+        fx.Injector.InjectMouse (
+            new () { ScreenPosition = new (0, 0), Flags = MouseFlags.LeftButtonPressed, Timestamp = BaseTime },
+            Direct);
+
+        // Drag to gutter row 2 (line 2 "bye").
+        fx.Injector.InjectMouse (
+            new ()
+            {
+                ScreenPosition = new (0, 2),
+                Flags = MouseFlags.LeftButtonPressed | MouseFlags.PositionReport,
+                Timestamp = BaseTime.AddMilliseconds (50)
+            },
+            Direct);
+
+        Assert.True (fx.Top.Editor.HasSelection);
+        Assert.Equal (0, fx.Top.Editor.SelectionStart);
+        Assert.Equal (15, fx.Top.Editor.SelectionEnd);
+        Assert.Equal ("hello world\nbye", fx.Top.Editor.SelectedText);
+    }
+
     private static readonly DateTime BaseTime = new (2025, 1, 1, 12, 0, 0);
 
     private static void InjectClick (AppFixture<EditorTestHost> fx, System.Drawing.Point pos)

@@ -268,20 +268,38 @@ public partial class Editor
             return 1;
         }
 
-        List<int> visibleLines = GetVisibleLineNumbers ();
-        var visibleIndex = Viewport.Y + row;
+        if (WordWrap)
+        {
+            List<WrapMapEntry> map = GetWrapMap ();
+            var visibleIndex = Viewport.Y + row;
 
-        if (visibleIndex < 0 || visibleLines.Count == 0)
+            if (visibleIndex < 0 || map.Count == 0)
+            {
+                return 1;
+            }
+
+            if (visibleIndex >= map.Count)
+            {
+                return map[^1].LineNumber;
+            }
+
+            return map[visibleIndex].LineNumber;
+        }
+
+        List<int> visibleLines = GetVisibleLineNumbers ();
+        var idx = Viewport.Y + row;
+
+        if (idx < 0 || visibleLines.Count == 0)
         {
             return 1;
         }
 
-        if (visibleIndex >= visibleLines.Count)
+        if (idx >= visibleLines.Count)
         {
             return visibleLines[^1];
         }
 
-        return visibleLines[visibleIndex];
+        return visibleLines[idx];
     }
 
     private bool IsIdentifierWordCharAt (int offset)

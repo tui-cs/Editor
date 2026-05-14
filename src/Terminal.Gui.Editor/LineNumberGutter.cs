@@ -39,27 +39,37 @@ internal sealed class LineNumberGutter : View
             return true;
         }
 
-        List<int> visibleLines = _editor.GetVisibleLineNumbers ();
         var firstVisibleIndex = _editor.Viewport.Y;
         var visibleHeight = _editor.Viewport.Height;
+        var blank = new string (' ', viewport.Width);
 
         for (var row = 0; row < viewport.Height; row++)
         {
-            var visibleIndex = firstVisibleIndex + row;
-
-            if (row >= visibleHeight || visibleIndex < 0 || visibleIndex >= visibleLines.Count)
+            if (row >= visibleHeight)
             {
                 Move (0, row);
-                AddStr (new string (' ', viewport.Width));
+                AddStr (blank);
 
                 continue;
             }
 
-            var lineNumber = visibleLines[visibleIndex];
-            var lineText = lineNumber.ToString ().PadLeft (viewport.Width - 1) + " ";
+            var lineNumber = _editor.ViewRowToLineNumber (row);
+
+            // For wrap-continuation rows, show blank instead of repeating the line number.
+            // A continuation row is identified by the previous row mapping to the same line number.
+            var isFirstSegment = row == 0 || _editor.ViewRowToLineNumber (row - 1) != lineNumber;
 
             Move (0, row);
-            AddStr (lineText);
+
+            if (isFirstSegment)
+            {
+                var lineText = lineNumber.ToString ().PadLeft (viewport.Width - 1) + " ";
+                AddStr (lineText);
+            }
+            else
+            {
+                AddStr (blank);
+            }
         }
 
         return true;
