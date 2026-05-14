@@ -97,7 +97,7 @@ public class EditorKeyBindingIntegrationTests
     [Fact]
     public async Task ConfigurationManager_RuntimeConfig_CustomUndoKey_ActuallyUndoes ()
     {
-        Dictionary<string, Dictionary<Command, PlatformKeyBinding>>? originalVKB = View.ViewKeyBindings;
+        Dictionary<string, Dictionary<Command, PlatformKeyBinding>>? originalViewKeyBindings = View.ViewKeyBindings;
         var originalRuntimeConfig = ConfigurationManager.RuntimeConfig;
         var wasEnabled = ConfigurationManager.IsEnabled;
 
@@ -129,7 +129,7 @@ public class EditorKeyBindingIntegrationTests
         }
         finally
         {
-            View.ViewKeyBindings = originalVKB;
+            View.ViewKeyBindings = originalViewKeyBindings;
             ConfigurationManager.RuntimeConfig = originalRuntimeConfig;
 
             if (!wasEnabled)

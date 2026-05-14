@@ -229,7 +229,7 @@ public class EditorKeyBindingConfigTests
     [Fact]
     public void ConfigurationManager_RuntimeConfig_ViewKeyBindings_UpdatesEditorBindings ()
     {
-        Dictionary<string, Dictionary<Command, PlatformKeyBinding>>? originalVKB = View.ViewKeyBindings;
+        Dictionary<string, Dictionary<Command, PlatformKeyBinding>>? originalViewKeyBindings = View.ViewKeyBindings;
         var originalRuntimeConfig = ConfigurationManager.RuntimeConfig;
         var wasEnabled = ConfigurationManager.IsEnabled;
 
@@ -265,7 +265,7 @@ public class EditorKeyBindingConfigTests
         finally
         {
             // Always restore global state, even when the test fails.
-            View.ViewKeyBindings = originalVKB;
+            View.ViewKeyBindings = originalViewKeyBindings;
             ConfigurationManager.RuntimeConfig = originalRuntimeConfig;
 
             if (!wasEnabled)
