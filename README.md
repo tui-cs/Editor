@@ -18,55 +18,106 @@ It also isn't a replacement for Terminal.Gui's existing `TextView`. `Editor` shi
 
 ## What's in the box
 
-- **Document layer** (`Terminal.Gui.Document` and sub-namespaces) — UI-framework-independent: rope-backed `TextDocument`, `TextAnchor`, `UndoStack`, `FoldingManager`, search strategies (regex / whole-word / case-sensitive), indentation strategies, and the xshd-driven highlighting engine. Adapted from [AvaloniaEdit](https://github.com/AvaloniaUI/AvaloniaEdit)'s pure-data layers.
+- **Document layer** (`Terminal.Gui.Document` and sub-namespaces) — UI-framework-independent: rope-backed `TextDocument`, `TextAnchor`, `UndoStack`, `FoldingManager`, search strategies, indentation strategies, and the xshd-driven highlighting engine. Adapted from [AvaloniaEdit](https://github.com/AvaloniaUI/AvaloniaEdit)'s pure-data layers.
 - **Editor view** (`Terminal.Gui.Editor` namespace) — an `Editor : View` subclass consuming the document layer through a cell-grid rendering pipeline (`VisualLineBuilder` → `CellVisualLine`, with pluggable `IVisualLineTransformer`s and `IBackgroundRenderer`s for consumers that want to layer their own visual behaviour on top).
+
+## Inherited from Terminal.Gui
+
+`Editor` is a `View`. Everything that's true of any other Terminal.Gui View is true here too — `Editor` doesn't reinvent input, layout, theming, or configuration; it integrates with them. If a feature feels obvious for a TG view to have, it's almost certainly already wired up.
+
+- **Command-based input.** Editing actions are `Command` values (`Command.Cut`, `Command.Copy`, `Command.NewLine`, `Command.Undo`, `Command.Collapse`, …) — keys are bound to commands, not hard-coded. Every binding mentioned below is a *default* that consumers can remap. Mouse actions, scroll wheels, and shortcut activation all flow through the same command pipeline.
+- **ConfigurationManager.** Defaults — keybindings, scheme selection, theme — are JSON-configurable per-app and per-user. A consumer can ship a config file, or expose UI that writes one, and `Editor`'s defaults follow along without code changes.
+- **Themes / Schemes / VisualRoles.** Colors come from the active TG `Scheme` and its `VisualRole`s. Switch themes (Dark+, Light+, Solarized, custom) at runtime via the Configuration Manager and `Editor` reflows immediately. Syntax-highlight tokens layer on top via `UseThemeBackground` (keep the highlighter's background, or compose it under the TG scheme's `Normal` background).
+- **Layout.** `Pos` / `Dim` constraint-based layout — `editor.Y = Pos.Bottom (menu); editor.Width = Dim.Fill (); editor.Height = Dim.Fill (statusBar);`. Anchor, fill, center, stack the editor like any other view.
+- **Padding / Border / Margin.** Standard `Adornment`s. The line-number + folding gutter is itself a `View` hosted inside `Padding`, which is why popovers and menus clip it correctly.
+- **Scrollbars.** Set `ViewportSettings = ViewportSettingsFlags.HasScrollBars` and TG draws and drives them; `Editor` reports its content size so the bars track correctly.
+- **Popovers, menus, dialogs.** `MenuBar`, `StatusBar`, `PopoverMenu`, `Dialog` (see `ted`'s context menu, file dialogs, find/replace dialog) are TG primitives that `Editor` cooperates with — context menus reuse the same `Command` bindings as the keyboard.
+- **Clipboard, mouse, focus.** TG's `IClipboard` works on every driver; TG mouse handling delivers click / drag / wheel (incl. horizontal wheel) events the editor turns into caret moves / selection / scroll.
+- **Localization.** `Strings.menuFile`, `Strings.btnOk`, etc. come from TG's `Resources` — `ted`'s UI strings are already localizable through the standard TG mechanism.
+
+The defaults below are the ones `Editor` registers when you instantiate it. None of them are mandatory — override `DefaultKeyBindings`, plug your own `Command` handlers, or point ConfigurationManager at a different keymap and the editor follows.
 
 ## Features
 
-Editing
+### Editing
+
 - Typing, Backspace / Delete, Enter, with Unicode + grapheme-aware width.
 - Caret backed by a `TextAnchor` (`AnchorMovementType.AfterInsertion`); sticky virtual column across vertical moves through short lines.
-- Selection via Shift+arrows / Shift+Home/End / Shift+PageUp/Down / Shift+Ctrl+Home/End, plus `Ctrl+A` Select All; replace-on-typing.
-- Mouse: click to position the caret, drag to select, wheel to scroll (incl. horizontal wheel), right-click context menu in `ted`.
-- Clipboard: `Ctrl+X` cut, `Ctrl+C` copy, `Ctrl+V` paste — selection-aware, single-step undo, aborts cut if the clipboard write fails.
-- Undo/redo with sane granularity: `Ctrl+Z` / `Ctrl+Y` (also `Ctrl+Shift+Z`). Compound operations (Enter + auto-indent, replace-all, paste over selection) collapse into one undo step via `Document.RunUpdate ()`.
+- Selection: any TG-bound "extend" movement command (`Command.LeftExtend`, `RightEndExtend`, `PageDownExtend`, …) extends the selection; `Command.SelectAll` selects all; typing or paste replaces selection.
+- Clipboard: `Command.Cut` / `Command.Copy` / `Command.Paste` — selection-aware, single-step undo, aborts cut if the clipboard write fails. Uses TG's `IClipboard`, so cut/copy/paste interoperates with whatever the OS clipboard contains.
+- Undo / redo with sane granularity (`Command.Undo`, `Command.Redo`). Compound operations (Enter + auto-indent, replace-all, paste over selection) collapse into one undo step via `Document.RunUpdate ()`.
 - Read-only mode: `Editor.ReadOnly = true` blocks edits, undo/redo, and clipboard mutations while keeping navigation and selection live.
 
-Indentation & tabs
-- `IndentationSize`, `ConvertTabsToSpaces`, `ShowTabs` (renders a glyph in the first cell of each tab).
-- `Tab` / `Shift+Tab` indent / unindent — with selection, indents the selected line range.
+### Indentation & tabs
+
+- `IndentationSize`, `ConvertTabsToSpaces`, `ShowTabs` (renders a glyph in the first cell of each tab) — all bindable, all observable from the consumer's UI.
+- `Tab` / `Shift+Tab` indent / unindent. With a selection, indents the selected line range.
 - Indentation-aware Backspace.
 - Pluggable `IIndentationStrategy`; the default copies the previous line's leading whitespace on Enter (wrapped in a single undo group).
 
-Rendering pipeline
+### Rendering pipeline
+
 - Cell-grid pipeline: `VisualLineBuilder` → `CellVisualLine` → `CellVisualLineElement` (`TextRunElement`, `TabElement`).
-- Pluggable `IVisualLineTransformer`s (syntax highlight, folding markers, …) and `IBackgroundRenderer`s (selection, current line, search hits).
+- Pluggable `IVisualLineTransformer`s (syntax highlight, folding markers, …) and `IBackgroundRenderer`s (selection, current line, search hits). Consumers can layer their own transformers on top.
 - LRU visual-line caches with ranged invalidation from `Document.Changed`; incremental max-width tracking avoids the O(N) all-lines walk on every edit.
 - Word wrap: `Editor.WordWrap` soft-wraps at whitespace boundaries (hard-breaks when none), continuation rows flush at column 0.
 
-Folding
+### Folding
+
 - `FoldingManager` + `FoldingTransformer` collapse / expand regions.
 - Foldings auto-expand if the caret moves inside one.
 - `BraceFoldingStrategy` and `XmlFoldingStrategy` included; consumers can add their own.
-- `Ctrl+M` toggles the fold under the caret.
+- `Command.Collapse` toggles the fold under the caret.
 - `FoldingGutter` paints +/− indicators; click to toggle.
 
-Gutter
-- `Editor.GutterOptions` is a `[Flags]` enum: `LineNumbers | Folding`. Combine to show both.
-- Gutter is a real `View` subview of `Padding`, so popovers and menus clip it correctly.
+### Gutter
 
-Find & Replace
-- Pluggable `ISearchStrategy` — `Normal` (string), `RegEx`, `WholeWords`, with `MatchCase`.
-- `Ctrl+F` raises `FindRequested`; `Ctrl+H` raises `ReplaceRequested` (ted opens its Find/Replace dialog).
-- `F3` / `Shift+F3` jump to the next / previous match (wrap-around).
+- `Editor.GutterOptions` is a `[Flags]` enum: `LineNumbers | Folding`. Combine to show both, or hide both.
+- Gutter is a real `View` subview of `Padding` (not painted by hand), so it composes with TG popovers, menus, and focus traversal.
+
+### Find & Replace
+
+- Pluggable `ISearchStrategy` — `Normal` (string), `RegEx`, `WholeWords`, with `MatchCase`. Construct via `SearchStrategyFactory.Create` or assign your own.
+- `FindRequested` / `ReplaceRequested` events fire so consumers can open whatever Find UI they want (ted opens a `Dialog`-based form; an agent-driven app could open something else, or skip the UI entirely and drive the API directly).
+- Forward / backward navigation through hits with wrap-around.
 - `SearchHitRenderer` highlights every match in the viewport; invalidated automatically on document edits.
 - `ReplaceAll` is one undo step.
 
-Syntax highlighting
+### Syntax highlighting
+
 - xshd-driven `DocumentHighlighter` + `HighlightingColorizer`, installed automatically when you set `HighlightingDefinition`.
 - Built-in definitions (looked up via `HighlightingManager.Instance`): C#, C++, Java, JavaScript, Python, PowerShell, TSQL, VB, JSON, HTML, XML, CSS, Markdown.
-- Themes follow the active Terminal.Gui scheme; `UseThemeBackground` toggles between the highlighter's background and the TG `VisualRole.Normal` background.
+- Highlight colors compose with the active TG `Scheme` — pick a theme via the Configuration Manager and the editor follows.
 - TextMate grammars are a post-beta follow-up (see [`specs/textmate-grammars/spec.md`](specs/textmate-grammars/spec.md)).
+
+### Default keybindings
+
+These are the *defaults*. They are `Command`-bound and remappable via TG's `KeyBindings` API or ConfigurationManager.
+
+| Command | Default key | Notes |
+|---|---|---|
+| `Command.Cut` / `Copy` / `Paste` | `Ctrl+X` / `Ctrl+C` / `Ctrl+V` | TG `IClipboard` |
+| `Command.Undo` / `Redo` | `Ctrl+Z` / `Ctrl+Y` (also `Ctrl+Shift+Z`) | |
+| `Command.SelectAll` | `Ctrl+A` | TG base layer |
+| `Command.NewLine` | `Enter` | Auto-indents if a strategy is installed |
+| `Command.DeleteCharLeft` / `DeleteCharRight` | `Backspace` / `Delete` | |
+| `Command.Start` / `End` | `Ctrl+Home` / `Ctrl+End` | |
+| `Command.LeftStart` / `RightEnd` | `Home` / `End` | TG base layer |
+| `Command.Up` / `Down` / `Left` / `Right` / `PageUp` / `PageDown` | arrows + PgUp/PgDn | TG base layer |
+| `Command.*Extend` variants | Shift+ above | Selection-extending |
+| `Command.Collapse` | `Ctrl+M` | Toggle fold under caret |
+| Find / FindNext / FindPrev / Replace | `Ctrl+F` / `F3` / `Shift+F3` / `Ctrl+H` | `Ctrl+F` / `Ctrl+H` raise events for the consumer's UI |
+| Indent / Unindent | `Tab` / `Shift+Tab` | Range-aware with selection |
+| Scroll | mouse wheel (incl. horizontal) | Bubbles up from gutter subviews |
+
+Override at the consumer level with the standard TG pattern:
+
+```csharp
+editor.KeyBindings.Remove (Key.X.WithCtrl);
+editor.KeyBindings.Add (Key.W.WithCtrl, Command.Cut);
+```
+
+…or ship a Configuration Manager JSON profile that does the same.
 
 ## Quickstart
 
@@ -76,22 +127,33 @@ Install the package (requires the .NET 10 SDK and Terminal.Gui):
 dotnet add package Terminal.Gui.Editor
 ```
 
-Drop the editor into a Terminal.Gui app:
+Drop the editor into a Terminal.Gui app — `Editor` is just a `View`, so it gets TG's layout, scheme, scrollbars, and Configuration Manager for free:
 
 ```csharp
 using Terminal.Gui.App;
+using Terminal.Gui.Configuration;
 using Terminal.Gui.Document;
 using Terminal.Gui.Editor;
 using Terminal.Gui.Highlighting;
 using Terminal.Gui.ViewBase;
+
+// Pick up themes / keymaps / preferences from the user's TG config.
+ConfigurationManager.Enable (ConfigLocations.All);
 
 using IApplication app = Application.Create ();
 app.Init ();
 
 Editor editor = new ()
 {
+    // TG constraint-based layout — anchor below a menubar, fill above a status bar.
+    X = 0,
+    Y = Pos.Bottom (menu),
     Width = Dim.Fill (),
-    Height = Dim.Fill (),
+    Height = Dim.Fill (statusBar),
+
+    // TG scrollbars come free with this flag.
+    ViewportSettings = ViewportSettingsFlags.HasScrollBars,
+
     GutterOptions = GutterOptions.LineNumbers | GutterOptions.Folding,
     ConvertTabsToSpaces = true,
     HighlightingDefinition = HighlightingManager.Instance.GetDefinitionByExtension (".cs")
@@ -100,10 +162,12 @@ Editor editor = new ()
 editor.Document = new TextDocument (File.ReadAllText ("Program.cs"));
 
 Window win = new () { Title = "My Editor" };
-win.Add (editor);
+win.Add (menu, editor, statusBar);
 
 app.Run (win);
 ```
+
+See [`examples/ted/TedApp.cs`](examples/ted/TedApp.cs) for the full version — menus, status bar, find/replace dialog, theme dropdown, all wired through standard TG primitives.
 
 ## ted — the reference app
 
