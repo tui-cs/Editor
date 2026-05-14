@@ -1,9 +1,12 @@
 using Terminal.Gui.Document.Search;
+using Terminal.Gui.Editor.Rendering;
 
 namespace Terminal.Gui.Editor;
 
 public partial class Editor
 {
+    private SearchHitRenderer? _searchHitRenderer;
+
     /// <summary>
     ///     Gets or sets the active <see cref="ISearchStrategy" /> used by all Find / Replace operations.
     ///     The string-based convenience overloads (e.g. <see cref="FindNext(string,bool,bool)" />) replace this with a
@@ -13,7 +16,57 @@ public partial class Editor
     ///     <see cref="FindNext(bool)" /> / <see cref="FindPrevious(bool)" /> / <see cref="ReplaceNext(string,bool)" /> /
     ///     <see cref="ReplaceAll(string)" /> overloads.
     /// </summary>
-    public ISearchStrategy? SearchStrategy { get; set; }
+    public ISearchStrategy? SearchStrategy
+    {
+        get;
+        set
+        {
+            if (Equals (field, value))
+            {
+                return;
+            }
+
+            field = value;
+            UpdateSearchHitRenderer ();
+            SetNeedsDraw ();
+        }
+    }
+
+    /// <summary>
+    ///     Raised when the user presses <c>Ctrl+F</c> (the Find keybinding). Consumers (e.g. ted) subscribe
+    ///     to open their Find dialog.
+    /// </summary>
+    public event EventHandler? FindRequested;
+
+    /// <summary>
+    ///     Raised when the user presses <c>Ctrl+H</c> (the Replace keybinding). Consumers (e.g. ted) subscribe
+    ///     to open their Find &amp; Replace dialog.
+    /// </summary>
+    public event EventHandler? ReplaceRequested;
+
+    private void UpdateSearchHitRenderer ()
+    {
+        if (SearchStrategy is not null)
+        {
+            if (_searchHitRenderer is null)
+            {
+                _searchHitRenderer = new SearchHitRenderer ();
+                BackgroundRenderers.Add (_searchHitRenderer);
+            }
+            else
+            {
+                _searchHitRenderer.Invalidate ();
+            }
+        }
+        else
+        {
+            if (_searchHitRenderer is not null)
+            {
+                BackgroundRenderers.Remove (_searchHitRenderer);
+                _searchHitRenderer = null;
+            }
+        }
+    }
 
     /// <summary>
     ///     Finds the next match of <see cref="SearchStrategy" /> starting at the current caret (or after the current
