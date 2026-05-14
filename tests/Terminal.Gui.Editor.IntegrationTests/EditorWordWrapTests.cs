@@ -201,6 +201,176 @@ public class EditorWordWrapTests
         Assert.Equal (redAttr, unselected.Attribute);
     }
 
+    [Fact]
+    public async Task Mouse_Click_On_Wrapped_Row_Positions_Caret_Correctly ()
+    {
+        // "hello world" with wrap at 6 => "hello " on visual row 0, "world" on visual row 1.
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("hello world"), 6, 5);
+        fx.Render ();
+
+        fx.Top.Editor.WordWrap = true;
+        fx.Top.Editor.SetFocus ();
+        fx.Render ();
+
+        // Click on visual row 1 (the wrapped portion), col 2 — should land on "r" in "world".
+        InjectClick (fx, new (2, 1));
+
+        // "hello " is 6 chars, so offset of "r" = 6 + 2 = 8.
+        Assert.Equal (8, fx.Top.Editor.CaretOffset);
+    }
+
+    [Fact]
+    public async Task Mouse_Click_Past_Wrapped_Segment_End_Snaps_To_Segment_End ()
+    {
+        // "hello world" with wrap at 6 => "hello " on visual row 0, "world" on visual row 1.
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("hello world"), 6, 5);
+        fx.Render ();
+
+        fx.Top.Editor.WordWrap = true;
+        fx.Top.Editor.SetFocus ();
+        fx.Render ();
+
+        // Click past the end of the "world" segment but within the viewport (col 5 on row 1).
+        // "world" is 5 chars, so col 5 is one past the last character.
+        InjectClick (fx, new (5, 1));
+
+        // Should snap to end of "world" = offset 11.
+        Assert.Equal (11, fx.Top.Editor.CaretOffset);
+    }
+
+    [Fact]
+    public async Task Mouse_Click_On_First_Wrapped_Row_Still_Works ()
+    {
+        // "hello world" with wrap at 6 => "hello " on visual row 0, "world" on visual row 1.
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("hello world"), 6, 5);
+        fx.Render ();
+
+        fx.Top.Editor.WordWrap = true;
+        fx.Top.Editor.SetFocus ();
+        fx.Render ();
+
+        // Click on visual row 0, col 3 — should land within "hello ".
+        InjectClick (fx, new (3, 0));
+
+        Assert.Equal (3, fx.Top.Editor.CaretOffset);
+    }
+
+    /// <summary>
+    ///     Clicking the line-number gutter on a wrap-continuation row should select the same document
+    ///     line, not the next one.
+    /// </summary>
+    [Fact]
+    public async Task GutterClick_On_Wrap_Continuation_Selects_Correct_Line ()
+    {
+        // "hello world\nbye" — 2 lines. Gutter = 2 cols (1-digit + space). Screen = 12 cols → editor = 10 cols.
+        // "hello world" (11 chars) wraps: row 0 = "hello worl", row 1 = "d", row 2 = "bye".
+        await using AppFixture<EditorTestHost> fx = new (() =>
+        {
+            EditorTestHost host = new ("hello world\nbye");
+            host.Editor.GutterOptions = GutterOptions.LineNumbers;
+            host.Editor.WordWrap = true;
+
+            return host;
+        }, 12, 5);
+
+        fx.Top.Editor.SetFocus ();
+        fx.Render ();
+
+        // Click gutter at row 1 (the wrap-continuation of line 1). Gutter occupies cols 0–1.
+        InjectClick (fx, new (0, 1));
+
+        Assert.True (fx.Top.Editor.HasSelection);
+
+        // Should select line 1 ("hello world\n"), NOT line 2 ("bye").
+        Assert.Equal (0, fx.Top.Editor.SelectionStart);
+        Assert.Equal (12, fx.Top.Editor.SelectionEnd);
+        Assert.Equal ("hello world\n", fx.Top.Editor.SelectedText);
+    }
+
+    /// <summary>
+    ///     Dragging in the gutter across wrap-continuation rows should select the correct lines,
+    ///     not over-select due to wrap rows being counted as separate lines.
+    /// </summary>
+    [Fact]
+    public async Task GutterDrag_Across_Wrap_Rows_Selects_Correct_Lines ()
+    {
+        // "hello world\nbye" — line 1 wraps into 2 visual rows, line 2 on row 2.
+        // Drag from row 0 to row 2: should select lines 1–2 (the entire document).
+        await using AppFixture<EditorTestHost> fx = new (() =>
+        {
+            EditorTestHost host = new ("hello world\nbye");
+            host.Editor.GutterOptions = GutterOptions.LineNumbers;
+            host.Editor.WordWrap = true;
+
+            return host;
+        }, 12, 5);
+
+        fx.Top.Editor.SetFocus ();
+        fx.Render ();
+
+        // Press on gutter row 0 (line 1).
+        fx.Injector.InjectMouse (
+            new () { ScreenPosition = new (0, 0), Flags = MouseFlags.LeftButtonPressed, Timestamp = BaseTime },
+            Direct);
+
+        // Drag to gutter row 2 (line 2 "bye").
+        fx.Injector.InjectMouse (
+            new ()
+            {
+                ScreenPosition = new (0, 2),
+                Flags = MouseFlags.LeftButtonPressed | MouseFlags.PositionReport,
+                Timestamp = BaseTime.AddMilliseconds (50)
+            },
+            Direct);
+
+        Assert.True (fx.Top.Editor.HasSelection);
+        Assert.Equal (0, fx.Top.Editor.SelectionStart);
+        Assert.Equal (15, fx.Top.Editor.SelectionEnd);
+        Assert.Equal ("hello world\nbye", fx.Top.Editor.SelectedText);
+    }
+
+    /// <summary>
+    ///     The gutter should show blank for wrap-continuation rows even when that row is the first
+    ///     visible row (i.e. segment detection must use wrap-segment metadata, not previous-row
+    ///     comparison which fails when the viewport starts mid-line).
+    /// </summary>
+    [Fact]
+    public async Task Gutter_Continuation_Row_Shows_Blank_Not_Line_Number ()
+    {
+        // "hello world\nbye" — line 1 wraps into 2 visual rows (row 0 = "hello worl", row 1 = "d").
+        // Gutter = 2 cols (1-digit + space). Screen = 12 cols → editor area = 10 cols.
+        await using AppFixture<EditorTestHost> fx = new (() =>
+        {
+            EditorTestHost host = new ("hello world\nbye");
+            host.Editor.GutterOptions = GutterOptions.LineNumbers;
+            host.Editor.WordWrap = true;
+
+            return host;
+        }, 12, 5);
+
+        fx.Top.Editor.SetFocus ();
+        fx.Render ();
+
+        // Row 0: line 1, first segment → should show "1 "
+        Assert.Equal ("1", fx.Driver.Contents![0, 0].Grapheme);
+
+        // Row 1: line 1, continuation → should show "  " (blank)
+        Assert.Equal (" ", fx.Driver.Contents[1, 0].Grapheme);
+        Assert.Equal (" ", fx.Driver.Contents[1, 1].Grapheme);
+
+        // Row 2: line 2, first segment → should show "2 "
+        Assert.Equal ("2", fx.Driver.Contents[2, 0].Grapheme);
+    }
+
+    private static readonly DateTime BaseTime = new (2025, 1, 1, 12, 0, 0);
+
+    private static void InjectClick (AppFixture<EditorTestHost> fx, System.Drawing.Point pos)
+    {
+        fx.Injector.InjectMouse (
+            new () { ScreenPosition = pos, Flags = MouseFlags.LeftButtonPressed, Timestamp = BaseTime },
+            Direct);
+    }
+
     /// <summary>Transformer that overwrites all element attributes with a fixed value.</summary>
     private sealed class OverwriteTransformer (Attribute attr) : IVisualLineTransformer
     {
