@@ -17,12 +17,11 @@ public class SearchHitRendererTests
     {
         Editor editor = new () { Document = new TextDocument ("hello world hello") };
 
-        Assert.Empty (editor.BackgroundRenderers);
+        Assert.DoesNotContain (editor.BackgroundRenderers, r => r is SearchHitRenderer);
 
         editor.SearchStrategy = SearchStrategyFactory.Create ("hello", false, false, SearchMode.Normal);
 
-        Assert.Single (editor.BackgroundRenderers);
-        Assert.IsType<SearchHitRenderer> (editor.BackgroundRenderers[0]);
+        Assert.Contains (editor.BackgroundRenderers, r => r is SearchHitRenderer);
     }
 
     [Fact]
@@ -31,11 +30,11 @@ public class SearchHitRendererTests
         Editor editor = new () { Document = new TextDocument ("hello world hello") };
         editor.SearchStrategy = SearchStrategyFactory.Create ("hello", false, false, SearchMode.Normal);
 
-        Assert.Single (editor.BackgroundRenderers);
+        Assert.Contains (editor.BackgroundRenderers, r => r is SearchHitRenderer);
 
         editor.SearchStrategy = null;
 
-        Assert.Empty (editor.BackgroundRenderers);
+        Assert.DoesNotContain (editor.BackgroundRenderers, r => r is SearchHitRenderer);
     }
 
     [Fact]
@@ -43,12 +42,13 @@ public class SearchHitRendererTests
     {
         Editor editor = new () { Document = new TextDocument ("hello world hello") };
         editor.SearchStrategy = SearchStrategyFactory.Create ("hello", false, false, SearchMode.Normal);
-        IBackgroundRenderer first = editor.BackgroundRenderers[0];
+        IBackgroundRenderer first = editor.BackgroundRenderers.First (r => r is SearchHitRenderer);
 
         editor.SearchStrategy = SearchStrategyFactory.Create ("world", false, false, SearchMode.Normal);
 
-        Assert.Single (editor.BackgroundRenderers);
-        Assert.Same (first, editor.BackgroundRenderers[0]);
+        SearchHitRenderer? second = editor.BackgroundRenderers.OfType<SearchHitRenderer> ().SingleOrDefault ();
+        Assert.NotNull (second);
+        Assert.Same (first, second);
     }
 
     [Fact]
@@ -83,7 +83,6 @@ public class SearchHitRendererTests
         // We verify indirectly: the renderer is still registered but the document changed.
         editor.Document!.Insert (0, "x");
 
-        Assert.Single (editor.BackgroundRenderers);
-        Assert.IsType<SearchHitRenderer> (editor.BackgroundRenderers[0]);
+        Assert.Contains (editor.BackgroundRenderers, r => r is SearchHitRenderer);
     }
 }
