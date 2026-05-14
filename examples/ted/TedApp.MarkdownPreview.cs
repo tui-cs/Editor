@@ -1,4 +1,3 @@
-using System.Drawing;
 using Terminal.Gui.ViewBase;
 using Terminal.Gui.Views;
 
@@ -133,8 +132,7 @@ public sealed partial class TedApp
                 ? (int)((long)editorY * maxPreviewY / editorContentHeight)
                 : 0;
 
-            Rectangle vp = _markdownPreview.Viewport;
-            _markdownPreview.Viewport = vp with { Y = Math.Clamp (newY, 0, maxPreviewY) };
+            _markdownPreview.Viewport = _markdownPreview.Viewport with { Y = Math.Clamp (newY, 0, maxPreviewY) };
         }
         finally
         {
