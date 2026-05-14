@@ -29,7 +29,11 @@ public sealed class MultiCaretRenderer : IBackgroundRenderer
             return;
         }
 
-        DocumentLine docLine = line.DocumentLine;
+        // Use the visual line's element range to scope correctly in word-wrap mode,
+        // where a CellVisualLine represents only one wrapped segment of a DocumentLine.
+        var segStart = line.Elements.Count > 0 ? line.Elements[0].DocumentOffset : line.DocumentLine.Offset;
+        var segEnd = line.Elements.Count > 0 ? line.Elements[^1].DocumentEndOffset : line.DocumentLine.EndOffset;
+
         Attribute normal = host.GetAttributeForRole (VisualRole.Normal);
 
         // Invert foreground/background to distinguish additional carets from selection.
@@ -37,12 +41,12 @@ public sealed class MultiCaretRenderer : IBackgroundRenderer
 
         foreach (var offset in _editor.AdditionalCaretOffsets)
         {
-            if (offset < docLine.Offset || offset > docLine.Offset + docLine.Length)
+            if (offset < segStart || offset > segEnd)
             {
                 continue;
             }
 
-            var colInLine = offset - docLine.Offset;
+            var colInLine = offset - line.DocumentLine.Offset;
             var visualCol = line.GetVisualColumn (colInLine);
             var col = visualCol - viewport.X;
 
@@ -54,9 +58,36 @@ public sealed class MultiCaretRenderer : IBackgroundRenderer
             host.SetAttribute (caretAttr);
             host.Move (col, row);
 
-            if (offset < docLine.Offset + docLine.Length)
+            if (offset < segEnd)
             {
-                Rune rune = new (_editor.Document.GetCharAt (offset));
+                var ch = _editor.Document.GetCharAt (offset);
+
+                // Handle surrogate pairs for non-BMP characters (e.g. emoji).
+                Rune rune;
+
+                if (char.IsHighSurrogate (ch)
+                    && offset + 1 < _editor.Document.TextLength)
+                {
+                    var lo = _editor.Document.GetCharAt (offset + 1);
+
+                    if (char.IsLowSurrogate (lo))
+                    {
+                        rune = new (char.ConvertToUtf32 (ch, lo));
+                    }
+                    else
+                    {
+                        rune = new (' ');
+                    }
+                }
+                else if (char.IsSurrogate (ch))
+                {
+                    rune = new (' ');
+                }
+                else
+                {
+                    rune = new (ch);
+                }
+
                 host.AddRune (rune);
             }
             else
