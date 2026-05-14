@@ -329,6 +329,39 @@ public class EditorWordWrapTests
         Assert.Equal ("hello world\nbye", fx.Top.Editor.SelectedText);
     }
 
+    /// <summary>
+    ///     The gutter should show blank for wrap-continuation rows even when that row is the first
+    ///     visible row (i.e. segment detection must use wrap-segment metadata, not previous-row
+    ///     comparison which fails when the viewport starts mid-line).
+    /// </summary>
+    [Fact]
+    public async Task Gutter_Continuation_Row_Shows_Blank_Not_Line_Number ()
+    {
+        // "hello world\nbye" — line 1 wraps into 2 visual rows (row 0 = "hello worl", row 1 = "d").
+        // Gutter = 2 cols (1-digit + space). Screen = 12 cols → editor area = 10 cols.
+        await using AppFixture<EditorTestHost> fx = new (() =>
+        {
+            EditorTestHost host = new ("hello world\nbye");
+            host.Editor.GutterOptions = GutterOptions.LineNumbers;
+            host.Editor.WordWrap = true;
+
+            return host;
+        }, 12, 5);
+
+        fx.Top.Editor.SetFocus ();
+        fx.Render ();
+
+        // Row 0: line 1, first segment → should show "1 "
+        Assert.Equal ("1", fx.Driver.Contents![0, 0].Grapheme);
+
+        // Row 1: line 1, continuation → should show "  " (blank)
+        Assert.Equal (" ", fx.Driver.Contents[1, 0].Grapheme);
+        Assert.Equal (" ", fx.Driver.Contents[1, 1].Grapheme);
+
+        // Row 2: line 2, first segment → should show "2 "
+        Assert.Equal ("2", fx.Driver.Contents[2, 0].Grapheme);
+    }
+
     private static readonly DateTime BaseTime = new (2025, 1, 1, 12, 0, 0);
 
     private static void InjectClick (AppFixture<EditorTestHost> fx, System.Drawing.Point pos)

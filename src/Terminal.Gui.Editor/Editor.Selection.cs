@@ -302,6 +302,44 @@ public partial class Editor
         return visibleLines[idx];
     }
 
+    /// <summary>
+    ///     Returns <see langword="true" /> when the given view row is the first wrap segment of its
+    ///     document line (segment index 0), or when word wrap is disabled. The line-number gutter uses
+    ///     this to show blank for continuation rows rather than repeating the line number.
+    /// </summary>
+    internal bool IsViewRowFirstWrapSegment (int row)
+    {
+        if (!WordWrap || _document is null || _document.LineCount == 0)
+        {
+            return true;
+        }
+
+        List<WrapMapEntry> map = GetWrapMap ();
+        var visibleIndex = Viewport.Y + row;
+
+        if (visibleIndex < 0 || visibleIndex >= map.Count || map.Count == 0)
+        {
+            return true;
+        }
+
+        return map[visibleIndex].SegmentIndex == 0;
+    }
+
+    /// <summary>
+    ///     Returns the total number of visual rows. When word wrap is on this is the wrap map size;
+    ///     otherwise it is the number of visible (non-folded) lines. Used by the gutter to detect
+    ///     rows past the end of the document.
+    /// </summary>
+    internal int GetTotalVisualRows ()
+    {
+        if (_document is null || _document.LineCount == 0)
+        {
+            return 0;
+        }
+
+        return WordWrap ? GetWrapMap ().Count : GetVisibleLineNumbers ().Count;
+    }
+
     private bool IsIdentifierWordCharAt (int offset)
     {
         var ch = _document!.GetCharAt (offset);

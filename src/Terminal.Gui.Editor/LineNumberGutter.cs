@@ -39,15 +39,15 @@ internal sealed class LineNumberGutter : View
             return true;
         }
 
-        var firstVisibleIndex = _editor.Viewport.Y;
         var visibleHeight = _editor.Viewport.Height;
         var blank = new string (' ', viewport.Width);
-
-        var prevLineNumber = -1;
+        var totalVisualRows = _editor.GetTotalVisualRows ();
 
         for (var row = 0; row < viewport.Height; row++)
         {
-            if (row >= visibleHeight)
+            var visibleIndex = _editor.Viewport.Y + row;
+
+            if (row >= visibleHeight || visibleIndex < 0 || visibleIndex >= totalVisualRows)
             {
                 Move (0, row);
                 AddStr (blank);
@@ -55,16 +55,13 @@ internal sealed class LineNumberGutter : View
                 continue;
             }
 
-            var lineNumber = _editor.ViewRowToLineNumber (row);
-
-            // For wrap-continuation rows, show blank instead of repeating the line number.
-            var isFirstSegment = lineNumber != prevLineNumber;
-            prevLineNumber = lineNumber;
-
             Move (0, row);
 
-            if (isFirstSegment)
+            // Use segment metadata to detect continuation rows — prevLineNumber comparison
+            // fails when the viewport is scrolled so that row 0 is already a continuation.
+            if (_editor.IsViewRowFirstWrapSegment (row))
             {
+                var lineNumber = _editor.ViewRowToLineNumber (row);
                 var lineText = lineNumber.ToString ().PadLeft (viewport.Width - 1) + " ";
                 AddStr (lineText);
             }
