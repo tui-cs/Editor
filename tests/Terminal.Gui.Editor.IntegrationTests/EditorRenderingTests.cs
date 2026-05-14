@@ -413,6 +413,33 @@ public class EditorRenderingTests
     }
 
     [Fact]
+    public async Task MultiCaret_Does_Not_Leak_Attribute_To_Adjacent_Cell ()
+    {
+        // Bug: MultiCaretRenderer.Draw set caretAttr but never restored the normal attribute,
+        // causing the next cell to inherit the inverted attribute. Visible as both slashes of
+        // "//" appearing highlighted when only one has a caret.
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("// comment"));
+
+        fx.Top.Editor.SetFocus ();
+        fx.Top.Editor.CaretOffset = 5; // put primary elsewhere (on 'o')
+        fx.Top.Editor.ToggleCaretAt (0); // additional caret on first '/'
+        fx.Render ();
+
+        Attribute normal = fx.Top.Editor.GetAttributeForRole (VisualRole.Normal);
+        Attribute caretAttr = new (normal.Background, normal.Foreground);
+
+        // Column 0 (first '/') should have the inverted caret attribute.
+        Cell cell0 = fx.Driver.Contents![0, 0];
+        Assert.Equal ("/", cell0.Grapheme);
+        Assert.Equal (caretAttr, cell0.Attribute);
+
+        // Column 1 (second '/') should have the NORMAL attribute, not the caret attribute.
+        Cell cell1 = fx.Driver.Contents![0, 1];
+        Assert.Equal ("/", cell1.Grapheme);
+        Assert.Equal (normal, cell1.Attribute);
+    }
+
+    [Fact]
     public async Task MultiCaret_WordWrap_No_Duplicate_At_Boundary ()
     {
         // P2: At a wrap boundary, offset == segEnd of one segment AND offset == segStart of the next.

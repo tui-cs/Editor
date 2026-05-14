@@ -278,6 +278,77 @@ public class EditorMouseTests
         Assert.Equal ("alpha\nbeta\ngamma", fx.Top.Editor.SelectedText);
     }
 
+    [Fact]
+    public async Task CtrlClick_Above_Primary_Adds_Additional_Caret ()
+    {
+        // Bug: Ctrl+Click above the primary caret failed to add an additional caret because
+        // the drag handler (LeftButtonPressed | PositionReport) fired after the press and called
+        // ExtendCaretTo, which moved the primary caret instead of preserving the new additional caret.
+        await using AppFixture<EditorTestHost> fx = new (() => new ("alpha\nbeta\ngamma"));
+        fx.Top.Editor.SetFocus ();
+        fx.Top.Editor.CaretOffset = 12; // start of "gamma"
+
+        // Ctrl+Click on line 0, col 2 (within "alpha") — above the primary caret.
+        fx.Injector.InjectMouse (
+            new ()
+            {
+                ScreenPosition = new (2, 0),
+                Flags = MouseFlags.LeftButtonPressed | MouseFlags.Ctrl,
+                Timestamp = BaseTime
+            },
+            Direct);
+
+        // Simulate a PositionReport (micro-drag) at the same position — common during clicks.
+        fx.Injector.InjectMouse (
+            new ()
+            {
+                ScreenPosition = new (2, 0),
+                Flags = MouseFlags.LeftButtonPressed | MouseFlags.PositionReport,
+                Timestamp = BaseTime.AddMilliseconds (20)
+            },
+            Direct);
+
+        // The additional caret should exist and the primary should NOT have moved.
+        Assert.True (fx.Top.Editor.HasMultipleCarets);
+        Assert.Equal (12, fx.Top.Editor.CaretOffset);
+        Assert.Contains (2, fx.Top.Editor.AdditionalCaretOffsets);
+        Assert.False (fx.Top.Editor.HasSelection);
+    }
+
+    [Fact]
+    public async Task CtrlClick_Below_Primary_Preserves_Primary_Position ()
+    {
+        // Even clicking below should preserve the primary caret position — the drag handler
+        // was moving the primary on every Ctrl+Click.
+        await using AppFixture<EditorTestHost> fx = new (() => new ("alpha\nbeta\ngamma"));
+        fx.Top.Editor.SetFocus ();
+        fx.Top.Editor.CaretOffset = 0; // start of "alpha"
+
+        // Ctrl+Click on line 2, col 1 (within "gamma") — below the primary caret.
+        fx.Injector.InjectMouse (
+            new ()
+            {
+                ScreenPosition = new (1, 2),
+                Flags = MouseFlags.LeftButtonPressed | MouseFlags.Ctrl,
+                Timestamp = BaseTime
+            },
+            Direct);
+
+        // Simulate the drag/position-report that comes with click jitter.
+        fx.Injector.InjectMouse (
+            new ()
+            {
+                ScreenPosition = new (1, 2),
+                Flags = MouseFlags.LeftButtonPressed | MouseFlags.PositionReport,
+                Timestamp = BaseTime.AddMilliseconds (20)
+            },
+            Direct);
+
+        Assert.True (fx.Top.Editor.HasMultipleCarets);
+        Assert.Equal (0, fx.Top.Editor.CaretOffset);
+        Assert.False (fx.Top.Editor.HasSelection);
+    }
+
     private static void InjectClick (AppFixture<EditorTestHost> fx, Point pos)
     {
         fx.Injector.InjectMouse (

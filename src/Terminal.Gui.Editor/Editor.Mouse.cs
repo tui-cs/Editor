@@ -9,6 +9,13 @@ namespace Terminal.Gui.Editor;
 
 public partial class Editor
 {
+    /// <summary>
+    ///     Set to <see langword="true" /> when a Ctrl+Click press is handled so subsequent drag
+    ///     (PositionReport) events don't hijack the primary caret via <see cref="ExtendCaretTo" />.
+    ///     Cleared on mouse release.
+    /// </summary>
+    private bool _suppressDragUntilRelease;
+
     /// <inheritdoc />
     protected override bool OnMouseEvent (Mouse mouse)
     {
@@ -40,8 +47,15 @@ public partial class Editor
 
         // Drag: left button held while position changes — extend selection from the press point.
         // Tested first because PositionReport+LeftButtonPressed also satisfies the plain-press check.
+        // Suppress when the press was a Ctrl+Click (multi-caret add) so the drag handler doesn't
+        // move the primary caret via ExtendCaretTo.
         if (mouse.Flags.FastHasFlags (MouseFlags.LeftButtonPressed | MouseFlags.PositionReport))
         {
+            if (_suppressDragUntilRelease)
+            {
+                return true;
+            }
+
             var offset = MousePositionToOffset (pos);
 
             // Route through the selection helper so SelectionChanged fires only on real changes.
@@ -64,13 +78,16 @@ public partial class Editor
             if (ctrl)
             {
                 ToggleCaretAt (offset);
+                _suppressDragUntilRelease = true;
             }
             else if (shift)
             {
+                _suppressDragUntilRelease = false;
                 ExtendCaretTo (offset);
             }
             else
             {
+                _suppressDragUntilRelease = false;
                 ClearAdditionalCarets ();
                 ClearSelection ();
                 CaretOffset = offset;
@@ -90,6 +107,7 @@ public partial class Editor
             return false;
         }
 
+        _suppressDragUntilRelease = false;
         App?.Mouse.UngrabMouse ();
 
         return true;

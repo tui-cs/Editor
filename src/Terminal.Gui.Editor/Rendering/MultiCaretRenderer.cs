@@ -60,6 +60,9 @@ public sealed class MultiCaretRenderer : IOverlayRenderer
             host.Move (col, row);
             host.AddRune (offset < segEnd ? GetRuneAt (offset) : new Rune (' '));
         }
+
+        // Restore the normal attribute so subsequent drawing doesn't inherit the caret style.
+        host.SetAttribute (normal);
     }
 
     /// <summary>
