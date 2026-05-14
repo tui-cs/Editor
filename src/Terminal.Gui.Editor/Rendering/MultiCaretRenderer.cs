@@ -11,7 +11,7 @@ namespace Terminal.Gui.Editor.Rendering;
 ///     Renders additional (non-primary) caret positions as inverted-attribute cells.
 ///     Installed automatically by <see cref="Editor" /> when multi-caret mode is active.
 /// </summary>
-public sealed class MultiCaretRenderer : IBackgroundRenderer
+public sealed class MultiCaretRenderer : IOverlayRenderer
 {
     private readonly Editor _editor;
 
@@ -42,7 +42,7 @@ public sealed class MultiCaretRenderer : IBackgroundRenderer
 
         foreach (var offset in _editor.AdditionalCaretOffsets)
         {
-            if (offset < segStart || offset > segEnd)
+            if (offset < segStart || offset >= segEnd)
             {
                 continue;
             }

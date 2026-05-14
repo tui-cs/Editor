@@ -372,4 +372,54 @@ public class EditorRenderingTests
 
         Assert.True (fx.Top.Editor.UseThemeBackground);
     }
+
+    [Fact]
+    public async Task MultiCaret_Renders_Inverted_Attribute_On_Text ()
+    {
+        // P1: MultiCaretRenderer must draw AFTER text elements so that the inverted caret
+        // cell is not overwritten by the subsequent element.Draw call.
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("abcdef"));
+
+        fx.Top.Editor.SetFocus ();
+        fx.Top.Editor.CaretOffset = 0;
+        fx.Top.Editor.ToggleCaretAt (3); // additional caret on 'd'
+        fx.Render ();
+
+        Attribute normal = fx.Top.Editor.GetAttributeForRole (VisualRole.Normal);
+        Attribute caretAttr = new (normal.Background, normal.Foreground);
+
+        // The cell at column 3 ('d') should have the inverted attribute, not the normal one.
+        Cell cell = fx.Driver.Contents![0, 3];
+        Assert.Equal ("d", cell.Grapheme);
+        Assert.Equal (caretAttr, cell.Attribute);
+    }
+
+    [Fact]
+    public async Task MultiCaret_WordWrap_No_Duplicate_At_Boundary ()
+    {
+        // P2: At a wrap boundary, offset == segEnd of one segment AND offset == segStart of the next.
+        // With exclusive bound check (>=), the caret should only appear on the second row (segStart),
+        // not duplicated on both rows.
+        await using AppFixture<EditorTestHost> fx = new (() =>
+        {
+            EditorTestHost host = new ("abcde fghij");
+            host.Editor.WordWrap = true;
+
+            return host;
+        }, width: 10, height: 5);
+
+        fx.Top.Editor.SetFocus ();
+        fx.Top.Editor.CaretOffset = 0;
+        // Place caret at offset 6 which is 'f' — the start of the second wrapped segment.
+        fx.Top.Editor.ToggleCaretAt (6);
+        fx.Render ();
+
+        Attribute normal = fx.Top.Editor.GetAttributeForRole (VisualRole.Normal);
+        Attribute caretAttr = new (normal.Background, normal.Foreground);
+
+        // Row 1, col 0 should show the caret attribute on 'f'.
+        Cell row1FirstCol = fx.Driver.Contents![1, 0];
+        Assert.Equal ("f", row1FirstCol.Grapheme);
+        Assert.Equal (caretAttr, row1FirstCol.Attribute);
+    }
 }

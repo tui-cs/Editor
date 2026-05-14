@@ -72,7 +72,7 @@ public partial class Editor : View
     {
         CanFocus = true;
         CreateCommandsAndBindings ();
-        BackgroundRenderers.Add (new Rendering.MultiCaretRenderer (this));
+        OverlayRenderers.Add (new Rendering.MultiCaretRenderer (this));
         Document = new TextDocument ();
     }
 
@@ -293,6 +293,9 @@ public partial class Editor : View
 
     /// <summary>Background renderers drawn before visual-line elements.</summary>
     public IList<IBackgroundRenderer> BackgroundRenderers { get; } = [];
+
+    /// <summary>Overlay renderers drawn after visual-line elements (on top of text).</summary>
+    public IList<IOverlayRenderer> OverlayRenderers { get; } = [];
 
     /// <summary>
     ///     Gets or sets the <see cref="Document.Folding.FoldingManager" /> that tracks collapsible regions.
