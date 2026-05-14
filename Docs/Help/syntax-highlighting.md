@@ -22,9 +22,9 @@ The following languages are available out of the box:
 
 ## Changing the language
 
-In `ted`, click the language name shown in the status bar to open a language picker, or use the **Language** menu item. The editor recolours immediately.
+The host application may provide a language picker (for example via a menu or status bar). The editor recolours immediately when the language is changed.
 
-If you open a file, `ted` selects the language automatically based on the file extension.
+If the host application uses file extensions to detect the language, the editor will select the correct language automatically when a file is opened.
 
 ## Colour themes
 

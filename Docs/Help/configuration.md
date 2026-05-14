@@ -2,15 +2,20 @@
 
 All keyboard shortcuts in the editor are remappable, and the colour theme can be changed or overridden, through Terminal.Gui's Configuration Manager. Settings are stored in a JSON file that is read at startup.
 
-## Configuration file location
+## Configuration file locations
 
-The configuration file is named `config.json`. Terminal.Gui searches for it in the following locations (most-specific first):
+The configuration file is named `config.json`. Terminal.Gui searches for it in several locations, from lowest priority (built-in defaults) to highest (runtime):
 
-1. The current working directory
-2. The user's Terminal.Gui config folder (e.g. `~/.tui/` on Linux/macOS, `%APPDATA%\tui\` on Windows)
-3. The application's directory
+| Location | Path |
+|---|---|
+| Built-in defaults | Hard-coded in Terminal.Gui |
+| Library resources | Embedded in the Terminal.Gui assembly |
+| Global user config | `~/.tui/config.json` |
+| Global project config | `./.tui/config.json` |
+| App-specific user config | `~/.tui/<appname>.config.json` |
+| App-specific project config | `./.tui/<appname>.config.json` |
 
-The first file found for each setting wins, so a project-local `config.json` overrides the user-wide one.
+`<appname>` is the name of the running application (for example, `~/.tui/ted.config.json` for an application named `ted`). Settings are merged from lowest to highest priority — a more-specific file always overrides a less-specific one for the same setting.
 
 ## Remapping keyboard shortcuts
 
@@ -22,7 +27,7 @@ Each editor action is identified by a `Command` name. To override a binding, set
   "Terminal.Gui.Editor.Editor.DefaultKeyBindings": {
     "Cut":  { "All": ["Ctrl+W"] },
     "Copy": { "All": ["Ctrl+Shift+C"] },
-    "Undo": { "All": ["Ctrl+Z"], "Macos": ["Cmd+Z"] }
+    "Undo": { "All": ["Ctrl+Z"] }
   }
 }
 ```
@@ -36,7 +41,7 @@ Each entry maps a `Command` name to a `PlatformKeyBinding` object with the follo
 | `Linux` | Applied on Linux only (in addition to `All`) |
 | `Macos` | Applied on macOS only (in addition to `All`) |
 
-Keys are expressed as strings in the form `"Key"`, `"Ctrl+Key"`, `"Shift+Key"`, `"Ctrl+Shift+Key"`, etc. (e.g. `"Ctrl+Z"`, `"F3"`, `"Shift+F3"`).
+Keys are expressed as strings in the form `"Key"`, `"Ctrl+Key"`, `"Shift+Key"`, `"Ctrl+Shift+Key"`, `"Alt+Key"`, etc. (e.g. `"Ctrl+Z"`, `"Alt+Z"`, `"F3"`, `"Shift+F3"`). Terminal.Gui supports the `Ctrl`, `Shift`, and `Alt` modifiers; there is no `Cmd` or `Meta` modifier.
 
 ### Common commands and their default keys
 
@@ -59,7 +64,7 @@ The most commonly remapped commands and their default keys:
 
 ## Selecting a built-in theme
 
-Set the `"Theme"` key to the name of a built-in theme:
+Terminal.Gui ships with one built-in theme: **`Default`**. Set the `"Theme"` key in your `config.json` to activate it (this is also the value used if you omit the key):
 
 ```json
 {
@@ -68,7 +73,7 @@ Set the `"Theme"` key to the name of a built-in theme:
 }
 ```
 
-Terminal.Gui ships with a `"Default"` theme. The application may provide additional named themes.
+The host application may register additional named themes. Ask the application documentation for any extra theme names it provides.
 
 ## Overriding theme colours
 
@@ -98,7 +103,13 @@ The following example overrides the `Base` colour scheme in the `Default` theme 
 }
 ```
 
-Valid colour names are the standard 16-colour terminal names: `Black`, `DarkRed`, `DarkGreen`, `DarkYellow`, `DarkBlue`, `DarkMagenta`, `DarkCyan`, `Gray`, `DarkGray`, `Red`, `Green`, `Yellow`, `Blue`, `Magenta`, `Cyan`, `White`, and `BrightWhite`. 24-bit hex colours (`"#RRGGBB"`) are also accepted on terminals that support them.
+Terminal.Gui supports over 160 named colours — the full W3C/CSS colour set plus additional terminal-specific names:
+
+- **Classic terminal names** (always map to the terminal's own 16-colour palette): `Black`, `DarkRed`, `DarkGreen`, `DarkYellow`, `DarkBlue`, `DarkMagenta`, `DarkCyan`, `Gray`, `DarkGray`, `BrightRed`, `BrightGreen`, `BrightYellow`, `BrightBlue`, `BrightMagenta`, `BrightCyan`, `White`
+- **W3C/CSS colour names**: `Aqua`, `Coral`, `CornflowerBlue`, `Crimson`, `DodgerBlue`, `Firebrick`, `GreenYellow`, `HotPink`, `IndianRed`, `LimeGreen`, `MediumBlue`, `Navy`, `OrangeRed`, `Purple`, `RoyalBlue`, `SaddleBrown`, `Salmon`, `SkyBlue`, `SlateBlue`, `Teal`, `Tomato`, `Violet`, `YellowGreen`, and many more
+- **TG-specific names**: `AmberPhosphor`, `BrightBlack`, `Charcoal`, `Ebony`, `FluorescentOrange`, `GreenPhosphor`, `GuppieGreen`, `Jet`, `Onyx`, `OuterSpace`, `RaisinBlack`
+
+24-bit hex colours (`"#RRGGBB"`) are also accepted on terminals that support them.
 
 ## Further reading
 

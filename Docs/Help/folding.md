@@ -15,7 +15,7 @@ Place the caret anywhere on a foldable line (or inside a foldable region) and pr
 
 ### With the mouse
 
-If the **fold indicators** gutter column is visible (see [Gutter](gutter.md)), click the `+` or `-` indicator next to a line to toggle its fold.
+If the **fold indicators** gutter column is visible (see [Gutter](gutter.md)), click the `▸` or `▾` indicator next to a line to toggle its fold.
 
 ## Folded regions
 
@@ -28,7 +28,7 @@ When a region is collapsed:
 
 The host application determines which folding strategy is active:
 
-- **Brace folding** — detects `{`/`}` pairs and folds between them (used by `ted` for C# and similar languages).
+- **Brace folding** — detects `{`/`}` pairs and folds between them (suitable for C# and similar languages).
 - **XML folding** — detects XML/HTML element pairs.
 - **Custom strategies** — the host application can install any `IFoldingStrategy` to define fold regions appropriate for the content.
 
