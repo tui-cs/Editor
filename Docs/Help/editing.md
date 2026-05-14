@@ -6,6 +6,8 @@ Simply start typing to insert text at the caret position. The editor handles the
 
 ## Deleting text
 
+> All keys shown in this guide are the defaults and can be changed. See [Customizing Keybindings and Themes](configuration.md).
+
 | Action | Key |
 |---|---|
 | Delete the character to the left of the caret | `Backspace` |
@@ -15,7 +17,7 @@ When text is selected, both `Backspace` and `Delete` replace the selection with 
 
 ### Indentation-aware Backspace
 
-When the caret is in the leading whitespace of a line and no text is selected, `Backspace` removes a full indentation level's worth of spaces at once rather than a single character. This makes it easy to un-indent a line without pressing `Backspace` repeatedly.
+When the caret is in the leading whitespace of a line and no text is selected, `Backspace` removes a full indentation level's worth of spaces at once rather than a single character. This makes it easy to un-indent a line without pressing `Backspace` repeatedly. See [Indentation](indentation.md) for the indentation size setting.
 
 ## Inserting a new line
 

@@ -19,6 +19,7 @@
 | [Read-Only Mode](read-only.md) | Viewing text without editing |
 | [Gutter](gutter.md) | Line numbers and fold indicators |
 | [Keyboard Reference](keyboard-reference.md) | Complete list of default keyboard shortcuts |
+| [Customizing Keybindings and Themes](configuration.md) | Remapping keys and changing colours via config.json |
 
 ## Quick orientation
 

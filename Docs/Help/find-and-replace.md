@@ -2,6 +2,8 @@
 
 ## Opening the Find bar
 
+> All keys shown in this guide are the defaults and can be changed. See [Customizing Keybindings and Themes](configuration.md).
+
 Press `Ctrl+F` to open the Find bar (or Find & Replace dialog, depending on how the host application has wired the editor).
 
 ## Opening the Replace bar

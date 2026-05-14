@@ -2,6 +2,8 @@
 
 ## Keyboard navigation
 
+> All keys shown in this guide are the defaults and can be changed. See [Customizing Keybindings and Themes](configuration.md).
+
 | Action | Key |
 |---|---|
 | Move left one character | `←` |

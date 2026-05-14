@@ -86,14 +86,16 @@ This page lists all default keyboard shortcuts. All shortcuts are `Command`-boun
 
 ## Remapping shortcuts
 
-To change a shortcut in your own application:
+To change a shortcut, add the new binding to your `config.json`:
 
-```csharp
-// Remove the default binding for Ctrl+X.
-editor.KeyBindings.Remove (Key.X.WithCtrl);
-
-// Bind Ctrl+W to Cut instead.
-editor.KeyBindings.Add (Key.W.WithCtrl, Command.Cut);
+```json
+{
+  "$schema": "https://gui-cs.github.io/Terminal.Gui/schemas/tui-config-schema.json",
+  "Terminal.Gui.Editor.Editor.DefaultKeyBindings": {
+    "Cut":  { "All": ["Ctrl+W"] },
+    "Redo": { "All": ["Ctrl+Y"], "Macos": ["Cmd+Shift+Z"] }
+  }
+}
 ```
 
-Or ship a Terminal.Gui Configuration Manager JSON profile that performs the same remapping without code changes.
+See [Customizing Keybindings and Themes](configuration.md) for full details on the config file format and available colour theme options.

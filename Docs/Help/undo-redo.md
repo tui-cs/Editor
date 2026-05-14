@@ -2,6 +2,8 @@
 
 ## Undoing changes
 
+> All keys shown in this guide are the defaults and can be changed. See [Customizing Keybindings and Themes](configuration.md).
+
 Press `Ctrl+Z` to undo the most recent edit.
 
 You can press `Ctrl+Z` repeatedly to step back through the edit history one operation at a time.

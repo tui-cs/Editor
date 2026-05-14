@@ -2,6 +2,8 @@
 
 ## Selecting text with the keyboard
 
+> All keys shown in this guide are the defaults and can be changed. See [Customizing Keybindings and Themes](configuration.md).
+
 Hold `Shift` while pressing any navigation key to extend the selection:
 
 | Action | Key |

@@ -1,21 +1,18 @@
 # Gutter
 
-The gutter is a narrow column on the left side of the editor that can show line numbers and fold indicators. It is a real `View` subview, so it participates in the normal Terminal.Gui layout, focus traversal, and pointer events.
+The gutter is a narrow column on the left side of the editor that can show line numbers and fold indicators.
 
 ## Line numbers
 
 When line numbers are enabled, each document line's number is displayed in the gutter to the left of the text.
 
-Toggle in `ted`: **Options → Line Numbers**.
-
 ## Fold indicators
 
-When fold indicators are enabled, the gutter shows a `+` next to lines that have a collapsed fold, and a `-` next to lines that start an expanded foldable region.
+When fold indicators are enabled, the gutter shows an arrow next to foldable lines:
 
-- Click `+` to expand the fold.
-- Click `-` to collapse the fold.
-
-Toggle in `ted`: **Options → Fold Indicators**.
+- `▸` (right-pointing arrow) — the region is collapsed. Click to expand it.
+- `▾` (down-pointing arrow) — the region is expanded. Click to collapse it.
+- `│` — the line is part of an expanded fold (continuation line).
 
 ## Combining gutter options
 

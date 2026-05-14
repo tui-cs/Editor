@@ -4,6 +4,8 @@ Folding lets you collapse regions of text (such as a method body or a block comm
 
 ## Toggling a fold
 
+> All keys shown in this guide are the defaults and can be changed. See [Customizing Keybindings and Themes](configuration.md).
+
 ### With the keyboard
 
 Place the caret anywhere on a foldable line (or inside a foldable region) and press `Ctrl+M` to toggle the fold:

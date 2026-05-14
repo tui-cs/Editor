@@ -4,6 +4,8 @@ The editor integrates with the operating system clipboard via Terminal.Gui's cli
 
 ## Copying text
 
+> All keys shown in this guide are the defaults and can be changed. See [Customizing Keybindings and Themes](configuration.md).
+
 1. Select the text you want to copy (see [Selection](selection.md)).
 2. Press `Ctrl+C`.
 
