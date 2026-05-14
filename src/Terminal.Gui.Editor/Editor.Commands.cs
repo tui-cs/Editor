@@ -8,34 +8,12 @@ namespace Terminal.Gui.Editor;
 
 public partial class Editor
 {
-    // ─── Editor-specific Command IDs ────────────────────────────────────────────
-    // Terminal.Gui's Command enum (int-backed) ends at 77 as of v2.1.0.
-    // We claim a block starting at 1000 so upstream additions never collide.
-
-    /// <summary>Command that inserts a tab or indents the current selection.</summary>
-    public static readonly Command InsertTabCommand = (Command)1000;
-
-    /// <summary>Command that removes one indentation level from the current line or selection.</summary>
-    public static readonly Command UnindentCommand = (Command)1001;
-
-    /// <summary>Command that moves to the next search match.</summary>
-    public static readonly Command FindNextCommand = (Command)1002;
-
-    /// <summary>Command that moves to the previous search match.</summary>
-    public static readonly Command FindPreviousCommand = (Command)1003;
-
-    /// <summary>Command that raises the <see cref="FindRequested" /> event (open Find UI).</summary>
-    public static readonly Command FindCommand = (Command)1004;
-
-    /// <summary>Command that raises the <see cref="ReplaceRequested" /> event (open Replace UI).</summary>
-    public static readonly Command ReplaceCommand = (Command)1005;
-
     /// <summary>
     ///     Editor-specific default key bindings layered on top of <see cref="View.DefaultKeyBindings" />.
     ///     The base layer already maps cursor / Home / End / PageUp / PageDown (and their Shift variants)
     ///     to the corresponding movement and *Extend <see cref="Command" />s, plus Ctrl+A → SelectAll;
     ///     this dictionary covers what's editor-specific (Enter, Backspace/Delete, Ctrl+Z / Ctrl+Y, the
-    ///     Ctrl+Home/End whole-document binds, Tab/Shift+Tab indentation, and Find/Replace).
+    ///     Ctrl+Home/End whole-document binds).
     /// </summary>
     /// <remarks>
     ///     Process-wide static. Do not mutate from parallel tests — see Terminal.Gui's same convention
@@ -53,13 +31,7 @@ public partial class Editor
         [Command.Cut] = Bind.All (Key.X.WithCtrl),
         [Command.Copy] = Bind.All (Key.C.WithCtrl),
         [Command.Paste] = Bind.All (Key.V.WithCtrl),
-        [Command.Collapse] = Bind.All (Key.M.WithCtrl),
-        [InsertTabCommand] = Bind.All (Key.Tab),
-        [UnindentCommand] = Bind.All (Key.Tab.WithShift),
-        [FindNextCommand] = Bind.All (Key.F3),
-        [FindPreviousCommand] = Bind.All (Key.F3.WithShift),
-        [FindCommand] = Bind.All (Key.F.WithCtrl),
-        [ReplaceCommand] = Bind.All (Key.H.WithCtrl)
+        [Command.Collapse] = Bind.All (Key.M.WithCtrl)
     };
 
     private void CreateCommandsAndBindings ()
@@ -212,40 +184,12 @@ public partial class Editor
         // Folding
         AddCommand (Command.Collapse, ToggleFoldUnderCaret);
 
-        // Indentation
-        AddCommand (InsertTabCommand, () => InsertTab ());
-        AddCommand (UnindentCommand, () => Unindent ());
-
-        // Find / Replace
-        AddCommand (FindNextCommand, () =>
-        {
-            FindNext ();
-
-            return true;
-        });
-
-        AddCommand (FindPreviousCommand, () =>
-        {
-            FindPrevious ();
-
-            return true;
-        });
-
-        AddCommand (FindCommand, () =>
-        {
-            FindRequested?.Invoke (this, EventArgs.Empty);
-
-            return true;
-        });
-
-        AddCommand (ReplaceCommand, () =>
-        {
-            ReplaceRequested?.Invoke (this, EventArgs.Empty);
-
-            return true;
-        });
-
         ApplyKeyBindings (View.DefaultKeyBindings, DefaultKeyBindings);
+
+        // Reclaim Tab before the framework consumes it; the editor handles Tab / Shift+Tab
+        // in OnKeyDownNotHandled so indentation still works without a command binding.
+        KeyBindings.Remove (Key.Tab);
+        KeyBindings.Remove (Key.Tab.WithShift);
 
         MouseBindings.Add (MouseFlags.WheeledUp, Command.ScrollUp);
         MouseBindings.Add (MouseFlags.WheeledDown, Command.ScrollDown);

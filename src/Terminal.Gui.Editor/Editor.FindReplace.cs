@@ -33,16 +33,14 @@ public partial class Editor
     }
 
     /// <summary>
-    ///     Raised when the <see cref="FindCommand" /> is invoked (default: <c>Ctrl+F</c>). Consumers (e.g. ted)
-    ///     subscribe to open their Find dialog. Rebind via <see cref="View.KeyBindings" /> or
-    ///     <see cref="DefaultKeyBindings" />.
+    ///     Raised when the user presses <c>Ctrl+F</c> (the Find keybinding). Consumers (e.g. ted) subscribe
+    ///     to open their Find dialog.
     /// </summary>
     public event EventHandler? FindRequested;
 
     /// <summary>
-    ///     Raised when the <see cref="ReplaceCommand" /> is invoked (default: <c>Ctrl+H</c>). Consumers (e.g. ted)
-    ///     subscribe to open their Find &amp; Replace dialog. Rebind via <see cref="View.KeyBindings" /> or
-    ///     <see cref="DefaultKeyBindings" />.
+    ///     Raised when the user presses <c>Ctrl+H</c> (the Replace keybinding). Consumers (e.g. ted) subscribe
+    ///     to open their Find &amp; Replace dialog.
     /// </summary>
     public event EventHandler? ReplaceRequested;
 
