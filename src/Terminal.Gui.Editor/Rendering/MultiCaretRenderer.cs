@@ -42,7 +42,7 @@ public sealed class MultiCaretRenderer : IOverlayRenderer
 
         foreach (var offset in _editor.AdditionalCaretOffsets)
         {
-            if (offset < segStart || offset >= segEnd)
+            if (!IsOffsetInSegment (offset, segStart, segEnd, line.DocumentLine.EndOffset))
             {
                 continue;
             }
@@ -60,6 +60,27 @@ public sealed class MultiCaretRenderer : IOverlayRenderer
             host.Move (col, row);
             host.AddRune (offset < segEnd ? GetRuneAt (offset) : new Rune (' '));
         }
+    }
+
+    /// <summary>
+    ///     Determines whether <paramref name="offset" /> falls within the given segment range.
+    ///     Allows <c>offset == segEnd</c> only when the segment ends at the true line end
+    ///     (not a word-wrap boundary), so carets at end-of-line are visible without duplicates.
+    /// </summary>
+    internal static bool IsOffsetInSegment (int offset, int segStart, int segEnd, int lineEndOffset)
+    {
+        if (offset < segStart || offset > segEnd)
+        {
+            return false;
+        }
+
+        // At the segment boundary: allow only if this is the true end-of-line, not a wrap break.
+        if (offset == segEnd && segEnd != lineEndOffset)
+        {
+            return false;
+        }
+
+        return true;
     }
 
     private Rune GetRuneAt (int offset)

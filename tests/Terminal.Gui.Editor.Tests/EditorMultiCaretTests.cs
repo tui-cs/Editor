@@ -2,6 +2,7 @@
 
 using Terminal.Gui.Document;
 using Terminal.Gui.Editor;
+using Terminal.Gui.Editor.Rendering;
 using Terminal.Gui.Input;
 using Xunit;
 
@@ -192,5 +193,21 @@ public class EditorMultiCaretTests
 
         // Smart backspace should delete full indentation unit (4 spaces), not just 1 char.
         Assert.Equal ("a\nb", editor.Document!.Text);
+    }
+
+    [Theory]
+    [InlineData (3, 0, 3, 3, true)]  // offset == segEnd == lineEnd → EOL caret, should be included
+    [InlineData (0, 0, 3, 3, true)]  // offset at start, within segment
+    [InlineData (2, 0, 3, 3, true)]  // offset within segment
+    [InlineData (4, 0, 3, 3, false)] // offset past segEnd → excluded
+    [InlineData (5, 0, 3, 10, false)] // offset past segEnd (non-last segment) → excluded
+    [InlineData (3, 0, 3, 10, false)] // offset == segEnd but segEnd != lineEnd (wrap boundary) → excluded
+    [InlineData (0, 0, 0, 0, true)]  // empty line: offset 0 == segEnd == lineEnd → included
+    public void IsOffsetInSegment_Correctly_Filters_Offsets (
+        int offset, int segStart, int segEnd, int lineEndOffset, bool expected)
+    {
+        // CR feedback: offset >= segEnd excluded carets at EOL, making them invisible.
+        // IsOffsetInSegment must include offset == segEnd when it's the true line end.
+        Assert.Equal (expected, MultiCaretRenderer.IsOffsetInSegment (offset, segStart, segEnd, lineEndOffset));
     }
 }

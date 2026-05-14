@@ -395,6 +395,24 @@ public class EditorRenderingTests
     }
 
     [Fact]
+    public async Task MultiCaret_Renders_At_EndOfLine_Without_Crash ()
+    {
+        // CR feedback: offset >= segEnd excluded carets at EOL.
+        // This test verifies the renderer does not crash when a caret is placed at EOL.
+        // The actual attribute verification is in unit tests (IsOffsetInSegment_Correctly_Filters_Offsets).
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("abc"));
+
+        fx.Top.Editor.SetFocus ();
+        fx.Top.Editor.CaretOffset = 0;
+        fx.Top.Editor.ToggleCaretAt (3); // EOL position
+        fx.Render ();
+
+        // No crash — the renderer successfully processed the EOL caret.
+        Cell cell = fx.Driver.Contents![0, 3];
+        Assert.Equal (" ", cell.Grapheme);
+    }
+
+    [Fact]
     public async Task MultiCaret_WordWrap_No_Duplicate_At_Boundary ()
     {
         // P2: At a wrap boundary, offset == segEnd of one segment AND offset == segStart of the next.
