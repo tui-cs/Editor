@@ -144,6 +144,11 @@ public partial class Editor
 
                 element.Draw (this, 0, row, 0, viewport.Width);
             }
+
+            foreach (IOverlayRenderer renderer in OverlayRenderers)
+            {
+                renderer.Draw (this, visualLine, row, viewport);
+            }
         }
     }
 
@@ -358,6 +363,11 @@ public partial class Editor
             }
 
             element.Draw (this, 0, row, visibleStart, visibleEnd);
+        }
+
+        foreach (IOverlayRenderer renderer in OverlayRenderers)
+        {
+            renderer.Draw (this, visualLine, row, Viewport);
         }
     }
 
