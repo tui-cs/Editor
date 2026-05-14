@@ -1,11 +1,15 @@
 // Claude - claude-opus-4-7
 
 using System.Drawing;
+using Terminal.Gui.Drawing;
+using Terminal.Gui.Drivers;
 using Terminal.Gui.Editor.IntegrationTests.Testing;
 using Terminal.Gui.Input;
 using Terminal.Gui.Testing;
+using Terminal.Gui.ViewBase;
 using Terminal.Gui.Editor;
 using Xunit;
+using Attribute = Terminal.Gui.Drawing.Attribute;
 
 namespace Terminal.Gui.Editor.IntegrationTests;
 
@@ -347,6 +351,102 @@ public class EditorMouseTests
         Assert.True (fx.Top.Editor.HasMultipleCarets);
         Assert.Equal (0, fx.Top.Editor.CaretOffset);
         Assert.False (fx.Top.Editor.HasSelection);
+    }
+
+    [Fact]
+    public async Task CtrlClick_First_Slash_Only_Highlights_One_Cell ()
+    {
+        // Verify that Ctrl+clicking the first '/' of "//" only applies the caret attribute to
+        // that one cell, not to adjacent characters. (The visual "bleed" some users see is a
+        // font-ligature artifact in the terminal — see README FAQ — not a Cell buffer bug.)
+        await using AppFixture<EditorTestHost> fx = new (() => new ("// comment"));
+        fx.Top.Editor.SetFocus ();
+        fx.Top.Editor.CaretOffset = 5; // primary on 'o'
+
+        // Ctrl+Click on col 0 (first '/').
+        fx.Injector.InjectMouse (
+            new ()
+            {
+                ScreenPosition = new (0, 0),
+                Flags = MouseFlags.LeftButtonPressed | MouseFlags.Ctrl,
+                Timestamp = BaseTime
+            },
+            Direct);
+
+        fx.Injector.InjectMouse (
+            new ()
+            {
+                ScreenPosition = new (0, 0),
+                Flags = MouseFlags.LeftButtonReleased,
+                Timestamp = BaseTime.AddMilliseconds (50)
+            },
+            Direct);
+
+        fx.Render ();
+
+        Assert.True (fx.Top.Editor.HasMultipleCarets);
+        Assert.Contains (0, fx.Top.Editor.AdditionalCaretOffsets);
+        Assert.Equal (5, fx.Top.Editor.CaretOffset); // primary didn't move
+
+        Attribute normal = fx.Top.Editor.GetAttributeForRole (VisualRole.Normal);
+        Attribute caretAttr = new (normal.Foreground, normal.Background, TextStyle.Underline | TextStyle.Blink);
+
+        // Cell 0 (first '/') should have the caret attribute.
+        Cell cell0 = fx.Driver.Contents![0, 0];
+        Assert.Equal ("/", cell0.Grapheme);
+        Assert.Equal (caretAttr, cell0.Attribute);
+
+        // Cell 1 (second '/') must NOT have the caret attribute.
+        Cell cell1 = fx.Driver.Contents![0, 1];
+        Assert.Equal ("/", cell1.Grapheme);
+        Assert.NotEqual (caretAttr, cell1.Attribute);
+    }
+
+    [Fact]
+    public async Task CtrlClick_First_Slash_Of_TripleSlash_Only_Highlights_One_Cell ()
+    {
+        // Same as above but for "///".
+        await using AppFixture<EditorTestHost> fx = new (() => new ("/// summary"));
+        fx.Top.Editor.SetFocus ();
+        fx.Top.Editor.CaretOffset = 5; // primary elsewhere
+
+        fx.Injector.InjectMouse (
+            new ()
+            {
+                ScreenPosition = new (0, 0),
+                Flags = MouseFlags.LeftButtonPressed | MouseFlags.Ctrl,
+                Timestamp = BaseTime
+            },
+            Direct);
+
+        fx.Injector.InjectMouse (
+            new ()
+            {
+                ScreenPosition = new (0, 0),
+                Flags = MouseFlags.LeftButtonReleased,
+                Timestamp = BaseTime.AddMilliseconds (50)
+            },
+            Direct);
+
+        fx.Render ();
+
+        Assert.True (fx.Top.Editor.HasMultipleCarets);
+        Assert.Contains (0, fx.Top.Editor.AdditionalCaretOffsets);
+
+        Attribute normal = fx.Top.Editor.GetAttributeForRole (VisualRole.Normal);
+        Attribute caretAttr = new (normal.Foreground, normal.Background, TextStyle.Underline | TextStyle.Blink);
+
+        Cell cell0 = fx.Driver.Contents![0, 0];
+        Assert.Equal ("/", cell0.Grapheme);
+        Assert.Equal (caretAttr, cell0.Attribute);
+
+        Cell cell1 = fx.Driver.Contents![0, 1];
+        Assert.Equal ("/", cell1.Grapheme);
+        Assert.NotEqual (caretAttr, cell1.Attribute);
+
+        Cell cell2 = fx.Driver.Contents![0, 2];
+        Assert.Equal ("/", cell2.Grapheme);
+        Assert.NotEqual (caretAttr, cell2.Attribute);
     }
 
     private static void InjectClick (AppFixture<EditorTestHost> fx, Point pos)

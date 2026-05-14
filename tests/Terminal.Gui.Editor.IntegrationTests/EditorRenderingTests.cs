@@ -2,11 +2,13 @@
 
 using System.Drawing;
 using Terminal.Gui.Drawing;
+using Terminal.Gui.Drivers;
 using Terminal.Gui.Editor.IntegrationTests.Testing;
 using Terminal.Gui.Highlighting;
 using Terminal.Gui.Input;
 using Terminal.Gui.Testing;
 using Terminal.Gui.Text;
+using Terminal.Gui.ViewBase;
 using Terminal.Gui.Editor;
 using Xunit;
 using Attribute = Terminal.Gui.Drawing.Attribute;
@@ -437,6 +439,48 @@ public class EditorRenderingTests
         Cell cell1 = fx.Driver.Contents![0, 1];
         Assert.Equal ("/", cell1.Grapheme);
         Assert.Equal (normal, cell1.Attribute);
+    }
+
+    [Fact]
+    public async Task MultiCaret_First_Slash_With_SyntaxHighlighting_Only_Highlights_One_Cell ()
+    {
+        // Bug repro: In ted (with C# syntax highlighting + gutter), Ctrl+clicking the first '/'
+        // of "/// summary" highlights ALL three slashes. Clicking the 2nd or 3rd works fine.
+        // Test with C# highlighting enabled to match the real ted scenario.
+        await using AppFixture<EditorTestHost> fx = new (() =>
+        {
+            EditorTestHost host = new ("/// summary\nint x = 1;");
+            host.Editor.HighlightingDefinition = HighlightingManager.Instance.GetDefinition ("C#");
+
+            return host;
+        });
+
+        fx.Top.Editor.SetFocus ();
+        fx.Top.Editor.CaretOffset = 5; // primary elsewhere (on 's' in "summary")
+        fx.Top.Editor.ToggleCaretAt (0); // additional caret on first '/'
+        fx.Render ();
+
+        // Grab the Cell buffer attributes for the three slashes.
+        Cell cell0 = fx.Driver.Contents![0, 0];
+        Cell cell1 = fx.Driver.Contents![0, 1];
+        Cell cell2 = fx.Driver.Contents![0, 2];
+
+        Assert.Equal ("/", cell0.Grapheme);
+        Assert.Equal ("/", cell1.Grapheme);
+        Assert.Equal ("/", cell2.Grapheme);
+
+        // cell0 must have Underline|Blink (the caret style).
+        Assert.True (
+            cell0.Attribute!.Value.Style.HasFlag (TextStyle.Underline | TextStyle.Blink),
+            $"Cell 0 should have Underline|Blink but has Style={cell0.Attribute!.Value.Style}");
+
+        // cell1 and cell2 must NOT have Underline or Blink.
+        Assert.False (
+            cell1.Attribute!.Value.Style.HasFlag (TextStyle.Underline),
+            $"Cell 1 should NOT have Underline but has Style={cell1.Attribute!.Value.Style}");
+        Assert.False (
+            cell2.Attribute!.Value.Style.HasFlag (TextStyle.Underline),
+            $"Cell 2 should NOT have Underline but has Style={cell2.Attribute!.Value.Style}");
     }
 
     [Fact]

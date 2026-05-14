@@ -205,6 +205,22 @@ dotnet run --project tests/Terminal.Gui.Editor.IntegrationTests
 dotnet run --project tests/Terminal.Gui.Editor.PerformanceTests -c Release
 ```
 
+## FAQ
+
+### Why do `//`, `///`, `==`, `!=`, `=>`, and similar character sequences look wrong when I change styling on just one character?
+
+**This is a font ligature issue, not an Editor bug.** Many popular programming fonts (Cascadia Code, Fira Code, JetBrains Mono, Iosevka, Hasklig, Victor Mono, etc.) replace common multi-character sequences with single-glyph ligatures. When the Editor applies a different text style (underline, blink, reverse, different color) to just one character in a ligature sequence, the terminal must break the ligature and re-render the characters individually. Some terminals handle this gracefully; others re-render the entire ligature glyph with the new style, making it look like all characters in the sequence are affected.
+
+This impacts any feature that changes the attribute of a single character within a ligature-eligible sequence: multi-caret overlays, selection start/end boundaries, syntax highlighting boundaries that land mid-ligature, search-hit highlighting, etc.
+
+**Workarounds:**
+
+- **Use a non-ligature font.** Consolas, Courier New, DejaVu Sans Mono, Ubuntu Mono, and any font without an active ligature table will render correctly.
+- **Disable ligatures in your terminal.** In Windows Terminal, add `"font": { "features": { "liga": 0, "calt": 0 } }` to your profile in `settings.json`. Other terminals have similar settings.
+- **Use a ligature font that handles partial-style changes well.** Terminal rendering of partially-styled ligatures varies by terminal emulator and font; some combinations work better than others.
+
+This is a general limitation of cell-based TUI rendering in ligature-aware terminals and is not specific to this library. Terminal.Gui, Neovim, micro, and other TUI editors that render per-cell attributes all exhibit the same behavior.
+
 ## License
 
 MIT; see [`LICENSE`](LICENSE).
