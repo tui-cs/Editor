@@ -1,6 +1,9 @@
 using System.Drawing;
 using Terminal.Gui.Document;
+using Terminal.Gui.Drawing;
 using Terminal.Gui.Input;
+using Terminal.Gui.Editor.Rendering;
+using Attribute = Terminal.Gui.Drawing.Attribute;
 
 namespace Terminal.Gui.Editor;
 
@@ -97,14 +100,101 @@ public partial class Editor
             return 0;
         }
 
+        var col = Math.Max (0, Viewport.X + viewPos.X);
+
+        if (WordWrap)
+        {
+            return MousePositionToOffsetWrapped (viewPos, col);
+        }
+
         // Map viewport row to document line via visible-line list (respects folding).
         List<int> visibleLines = GetVisibleLineNumbers ();
         var visibleIndex = Math.Clamp (Viewport.Y + viewPos.Y, 0, visibleLines.Count - 1);
         var lineNumber = visibleLines[visibleIndex];
         DocumentLine line = _document.GetLineByNumber (lineNumber);
-        var col = Math.Max (0, Viewport.X + viewPos.X);
         var colInLine = GetOrBuildDefaultVisualLine (line).GetRelativeOffset (col);
 
         return line.Offset + colInLine;
+    }
+
+    /// <summary>
+    ///     Word-wrap-aware variant of <see cref="MousePositionToOffset" />. Uses the wrap map to
+    ///     resolve the visual row to a specific segment within a document line, then computes the
+    ///     offset within that segment.
+    /// </summary>
+    private int MousePositionToOffsetWrapped (Point viewPos, int col)
+    {
+        List<WrapMapEntry> map = GetWrapMap ();
+
+        if (map.Count == 0)
+        {
+            return 0;
+        }
+
+        var visibleIndex = Math.Clamp (Viewport.Y + viewPos.Y, 0, map.Count - 1);
+        WrapMapEntry entry = map[visibleIndex];
+        DocumentLine line = _document!.GetLineByNumber (entry.LineNumber);
+        var text = _document.GetText (line);
+        IReadOnlyList<WrapSegment> segments =
+            WordWrapStrategy.ComputeSegments (text, GetWrapColumn (), IndentationSize);
+        WrapSegment seg = segments[entry.SegmentIndex];
+        var segText = text.Substring (seg.StartOffset, seg.Length);
+
+        // Build a visual line for just this segment so GetRelativeOffset works on segment-local columns.
+        // GetRelativeOffset returns an offset relative to DocumentLine.Offset (already includes
+        // seg.StartOffset), and falls back to DocumentLine.Length for past-end clicks — clamp to
+        // the segment boundary instead.
+        CellVisualLine visualLine = BuildVisualLineForSegment (line, seg.StartOffset, segText);
+        var offsetInLine = Math.Min (visualLine.GetRelativeOffset (col), seg.StartOffset + seg.Length);
+
+        return line.Offset + offsetInLine;
+    }
+
+    /// <summary>
+    ///     Builds a <see cref="CellVisualLine" /> for a single word-wrap segment of a document line.
+    ///     Used by the mouse-hit-testing path — only element geometry matters, not attributes.
+    /// </summary>
+    private CellVisualLine BuildVisualLineForSegment (DocumentLine documentLine, int segmentStartOffset, string segmentText)
+    {
+        CellVisualLine visualLine = new (documentLine);
+        var visualColumn = 0;
+        Attribute attr = default;
+
+        for (var i = 0; i < segmentText.Length; i++)
+        {
+            var documentOffset = documentLine.Offset + segmentStartOffset + i;
+
+            if (segmentText[i] == '\t')
+            {
+                var width = VisualLineBuilder.GetTabExpansionWidth (visualColumn, IndentationSize);
+                visualLine.AddElement (new TabElement (documentOffset, visualColumn, width, false, attr));
+                visualColumn += width;
+            }
+            else if (segmentText[i] <= 127)
+            {
+                TextRunElement element = new (documentOffset, 1, visualColumn, segmentText.Substring (i, 1), attr);
+                visualLine.AddElement (element);
+                visualColumn += 1;
+            }
+            else
+            {
+                var remaining = segmentText[i..];
+
+                foreach (var grapheme in GraphemeHelper.GetGraphemes (remaining))
+                {
+                    var gDocOffset = documentLine.Offset + segmentStartOffset + i;
+                    TextRunElement gElement = new (gDocOffset, grapheme.Length, visualColumn, grapheme, attr);
+                    visualLine.AddElement (gElement);
+                    visualColumn += gElement.VisualLength;
+                    i += grapheme.Length;
+                }
+
+                i--;
+
+                break;
+            }
+        }
+
+        return visualLine;
     }
 }
