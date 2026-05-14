@@ -201,6 +201,69 @@ public class EditorWordWrapTests
         Assert.Equal (redAttr, unselected.Attribute);
     }
 
+    [Fact]
+    public async Task Mouse_Click_On_Wrapped_Row_Positions_Caret_Correctly ()
+    {
+        // "hello world" with wrap at 6 => "hello " on visual row 0, "world" on visual row 1.
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("hello world"), 6, 5);
+        fx.Render ();
+
+        fx.Top.Editor.WordWrap = true;
+        fx.Top.Editor.SetFocus ();
+        fx.Render ();
+
+        // Click on visual row 1 (the wrapped portion), col 2 — should land on "r" in "world".
+        InjectClick (fx, new (2, 1));
+
+        // "hello " is 6 chars, so offset of "r" = 6 + 2 = 8.
+        Assert.Equal (8, fx.Top.Editor.CaretOffset);
+    }
+
+    [Fact]
+    public async Task Mouse_Click_Past_Wrapped_Segment_End_Snaps_To_Segment_End ()
+    {
+        // "hello world" with wrap at 6 => "hello " on visual row 0, "world" on visual row 1.
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("hello world"), 6, 5);
+        fx.Render ();
+
+        fx.Top.Editor.WordWrap = true;
+        fx.Top.Editor.SetFocus ();
+        fx.Render ();
+
+        // Click past the end of the "world" segment but within the viewport (col 5 on row 1).
+        // "world" is 5 chars, so col 5 is one past the last character.
+        InjectClick (fx, new (5, 1));
+
+        // Should snap to end of "world" = offset 11.
+        Assert.Equal (11, fx.Top.Editor.CaretOffset);
+    }
+
+    [Fact]
+    public async Task Mouse_Click_On_First_Wrapped_Row_Still_Works ()
+    {
+        // "hello world" with wrap at 6 => "hello " on visual row 0, "world" on visual row 1.
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("hello world"), 6, 5);
+        fx.Render ();
+
+        fx.Top.Editor.WordWrap = true;
+        fx.Top.Editor.SetFocus ();
+        fx.Render ();
+
+        // Click on visual row 0, col 3 — should land within "hello ".
+        InjectClick (fx, new (3, 0));
+
+        Assert.Equal (3, fx.Top.Editor.CaretOffset);
+    }
+
+    private static readonly DateTime BaseTime = new (2025, 1, 1, 12, 0, 0);
+
+    private static void InjectClick (AppFixture<EditorTestHost> fx, System.Drawing.Point pos)
+    {
+        fx.Injector.InjectMouse (
+            new () { ScreenPosition = pos, Flags = MouseFlags.LeftButtonPressed, Timestamp = BaseTime },
+            Direct);
+    }
+
     /// <summary>Transformer that overwrites all element attributes with a fixed value.</summary>
     private sealed class OverwriteTransformer (Attribute attr) : IVisualLineTransformer
     {
