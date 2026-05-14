@@ -1,4 +1,5 @@
 using Terminal.Gui.App;
+using Terminal.Gui.Configuration;
 using Terminal.Gui.Document;
 using Terminal.Gui.Document.Folding;
 using Terminal.Gui.Input;
@@ -19,6 +20,7 @@ public partial class Editor
     ///     Process-wide static. Do not mutate from parallel tests — see Terminal.Gui's same convention
     ///     on <see cref="Terminal.Gui.Views.TextField.DefaultKeyBindings" />.
     /// </remarks>
+    [ConfigurationProperty (Scope = typeof (SettingsScope))]
     public new static Dictionary<Command, PlatformKeyBinding>? DefaultKeyBindings { get; set; } = new ()
     {
         [Command.Start] = Bind.All (Key.Home.WithCtrl),
