@@ -31,8 +31,9 @@ public sealed class MultiCaretRenderer : IBackgroundRenderer
 
         // Use the visual line's element range to scope correctly in word-wrap mode,
         // where a CellVisualLine represents only one wrapped segment of a DocumentLine.
-        var segStart = line.Elements.Count > 0 ? line.Elements[0].DocumentOffset : line.DocumentLine.Offset;
-        var segEnd = line.Elements.Count > 0 ? line.Elements[^1].DocumentEndOffset : line.DocumentLine.EndOffset;
+        var hasElements = line.Elements.Count > 0;
+        var segStart = hasElements ? line.Elements[0].DocumentOffset : line.DocumentLine.Offset;
+        var segEnd = hasElements ? line.Elements[^1].DocumentEndOffset : line.DocumentLine.EndOffset;
 
         Attribute normal = host.GetAttributeForRole (VisualRole.Normal);
 
@@ -57,43 +58,24 @@ public sealed class MultiCaretRenderer : IBackgroundRenderer
 
             host.SetAttribute (caretAttr);
             host.Move (col, row);
-
-            if (offset < segEnd)
-            {
-                var ch = _editor.Document.GetCharAt (offset);
-
-                // Handle surrogate pairs for non-BMP characters (e.g. emoji).
-                Rune rune;
-
-                if (char.IsHighSurrogate (ch)
-                    && offset + 1 < _editor.Document.TextLength)
-                {
-                    var lo = _editor.Document.GetCharAt (offset + 1);
-
-                    if (char.IsLowSurrogate (lo))
-                    {
-                        rune = new (char.ConvertToUtf32 (ch, lo));
-                    }
-                    else
-                    {
-                        rune = new (' ');
-                    }
-                }
-                else if (char.IsSurrogate (ch))
-                {
-                    rune = new (' ');
-                }
-                else
-                {
-                    rune = new (ch);
-                }
-
-                host.AddRune (rune);
-            }
-            else
-            {
-                host.AddRune (new Rune (' '));
-            }
+            host.AddRune (offset < segEnd ? GetRuneAt (offset) : new Rune (' '));
         }
+    }
+
+    private Rune GetRuneAt (int offset)
+    {
+        var ch = _editor.Document!.GetCharAt (offset);
+
+        if (char.IsHighSurrogate (ch)
+            && offset + 1 < _editor.Document.TextLength)
+        {
+            var lo = _editor.Document.GetCharAt (offset + 1);
+
+            return char.IsLowSurrogate (lo)
+                ? new Rune (char.ConvertToUtf32 (ch, lo))
+                : new Rune (' ');
+        }
+
+        return char.IsSurrogate (ch) ? new Rune (' ') : new Rune (ch);
     }
 }
