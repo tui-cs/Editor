@@ -3,11 +3,12 @@ using Terminal.Gui.Configuration;
 using Terminal.Gui.Document;
 using Terminal.Gui.Document.Folding;
 using Terminal.Gui.Drawing;
+using Terminal.Gui.Editor;
 using Terminal.Gui.Highlighting;
 using Terminal.Gui.Input;
 using Terminal.Gui.Resources;
+using Terminal.Gui.Text.Indentation;
 using Terminal.Gui.ViewBase;
-using Terminal.Gui.Editor;
 using Terminal.Gui.Views;
 
 namespace Ted;
@@ -95,7 +96,7 @@ public sealed partial class TedApp : Window
         autoIndentCheckBox.ValueChanged += (_, e) =>
         {
             Editor.IndentationStrategy = e.NewValue == CheckState.Checked
-                ? new Terminal.Gui.Text.Indentation.DefaultIndentationStrategy ()
+                ? new DefaultIndentationStrategy ()
                 : null;
         };
 
@@ -151,12 +152,15 @@ public sealed partial class TedApp : Window
             Editor.ShowTabs = e.NewValue == CheckState.Checked;
         };
 
+        PreviewCheckBox.ValueChanged += (_, _) => ToggleMarkdownPreview ();
+
         StatusBar statusBar =
             new ([
                 new Shortcut { Title = "Language", CommandView = LanguageShortcut },
                 new Shortcut
                     { Text = "Indent", CommandView = IndentationSizeUpDown, MouseHighlightStates = MouseState.None },
                 new Shortcut { CommandView = ShowTabsCheckBox },
+                new Shortcut { CommandView = PreviewCheckBox },
                 LocShortcut = new Shortcut (Key.Empty, FormatLoc (1, 1), null)
                     { MouseHighlightStates = MouseState.None }
             ])
