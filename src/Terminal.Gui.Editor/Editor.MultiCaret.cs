@@ -212,7 +212,7 @@ public partial class Editor
                     }
                     else
                     {
-                        _document.Insert (CaretOffset, text);
+                        _document.Insert (insertOffset, text);
                     }
                 }
                 else if (replacementLength > 0)
