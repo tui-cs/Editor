@@ -60,16 +60,26 @@ internal static class EditorSettings
 
             foreach ((string key, string value) in entries)
             {
-                string pattern = $@"(?<!//[^\n]*)(""{Regex.Escape (key)}""\s*:\s*)(?:true|false|-?\d+)";
+                Regex pattern = new (
+                    $@"^(?<prefix>\s*""{Regex.Escape (key)}""\s*:\s*)(?:true|false|-?\d+)(?<suffix>\s*,?\s*(?://.*)?)$",
+                    RegexOptions.Multiline);
+                bool replaced = false;
+                text = pattern.Replace (
+                    text,
+                    match =>
+                    {
+                        replaced = true;
 
-                if (Regex.IsMatch (text, pattern))
+                        return $"{match.Groups ["prefix"].Value}{value}{match.Groups ["suffix"].Value}";
+                    },
+                    1);
+
+                if (replaced)
                 {
-                    text = Regex.Replace (text, pattern, $"${{1}}{value}");
+                    continue;
                 }
-                else
-                {
-                    toInsert.Add ($"  \"{key}\": {value}");
-                }
+
+                toInsert.Add ($"  \"{key}\": {value}");
             }
 
             if (toInsert.Count > 0)
@@ -107,13 +117,27 @@ internal static class EditorSettings
 
     private static string GetConfigPath ()
     {
-        string home =
-            Environment.GetEnvironmentVariable ("HOME")
-            ?? Environment.GetFolderPath (Environment.SpecialFolder.UserProfile)
-            ?? Directory.GetCurrentDirectory ();
+        string baseDirectory;
+
+        if (OperatingSystem.IsWindows ())
+        {
+            string appData = Environment.GetFolderPath (Environment.SpecialFolder.ApplicationData);
+            baseDirectory = string.IsNullOrWhiteSpace (appData)
+                ? Path.Combine (Directory.GetCurrentDirectory (), ".tui")
+                : Path.Combine (appData, "tui");
+        }
+        else
+        {
+            string home =
+                Environment.GetEnvironmentVariable ("HOME")
+                ?? Environment.GetFolderPath (Environment.SpecialFolder.UserProfile)
+                ?? Directory.GetCurrentDirectory ();
+            baseDirectory = Path.Combine (home, ".tui");
+        }
+
         string appName = string.IsNullOrWhiteSpace (ConfigurationManager.AppName) ? "ted" : ConfigurationManager.AppName;
 
-        return Path.Combine (home, ".tui", $"{appName}.config.json");
+        return Path.Combine (baseDirectory, $"{appName}.config.json");
     }
 
     private static void EnsureConfigFile (string path)
