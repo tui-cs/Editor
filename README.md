@@ -32,7 +32,7 @@ For a user-facing editor built on this library, se [clet](https:/github.com/gui-
 
 # Status
 
-**Alpha*, shipped 2026-05-12 of the `develop` rolling pre-release stream. Se [`specs/plan.md`](specs/plan.md) for the beta roadmap and remaining work (multi-caret is the headline item still in flight; `[Obsolete]` on TG `TextView` lands with the beta).
+**Alpha**, shipped 2026-05-12 of the `develop` rolling pre-release stream. See [`specs/plan.md`](specs/plan.md) for the beta roadmap and remaining work (`[Obsolete]` on TG `TextView` lands with the beta).
 
 ## Inherited from Terminal.Gui
 
@@ -54,6 +54,7 @@ For a user-facing editor built on this library, se [clet](https:/github.com/gui-
 - Clipboard: `Command.Cut`, `Command.Copy`, `Command.Paste`; selection-aware, single-step undo, aborts cut if the clipboard write fails. Uses TG's `IClipboard`, so cut/copy/paste interoperates with whatever the OS clipboard contains.
 - Undo / redo with sane granularity (`Command.Undo`, `Command.Redo`). Compound operations (Enter + auto-indent, replace-all, paste over selection) collapse into one undo step via `Document.RunUpdate ()`.
 - Read-only mode: `Editor.ReadOnly = true` blocks edits, undo/redo, and clipboard mutations while keeping navigation and selection live.
+- Multi-caret editing: **Ctrl+Click** to place additional carets; type, Backspace, Delete, or Enter at all of them simultaneously. Escape collapses back to one caret. Every multi-caret operation is a single undo step. See [`examples/ted/docs/multi-caret.md`](examples/ted/docs/multi-caret.md) for details.
 
 ### Indentation & tabs
 
@@ -203,6 +204,22 @@ dotnet run --project tests/Terminal.Gui.Editor.IntegrationTests
 # (.github/workflows/perf.yml). Run locally in Release config.
 dotnet run --project tests/Terminal.Gui.Editor.PerformanceTests -c Release
 ```
+
+## FAQ
+
+### Why do `//`, `///`, `==`, `!=`, `=>`, and similar character sequences look wrong when I change styling on just one character?
+
+**This is a font ligature issue, not an Editor bug.** Many popular programming fonts (Cascadia Code, Fira Code, JetBrains Mono, Iosevka, Hasklig, Victor Mono, etc.) replace common multi-character sequences with single-glyph ligatures. When the Editor applies a different text style (underline, blink, reverse, different color) to just one character in a ligature sequence, the terminal must break the ligature and re-render the characters individually. Some terminals handle this gracefully; others re-render the entire ligature glyph with the new style, making it look like all characters in the sequence are affected.
+
+This impacts any feature that changes the attribute of a single character within a ligature-eligible sequence: multi-caret overlays, selection start/end boundaries, syntax highlighting boundaries that land mid-ligature, search-hit highlighting, etc.
+
+**Workarounds:**
+
+- **Use a non-ligature font.** Consolas, Courier New, DejaVu Sans Mono, Ubuntu Mono, and any font without an active ligature table will render correctly.
+- **Disable ligatures in your terminal.** In Windows Terminal, add `"font": { "features": { "liga": 0, "calt": 0 } }` to your profile in `settings.json`. Other terminals have similar settings.
+- **Use a ligature font that handles partial-style changes well.** Terminal rendering of partially-styled ligatures varies by terminal emulator and font; some combinations work better than others.
+
+This is a general limitation of cell-based TUI rendering in ligature-aware terminals and is not specific to this library. Terminal.Gui, Neovim, micro, and other TUI editors that render per-cell attributes all exhibit the same behavior.
 
 ## License
 

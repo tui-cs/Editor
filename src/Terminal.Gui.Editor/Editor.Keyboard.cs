@@ -13,41 +13,9 @@ public partial class Editor
     /// <inheritdoc />
     protected override bool OnKeyDownNotHandled (Key key)
     {
-        if (key == Key.Tab)
+        if (key == Key.Esc && HasMultipleCarets)
         {
-            return InsertTab ();
-        }
-
-        if (key == Key.Tab.WithShift)
-        {
-            return Unindent ();
-        }
-
-        // Find/Replace keybindings — handled before the generic Ctrl/Alt guard.
-        if (key == Key.F3)
-        {
-            FindNext ();
-
-            return true;
-        }
-
-        if (key == Key.F3.WithShift)
-        {
-            FindPrevious ();
-
-            return true;
-        }
-
-        if (key == Key.F.WithCtrl)
-        {
-            FindRequested?.Invoke (this, EventArgs.Empty);
-
-            return true;
-        }
-
-        if (key == Key.H.WithCtrl)
-        {
-            ReplaceRequested?.Invoke (this, EventArgs.Empty);
+            ClearAdditionalCarets ();
 
             return true;
         }
@@ -65,6 +33,13 @@ public partial class Editor
 
         if (ReadOnly)
         {
+            return true;
+        }
+
+        if (HasMultipleCarets)
+        {
+            MultiCaretInsert (rune.ToString ());
+
             return true;
         }
 

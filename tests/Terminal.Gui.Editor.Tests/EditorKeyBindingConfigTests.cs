@@ -79,6 +79,16 @@ public class EditorKeyBindingConfigTests
         // Document navigation
         Assert.True (defaults.ContainsKey (Command.Start));
         Assert.True (defaults.ContainsKey (Command.End));
+
+        // Indentation
+        Assert.True (defaults.ContainsKey (Command.InsertTab));
+        Assert.True (defaults.ContainsKey (Command.Unindent));
+
+        // Find / Replace
+        Assert.True (defaults.ContainsKey (Command.Find));
+        Assert.True (defaults.ContainsKey (Command.Replace));
+        Assert.True (defaults.ContainsKey (Command.FindNext));
+        Assert.True (defaults.ContainsKey (Command.FindPrevious));
     }
 
     /// <summary>

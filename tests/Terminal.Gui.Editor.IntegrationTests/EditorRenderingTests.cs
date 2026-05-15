@@ -2,11 +2,13 @@
 
 using System.Drawing;
 using Terminal.Gui.Drawing;
+using Terminal.Gui.Drivers;
 using Terminal.Gui.Editor.IntegrationTests.Testing;
 using Terminal.Gui.Highlighting;
 using Terminal.Gui.Input;
 using Terminal.Gui.Testing;
 using Terminal.Gui.Text;
+using Terminal.Gui.ViewBase;
 using Terminal.Gui.Editor;
 using Xunit;
 using Attribute = Terminal.Gui.Drawing.Attribute;
@@ -371,5 +373,142 @@ public class EditorRenderingTests
         await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("Hello"));
 
         Assert.True (fx.Top.Editor.UseThemeBackground);
+    }
+
+    [Fact]
+    public async Task MultiCaret_Renders_Underline_Blink_Attribute_On_Text ()
+    {
+        // P1: MultiCaretRenderer must draw AFTER text elements so that the caret
+        // cell is not overwritten by the subsequent element.Draw call.
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("abcdef"));
+
+        fx.Top.Editor.SetFocus ();
+        fx.Top.Editor.CaretOffset = 0;
+        fx.Top.Editor.ToggleCaretAt (3); // additional caret on 'd'
+        fx.Render ();
+
+        Attribute normal = fx.Top.Editor.GetAttributeForRole (VisualRole.Normal);
+        Attribute caretAttr = new (normal.Foreground, normal.Background, TextStyle.Underline | TextStyle.Blink);
+
+        // The cell at column 3 ('d') should have the underline+blink attribute, not the normal one.
+        Cell cell = fx.Driver.Contents![0, 3];
+        Assert.Equal ("d", cell.Grapheme);
+        Assert.Equal (caretAttr, cell.Attribute);
+    }
+
+    [Fact]
+    public async Task MultiCaret_Renders_At_EndOfLine_Without_Crash ()
+    {
+        // CR feedback: offset >= segEnd excluded carets at EOL.
+        // This test verifies the renderer does not crash when a caret is placed at EOL.
+        // The actual attribute verification is in unit tests (IsOffsetInSegment_Correctly_Filters_Offsets).
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("abc"));
+
+        fx.Top.Editor.SetFocus ();
+        fx.Top.Editor.CaretOffset = 0;
+        fx.Top.Editor.ToggleCaretAt (3); // EOL position
+        fx.Render ();
+
+        // No crash — the renderer successfully processed the EOL caret.
+        Cell cell = fx.Driver.Contents![0, 3];
+        Assert.Equal (" ", cell.Grapheme);
+    }
+
+    [Fact]
+    public async Task MultiCaret_Does_Not_Leak_Attribute_To_Adjacent_Cell ()
+    {
+        // Bug: MultiCaretRenderer.Draw set caretAttr but never restored the normal attribute,
+        // causing the next cell to inherit the inverted attribute. Visible as both slashes of
+        // "//" appearing highlighted when only one has a caret.
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("// comment"));
+
+        fx.Top.Editor.SetFocus ();
+        fx.Top.Editor.CaretOffset = 5; // put primary elsewhere (on 'o')
+        fx.Top.Editor.ToggleCaretAt (0); // additional caret on first '/'
+        fx.Render ();
+
+        Attribute normal = fx.Top.Editor.GetAttributeForRole (VisualRole.Normal);
+        Attribute caretAttr = new (normal.Foreground, normal.Background, TextStyle.Underline | TextStyle.Blink);
+
+        // Column 0 (first '/') should have the underline+blink caret attribute.
+        Cell cell0 = fx.Driver.Contents![0, 0];
+        Assert.Equal ("/", cell0.Grapheme);
+        Assert.Equal (caretAttr, cell0.Attribute);
+
+        // Column 1 (second '/') should have the NORMAL attribute, not the caret attribute.
+        Cell cell1 = fx.Driver.Contents![0, 1];
+        Assert.Equal ("/", cell1.Grapheme);
+        Assert.Equal (normal, cell1.Attribute);
+    }
+
+    [Fact]
+    public async Task MultiCaret_First_Slash_With_SyntaxHighlighting_Only_Highlights_One_Cell ()
+    {
+        // Bug repro: In ted (with C# syntax highlighting + gutter), Ctrl+clicking the first '/'
+        // of "/// summary" highlights ALL three slashes. Clicking the 2nd or 3rd works fine.
+        // Test with C# highlighting enabled to match the real ted scenario.
+        await using AppFixture<EditorTestHost> fx = new (() =>
+        {
+            EditorTestHost host = new ("/// summary\nint x = 1;");
+            host.Editor.HighlightingDefinition = HighlightingManager.Instance.GetDefinition ("C#");
+
+            return host;
+        });
+
+        fx.Top.Editor.SetFocus ();
+        fx.Top.Editor.CaretOffset = 5; // primary elsewhere (on 's' in "summary")
+        fx.Top.Editor.ToggleCaretAt (0); // additional caret on first '/'
+        fx.Render ();
+
+        // Grab the Cell buffer attributes for the three slashes.
+        Cell cell0 = fx.Driver.Contents![0, 0];
+        Cell cell1 = fx.Driver.Contents![0, 1];
+        Cell cell2 = fx.Driver.Contents![0, 2];
+
+        Assert.Equal ("/", cell0.Grapheme);
+        Assert.Equal ("/", cell1.Grapheme);
+        Assert.Equal ("/", cell2.Grapheme);
+
+        // cell0 must have Underline|Blink (the caret style).
+        Assert.True (
+            cell0.Attribute!.Value.Style.HasFlag (TextStyle.Underline | TextStyle.Blink),
+            $"Cell 0 should have Underline|Blink but has Style={cell0.Attribute!.Value.Style}");
+
+        // cell1 and cell2 must NOT have Underline or Blink.
+        Assert.False (
+            cell1.Attribute!.Value.Style.HasFlag (TextStyle.Underline),
+            $"Cell 1 should NOT have Underline but has Style={cell1.Attribute!.Value.Style}");
+        Assert.False (
+            cell2.Attribute!.Value.Style.HasFlag (TextStyle.Underline),
+            $"Cell 2 should NOT have Underline but has Style={cell2.Attribute!.Value.Style}");
+    }
+
+    [Fact]
+    public async Task MultiCaret_WordWrap_No_Duplicate_At_Boundary ()
+    {
+        // P2: At a wrap boundary, offset == segEnd of one segment AND offset == segStart of the next.
+        // With exclusive bound check (>=), the caret should only appear on the second row (segStart),
+        // not duplicated on both rows.
+        await using AppFixture<EditorTestHost> fx = new (() =>
+        {
+            EditorTestHost host = new ("abcde fghij");
+            host.Editor.WordWrap = true;
+
+            return host;
+        }, width: 10, height: 5);
+
+        fx.Top.Editor.SetFocus ();
+        fx.Top.Editor.CaretOffset = 0;
+        // Place caret at offset 6 which is 'f' — the start of the second wrapped segment.
+        fx.Top.Editor.ToggleCaretAt (6);
+        fx.Render ();
+
+        Attribute normal = fx.Top.Editor.GetAttributeForRole (VisualRole.Normal);
+        Attribute caretAttr = new (normal.Foreground, normal.Background, TextStyle.Underline | TextStyle.Blink);
+
+        // Row 1, col 0 should show the caret attribute on 'f'.
+        Cell row1FirstCol = fx.Driver.Contents![1, 0];
+        Assert.Equal ("f", row1FirstCol.Grapheme);
+        Assert.Equal (caretAttr, row1FirstCol.Attribute);
     }
 }

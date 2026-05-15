@@ -23,6 +23,9 @@ public class Editor : View
 
     // --- Multi-caret ---
     public IReadOnlyList<int> AdditionalCaretOffsets { get; }     // multi-caret
+    public bool HasMultipleCarets { get; }                        // multi-caret
+    public void ToggleCaretAt (int offset);                       // multi-caret (Ctrl+Click toggle)
+    public void ClearAdditionalCarets ();                         // multi-caret (Esc collapse)
 
     // --- Display ---
     public bool ShowLineNumbers { get; set; }                     // exists
@@ -38,6 +41,7 @@ public class Editor : View
     // --- Rendering pipeline (rendering-pipeline ✅) ---
     public IList<IVisualLineTransformer> LineTransformers { get; }  // exists (codex merge)
     public IList<IBackgroundRenderer> BackgroundRenderers { get; }  // exists (codex merge)
+    public IList<IOverlayRenderer> OverlayRenderers { get; }       // multi-caret (drawn after elements)
 
     // --- Syntax highlighting (syntax-colorizer ✅) ---
     public IHighlightingDefinition? HighlightingDefinition { get; set; } // exists (syntax-colorizer)
@@ -84,6 +88,11 @@ public interface IVisualLineTransformer
 }
 
 public interface IBackgroundRenderer
+{
+    void Draw (View host, CellVisualLine line, int row, Rectangle viewport);
+}
+
+public interface IOverlayRenderer
 {
     void Draw (View host, CellVisualLine line, int row, Rectangle viewport);
 }
