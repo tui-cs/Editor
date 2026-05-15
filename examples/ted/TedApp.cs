@@ -22,6 +22,7 @@ public sealed partial class TedApp : Window
 {
     private readonly BraceFoldingStrategy _braceFoldingStrategy;
     private readonly Shortcut _fileNameShortcut;
+    private readonly MenuItem _previewMarkdownMenuItem;
 
     /// <summary>Initializes a new <see cref="TedApp" />.</summary>
     public TedApp (bool readOnly = false)
@@ -33,8 +34,11 @@ public sealed partial class TedApp : Window
         // Editor's KeyBindings (any commands the editor doesn't claim fall back to Application).
         Editor = new Editor
         {
-            GutterOptions = GutterOptions.LineNumbers | GutterOptions.Folding,
-            ConvertTabsToSpaces = true,
+            ConvertTabsToSpaces = EditorSettings.ConvertTabsToSpaces,
+            IndentationSize = EditorSettings.IndentSize,
+            WordWrap = EditorSettings.WordWrap,
+            ShowTabs = EditorSettings.ShowTabs,
+            UseThemeBackground = EditorSettings.UseThemeBackground,
             ReadOnly = readOnly,
 
             ViewportSettings = ViewportSettingsFlags.HasScrollBars,
@@ -42,6 +46,21 @@ public sealed partial class TedApp : Window
             // Default to C# highlighting from the built-in xshd definitions.
             HighlightingDefinition = HighlightingManager.Instance.GetDefinition ("C#")
         };
+
+        GutterOptions initialGutter = GutterOptions.None;
+
+        if (EditorSettings.LineNumbers)
+        {
+            initialGutter |= GutterOptions.LineNumbers;
+        }
+
+        if (EditorSettings.FoldIndicators)
+        {
+            initialGutter |= GutterOptions.Folding;
+        }
+
+        Editor.GutterOptions = initialGutter;
+        Editor.IndentationStrategy = EditorSettings.AutoIndent ? new DefaultIndentationStrategy () : null;
 
         // Enable brace-based folding. The strategy re-scans on each document change.
         _braceFoldingStrategy = new BraceFoldingStrategy ();
@@ -72,34 +91,6 @@ public sealed partial class TedApp : Window
             Value = Editor.GutterOptions.HasFlag (GutterOptions.Folding) ? CheckState.Checked : CheckState.UnChecked
         };
 
-        CheckBox convertTabsToSpacesCheckBox = new ()
-        {
-            AllowCheckStateNone = false,
-            CanFocus = false,
-            Text = "_Convert Tabs To Spaces",
-            Value = Editor.ConvertTabsToSpaces ? CheckState.Checked : CheckState.UnChecked
-        };
-
-        convertTabsToSpacesCheckBox.ValueChanged += (_, e) =>
-        {
-            Editor.ConvertTabsToSpaces = e.NewValue == CheckState.Checked;
-        };
-
-        CheckBox autoIndentCheckBox = new ()
-        {
-            AllowCheckStateNone = false,
-            CanFocus = false,
-            Text = "_Auto Indent",
-            Value = Editor.IndentationStrategy is not null ? CheckState.Checked : CheckState.UnChecked
-        };
-
-        autoIndentCheckBox.ValueChanged += (_, e) =>
-        {
-            Editor.IndentationStrategy = e.NewValue == CheckState.Checked
-                ? new DefaultIndentationStrategy ()
-                : null;
-        };
-
         CheckBox useThemeBackgroundCheckBox = new ()
         {
             AllowCheckStateNone = false,
@@ -121,46 +112,36 @@ public sealed partial class TedApp : Window
             Editor.WordWrap = e.NewValue == CheckState.Checked;
         };
 
-        LanguageShortcut = new Shortcut (Key.Empty, "C#", null) { MouseHighlightStates = MouseState.None };
-
-        IndentationSizeUpDown = new NumericUpDown<int>
+        _previewMarkdownMenuItem = new MenuItem
         {
-            Value = Editor.IndentationSize,
-            Increment = 1
+            Title = ToggleTitle (false, "_Preview Markdown"),
+            Enabled = false
         };
-
-        IndentationSizeUpDown.ValueChanged += (_, e) =>
+        _previewMarkdownMenuItem.Action = () =>
         {
-            if (Editor.IndentationSize == e.NewValue)
+            if (PreviewCheckBox.Visible)
             {
-                return;
+                PreviewCheckBox.Value = PreviewCheckBox.Value == CheckState.Checked
+                    ? CheckState.UnChecked
+                    : CheckState.Checked;
             }
-
-            Editor.IndentationSize = e.NewValue;
         };
 
-        ShowTabsCheckBox = new CheckBox
-        {
-            AllowCheckStateNone = false,
-            CanFocus = false,
-            Title = "↹",
-            Value = Editor.ShowTabs ? CheckState.Checked : CheckState.UnChecked
-        };
-
+        LanguageShortcut = new Shortcut (Key.Empty, "C#", null) { MouseHighlightStates = MouseState.None };
+        ShowTabsCheckBox.Value = Editor.ShowTabs ? CheckState.Checked : CheckState.UnChecked;
         ShowTabsCheckBox.ValueChanged += (_, e) =>
         {
             Editor.ShowTabs = e.NewValue == CheckState.Checked;
         };
-
-        PreviewCheckBox.ValueChanged += (_, _) => ToggleMarkdownPreview ();
+        PreviewCheckBox.ValueChanged += (_, e) =>
+        {
+            ToggleMarkdownPreview ();
+            _previewMarkdownMenuItem.Title = ToggleTitle (e.NewValue == CheckState.Checked, "_Preview Markdown");
+        };
 
         StatusBar statusBar =
             new ([
                 new Shortcut { Title = "Language", CommandView = LanguageShortcut },
-                new Shortcut
-                    { Text = "Indent", CommandView = IndentationSizeUpDown, MouseHighlightStates = MouseState.None },
-                new Shortcut { CommandView = ShowTabsCheckBox },
-                new Shortcut { CommandView = PreviewCheckBox },
                 LocShortcut = new Shortcut (Key.Empty, FormatLoc (1, 1), null)
                     { MouseHighlightStates = MouseState.None }
             ])
@@ -193,7 +174,7 @@ public sealed partial class TedApp : Window
                 new MenuItem { Command = Command.Quit, Action = Quit, Key = KeyFor (Command.Quit) }
             ]),
             new MenuBarItem (Strings.menuEdit, CreateEditMenuItems ()),
-            new MenuBarItem ("_Options",
+            new MenuBarItem ("_View",
             [
                 new MenuItem
                 {
@@ -209,6 +190,7 @@ public sealed partial class TedApp : Window
                         }
 
                         Editor.SetNeedsDraw ();
+                        SaveViewSettings ();
                     },
                     CommandView = lineNumbersCheckBox,
                     HelpText = "Show line numbers"
@@ -227,35 +209,51 @@ public sealed partial class TedApp : Window
                         }
 
                         Editor.SetNeedsDraw ();
+                        SaveViewSettings ();
                     },
                     CommandView = foldIndicatorsCheckBox,
                     HelpText = "Show fold indicators in the gutter"
                 },
                 new MenuItem
                 {
-                    CommandView = convertTabsToSpacesCheckBox,
-                    HelpText = "Insert spaces when Tab is pressed"
-                },
-                new MenuItem
-                {
-                    CommandView = autoIndentCheckBox,
-                    HelpText = "Copy indentation from the previous line on Enter"
+                    Action = () =>
+                    {
+                        Editor.WordWrap = wordWrapCheckBox.Value == CheckState.Checked;
+                        SaveViewSettings ();
+                    },
+                    CommandView = wordWrapCheckBox,
+                    HelpText = "Soft-wrap long lines at viewport edge"
                 },
                 new MenuItem
                 {
                     Action = () =>
                     {
                         Editor.UseThemeBackground = useThemeBackgroundCheckBox.Value == CheckState.Checked;
+
+                        if (_markdownPreview is not null)
+                        {
+                            _markdownPreview.UseThemeBackground = Editor.UseThemeBackground;
+                        }
+
+                        SaveViewSettings ();
                     },
                     CommandView = useThemeBackgroundCheckBox,
                     HelpText = "Use theme background for highlighted text"
                 },
                 new MenuItem
                 {
-                    CommandView = wordWrapCheckBox,
-                    HelpText = "Soft-wrap long lines at viewport edge"
-                }
+                    Action = () =>
+                    {
+                        Editor.ShowTabs = ShowTabsCheckBox.Value == CheckState.Checked;
+                        SaveViewSettings ();
+                    },
+                    CommandView = ShowTabsCheckBox,
+                    HelpText = "Show tab glyphs"
+                },
+                _previewMarkdownMenuItem
             ]),
+            new MenuBarItem ("_Options",
+                [new MenuItem ("_Settings...", string.Empty, ShowSettingsDialog)]),
             new MenuBarItem (Strings.menuHelp,
                 [new MenuItem ("_About", "About ted", ShowAboutDialog)]),
             _fileNameShortcut = new Shortcut (Key.Empty, "<untitled>", Open)
@@ -285,11 +283,13 @@ public sealed partial class TedApp : Window
     /// <summary>The status-bar shortcut that displays the current syntax-highlighting language name.</summary>
     public Shortcut LanguageShortcut { get; }
 
-    /// <summary>The indentation-size selector shown in the status bar.</summary>
-    public NumericUpDown<int> IndentationSizeUpDown { get; }
-
-    /// <summary>The status-bar checkbox that toggles visible tab glyphs.</summary>
-    public CheckBox ShowTabsCheckBox { get; }
+    /// <summary>The settings checkbox state for visible tab glyphs.</summary>
+    public CheckBox ShowTabsCheckBox { get; } = new ()
+    {
+        AllowCheckStateNone = false,
+        CanFocus = false,
+        Title = "Show _Tabs"
+    };
 
     /// <summary>
     ///     The status-bar shortcut that mirrors the editor's caret position. Both line and column are
@@ -388,7 +388,44 @@ public sealed partial class TedApp : Window
 
     private static string FormatLoc (int line, int column)
     {
-        return $"Ln: {line}, Ch: {column}";
+        return $"Ln {line}, Col {column}";
+    }
+
+    private static string ToggleTitle (bool on, string label)
+    {
+        return on ? $"✓ {label}" : $"  {label}";
+    }
+
+    private void SaveViewSettings ()
+    {
+        EditorSettings.LineNumbers = Editor.GutterOptions.HasFlag (GutterOptions.LineNumbers);
+        EditorSettings.FoldIndicators = Editor.GutterOptions.HasFlag (GutterOptions.Folding);
+        EditorSettings.WordWrap = Editor.WordWrap;
+        EditorSettings.ShowTabs = ShowTabsCheckBox.Value == CheckState.Checked;
+        EditorSettings.UseThemeBackground = Editor.UseThemeBackground;
+        EditorSettings.IndentSize = Editor.IndentationSize;
+        EditorSettings.ConvertTabsToSpaces = Editor.ConvertTabsToSpaces;
+        EditorSettings.AutoIndent = Editor.IndentationStrategy is not null;
+        EditorSettings.Save ();
+    }
+
+    private void ShowSettingsDialog ()
+    {
+        if (App is null)
+        {
+            throw new InvalidOperationException ("ted must be running before showing settings.");
+        }
+
+        EditorSettingsDialog dialog = new (Editor);
+        App.Run (dialog);
+
+        if (dialog.WasAccepted)
+        {
+            dialog.ApplyTo (Editor);
+            SaveViewSettings ();
+        }
+
+        dialog.Dispose ();
     }
 
     /// <summary>
