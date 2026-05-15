@@ -312,27 +312,27 @@ public class TedAppTests
     }
 
     [Fact]
-    public void Constructor_Defaults_To_Plain_Text_Highlighting ()
+    public async Task Constructor_Defaults_To_Plain_Text_Highlighting ()
     {
-        TedApp app = new ();
+        await using AppFixture<TedApp> fx = new (() => new TedApp ());
 
-        Assert.Null (app.Editor.HighlightingDefinition);
-        Assert.Equal ("Plain Text", app.LanguageShortcut.Title);
+        Assert.Null (fx.Top.Editor.HighlightingDefinition);
+        Assert.Equal ("Plain Text", fx.Top.LanguageShortcut.Title);
     }
 
     [Fact]
-    public void Highlighting_Auto_Detects_From_File_Extension ()
+    public async Task Highlighting_Auto_Detects_From_File_Extension ()
     {
         var filePath = Path.Combine (Path.GetTempPath (), $"ted-highlight-{Guid.NewGuid ():N}.xml");
 
         try
         {
-            TedApp app = new ();
-            app.OpenMissingFile (filePath);
+            await using AppFixture<TedApp> fx = new (() => new TedApp ());
+            fx.Top.OpenMissingFile (filePath);
 
-            Assert.NotNull (app.Editor.HighlightingDefinition);
-            Assert.Equal ("XML", app.Editor.HighlightingDefinition!.Name);
-            Assert.Equal ("XML", app.LanguageShortcut.Title);
+            Assert.NotNull (fx.Top.Editor.HighlightingDefinition);
+            Assert.Equal ("XML", fx.Top.Editor.HighlightingDefinition!.Name);
+            Assert.Equal ("XML", fx.Top.LanguageShortcut.Title);
         }
         finally
         {
