@@ -324,12 +324,12 @@ public class TedAppTests
     [Fact]
     public async Task Highlighting_Auto_Detects_From_File_Extension ()
     {
-        var filePath = Path.Combine (Path.GetTempPath (), $"ted-highlight-{Guid.NewGuid ():N}.xml");
+        var tempXmlFilePath = Path.Combine (Path.GetTempPath (), $"ted-highlight-{Guid.NewGuid ():N}.xml");
 
         try
         {
             await using AppFixture<TedApp> fx = new (() => new TedApp ());
-            fx.Top.OpenMissingFile (filePath);
+            fx.Top.OpenMissingFile (tempXmlFilePath);
 
             Assert.NotNull (fx.Top.Editor.HighlightingDefinition);
             Assert.Equal ("XML", fx.Top.Editor.HighlightingDefinition!.Name);
@@ -337,7 +337,7 @@ public class TedAppTests
         }
         finally
         {
-            DeleteIfExists (filePath);
+            DeleteIfExists (tempXmlFilePath);
         }
     }
 
