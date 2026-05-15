@@ -10,7 +10,7 @@ namespace Terminal.Gui.Editor;
 public partial class Editor
 {
     private int _altDragAnchorViewRow;
-    private int _altDragColumn;
+    private int _altDragAnchorColumn;
     private bool _suppressAltDragUntilRelease;
 
     /// <summary>
@@ -58,7 +58,7 @@ public partial class Editor
         {
             if (_suppressAltDragUntilRelease)
             {
-                SetVerticalCaretsFromViewRows (_altDragAnchorViewRow, pos.Y, _altDragColumn);
+                SetVerticalCaretsFromViewRows (_altDragAnchorViewRow, pos.Y, _altDragAnchorColumn);
 
                 return true;
             }
@@ -92,8 +92,8 @@ public partial class Editor
                 _suppressDragUntilRelease = false;
                 _suppressAltDragUntilRelease = true;
                 _altDragAnchorViewRow = pos.Y;
-                _altDragColumn = pos.X;
-                SetVerticalCaretsFromViewRows (_altDragAnchorViewRow, _altDragAnchorViewRow, _altDragColumn);
+                _altDragAnchorColumn = pos.X;
+                SetVerticalCaretsFromViewRows (_altDragAnchorViewRow, _altDragAnchorViewRow, _altDragAnchorColumn);
             }
             else if (ctrl)
             {
