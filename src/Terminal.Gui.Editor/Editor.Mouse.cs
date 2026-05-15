@@ -1,14 +1,18 @@
 using System.Drawing;
 using Terminal.Gui.Document;
 using Terminal.Gui.Drawing;
-using Terminal.Gui.Input;
 using Terminal.Gui.Editor.Rendering;
+using Terminal.Gui.Input;
 using Attribute = Terminal.Gui.Drawing.Attribute;
 
 namespace Terminal.Gui.Editor;
 
 public partial class Editor
 {
+    private int _altDragAnchorViewRow;
+    private int _altDragColumn;
+    private bool _suppressAltDragUntilRelease;
+
     /// <summary>
     ///     Set to <see langword="true" /> when a Ctrl+Click press is handled so subsequent drag
     ///     (PositionReport) events don't hijack the primary caret via <see cref="ExtendCaretTo" />.
@@ -30,6 +34,7 @@ public partial class Editor
         }
 
         var shift = mouse.Flags.HasFlag (MouseFlags.Shift);
+        var alt = mouse.Flags.HasFlag (MouseFlags.Alt);
 
         if (mouse.Flags.HasFlag (MouseFlags.LeftButtonTripleClicked))
         {
@@ -51,6 +56,13 @@ public partial class Editor
         // move the primary caret via ExtendCaretTo.
         if (mouse.Flags.FastHasFlags (MouseFlags.LeftButtonPressed | MouseFlags.PositionReport))
         {
+            if (_suppressAltDragUntilRelease)
+            {
+                SetVerticalCaretsFromViewRows (_altDragAnchorViewRow, pos.Y, _altDragColumn);
+
+                return true;
+            }
+
             if (_suppressDragUntilRelease)
             {
                 return true;
@@ -75,19 +87,30 @@ public partial class Editor
             var offset = MousePositionToOffset (pos);
             var ctrl = mouse.Flags.HasFlag (MouseFlags.Ctrl);
 
-            if (ctrl)
+            if (alt)
+            {
+                _suppressDragUntilRelease = false;
+                _suppressAltDragUntilRelease = true;
+                _altDragAnchorViewRow = pos.Y;
+                _altDragColumn = pos.X;
+                SetVerticalCaretsFromViewRows (_altDragAnchorViewRow, _altDragAnchorViewRow, _altDragColumn);
+            }
+            else if (ctrl)
             {
                 ToggleCaretAt (offset);
                 _suppressDragUntilRelease = true;
+                _suppressAltDragUntilRelease = false;
             }
             else if (shift)
             {
                 _suppressDragUntilRelease = false;
+                _suppressAltDragUntilRelease = false;
                 ExtendCaretTo (offset);
             }
             else
             {
                 _suppressDragUntilRelease = false;
+                _suppressAltDragUntilRelease = false;
                 ClearAdditionalCarets ();
                 ClearSelection ();
                 CaretOffset = offset;
@@ -108,6 +131,7 @@ public partial class Editor
         }
 
         _suppressDragUntilRelease = false;
+        _suppressAltDragUntilRelease = false;
         App?.Mouse.UngrabMouse ();
 
         return true;
@@ -178,7 +202,8 @@ public partial class Editor
     ///     Builds a <see cref="CellVisualLine" /> for a single word-wrap segment of a document line.
     ///     Used by the mouse-hit-testing path — only element geometry matters, not attributes.
     /// </summary>
-    private CellVisualLine BuildVisualLineForSegment (DocumentLine documentLine, int segmentStartOffset, string segmentText)
+    private CellVisualLine BuildVisualLineForSegment (DocumentLine documentLine, int segmentStartOffset,
+        string segmentText)
     {
         CellVisualLine visualLine = new (documentLine);
         var visualColumn = 0;

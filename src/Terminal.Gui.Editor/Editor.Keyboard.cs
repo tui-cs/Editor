@@ -20,6 +20,20 @@ public partial class Editor
             return true;
         }
 
+        if (key == Key.CursorUp.WithAlt)
+        {
+            AddCaretVertically (-1);
+
+            return true;
+        }
+
+        if (key == Key.CursorDown.WithAlt)
+        {
+            AddCaretVertically (1);
+
+            return true;
+        }
+
         if (key.IsCtrl || key.IsAlt)
         {
             return false;

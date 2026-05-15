@@ -1,4 +1,6 @@
+using System.Drawing;
 using Terminal.Gui.Document;
+using Terminal.Gui.Editor.Rendering;
 
 namespace Terminal.Gui.Editor;
 
@@ -53,10 +55,7 @@ public partial class Editor
             }
         }
 
-        // Add a new additional caret.
-        TextAnchor caretAnchor = CreateCaretAnchor (offset);
-        _additionalCarets.Add (new CaretInfo { CaretAnchor = caretAnchor });
-        SetNeedsDraw ();
+        AddAdditionalCaretAt (offset);
     }
 
     /// <summary>Removes all additional carets, leaving only the primary.</summary>
@@ -364,6 +363,180 @@ public partial class Editor
         {
             caret.SelectionAnchor = null;
         }
+    }
+
+    /// <summary>
+    ///     Adds one vertically aligned caret above (<paramref name="delta" /> = -1) or below
+    ///     (<paramref name="delta" /> = 1) the existing caret block, preserving the sticky column.
+    /// </summary>
+    private void AddCaretVertically (int delta)
+    {
+        if (_document is null || delta == 0)
+        {
+            return;
+        }
+
+        var referenceOffset = CaretOffset;
+
+        foreach (CaretInfo caret in _additionalCarets)
+        {
+            if (caret.CaretAnchor is not { IsDeleted: false } anchor)
+            {
+                continue;
+            }
+
+            if (delta < 0 && anchor.Offset < referenceOffset)
+            {
+                referenceOffset = anchor.Offset;
+            }
+            else if (delta > 0 && anchor.Offset > referenceOffset)
+            {
+                referenceOffset = anchor.Offset;
+            }
+        }
+
+        if (!TryGetVerticalOffset (referenceOffset, delta, out var targetOffset))
+        {
+            return;
+        }
+
+        AddAdditionalCaretAt (targetOffset);
+    }
+
+    private void SetVerticalCaretsFromViewRows (int anchorViewRow, int activeViewRow, int viewColumn)
+    {
+        if (_document is null)
+        {
+            return;
+        }
+
+        var start = Math.Min (anchorViewRow, activeViewRow);
+        var end = Math.Max (anchorViewRow, activeViewRow);
+        var anchorOffset = MousePositionToOffset (new Point (viewColumn, anchorViewRow));
+        CaretOffset = anchorOffset;
+        ClearSelection ();
+        ClearAdditionalCarets ();
+
+        for (var row = start; row <= end; row++)
+        {
+            if (row == anchorViewRow)
+            {
+                continue;
+            }
+
+            var offset = MousePositionToOffset (new Point (viewColumn, row));
+            AddAdditionalCaretAt (offset);
+        }
+    }
+
+    private void AddAdditionalCaretAt (int offset)
+    {
+        if (_document is null)
+        {
+            return;
+        }
+
+        offset = Math.Clamp (offset, 0, _document.TextLength);
+
+        if (offset == CaretOffset)
+        {
+            return;
+        }
+
+        for (var i = _additionalCarets.Count - 1; i >= 0; i--)
+        {
+            if (_additionalCarets[i].CaretAnchor is { IsDeleted: false } anchor && anchor.Offset == offset)
+            {
+                return;
+            }
+        }
+
+        TextAnchor caretAnchor = CreateCaretAnchor (offset);
+        _additionalCarets.Add (new CaretInfo { CaretAnchor = caretAnchor });
+        SetNeedsDraw ();
+    }
+
+    private bool TryGetVerticalOffset (int startOffset, int delta, out int targetOffset)
+    {
+        targetOffset = startOffset;
+
+        if (_document is null || delta == 0)
+        {
+            return false;
+        }
+
+        if (WordWrap)
+        {
+            List<WrapMapEntry> map = GetWrapMap ();
+            var currentRow = GetWrapRowForOffset (startOffset, map);
+            var nextRow = Math.Clamp (currentRow + delta, 0, map.Count - 1);
+
+            if (nextRow == currentRow)
+            {
+                return false;
+            }
+
+            WrapMapEntry entry = map[nextRow];
+            DocumentLine line = _document.GetLineByNumber (entry.LineNumber);
+            var text = _document.GetText (line);
+            IReadOnlyList<WrapSegment> segments =
+                WordWrapStrategy.ComputeSegments (text, GetWrapColumn (), IndentationSize);
+            WrapSegment seg = segments[entry.SegmentIndex];
+            var segText = text.Substring (seg.StartOffset, seg.Length);
+            var localOffset = ComputeRelativeOffsetDirect (segText, _virtualCaretColumn);
+            targetOffset = line.Offset + seg.StartOffset + localOffset;
+
+            return true;
+        }
+
+        DocumentLine currentLine = _document.GetLineByOffset (startOffset);
+        var targetLineNumber = Math.Clamp (currentLine.LineNumber + delta, 1, _document.LineCount);
+
+        if (targetLineNumber == currentLine.LineNumber)
+        {
+            return false;
+        }
+
+        DocumentLine targetLine = _document.GetLineByNumber (targetLineNumber);
+        var targetColumnOffset = GetOrBuildDefaultVisualLine (targetLine).GetRelativeOffset (_virtualCaretColumn);
+        targetOffset = targetLine.Offset + targetColumnOffset;
+
+        return true;
+    }
+
+    private int GetWrapRowForOffset (int offset, List<WrapMapEntry> map)
+    {
+        if (_document is null || map.Count == 0)
+        {
+            return 0;
+        }
+
+        DocumentLine line = _document.GetLineByOffset (Math.Clamp (offset, 0, _document.TextLength));
+        var offsetInLine = offset - line.Offset;
+        var text = _document.GetText (line);
+        IReadOnlyList<WrapSegment> segments =
+            WordWrapStrategy.ComputeSegments (text, GetWrapColumn (), IndentationSize);
+        var segmentIndex = 0;
+
+        for (var i = segments.Count - 1; i >= 0; i--)
+        {
+            if (offsetInLine >= segments[i].StartOffset)
+            {
+                segmentIndex = i;
+
+                break;
+            }
+        }
+
+        for (var row = 0; row < map.Count; row++)
+        {
+            if (map[row].LineNumber == line.LineNumber && map[row].SegmentIndex == segmentIndex)
+            {
+                return row;
+            }
+        }
+
+        return 0;
     }
 
     /// <summary>Holds anchor state for one additional caret.</summary>
