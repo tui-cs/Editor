@@ -644,12 +644,13 @@ public partial class Editor : View
         var removedText = e.RemovedText?.Text ?? "";
         var removedNewlines = removedText.Count (c => c == '\n');
         var lineDelta = insertedNewlines - removedNewlines;
+        var offsetDelta = insertedText.Length - removedText.Length;
 
-        RekeyCache (_defaultVisualLineCache, threshold, lineDelta, removedNewlines);
-        RekeyCache (_drawVisualLineCache, threshold, lineDelta, removedNewlines);
+        RekeyCache (_defaultVisualLineCache, threshold, lineDelta, removedNewlines, offsetDelta);
+        RekeyCache (_drawVisualLineCache, threshold, lineDelta, removedNewlines, offsetDelta);
 
         static void RekeyCache<TValue> (Dictionary<int, TValue> cache, int threshold, int lineDelta,
-            int removedNewlines)
+            int removedNewlines, int offsetDelta)
         {
             if (cache.Count == 0)
             {
@@ -675,7 +676,13 @@ public partial class Editor : View
                 {
                     if (lineDelta == 0)
                     {
-                        // No newline change — downstream entries are still valid as-is.
+                        // Line numbers are unchanged. If character offsets changed, downstream
+                        // cached lines carry stale absolute document offsets in their elements.
+                        // Drop them so they'll rebuild on demand.
+                        if (offsetDelta != 0)
+                        {
+                            (toRemove ??= []).Add (kvp.Key);
+                        }
                     }
                     else
                     {

@@ -204,6 +204,29 @@ public class EditorTests
     }
 
     [Fact]
+    public async Task Tab_Twice_Inserts_Consistently_At_All_Vertical_Carets_With_Spaces ()
+    {
+        await using AppFixture<EditorTestHost> fx = new (() => new ("using Ted;\nusing Terminal.Gui.App;\nusing Terminal.Gui.Configuration;"));
+        fx.Top.Editor.SetFocus ();
+        fx.Top.Editor.ConvertTabsToSpaces = true;
+        fx.Top.Editor.CaretOffset = "using".Length;
+
+        fx.Injector.InjectKey (Key.CursorDown.WithAlt, Direct);
+        fx.Injector.InjectKey (Key.CursorDown.WithAlt, Direct);
+        fx.Injector.InjectKey (Key.Tab, Direct);
+
+        Assert.Equal (
+            "using    Ted;\nusing    Terminal.Gui.App;\nusing    Terminal.Gui.Configuration;",
+            fx.Top.Editor.Document?.Text);
+
+        fx.Injector.InjectKey (Key.Tab, Direct);
+
+        Assert.Equal (
+            "using        Ted;\nusing        Terminal.Gui.App;\nusing        Terminal.Gui.Configuration;",
+            fx.Top.Editor.Document?.Text);
+    }
+
+    [Fact]
     public async Task AltDown_Preserves_Exact_Column_On_Next_Long_Line_After_Short_Line ()
     {
         await using AppFixture<EditorTestHost> fx = new (() => new ("abcde\nx\nabcde"));
