@@ -69,7 +69,7 @@ internal static class EditorSettings
                     {
                         replaced = true;
 
-                        return $"{match.Groups ["prefix"].Value}{value}{match.Groups ["suffix"].Value}";
+                        return $"{match.Groups["prefix"].Value}{value}{match.Groups["suffix"].Value}";
                     },
                     1);
 
