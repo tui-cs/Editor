@@ -87,7 +87,8 @@ public class TedSettingsPersistenceTests
         int y = Array.FindIndex (menuLines, static line => line.Contains ("Word Wrap", StringComparison.Ordinal));
         Assert.True (y >= 0);
         int x = -1;
-        string[] targets = ["☐", "☑", "Word Wrap"];
+        // Prefer label text as the click target; glyph fallbacks handle renderer differences.
+        string[] targets = ["Word Wrap", "☐", "☑"];
         foreach (string target in targets)
         {
             x = menuLines[y].IndexOf (target, StringComparison.Ordinal);
