@@ -52,7 +52,7 @@ public sealed partial class TedApp
         return true;
     }
 
-    /// <summary>Opens a missing file path as an empty, modified document.</summary>
+    /// <summary>Opens a CLI-requested missing file path as an empty, modified document bound to that path.</summary>
     public void OpenMissingFile (string filePath)
     {
         if (string.IsNullOrWhiteSpace (filePath))
