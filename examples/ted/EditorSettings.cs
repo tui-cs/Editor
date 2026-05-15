@@ -69,7 +69,7 @@ internal static class EditorSettings
                     {
                         replaced = true;
 
-                        return $"{match.Groups ["prefix"].Value}{value}{match.Groups ["suffix"].Value}";
+                        return $"{match.Groups["prefix"].Value}{value}{match.Groups["suffix"].Value}";
                     },
                     1);
 
@@ -134,9 +134,7 @@ internal static class EditorSettings
             baseDirectory = Path.Combine (home, ".tui");
         }
 
-        string appName = string.IsNullOrWhiteSpace (ConfigurationManager.AppName) ? "ted" : ConfigurationManager.AppName;
-
-        return Path.Combine (baseDirectory, $"{appName}.config.json");
+        return Path.Combine (baseDirectory, "ted.config.json");
     }
 
     private static void EnsureConfigFile (string path)
