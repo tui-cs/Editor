@@ -66,6 +66,60 @@ public class TedSettingsPersistenceTests
         Assert.False (File.Exists (scope.ConfigPath));
     }
 
+    [Fact]
+    public void SaveViewSettings_Inserts_Comma_Before_Trailing_Comment_When_Appending_Settings ()
+    {
+        using ConfigPathScope scope = new ();
+        string? configDirectory = Path.GetDirectoryName (scope.ConfigPath);
+        Assert.NotNull (configDirectory);
+        Directory.CreateDirectory (configDirectory);
+        File.WriteAllText (scope.ConfigPath, """
+                                          {
+                                            "Unrelated": 1 // note
+                                          }
+                                          """);
+
+        TedApp app = new ();
+        app.Editor.WordWrap = true;
+
+        InvokeSaveViewSettings (app);
+
+        string text = File.ReadAllText (scope.ConfigPath);
+        Assert.Contains ("\"Unrelated\": 1, // note", text);
+        Assert.Contains ("\"EditorSettings.WordWrap\": true", text);
+    }
+
+    [Fact]
+    public void SettingsDialog_ApplyTo_Clamps_IndentSize_To_One ()
+    {
+        TedApp app = new ();
+        Type? dialogType = typeof (TedApp).Assembly.GetType ("Ted.EditorSettingsDialog");
+        Assert.NotNull (dialogType);
+
+        object? dialog = Activator.CreateInstance (
+            dialogType,
+            BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public,
+            binder: null,
+            args: [app.Editor],
+            culture: null);
+        Assert.NotNull (dialog);
+
+        FieldInfo? indentSizeField = dialogType.GetField ("_indentSize", BindingFlags.Instance | BindingFlags.NonPublic);
+        Assert.NotNull (indentSizeField);
+        object? indentControl = indentSizeField.GetValue (dialog);
+        Assert.NotNull (indentControl);
+
+        PropertyInfo? valueProperty = indentControl.GetType ().GetProperty ("Value");
+        Assert.NotNull (valueProperty);
+        valueProperty.SetValue (indentControl, 0);
+
+        MethodInfo? applyTo = dialogType.GetMethod ("ApplyTo", BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
+        Assert.NotNull (applyTo);
+        applyTo.Invoke (dialog, [app.Editor]);
+
+        Assert.Equal (1, app.Editor.IndentationSize);
+    }
+
     private static string GetTedConfigPath ()
     {
         string baseDirectory;
