@@ -490,6 +490,43 @@ public class EditorMouseTests
         Assert.False (fx.Top.Editor.HasSelection);
     }
 
+    [Fact]
+    public async Task CtrlClick_After_VerticalCarets_Uses_Click_Position_When_PositionReport_Arrives_First ()
+    {
+        await using AppFixture<EditorTestHost> fx = new (() => new ("abcd\nabcd\nabcd\nabcd"));
+        fx.Top.Editor.SetFocus ();
+        fx.Top.Editor.CaretOffset = 1;
+
+        fx.Injector.InjectKey (Key.CursorDown.WithAlt, Direct);
+        fx.Injector.InjectKey (Key.CursorDown.WithAlt, Direct);
+        Assert.True (fx.Top.Editor.HasMultipleCarets);
+
+        var primaryBefore = fx.Top.Editor.CaretOffset;
+
+        // Some terminals can emit PositionReport before the plain LeftButtonPressed event
+        // during a Ctrl+Click. This must not move the primary caret.
+        fx.Injector.InjectMouse (
+            new ()
+            {
+                ScreenPosition = new (3, 3),
+                Flags = MouseFlags.LeftButtonPressed | MouseFlags.PositionReport | MouseFlags.Ctrl,
+                Timestamp = BaseTime
+            },
+            Direct);
+
+        fx.Injector.InjectMouse (
+            new ()
+            {
+                ScreenPosition = new (3, 3),
+                Flags = MouseFlags.LeftButtonPressed | MouseFlags.Ctrl,
+                Timestamp = BaseTime.AddMilliseconds (20)
+            },
+            Direct);
+
+        Assert.Equal (primaryBefore, fx.Top.Editor.CaretOffset);
+        Assert.Contains ("abcd\nabcd\nabcd\nabc".Length, fx.Top.Editor.AdditionalCaretOffsets);
+    }
+
     private static void InjectClick (AppFixture<EditorTestHost> fx, Point pos)
     {
         fx.Injector.InjectMouse (

@@ -56,6 +56,11 @@ public partial class Editor
         // move the primary caret via ExtendCaretTo.
         if (mouse.Flags.FastHasFlags (MouseFlags.LeftButtonPressed | MouseFlags.PositionReport))
         {
+            if (mouse.Flags.HasFlag (MouseFlags.Ctrl))
+            {
+                return true;
+            }
+
             if (_suppressAltDragUntilRelease)
             {
                 SetVerticalCaretsFromViewRows (_altDragAnchorViewRow, pos.Y, _altDragAnchorColumn);
