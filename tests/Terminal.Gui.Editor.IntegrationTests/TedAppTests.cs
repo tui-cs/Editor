@@ -274,13 +274,13 @@ public class TedAppTests
         Cell[,] contents = fx.Driver.Contents!;
         Cell? braceCell = null;
 
-        for (var row = 0; row < contents.GetLength (0) && braceCell is null; row++)
+        for (var rowIndex = 0; rowIndex < contents.GetLength (0) && braceCell is null; rowIndex++)
         {
-            for (var col = 0; col < contents.GetLength (1); col++)
+            for (var colIndex = 0; colIndex < contents.GetLength (1); colIndex++)
             {
-                if (contents[row, col].Grapheme == "{")
+                if (contents[rowIndex, colIndex].Grapheme == "{")
                 {
-                    braceCell = contents[row, col];
+                    braceCell = contents[rowIndex, colIndex];
 
                     break;
                 }
