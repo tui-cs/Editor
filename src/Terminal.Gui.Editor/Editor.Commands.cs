@@ -31,7 +31,13 @@ public partial class Editor
         [Command.Cut] = Bind.All (Key.X.WithCtrl),
         [Command.Copy] = Bind.All (Key.C.WithCtrl),
         [Command.Paste] = Bind.All (Key.V.WithCtrl),
-        [Command.Collapse] = Bind.All (Key.M.WithCtrl)
+        [Command.Collapse] = Bind.All (Key.M.WithCtrl),
+        [Command.InsertTab] = Bind.All (Key.Tab),
+        [Command.Unindent] = Bind.All (Key.Tab.WithShift),
+        [Command.FindNext] = Bind.All (Key.F3),
+        [Command.FindPrevious] = Bind.All (Key.F3.WithShift),
+        [Command.Find] = Bind.All (Key.F.WithCtrl),
+        [Command.Replace] = Bind.All (Key.H.WithCtrl)
     };
 
     private void CreateCommandsAndBindings ()
@@ -184,12 +190,24 @@ public partial class Editor
         // Folding
         AddCommand (Command.Collapse, ToggleFoldUnderCaret);
 
+        // Indentation — InsertTab / Unindent return bool, wrapped for CommandImplementation (bool?).
+        AddCommand (Command.InsertTab, () => InsertTab ());
+        AddCommand (Command.Unindent, () => Unindent ());
+
+        // Find / Replace
+        AddCommand (Command.Find, InvokeFindRequested);
+        AddCommand (Command.Replace, InvokeReplaceRequested);
+        AddCommand (Command.FindNext, FindNextCommand);
+        AddCommand (Command.FindPrevious, FindPreviousCommand);
+
         ApplyKeyBindings (View.DefaultKeyBindings, DefaultKeyBindings);
 
-        // Reclaim Tab before the framework consumes it; the editor handles Tab / Shift+Tab
-        // in OnKeyDownNotHandled so indentation still works without a command binding.
+        // Reclaim Tab / Shift+Tab from the framework's default focus-cycling bindings so our
+        // InsertTab / Unindent commands fire instead.
         KeyBindings.Remove (Key.Tab);
         KeyBindings.Remove (Key.Tab.WithShift);
+        KeyBindings.Add (Key.Tab, Command.InsertTab);
+        KeyBindings.Add (Key.Tab.WithShift, Command.Unindent);
 
         MouseBindings.Add (MouseFlags.WheeledUp, Command.ScrollUp);
         MouseBindings.Add (MouseFlags.WheeledDown, Command.ScrollDown);
@@ -357,6 +375,34 @@ public partial class Editor
     {
         DocumentLine line = _document!.GetLineByOffset (CaretOffset);
         CaretOffset = line.Offset + line.Length;
+
+        return true;
+    }
+
+    private bool? InvokeFindRequested ()
+    {
+        FindRequested?.Invoke (this, EventArgs.Empty);
+
+        return true;
+    }
+
+    private bool? InvokeReplaceRequested ()
+    {
+        ReplaceRequested?.Invoke (this, EventArgs.Empty);
+
+        return true;
+    }
+
+    private bool? FindNextCommand ()
+    {
+        FindNext ();
+
+        return true;
+    }
+
+    private bool? FindPreviousCommand ()
+    {
+        FindPrevious ();
 
         return true;
     }
