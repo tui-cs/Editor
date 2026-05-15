@@ -169,6 +169,85 @@ public class EditorTests
     }
 
     [Fact]
+    public async Task Esc_Dismisses_MultiCaret_And_Down_Can_Move_Past_Previous_Block ()
+    {
+        await using AppFixture<EditorTestHost> fx = new (() => new ("abcd\nabcd\nabcd\nabcd"));
+        fx.Top.Editor.SetFocus ();
+        fx.Top.Editor.CaretOffset = 1;
+
+        fx.Injector.InjectKey (Key.CursorDown.WithAlt, Direct);
+        fx.Injector.InjectKey (Key.CursorDown.WithAlt, Direct);
+        fx.Injector.InjectKey (Key.Esc, Direct);
+
+        Assert.False (fx.Top.Editor.HasMultipleCarets);
+        Assert.Equal (1, fx.Top.Editor.CaretOffset);
+
+        fx.Injector.InjectKey (Key.CursorDown, Direct);
+        fx.Injector.InjectKey (Key.CursorDown, Direct);
+        fx.Injector.InjectKey (Key.CursorDown, Direct);
+
+        Assert.Equal ("abcd\nabcd\nabcd\n".Length + 1, fx.Top.Editor.CaretOffset);
+    }
+
+    [Fact]
+    public async Task Tab_Inserts_At_All_Carets ()
+    {
+        await using AppFixture<EditorTestHost> fx = new (() => new ("ab\nab\nab"));
+        fx.Top.Editor.SetFocus ();
+        fx.Top.Editor.CaretOffset = 1;
+
+        fx.Injector.InjectKey (Key.CursorDown.WithAlt, Direct);
+        fx.Injector.InjectKey (Key.CursorDown.WithAlt, Direct);
+        fx.Injector.InjectKey (Key.Tab, Direct);
+
+        Assert.Equal ("a\tb\na\tb\na\tb", fx.Top.Editor.Document?.Text);
+    }
+
+    [Fact]
+    public async Task AltDown_Preserves_Exact_Column_On_Next_Long_Line_After_Short_Line ()
+    {
+        await using AppFixture<EditorTestHost> fx = new (() => new ("abcde\nx\nabcde"));
+        fx.Top.Editor.SetFocus ();
+        fx.Top.Editor.CaretOffset = 4;
+
+        fx.Injector.InjectKey (Key.CursorDown.WithAlt, Direct);
+        fx.Injector.InjectKey (Key.CursorDown.WithAlt, Direct);
+
+        Assert.Contains ("abcde\nx\nabcd".Length, fx.Top.Editor.AdditionalCaretOffsets);
+    }
+
+    [Fact]
+    public async Task Esc_After_Moving_Within_MultiCaret_Allows_Moving_Below_Last_Former_Multi ()
+    {
+        await using AppFixture<EditorTestHost> fx = new (() => new ("abcd\nabcd\nabcd\nabcd"));
+        fx.Top.Editor.SetFocus ();
+        fx.Top.Editor.CaretOffset = 1;
+
+        fx.Injector.InjectKey (Key.CursorDown.WithAlt, Direct);
+        fx.Injector.InjectKey (Key.CursorDown.WithAlt, Direct);
+        fx.Injector.InjectKey (Key.CursorDown, Direct);
+        fx.Injector.InjectKey (Key.CursorDown, Direct);
+        fx.Injector.InjectKey (Key.Esc, Direct);
+        fx.Injector.InjectKey (Key.CursorDown, Direct);
+
+        Assert.Equal ("abcd\nabcd\nabcd\n".Length + 1, fx.Top.Editor.CaretOffset);
+    }
+
+    [Fact]
+    public async Task AltDown_Preserves_Column_With_Tabs ()
+    {
+        await using AppFixture<EditorTestHost> fx = new (() => new ("a\tbcde\na\tbcde\na\tbcde"));
+        fx.Top.Editor.SetFocus ();
+        fx.Top.Editor.CaretOffset = 3;
+
+        fx.Injector.InjectKey (Key.CursorDown.WithAlt, Direct);
+        fx.Injector.InjectKey (Key.CursorDown.WithAlt, Direct);
+
+        Assert.Contains ("a\tbcde\n".Length + 3, fx.Top.Editor.AdditionalCaretOffsets);
+        Assert.Contains ("a\tbcde\na\tbcde\n".Length + 3, fx.Top.Editor.AdditionalCaretOffsets);
+    }
+
+    [Fact]
     public async Task Typing_NUL_Does_Not_Insert ()
     {
         // Regression guard: U+0000 must be filtered out of OnKeyDownNotHandled — Rune.IsControl

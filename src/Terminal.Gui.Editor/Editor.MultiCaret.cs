@@ -67,6 +67,12 @@ public partial class Editor
         }
 
         _additionalCarets.Clear ();
+
+        if (_document is not null)
+        {
+            _virtualCaretColumn = GetCaretColumn ();
+        }
+
         SetNeedsDraw ();
     }
 
@@ -152,6 +158,74 @@ public partial class Editor
 
         // Clear per-caret selections after edit.
         // Editing collapses per-caret selections, matching single-caret behavior.
+        ClearAdditionalCaretSelections ();
+
+        return true;
+    }
+
+    private bool? MultiCaretInsertTab ()
+    {
+        if (ReadOnly || _document is null)
+        {
+            return true;
+        }
+
+        if (!HasMultipleCarets)
+        {
+            return InsertTab ();
+        }
+
+        using (_document.RunUpdate ())
+        {
+            List<CaretEditInfo> carets = GetAllCaretsDescending ();
+
+            foreach (CaretEditInfo caret in carets)
+            {
+                var insertOffset = caret.Offset;
+                var replacementLength = 0;
+
+                if (caret.IsPrimary)
+                {
+                    if (HasSelection)
+                    {
+                        var selStart = SelectionStart;
+                        var selEnd = SelectionEnd;
+                        insertOffset = selStart;
+                        replacementLength = selEnd - selStart;
+                    }
+                }
+                else if (caret.SelectionAnchor is { IsDeleted: false } selAnchor)
+                {
+                    var selStart = Math.Min (selAnchor.Offset, caret.Offset);
+                    var selEnd = Math.Max (selAnchor.Offset, caret.Offset);
+                    insertOffset = selStart;
+                    replacementLength = selEnd - selStart;
+                }
+
+                var text = GetTabInsertionText (insertOffset);
+
+                if (caret.IsPrimary)
+                {
+                    if (replacementLength > 0)
+                    {
+                        ReplaceSelection (text);
+                    }
+                    else
+                    {
+                        _document.Insert (CaretOffset, text);
+                    }
+                }
+                else if (replacementLength > 0)
+                {
+                    _document.Replace (insertOffset, replacementLength, text);
+                }
+                else
+                {
+                    _document.Insert (caret.Offset, text);
+                }
+            }
+        }
+
         ClearAdditionalCaretSelections ();
 
         return true;
@@ -395,7 +469,9 @@ public partial class Editor
             }
         }
 
-        if (!TryGetVerticalOffset (referenceOffset, delta, out var targetOffset))
+        var targetVisualColumn = _additionalCarets.Count == 0 ? GetVisualColumnForOffset (CaretOffset) : _virtualCaretColumn;
+
+        if (!TryGetVerticalOffset (referenceOffset, delta, targetVisualColumn, out var targetOffset))
         {
             return;
         }
@@ -481,7 +557,7 @@ public partial class Editor
         }
     }
 
-    private bool TryGetVerticalOffset (int startOffset, int delta, out int targetOffset)
+    private bool TryGetVerticalOffset (int startOffset, int delta, int targetVisualColumn, out int targetOffset)
     {
         targetOffset = startOffset;
 
@@ -508,7 +584,7 @@ public partial class Editor
                 WordWrapStrategy.ComputeSegments (text, GetWrapColumn (), IndentationSize);
             WrapSegment seg = segments[entry.SegmentIndex];
             var segText = text.Substring (seg.StartOffset, seg.Length);
-            var localOffset = ComputeRelativeOffsetDirect (segText, _virtualCaretColumn);
+            var localOffset = ComputeRelativeOffsetDirect (segText, targetVisualColumn);
             targetOffset = line.Offset + seg.StartOffset + localOffset;
 
             return true;
@@ -523,10 +599,24 @@ public partial class Editor
         }
 
         DocumentLine targetLine = _document.GetLineByNumber (targetLineNumber);
-        var targetColumnOffset = GetOrBuildDefaultVisualLine (targetLine).GetRelativeOffset (_virtualCaretColumn);
+        var targetColumnOffset = GetOrBuildDefaultVisualLine (targetLine).GetRelativeOffset (targetVisualColumn);
         targetOffset = targetLine.Offset + targetColumnOffset;
 
         return true;
+    }
+
+    private int GetVisualColumnForOffset (int offset)
+    {
+        if (_document is null)
+        {
+            return 0;
+        }
+
+        var clamped = Math.Clamp (offset, 0, _document.TextLength);
+        DocumentLine line = _document.GetLineByOffset (clamped);
+        var relativeOffset = clamped - line.Offset;
+
+        return GetOrBuildDefaultVisualLine (line).GetVisualColumn (relativeOffset);
     }
 
     private int GetWrapRowForOffset (int offset, List<WrapMapEntry> map)
