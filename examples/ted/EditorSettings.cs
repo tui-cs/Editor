@@ -134,9 +134,7 @@ internal static class EditorSettings
             baseDirectory = Path.Combine (home, ".tui");
         }
 
-        string appName = string.IsNullOrWhiteSpace (ConfigurationManager.AppName) ? "ted" : ConfigurationManager.AppName;
-
-        return Path.Combine (baseDirectory, $"{appName}.config.json");
+        return Path.Combine (baseDirectory, "ted.config.json");
     }
 
     private static void EnsureConfigFile (string path)
