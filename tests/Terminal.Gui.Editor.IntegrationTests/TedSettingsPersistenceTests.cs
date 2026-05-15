@@ -86,16 +86,15 @@ public class TedSettingsPersistenceTests
         string[] menuLines = fx.Driver.ToString ().Split ('\n');
         int y = Array.FindIndex (menuLines, static line => line.Contains ("Word Wrap", StringComparison.Ordinal));
         Assert.True (y >= 0);
-        int x = menuLines[y].IndexOf ("☐", StringComparison.Ordinal);
-
-        if (x < 0)
+        int x = -1;
+        string[] targets = ["☐", "☑", "Word Wrap"];
+        foreach (string target in targets)
         {
-            x = menuLines[y].IndexOf ("☑", StringComparison.Ordinal);
-        }
-
-        if (x < 0)
-        {
-            x = menuLines[y].IndexOf ("Word Wrap", StringComparison.Ordinal);
+            x = menuLines[y].IndexOf (target, StringComparison.Ordinal);
+            if (x >= 0)
+            {
+                break;
+            }
         }
 
         Assert.True (x >= 0);
