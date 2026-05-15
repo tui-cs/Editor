@@ -179,6 +179,8 @@ public partial class Editor
         {
             List<CaretEditInfo> carets = GetAllCaretsDescending ();
 
+            // Descending offsets keep each caret's precomputed insertion/replacement range stable
+            // as edits are applied, because changes at higher offsets do not shift lower offsets.
             foreach (CaretEditInfo caret in carets)
             {
                 var insertOffset = caret.Offset;
