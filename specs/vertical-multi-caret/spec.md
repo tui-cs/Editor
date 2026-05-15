@@ -160,6 +160,39 @@ PR #125 (copilot, draft) shipped the same user-visible features but was rejected
 - Each fix in that PR addressed the symptom of the latest bug, leaving an accreted patch on the multi-caret machinery rather than a designed surface. The mouse handler in particular now carries three `_suppress…UntilRelease` booleans whose interactions are not obvious.
 - The user-visible feature set (Alt+Up/Down, Alt+Drag, Tab-at-all-carets, normalization, Ctrl+Click after vertical) is the right set. The tests in that PR are the executable spec. The implementation is throwaway.
 
+## Comparison with VS Code and Visual Studio 2026
+
+For each user-facing behavior in this spec, here's how it lines up with the two editors most likely to set the expectation for our users. Where this spec diverges, the divergence is intentional and called out in Open Decisions for a deliberate choice rather than a drift.
+
+| Behavior | VS Code | Visual Studio 2022/2026 | This spec |
+|---|---|---|---|
+| Add caret above / below | `Ctrl+Alt+Up` / `Ctrl+Alt+Down` (Win/Linux); `Cmd+Opt+Up/Down` (Mac) | `Alt+Shift+Up` / `Alt+Shift+Down` (`Edit.InsertCaretAbove` / `Below`) | `Alt+Up` / `Alt+Down` |
+| Add caret at click | `Alt+Click` | `Alt+Click` (multi-cursor placement) | `Ctrl+Click` (existing — see multi-caret spec) |
+| Column / box selection by drag | `Shift+Alt + drag` produces a *selection per row* (column select) | `Shift+Alt + drag` produces a column / box selection | `Alt + drag` produces *carets per row, no selection* |
+| Esc collapses to primary caret | Yes | Yes | Yes (Scenario 6) |
+| Sticky desired column through short lines | Yes | Yes | Yes (Scenario 3, FR-007) |
+| Tab inserts at every caret, single undo | Yes | Yes | Yes (Scenarios 9–10, FR-009, FR-010) |
+| Caret-on-caret normalization (no duplicate edits) | Yes (carets at same offset collapse silently) | Yes | Yes (Scenario 8, FR-011) |
+| Wrapped-line vertical navigation | "Above" / "below" follows wrap rows | Same | Same (FR-008) |
+| WordWrap toggle while multi-caret is live | VS Code preserves carets at nearest valid offset | VS preserves carets | Out of scope — block is dismissed |
+
+### Intentional divergences (and why)
+
+1. **Keybinding for add-caret-above/below.** Neither `Ctrl+Alt+Up/Down` (VS Code) nor `Alt+Shift+Up/Down` (VS) is currently free in Terminal.Gui — and `Alt+Up/Down` is. This spec adopts `Alt+Up/Down` for ergonomic muscle-memory ("Alt = multi-caret modifier" mirrors `Alt+Click` in the desktop editors). The cost is that users coming from VS Code or VS will reach for a chord we don't bind. Mitigation: the keybinding is overridable, and ted's help text spells out the binding. This is a Decisions-worthy choice — see OD-4.
+
+2. **Alt+drag produces carets, not a column selection.** VS Code's `Shift+Alt+drag` and VS's `Shift+Alt+drag` create a *selection per row* — typing replaces a column of text, not just inserts at a column of carets. This spec ships only the carets-per-row variant in this iteration. **Reason**: per-caret selection in the existing multi-caret pipeline already works (`CaretInfo.SelectionAnchor`), but column-extend during drag needs a new code path (extending each caret's anchor as the drag widens/narrows the column). That work belongs in a follow-up so the carets-only flow can ship first. **User-visible consequence**: to "replace" a column, the user must Alt-drag, then Shift+Right/Left to grow the selection, then type. Document this in ted help.
+
+3. **Drag modifier is `Alt` alone, not `Shift+Alt`.** Both reference editors use `Shift+Alt+drag`. We use `Alt+drag` because `Shift+LeftButton` already means "extend selection to click" in the existing mouse handler (`Editor.Mouse.cs`), so `Shift+Alt+drag` would have to disambiguate the two — and users would reasonably expect `Shift+Alt+drag` to do *both* (extend selection *and* column-select), which is incoherent. `Alt+drag` is unambiguous, and the cost is only that we're a chord lighter than the reference editors. See OD-4.
+
+4. **Ctrl+Click vs Alt+Click for "add caret at click".** Existing multi-caret behavior on `develop` uses `Ctrl+Click` (see `multi-caret/spec.md` FR-003 and `Editor.Mouse.cs`). VS Code and VS use `Alt+Click`. Changing the existing binding is out of scope for this spec — flagged in OD-5.
+
+### Behaviors we match deliberately
+
+- **Sticky desired column through short lines and tab-expanded columns.** Both reference editors track visual column, not character offset; FR-006 / FR-007 / Scenario 4 match.
+- **Tab at every caret, one undo step.** Both editors. FR-009 / FR-010 / Scenarios 9–10.
+- **Esc dismisses the block, leaves the primary caret in place, allows continued navigation past where the block was.** Both editors. Scenarios 6–7 / FR-012.
+- **No duplicate edits when the primary lands on an additional caret's offset.** Both editors silently dedupe. FR-011 / Scenario 8.
+
 ## Open Decisions
 
 - **OD-1 — "Primary caret disappears after exiting multi mode."** The maintainer reported this in the PR #125 thread; the implementer could not reproduce. Before this spec is moved to **Ready**, the reproduction must be captured as a failing integration test (or the bug must be confirmed not-reproducible on the latest `develop` and the requirement marked done). Candidate causes worth probing: `_virtualCaretColumn` refresh inside `ClearAdditionalCarets` racing with `UpdateCursor`; a stale `_caretAnchor` after multi-caret edits; a styled-cell that overdraws the caret cell because a transformer's stale element range survives the multi-caret edit.
@@ -167,6 +200,10 @@ PR #125 (copilot, draft) shipped the same user-visible features but was rejected
 - **OD-2 — Alt+Shift+Up/Down semantics.** Reserved. This spec does *not* claim Alt+Shift+arrow; the column-selection variant ships separately.
 
 - **OD-3 — Whether `ClearAdditionalCarets` is a public API.** Today it is `public`. With this spec, the only sane caller is `Editor` itself (Esc handler, plain-click handler, `WordWrap` toggle). R9 says public surface needs a consumer; if ted doesn't call it, this should drop to `internal`. Resolve before merging.
+
+- **OD-4 — Keybinding choice for add-caret-above/below and the drag modifier.** This spec proposes `Alt+Up` / `Alt+Down` and `Alt+drag`, which differ from both VS Code (`Ctrl+Alt+Up/Down`, `Shift+Alt+drag`) and Visual Studio (`Alt+Shift+Up/Down`, `Shift+Alt+drag`). Reasoning is in the Comparison section. Two alternatives are open: (a) match VS Code (`Ctrl+Alt+Up/Down`, `Shift+Alt+drag`) for broadest familiarity, accepting that we'd have to redefine `Shift+Click` to keep `Shift+Alt+drag` coherent; (b) match Visual Studio (`Alt+Shift+Up/Down`) for the key only, and keep `Alt+drag` for the mouse. Pick one and record in `specs/decisions.md` before implementation.
+
+- **OD-5 — Add `Alt+Click` as a second binding for "add caret at click".** Existing multi-caret uses `Ctrl+Click`. Both VS Code and VS use `Alt+Click`. This spec does *not* change the binding, but it's a small win for newcomers to add `Alt+Click` as an alias. Out of scope for this spec, but worth filing as a follow-up if the maintainer agrees.
 
 ## Notes
 
