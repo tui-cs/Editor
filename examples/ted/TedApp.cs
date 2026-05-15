@@ -102,6 +102,18 @@ public sealed partial class TedApp : Window
             Text = "_Word Wrap",
             Value = Editor.WordWrap ? CheckState.Checked : CheckState.UnChecked
         };
+        wordWrapCheckBox.ValueChanged += (_, e) =>
+        {
+            bool wordWrapEnabled = e.NewValue == CheckState.Checked;
+
+            if (Editor.WordWrap == wordWrapEnabled)
+            {
+                return;
+            }
+
+            Editor.WordWrap = wordWrapEnabled;
+            SaveViewSettings ();
+        };
 
         _previewMarkdownMenuItem = new MenuItem
         {
@@ -211,10 +223,9 @@ public sealed partial class TedApp : Window
                 {
                     Action = () =>
                     {
-                        bool wordWrapEnabled = !Editor.WordWrap;
-                        Editor.WordWrap = wordWrapEnabled;
-                        wordWrapCheckBox.Value = wordWrapEnabled ? CheckState.Checked : CheckState.UnChecked;
-                        SaveViewSettings ();
+                        wordWrapCheckBox.Value = wordWrapCheckBox.Value == CheckState.Checked
+                            ? CheckState.UnChecked
+                            : CheckState.Checked;
                     },
                     CommandView = wordWrapCheckBox,
                     HelpText = "Soft-wrap long lines at viewport edge"

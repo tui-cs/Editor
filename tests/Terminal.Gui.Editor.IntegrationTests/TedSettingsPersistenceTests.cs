@@ -1,7 +1,11 @@
 // Claude - gpt-5
 
+using System.Drawing;
 using System.Reflection;
 using Ted;
+using Terminal.Gui.Input;
+using Terminal.Gui.Editor.IntegrationTests.Testing;
+using Terminal.Gui.Testing;
 using Xunit;
 
 namespace Terminal.Gui.Editor.IntegrationTests;
@@ -52,6 +56,107 @@ public class TedSettingsPersistenceTests
         InvokeSaveViewSettings (app);
         Assert.True (File.Exists (scope.ConfigPath));
         Assert.Contains ("\"EditorSettings.WordWrap\": true", File.ReadAllText (scope.ConfigPath));
+    }
+
+    [Fact]
+    public async Task ViewMenu_WordWrap_Toggle_Creates_ConfigFile ()
+    {
+        using ConfigPathScope scope = new ();
+        await using AppFixture<TedApp> fx = new (() => new TedApp ());
+        InputInjectionOptions options = new () { Mode = InputInjectionMode.Direct };
+
+        fx.Injector.InjectKey (Key.V.WithAlt, options);
+        fx.Injector.InjectKey (Key.CursorDown, options);
+        fx.Injector.InjectKey (Key.CursorDown, options);
+        fx.Injector.InjectKey (Key.Enter, options);
+        fx.Render ();
+
+        Assert.True (File.Exists (scope.ConfigPath));
+    }
+
+    [Fact]
+    public async Task ViewMenu_WordWrap_MouseToggle_Creates_ConfigFile ()
+    {
+        using ConfigPathScope scope = new ();
+        await using AppFixture<TedApp> fx = new (() => new TedApp ());
+        InputInjectionOptions options = new () { Mode = InputInjectionMode.Direct };
+
+        fx.Injector.InjectKey (Key.V.WithAlt, options);
+        fx.Render ();
+
+        string[] lines = fx.Driver.ToString ().Split ('\n');
+        int y = Array.FindIndex (lines, static line => line.Contains ("Word Wrap", StringComparison.Ordinal));
+        Assert.True (y >= 0);
+        int x = lines[y].IndexOf ("☐", StringComparison.Ordinal);
+        Assert.True (x >= 0);
+
+        DateTime ts = new (2025, 1, 1, 12, 0, 0);
+        Point click = new (x, y);
+        fx.Injector.InjectMouse (new Mouse { ScreenPosition = click, Flags = MouseFlags.LeftButtonPressed, Timestamp = ts }, options);
+        fx.Injector.InjectMouse (
+            new Mouse
+            {
+                ScreenPosition = click,
+                Flags = MouseFlags.LeftButtonReleased,
+                Timestamp = ts.AddMilliseconds (25)
+            },
+            options);
+        fx.Render ();
+
+        Assert.True (File.Exists (scope.ConfigPath));
+    }
+
+    [Fact]
+    public async Task ViewMenu_WordWrap_MouseHeaderAndItemToggle_Creates_ConfigFile ()
+    {
+        using ConfigPathScope scope = new ();
+        await using AppFixture<TedApp> fx = new (() => new TedApp ());
+        InputInjectionOptions options = new () { Mode = InputInjectionMode.Direct };
+        DateTime ts = new (2025, 1, 1, 12, 0, 0);
+
+        string[] initialLines = fx.Driver.ToString ().Split ('\n');
+        int viewHeaderX = initialLines[0].IndexOf ("View", StringComparison.Ordinal);
+        Assert.True (viewHeaderX >= 0);
+        Point viewHeader = new (viewHeaderX, 0);
+        fx.Injector.InjectMouse (
+            new Mouse { ScreenPosition = viewHeader, Flags = MouseFlags.LeftButtonPressed, Timestamp = ts },
+            options);
+        fx.Injector.InjectMouse (
+            new Mouse
+            {
+                ScreenPosition = viewHeader,
+                Flags = MouseFlags.LeftButtonReleased,
+                Timestamp = ts.AddMilliseconds (25)
+            },
+            options);
+        fx.Render ();
+
+        string[] menuLines = fx.Driver.ToString ().Split ('\n');
+        int y = Array.FindIndex (menuLines, static line => line.Contains ("Word Wrap", StringComparison.Ordinal));
+        Assert.True (y >= 0);
+        int x = menuLines[y].IndexOf ("Word Wrap", StringComparison.Ordinal);
+        Assert.True (x >= 0);
+        Point wordWrapItem = new (x, y);
+
+        fx.Injector.InjectMouse (
+            new Mouse
+            {
+                ScreenPosition = wordWrapItem,
+                Flags = MouseFlags.LeftButtonPressed,
+                Timestamp = ts.AddMilliseconds (50)
+            },
+            options);
+        fx.Injector.InjectMouse (
+            new Mouse
+            {
+                ScreenPosition = wordWrapItem,
+                Flags = MouseFlags.LeftButtonReleased,
+                Timestamp = ts.AddMilliseconds (75)
+            },
+            options);
+        fx.Render ();
+
+        Assert.True (File.Exists (scope.ConfigPath));
     }
 
     [Fact]
