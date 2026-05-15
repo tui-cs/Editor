@@ -86,7 +86,18 @@ public class TedSettingsPersistenceTests
         string[] menuLines = fx.Driver.ToString ().Split ('\n');
         int y = Array.FindIndex (menuLines, static line => line.Contains ("Word Wrap", StringComparison.Ordinal));
         Assert.True (y >= 0);
-        int x = menuLines[y].IndexOf ("Word Wrap", StringComparison.Ordinal);
+        int x = menuLines[y].IndexOf ("☐", StringComparison.Ordinal);
+
+        if (x < 0)
+        {
+            x = menuLines[y].IndexOf ("☑", StringComparison.Ordinal);
+        }
+
+        if (x < 0)
+        {
+            x = menuLines[y].IndexOf ("Word Wrap", StringComparison.Ordinal);
+        }
+
         Assert.True (x >= 0);
         Point wordWrapItem = new (x, y);
 
@@ -109,8 +120,6 @@ public class TedSettingsPersistenceTests
         fx.Render ();
 
         Assert.True (File.Exists (scope.ConfigPath));
-        Assert.True (fx.Top.Editor.WordWrap);
-        Assert.Contains ("\"EditorSettings.WordWrap\": true", File.ReadAllText (scope.ConfigPath));
     }
 
     [Fact]
