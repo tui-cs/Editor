@@ -401,7 +401,7 @@ public sealed partial class TedApp : Window
         EditorSettings.LineNumbers = Editor.GutterOptions.HasFlag (GutterOptions.LineNumbers);
         EditorSettings.FoldIndicators = Editor.GutterOptions.HasFlag (GutterOptions.Folding);
         EditorSettings.WordWrap = Editor.WordWrap;
-        EditorSettings.ShowTabs = ShowTabsCheckBox.Value == CheckState.Checked;
+        EditorSettings.ShowTabs = Editor.ShowTabs;
         EditorSettings.UseThemeBackground = Editor.UseThemeBackground;
         EditorSettings.IndentSize = Editor.IndentationSize;
         EditorSettings.ConvertTabsToSpaces = Editor.ConvertTabsToSpaces;
