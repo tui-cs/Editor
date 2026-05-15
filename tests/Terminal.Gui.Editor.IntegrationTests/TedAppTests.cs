@@ -5,6 +5,7 @@ using Ted;
 using Terminal.Gui.Editor.IntegrationTests.Testing;
 using Terminal.Gui.Highlighting;
 using Terminal.Gui.Input;
+using Terminal.Gui.Text.Indentation;
 using Terminal.Gui.Testing;
 using Terminal.Gui.Editor;
 using Terminal.Gui.Views;
@@ -271,6 +272,22 @@ public class TedAppTests
         TedApp app = new (true);
 
         Assert.True (app.Editor.ReadOnly);
+    }
+
+    [Fact]
+    public void Constructor_Defaults_UseThemeBackground_To_True ()
+    {
+        TedApp app = new ();
+
+        Assert.True (app.Editor.UseThemeBackground);
+    }
+
+    [Fact]
+    public void Constructor_Defaults_AutoIndent_To_Enabled ()
+    {
+        TedApp app = new ();
+
+        Assert.IsType<DefaultIndentationStrategy> (app.Editor.IndentationStrategy);
     }
 
     [Fact]

@@ -21,7 +21,7 @@ internal static class EditorSettings
     public static bool ShowTabs { get; set; }
 
     [ConfigurationProperty (Scope = typeof (TedSettingsScope))]
-    public static bool UseThemeBackground { get; set; }
+    public static bool UseThemeBackground { get; set; } = true;
 
     [ConfigurationProperty (Scope = typeof (TedSettingsScope))]
     public static int IndentSize { get; set; } = 4;
@@ -30,7 +30,7 @@ internal static class EditorSettings
     public static bool ConvertTabsToSpaces { get; set; } = true;
 
     [ConfigurationProperty (Scope = typeof (TedSettingsScope))]
-    public static bool AutoIndent { get; set; }
+    public static bool AutoIndent { get; set; } = true;
 
     internal static void Save ()
     {
@@ -39,10 +39,9 @@ internal static class EditorSettings
 
     internal static void Save (string path)
     {
-        EnsureConfigFile (path);
-
         try
         {
+            EnsureConfigFile (path);
             string text = File.ReadAllText (path);
             Dictionary<string, string> entries = new ()
             {
