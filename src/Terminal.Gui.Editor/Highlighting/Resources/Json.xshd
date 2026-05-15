@@ -7,7 +7,7 @@
 	<Color name="String" foreground="Green" exampleText="" />
 	<Color name="Null" foreground="Olive" exampleText="" />
 	<Color name="FieldName" foreground="DarkMagenta" />
-	<Color name="Punctuation" foreground="Black" />
+	<Color name="Punctuation" />
 
 	<RuleSet name="String">
 		<Span begin="\\" end="."/>

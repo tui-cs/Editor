@@ -247,6 +247,28 @@ public class HighlightingTests
     }
 
     [Fact]
+    public void Colorizer_Json_Punctuation_Uses_Default_Foreground ()
+    {
+        TextDocument doc = new ("{}");
+        IHighlightingDefinition json = HighlightingManager.Instance.GetDefinition ("Json")!;
+        using DocumentHighlighter highlighter = new (doc, json);
+
+        Attribute defaultAttr = new (Color.White, Color.Black);
+        HighlightingColorizer colorizer = new (highlighter, defaultAttr, true);
+
+        VisualLineBuilder builder = new ();
+        DocumentLine line = doc.GetLineByNumber (1);
+        VisualLineBuildContext context = new (
+            doc, 4, false, defaultAttr, defaultAttr, null, 0, 0, []);
+
+        CellVisualLine visualLine = builder.Build (line, context);
+        colorizer.Transform (visualLine);
+
+        Assert.NotEmpty (visualLine.Elements);
+        Assert.Equal (Color.White, visualLine.Elements[0].Attribute.Foreground);
+    }
+
+    [Fact]
     public void Colorizer_WithDefaultAttribute_Unchanged_Returns_Same_Instance ()
     {
         TextDocument doc = new ("public");

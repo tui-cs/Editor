@@ -2,11 +2,13 @@
 
 using System.Drawing;
 using Ted;
+using Terminal.Gui.Drawing;
 using Terminal.Gui.Editor.IntegrationTests.Testing;
 using Terminal.Gui.Highlighting;
 using Terminal.Gui.Input;
 using Terminal.Gui.Testing;
 using Terminal.Gui.Editor;
+using Terminal.Gui.ViewBase;
 using Terminal.Gui.Views;
 using Xunit;
 
@@ -251,6 +253,42 @@ public class TedAppTests
         fx.Top.Editor.HighlightingDefinition = HighlightingManager.Instance.GetDefinitionByExtension (".xml");
         Assert.NotNull (fx.Top.Editor.HighlightingDefinition);
         Assert.Equal ("XML", fx.Top.Editor.HighlightingDefinition!.Name);
+    }
+
+    [Fact]
+    public async Task Highlighting_Json_Punctuation_Uses_Theme_Foreground ()
+    {
+        await using AppFixture<TedApp> fx = new (() =>
+        {
+            TedApp app = new ();
+            app.ShowOpenDialog = () => "/tmp/settings.json";
+            app.ReadAllText = _ => "{}";
+            Assert.True (app.OpenFile ());
+
+            return app;
+        });
+
+        fx.Render ();
+
+        var normal = fx.Top.Editor.GetAttributeForRole (VisualRole.Normal);
+        Cell[,] contents = fx.Driver.Contents!;
+        Cell? braceCell = null;
+
+        for (var row = 0; row < contents.GetLength (0) && braceCell is null; row++)
+        {
+            for (var col = 0; col < contents.GetLength (1); col++)
+            {
+                if (contents[row, col].Grapheme == "{")
+                {
+                    braceCell = contents[row, col];
+
+                    break;
+                }
+            }
+        }
+
+        Assert.True (braceCell.HasValue);
+        Assert.Equal (normal.Foreground, braceCell.Value.Attribute!.Value.Foreground);
     }
 
     [Fact]
