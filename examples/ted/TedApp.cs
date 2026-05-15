@@ -36,11 +36,7 @@ public sealed partial class TedApp : Window
             GutterOptions = GutterOptions.LineNumbers | GutterOptions.Folding,
             ConvertTabsToSpaces = true,
             ReadOnly = readOnly,
-
-            ViewportSettings = ViewportSettingsFlags.HasScrollBars,
-
-            // Default to C# highlighting from the built-in xshd definitions.
-            HighlightingDefinition = HighlightingManager.Instance.GetDefinition ("C#")
+            ViewportSettings = ViewportSettingsFlags.HasScrollBars
         };
 
         // Enable brace-based folding. The strategy re-scans on each document change.
@@ -121,7 +117,7 @@ public sealed partial class TedApp : Window
             Editor.WordWrap = e.NewValue == CheckState.Checked;
         };
 
-        LanguageShortcut = new Shortcut (Key.Empty, "C#", null) { MouseHighlightStates = MouseState.None };
+        LanguageShortcut = new Shortcut (Key.Empty, "Plain Text", null) { MouseHighlightStates = MouseState.None };
 
         IndentationSizeUpDown = new NumericUpDown<int>
         {
