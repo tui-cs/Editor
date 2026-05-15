@@ -69,6 +69,19 @@ public class EditorTabTests
     }
 
     [Fact]
+    public async Task Tab_Then_ShiftTab_Reverts_Indent_On_Current_Line ()
+    {
+        await using AppFixture<EditorTestHost> fx = new (() => new ());
+        fx.Top.Editor.SetFocus ();
+
+        fx.Injector.InjectKey (Key.Tab, Direct);
+        fx.Injector.InjectKey (Key.Tab.WithShift, Direct);
+
+        Assert.Equal (string.Empty, fx.Top.Editor.Document!.Text);
+        Assert.Equal (0, fx.Top.Editor.CaretOffset);
+    }
+
+    [Fact]
     public async Task ShiftTab_On_Multiline_Selection_Unindents_Block ()
     {
         await using AppFixture<EditorTestHost> fx = new (() => new ("\tone\n    two"));
