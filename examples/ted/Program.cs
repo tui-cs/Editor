@@ -41,6 +41,7 @@ else
 }
 
 app.Run (ted);
+ted.PersistViewSettingsOnExit ();
 
 return;
 

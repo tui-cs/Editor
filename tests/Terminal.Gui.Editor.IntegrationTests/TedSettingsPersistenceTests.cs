@@ -19,7 +19,7 @@ public class TedSettingsPersistenceTests
         TedApp app = new ();
         app.Editor.IndentationSize = 7;
 
-        InvokeSaveViewSettings (app);
+        InvokePersistViewSettingsOnExit (app);
 
         Assert.True (File.Exists (scope.ConfigPath));
         Assert.Contains ("\"EditorSettings.IndentSize\": 7", File.ReadAllText (scope.ConfigPath));
@@ -32,10 +32,10 @@ public class TedSettingsPersistenceTests
         TedApp app = new ();
 
         app.Editor.IndentationSize = 2;
-        InvokeSaveViewSettings (app);
+        InvokePersistViewSettingsOnExit (app);
 
         app.Editor.IndentationSize = 8;
-        InvokeSaveViewSettings (app);
+        InvokePersistViewSettingsOnExit (app);
 
         string text = File.ReadAllText (scope.ConfigPath);
         Assert.Contains ("\"EditorSettings.IndentSize\": 8", text);
@@ -50,6 +50,19 @@ public class TedSettingsPersistenceTests
         app.Editor.WordWrap = true;
 
         Assert.True (app.QuitFile ());
+        Assert.True (File.Exists (scope.ConfigPath));
+        Assert.Contains ("\"EditorSettings.WordWrap\": true", File.ReadAllText (scope.ConfigPath));
+    }
+
+    [Fact]
+    public void PersistViewSettingsOnExit_Persists_WordWrap_Changes ()
+    {
+        using ConfigPathScope scope = new ();
+        TedApp app = new ();
+        app.Editor.WordWrap = true;
+
+        InvokePersistViewSettingsOnExit (app);
+
         Assert.True (File.Exists (scope.ConfigPath));
         Assert.Contains ("\"EditorSettings.WordWrap\": true", File.ReadAllText (scope.ConfigPath));
     }
@@ -77,13 +90,13 @@ public class TedSettingsPersistenceTests
         return Path.Combine (baseDirectory, "ted.config.json");
     }
 
-    private static void InvokeSaveViewSettings (TedApp app)
+    private static void InvokePersistViewSettingsOnExit (TedApp app)
     {
-        MethodInfo? saveViewSettings = typeof (TedApp).GetMethod (
-            "SaveViewSettings",
+        MethodInfo? persistViewSettingsOnExit = typeof (TedApp).GetMethod (
+            "PersistViewSettingsOnExit",
             BindingFlags.Instance | BindingFlags.NonPublic);
-        Assert.NotNull (saveViewSettings);
-        saveViewSettings.Invoke (app, null);
+        Assert.NotNull (persistViewSettingsOnExit);
+        persistViewSettingsOnExit.Invoke (app, null);
     }
 
     private sealed class ConfigPathScope : IDisposable

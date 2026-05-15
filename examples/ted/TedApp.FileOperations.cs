@@ -93,7 +93,7 @@ public sealed partial class TedApp
             return false;
         }
 
-        SaveViewSettings ();
+        PersistViewSettingsOnExit ();
         RequestStop ();
 
         return true;
