@@ -26,7 +26,7 @@ public class TedSettingsPersistenceTests
 
             InvokeSaveViewSettings (app);
 
-            var configPath = Path.Combine (home, ".tui", "ted.config.json");
+            string configPath = Path.Combine (home, ".tui", "ted.config.json");
             Assert.True (File.Exists (configPath));
             Assert.Contains ("\"EditorSettings.IndentSize\": 7", File.ReadAllText (configPath));
         }
@@ -54,7 +54,7 @@ public class TedSettingsPersistenceTests
             app.Editor.IndentationSize = 8;
             InvokeSaveViewSettings (app);
 
-            var configPath = Path.Combine (home, ".tui", "ted.config.json");
+            string configPath = Path.Combine (home, ".tui", "ted.config.json");
             string text = File.ReadAllText (configPath);
             Assert.Contains ("\"EditorSettings.IndentSize\": 8", text);
             Assert.DoesNotContain ("\"EditorSettings.IndentSize\": 2", text);
