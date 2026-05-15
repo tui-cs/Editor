@@ -93,6 +93,7 @@ public sealed partial class TedApp
             return false;
         }
 
+        SaveViewSettings ();
         RequestStop ();
 
         return true;
