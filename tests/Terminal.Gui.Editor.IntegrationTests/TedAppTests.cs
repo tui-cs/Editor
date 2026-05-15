@@ -73,6 +73,23 @@ public class TedAppTests
     }
 
     [Fact]
+    public void OpenMissingFile_SetsPath_AndMarksDocumentModified ()
+    {
+        var filePath = Path.Combine (Path.GetTempPath (), $"ted-missing-{Guid.NewGuid ():N}.txt");
+        if (File.Exists (filePath))
+        {
+            File.Delete (filePath);
+        }
+
+        TedApp app = new ();
+        app.OpenMissingFile (filePath);
+
+        Assert.Equal (filePath, app.CurrentFilePath);
+        Assert.Equal (string.Empty, app.Editor.Document!.Text);
+        Assert.True (app.IsDocumentModified);
+    }
+
+    [Fact]
     public void SaveFile_WritesCurrentEditorText_ToCurrentPath ()
     {
         var filePath = Path.Combine (Path.GetTempPath (), $"ted-save-{Guid.NewGuid ():N}.txt");
@@ -212,6 +229,53 @@ public class TedAppTests
         Assert.Equal ("/tmp/ted-save-on-quit.txt", savedPath);
         Assert.Equal ("after", savedText);
         Assert.False (fx.Top.IsDocumentModified);
+    }
+
+    [Fact]
+    public void QuitFile_MissingFile_DiscardChoice_DoesNotCreateFile ()
+    {
+        var filePath = Path.Combine (Path.GetTempPath (), $"ted-missing-discard-{Guid.NewGuid ():N}.txt");
+        if (File.Exists (filePath))
+        {
+            File.Delete (filePath);
+        }
+
+        TedApp app = new ();
+        app.OpenMissingFile (filePath);
+        app.ShowSaveChangesDialog = () => SaveChangesChoice.Discard;
+
+        Assert.True (app.QuitFile ());
+        Assert.False (File.Exists (filePath));
+    }
+
+    [Fact]
+    public void QuitFile_MissingFile_SaveChoice_CreatesEmptyFile ()
+    {
+        var filePath = Path.Combine (Path.GetTempPath (), $"ted-missing-save-{Guid.NewGuid ():N}.txt");
+        if (File.Exists (filePath))
+        {
+            File.Delete (filePath);
+        }
+
+        try
+        {
+            TedApp app = new ();
+            app.OpenMissingFile (filePath);
+            app.ShowSaveChangesDialog = () => SaveChangesChoice.Save;
+
+            Assert.True (app.QuitFile ());
+
+            Assert.True (File.Exists (filePath));
+            Assert.Equal (string.Empty, File.ReadAllText (filePath));
+            Assert.False (app.IsDocumentModified);
+        }
+        finally
+        {
+            if (File.Exists (filePath))
+            {
+                File.Delete (filePath);
+            }
+        }
     }
 
     [Fact]

@@ -20,9 +20,16 @@ var requestedPath = args.FirstOrDefault (static arg => arg is not ("--read-only"
 
 using TedApp ted = new (readOnly);
 
-if (!string.IsNullOrWhiteSpace (requestedPath) && File.Exists (requestedPath))
+if (!string.IsNullOrWhiteSpace (requestedPath))
 {
-    ted.SetDocument (File.ReadAllText (requestedPath), requestedPath);
+    if (File.Exists (requestedPath))
+    {
+        ted.SetDocument (File.ReadAllText (requestedPath), requestedPath);
+    }
+    else
+    {
+        ted.OpenMissingFile (requestedPath);
+    }
 }
 else
 {

@@ -52,6 +52,18 @@ public sealed partial class TedApp
         return true;
     }
 
+    /// <summary>Opens a missing file path as an empty, modified document.</summary>
+    public void OpenMissingFile (string filePath)
+    {
+        if (string.IsNullOrWhiteSpace (filePath))
+        {
+            throw new ArgumentException ("Path must not be null, empty, or whitespace.", nameof (filePath));
+        }
+
+        SetDocument (string.Empty, filePath);
+        Editor.Document!.UndoStack.DiscardOriginalFileMarker ();
+    }
+
     /// <summary>Saves the editor text to the current file, or prompts for a path if the buffer is untitled.</summary>
     public bool SaveFile ()
     {
