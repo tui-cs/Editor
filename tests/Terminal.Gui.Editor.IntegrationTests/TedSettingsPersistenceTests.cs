@@ -121,13 +121,14 @@ public class TedSettingsPersistenceTests
             if (_hadExistingConfig)
             {
                 string? configDirectory = Path.GetDirectoryName (ConfigPath);
+                Assert.NotNull (_existingConfigContent);
 
                 if (!string.IsNullOrWhiteSpace (configDirectory))
                 {
                     Directory.CreateDirectory (configDirectory);
                 }
 
-                File.WriteAllText (ConfigPath, _existingConfigContent ?? "{}");
+                File.WriteAllText (ConfigPath, _existingConfigContent);
             }
             else if (File.Exists (ConfigPath))
             {

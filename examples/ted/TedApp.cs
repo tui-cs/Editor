@@ -171,9 +171,9 @@ public sealed partial class TedApp : Window
                 {
                     Action = () =>
                     {
-                        bool lineNumbersEnabled = !Editor.GutterOptions.HasFlag (GutterOptions.LineNumbers);
+                        bool shouldEnableLineNumbers = !Editor.GutterOptions.HasFlag (GutterOptions.LineNumbers);
 
-                        if (lineNumbersEnabled)
+                        if (shouldEnableLineNumbers)
                         {
                             Editor.GutterOptions |= GutterOptions.LineNumbers;
                         }
@@ -182,7 +182,7 @@ public sealed partial class TedApp : Window
                             Editor.GutterOptions &= ~GutterOptions.LineNumbers;
                         }
 
-                        lineNumbersCheckBox.Value = lineNumbersEnabled ? CheckState.Checked : CheckState.UnChecked;
+                        lineNumbersCheckBox.Value = shouldEnableLineNumbers ? CheckState.Checked : CheckState.UnChecked;
                         Editor.SetNeedsDraw ();
                         SaveViewSettings ();
                     },
@@ -193,9 +193,9 @@ public sealed partial class TedApp : Window
                 {
                     Action = () =>
                     {
-                        bool foldIndicatorsEnabled = !Editor.GutterOptions.HasFlag (GutterOptions.Folding);
+                        bool shouldEnableFoldIndicators = !Editor.GutterOptions.HasFlag (GutterOptions.Folding);
 
-                        if (foldIndicatorsEnabled)
+                        if (shouldEnableFoldIndicators)
                         {
                             Editor.GutterOptions |= GutterOptions.Folding;
                         }
@@ -204,7 +204,7 @@ public sealed partial class TedApp : Window
                             Editor.GutterOptions &= ~GutterOptions.Folding;
                         }
 
-                        foldIndicatorsCheckBox.Value = foldIndicatorsEnabled ? CheckState.Checked : CheckState.UnChecked;
+                        foldIndicatorsCheckBox.Value = shouldEnableFoldIndicators ? CheckState.Checked : CheckState.UnChecked;
                         Editor.SetNeedsDraw ();
                         SaveViewSettings ();
                     },
