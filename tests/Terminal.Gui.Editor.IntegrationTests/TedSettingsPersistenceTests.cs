@@ -73,11 +73,7 @@ public class TedSettingsPersistenceTests
         string? configDirectory = Path.GetDirectoryName (scope.ConfigPath);
         Assert.NotNull (configDirectory);
         Directory.CreateDirectory (configDirectory);
-        File.WriteAllText (scope.ConfigPath, """
-                                          {
-                                            "Unrelated": 1 // note
-                                          }
-                                          """);
+        File.WriteAllText (scope.ConfigPath, "{\n  \"Unrelated\": 1 // note\n}\n");
 
         TedApp app = new ();
         app.Editor.WordWrap = true;
@@ -93,6 +89,7 @@ public class TedSettingsPersistenceTests
     public void SettingsDialog_ApplyTo_Clamps_IndentSize_To_One ()
     {
         TedApp app = new ();
+        // Reflection is used because EditorSettingsDialog is internal to the ted assembly.
         Type? dialogType = typeof (TedApp).Assembly.GetType ("Ted.EditorSettingsDialog");
         Assert.NotNull (dialogType);
 
