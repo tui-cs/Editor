@@ -13,73 +13,68 @@ public sealed class TedSettingsPersistenceCollection;
 public class TedSettingsPersistenceTests
 {
     [Fact]
-    public void SaveViewSettings_Creates_TedConfigFile_In_HomeDotTui ()
+    public void SaveViewSettings_Creates_ConfigFile_And_Persists_IndentSize ()
     {
-        string home = CreateTempHome ();
-        string? originalHome = Environment.GetEnvironmentVariable ("HOME");
+        using ConfigPathScope scope = new ();
+        TedApp app = new ();
+        app.Editor.IndentationSize = 7;
 
-        try
-        {
-            Environment.SetEnvironmentVariable ("HOME", home);
-            TedApp app = new ();
-            app.Editor.IndentationSize = 7;
+        InvokeSaveViewSettings (app);
 
-            InvokeSaveViewSettings (app);
-
-            string configPath = Path.Combine (home, ".tui", "ted.config.json");
-            Assert.True (File.Exists (configPath));
-            Assert.Contains ("\"EditorSettings.IndentSize\": 7", File.ReadAllText (configPath));
-        }
-        finally
-        {
-            Environment.SetEnvironmentVariable ("HOME", originalHome);
-            DeleteTempHome (home);
-        }
+        Assert.True (File.Exists (scope.ConfigPath));
+        Assert.Contains ("\"EditorSettings.IndentSize\": 7", File.ReadAllText (scope.ConfigPath));
     }
 
     [Fact]
     public void SaveViewSettings_Updates_Existing_IndentSize_Value ()
     {
-        string home = CreateTempHome ();
-        string? originalHome = Environment.GetEnvironmentVariable ("HOME");
+        using ConfigPathScope scope = new ();
+        TedApp app = new ();
 
-        try
-        {
-            Environment.SetEnvironmentVariable ("HOME", home);
-            TedApp app = new ();
+        app.Editor.IndentationSize = 2;
+        InvokeSaveViewSettings (app);
 
-            app.Editor.IndentationSize = 2;
-            InvokeSaveViewSettings (app);
+        app.Editor.IndentationSize = 8;
+        InvokeSaveViewSettings (app);
 
-            app.Editor.IndentationSize = 8;
-            InvokeSaveViewSettings (app);
-
-            string configPath = Path.Combine (home, ".tui", "ted.config.json");
-            string text = File.ReadAllText (configPath);
-            Assert.Contains ("\"EditorSettings.IndentSize\": 8", text);
-            Assert.DoesNotContain ("\"EditorSettings.IndentSize\": 2", text);
-        }
-        finally
-        {
-            Environment.SetEnvironmentVariable ("HOME", originalHome);
-            DeleteTempHome (home);
-        }
+        string text = File.ReadAllText (scope.ConfigPath);
+        Assert.Contains ("\"EditorSettings.IndentSize\": 8", text);
+        Assert.DoesNotContain ("\"EditorSettings.IndentSize\": 2", text);
     }
 
-    private static string CreateTempHome ()
+    [Fact]
+    public void QuitFile_Persists_WordWrap_Changes ()
     {
-        string home = Path.Combine (Path.GetTempPath (), $"ted-home-{Guid.NewGuid ():N}");
-        Directory.CreateDirectory (home);
+        using ConfigPathScope scope = new ();
+        TedApp app = new ();
+        app.Editor.WordWrap = true;
 
-        return home;
+        Assert.True (app.QuitFile ());
+        Assert.True (File.Exists (scope.ConfigPath));
+        Assert.Contains ("\"EditorSettings.WordWrap\": true", File.ReadAllText (scope.ConfigPath));
     }
 
-    private static void DeleteTempHome (string home)
+    private static string GetTedConfigPath ()
     {
-        if (Directory.Exists (home))
+        string baseDirectory;
+
+        if (OperatingSystem.IsWindows ())
         {
-            Directory.Delete (home, true);
+            string appData = Environment.GetFolderPath (Environment.SpecialFolder.ApplicationData);
+            baseDirectory = string.IsNullOrWhiteSpace (appData)
+                ? Path.Combine (Directory.GetCurrentDirectory (), ".tui")
+                : Path.Combine (appData, "tui");
         }
+        else
+        {
+            string home =
+                Environment.GetEnvironmentVariable ("HOME")
+                ?? Environment.GetFolderPath (Environment.SpecialFolder.UserProfile)
+                ?? Directory.GetCurrentDirectory ();
+            baseDirectory = Path.Combine (home, ".tui");
+        }
+
+        return Path.Combine (baseDirectory, "ted.config.json");
     }
 
     private static void InvokeSaveViewSettings (TedApp app)
@@ -89,5 +84,64 @@ public class TedSettingsPersistenceTests
             BindingFlags.Instance | BindingFlags.NonPublic);
         Assert.NotNull (saveViewSettings);
         saveViewSettings.Invoke (app, null);
+    }
+
+    private sealed class ConfigPathScope : IDisposable
+    {
+        private readonly string _tempRoot;
+        private readonly string? _originalHome;
+        private readonly string? _originalAppData;
+        private readonly bool _hadExistingConfig;
+        private readonly string? _existingConfigContent;
+
+        internal ConfigPathScope ()
+        {
+            _tempRoot = Path.Combine (Path.GetTempPath (), $"ted-home-{Guid.NewGuid ():N}");
+            Directory.CreateDirectory (_tempRoot);
+
+            _originalHome = Environment.GetEnvironmentVariable ("HOME");
+            _originalAppData = Environment.GetEnvironmentVariable ("APPDATA");
+            Environment.SetEnvironmentVariable ("HOME", _tempRoot);
+            Environment.SetEnvironmentVariable ("APPDATA", Path.Combine (_tempRoot, "appdata"));
+
+            ConfigPath = GetTedConfigPath ();
+            _hadExistingConfig = File.Exists (ConfigPath);
+            _existingConfigContent = _hadExistingConfig ? File.ReadAllText (ConfigPath) : null;
+
+            if (_hadExistingConfig)
+            {
+                File.Delete (ConfigPath);
+            }
+        }
+
+        internal string ConfigPath { get; }
+
+        public void Dispose ()
+        {
+            if (_hadExistingConfig)
+            {
+                string? configDirectory = Path.GetDirectoryName (ConfigPath);
+                Assert.NotNull (_existingConfigContent);
+
+                if (!string.IsNullOrWhiteSpace (configDirectory))
+                {
+                    Directory.CreateDirectory (configDirectory);
+                }
+
+                File.WriteAllText (ConfigPath, _existingConfigContent);
+            }
+            else if (File.Exists (ConfigPath))
+            {
+                File.Delete (ConfigPath);
+            }
+
+            Environment.SetEnvironmentVariable ("HOME", _originalHome);
+            Environment.SetEnvironmentVariable ("APPDATA", _originalAppData);
+
+            if (Directory.Exists (_tempRoot))
+            {
+                Directory.Delete (_tempRoot, true);
+            }
+        }
     }
 }

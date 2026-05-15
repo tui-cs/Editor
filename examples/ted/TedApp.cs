@@ -107,11 +107,6 @@ public sealed partial class TedApp : Window
             Value = Editor.WordWrap ? CheckState.Checked : CheckState.UnChecked
         };
 
-        wordWrapCheckBox.ValueChanged += (_, e) =>
-        {
-            Editor.WordWrap = e.NewValue == CheckState.Checked;
-        };
-
         _previewMarkdownMenuItem = new MenuItem
         {
             Title = ToggleTitle (false, "_Preview Markdown"),
@@ -129,10 +124,6 @@ public sealed partial class TedApp : Window
 
         LanguageShortcut = new Shortcut (Key.Empty, "C#", null) { MouseHighlightStates = MouseState.None };
         ShowTabsCheckBox.Value = Editor.ShowTabs ? CheckState.Checked : CheckState.UnChecked;
-        ShowTabsCheckBox.ValueChanged += (_, e) =>
-        {
-            Editor.ShowTabs = e.NewValue == CheckState.Checked;
-        };
         PreviewCheckBox.ValueChanged += (_, e) =>
         {
             ToggleMarkdownPreview ();
@@ -180,7 +171,9 @@ public sealed partial class TedApp : Window
                 {
                     Action = () =>
                     {
-                        if (lineNumbersCheckBox.Value == CheckState.Checked)
+                        bool shouldEnableLineNumbers = !Editor.GutterOptions.HasFlag (GutterOptions.LineNumbers);
+
+                        if (shouldEnableLineNumbers)
                         {
                             Editor.GutterOptions |= GutterOptions.LineNumbers;
                         }
@@ -189,6 +182,7 @@ public sealed partial class TedApp : Window
                             Editor.GutterOptions &= ~GutterOptions.LineNumbers;
                         }
 
+                        lineNumbersCheckBox.Value = shouldEnableLineNumbers ? CheckState.Checked : CheckState.UnChecked;
                         Editor.SetNeedsDraw ();
                         SaveViewSettings ();
                     },
@@ -199,7 +193,9 @@ public sealed partial class TedApp : Window
                 {
                     Action = () =>
                     {
-                        if (foldIndicatorsCheckBox.Value == CheckState.Checked)
+                        bool shouldEnableFoldIndicators = !Editor.GutterOptions.HasFlag (GutterOptions.Folding);
+
+                        if (shouldEnableFoldIndicators)
                         {
                             Editor.GutterOptions |= GutterOptions.Folding;
                         }
@@ -208,6 +204,7 @@ public sealed partial class TedApp : Window
                             Editor.GutterOptions &= ~GutterOptions.Folding;
                         }
 
+                        foldIndicatorsCheckBox.Value = shouldEnableFoldIndicators ? CheckState.Checked : CheckState.UnChecked;
                         Editor.SetNeedsDraw ();
                         SaveViewSettings ();
                     },
@@ -218,7 +215,9 @@ public sealed partial class TedApp : Window
                 {
                     Action = () =>
                     {
-                        Editor.WordWrap = wordWrapCheckBox.Value == CheckState.Checked;
+                        bool wordWrapEnabled = !Editor.WordWrap;
+                        Editor.WordWrap = wordWrapEnabled;
+                        wordWrapCheckBox.Value = wordWrapEnabled ? CheckState.Checked : CheckState.UnChecked;
                         SaveViewSettings ();
                     },
                     CommandView = wordWrapCheckBox,
@@ -228,7 +227,9 @@ public sealed partial class TedApp : Window
                 {
                     Action = () =>
                     {
-                        Editor.UseThemeBackground = useThemeBackgroundCheckBox.Value == CheckState.Checked;
+                        bool useThemeBackgroundEnabled = !Editor.UseThemeBackground;
+                        Editor.UseThemeBackground = useThemeBackgroundEnabled;
+                        useThemeBackgroundCheckBox.Value = useThemeBackgroundEnabled ? CheckState.Checked : CheckState.UnChecked;
 
                         if (_markdownPreview is not null)
                         {
@@ -244,7 +245,9 @@ public sealed partial class TedApp : Window
                 {
                     Action = () =>
                     {
-                        Editor.ShowTabs = ShowTabsCheckBox.Value == CheckState.Checked;
+                        bool showTabsEnabled = !Editor.ShowTabs;
+                        Editor.ShowTabs = showTabsEnabled;
+                        ShowTabsCheckBox.Value = showTabsEnabled ? CheckState.Checked : CheckState.UnChecked;
                         SaveViewSettings ();
                     },
                     CommandView = ShowTabsCheckBox,
