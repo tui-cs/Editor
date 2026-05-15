@@ -223,9 +223,10 @@ public sealed partial class TedApp : Window
                 {
                     Action = () =>
                     {
-                        wordWrapCheckBox.Value = wordWrapCheckBox.Value == CheckState.Checked
-                            ? CheckState.UnChecked
-                            : CheckState.Checked;
+                        bool wordWrapEnabled = !Editor.WordWrap;
+                        Editor.WordWrap = wordWrapEnabled;
+                        wordWrapCheckBox.Value = wordWrapEnabled ? CheckState.Checked : CheckState.UnChecked;
+                        SaveViewSettings ();
                     },
                     CommandView = wordWrapCheckBox,
                     HelpText = "Soft-wrap long lines at viewport edge"
