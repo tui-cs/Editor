@@ -61,7 +61,9 @@ public sealed partial class TedApp
         }
 
         SetDocument (string.Empty, filePath);
-        Editor.Document!.UndoStack.DiscardOriginalFileMarker ();
+        TextDocument document = Editor.Document
+            ?? throw new InvalidOperationException ("ted cannot open a missing file because the editor has no document.");
+        document.UndoStack.DiscardOriginalFileMarker ();
     }
 
     /// <summary>Saves the editor text to the current file, or prompts for a path if the buffer is untitled.</summary>
