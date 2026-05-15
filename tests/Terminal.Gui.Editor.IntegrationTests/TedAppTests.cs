@@ -3,7 +3,6 @@
 using System.Drawing;
 using Ted;
 using Terminal.Gui.Editor.IntegrationTests.Testing;
-using Terminal.Gui.Highlighting;
 using Terminal.Gui.Input;
 using Terminal.Gui.Testing;
 using Terminal.Gui.Editor;
@@ -313,18 +312,32 @@ public class TedAppTests
     }
 
     [Fact]
-    public async Task Highlighting_Auto_Detects_From_File_Extension ()
+    public void Constructor_Defaults_To_Plain_Text_Highlighting ()
     {
-        await using AppFixture<TedApp> fx = new (() => new TedApp ());
+        TedApp app = new ();
 
-        // Default is C# (set in constructor).
-        Assert.NotNull (fx.Top.Editor.HighlightingDefinition);
-        Assert.Equal ("C#", fx.Top.Editor.HighlightingDefinition!.Name);
+        Assert.Null (app.Editor.HighlightingDefinition);
+        Assert.Equal ("Plain Text", app.LanguageShortcut.Title);
+    }
 
-        // Switching to XML highlighting works.
-        fx.Top.Editor.HighlightingDefinition = HighlightingManager.Instance.GetDefinitionByExtension (".xml");
-        Assert.NotNull (fx.Top.Editor.HighlightingDefinition);
-        Assert.Equal ("XML", fx.Top.Editor.HighlightingDefinition!.Name);
+    [Fact]
+    public void Highlighting_Auto_Detects_From_File_Extension ()
+    {
+        var filePath = Path.Combine (Path.GetTempPath (), $"ted-highlight-{Guid.NewGuid ():N}.xml");
+
+        try
+        {
+            TedApp app = new ();
+            app.OpenMissingFile (filePath);
+
+            Assert.NotNull (app.Editor.HighlightingDefinition);
+            Assert.Equal ("XML", app.Editor.HighlightingDefinition!.Name);
+            Assert.Equal ("XML", app.LanguageShortcut.Title);
+        }
+        finally
+        {
+            DeleteIfExists (filePath);
+        }
     }
 
     [Fact]
