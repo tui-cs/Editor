@@ -19,7 +19,7 @@ public class TedSettingsPersistenceTests
         TedApp app = new ();
         app.Editor.IndentationSize = 7;
 
-        InvokePersistViewSettingsOnExit (app);
+        InvokeSaveViewSettings (app);
 
         Assert.True (File.Exists (scope.ConfigPath));
         Assert.Contains ("\"EditorSettings.IndentSize\": 7", File.ReadAllText (scope.ConfigPath));
@@ -32,10 +32,10 @@ public class TedSettingsPersistenceTests
         TedApp app = new ();
 
         app.Editor.IndentationSize = 2;
-        InvokePersistViewSettingsOnExit (app);
+        InvokeSaveViewSettings (app);
 
         app.Editor.IndentationSize = 8;
-        InvokePersistViewSettingsOnExit (app);
+        InvokeSaveViewSettings (app);
 
         string text = File.ReadAllText (scope.ConfigPath);
         Assert.Contains ("\"EditorSettings.IndentSize\": 8", text);
@@ -43,28 +43,27 @@ public class TedSettingsPersistenceTests
     }
 
     [Fact]
-    public void QuitFile_Persists_WordWrap_Changes ()
+    public void SaveViewSettings_Persists_WordWrap_Changes ()
+    {
+        using ConfigPathScope scope = new ();
+        TedApp app = new ();
+        app.Editor.WordWrap = true;
+
+        InvokeSaveViewSettings (app);
+        Assert.True (File.Exists (scope.ConfigPath));
+        Assert.Contains ("\"EditorSettings.WordWrap\": true", File.ReadAllText (scope.ConfigPath));
+    }
+
+    [Fact]
+    public void QuitFile_DoesNotPersist_ViewSettings ()
     {
         using ConfigPathScope scope = new ();
         TedApp app = new ();
         app.Editor.WordWrap = true;
 
         Assert.True (app.QuitFile ());
-        Assert.True (File.Exists (scope.ConfigPath));
-        Assert.Contains ("\"EditorSettings.WordWrap\": true", File.ReadAllText (scope.ConfigPath));
-    }
 
-    [Fact]
-    public void PersistViewSettingsOnExit_Persists_WordWrap_Changes ()
-    {
-        using ConfigPathScope scope = new ();
-        TedApp app = new ();
-        app.Editor.WordWrap = true;
-
-        InvokePersistViewSettingsOnExit (app);
-
-        Assert.True (File.Exists (scope.ConfigPath));
-        Assert.Contains ("\"EditorSettings.WordWrap\": true", File.ReadAllText (scope.ConfigPath));
+        Assert.False (File.Exists (scope.ConfigPath));
     }
 
     private static string GetTedConfigPath ()
@@ -90,13 +89,13 @@ public class TedSettingsPersistenceTests
         return Path.Combine (baseDirectory, "ted.config.json");
     }
 
-    private static void InvokePersistViewSettingsOnExit (TedApp app)
+    private static void InvokeSaveViewSettings (TedApp app)
     {
-        MethodInfo? persistViewSettingsOnExit = typeof (TedApp).GetMethod (
-            "PersistViewSettingsOnExit",
+        MethodInfo? saveViewSettings = typeof (TedApp).GetMethod (
+            "SaveViewSettings",
             BindingFlags.Instance | BindingFlags.NonPublic);
-        Assert.NotNull (persistViewSettingsOnExit);
-        persistViewSettingsOnExit.Invoke (app, null);
+        Assert.NotNull (saveViewSettings);
+        saveViewSettings.Invoke (app, null);
     }
 
     private sealed class ConfigPathScope : IDisposable

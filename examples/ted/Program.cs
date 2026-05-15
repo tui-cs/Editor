@@ -33,6 +33,5 @@ if (!string.IsNullOrWhiteSpace (requestedPath))
 }
 
 app.Run (ted);
-ted.PersistViewSettingsOnExit ();
 
 return;

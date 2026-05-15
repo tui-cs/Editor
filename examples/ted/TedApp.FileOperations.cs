@@ -107,7 +107,6 @@ public sealed partial class TedApp
             return false;
         }
 
-        PersistViewSettingsOnExit ();
         RequestStop ();
 
         return true;

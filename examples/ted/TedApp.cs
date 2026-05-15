@@ -399,11 +399,6 @@ public sealed partial class TedApp : Window
         return on ? $"✓ {label}" : $"  {label}";
     }
 
-    internal void PersistViewSettingsOnExit ()
-    {
-        SaveViewSettings ();
-    }
-
     private void SaveViewSettings ()
     {
         EditorSettings.LineNumbers = Editor.GutterOptions.HasFlag (GutterOptions.LineNumbers);
