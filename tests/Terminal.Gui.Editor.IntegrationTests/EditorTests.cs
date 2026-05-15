@@ -154,6 +154,21 @@ public class EditorTests
     }
 
     [Fact]
+    public async Task Vertical_MultiCaret_Does_Not_Duplicate_When_Primary_Moves_Onto_Additional ()
+    {
+        await using AppFixture<EditorTestHost> fx = new (() => new ("aa\naa\naa"));
+        fx.Top.Editor.SetFocus ();
+        fx.Top.Editor.CaretOffset = 1;
+
+        fx.Injector.InjectKey (Key.CursorDown.WithAlt, Direct);
+        fx.Injector.InjectKey (Key.CursorDown.WithAlt, Direct);
+        fx.Injector.InjectKey (Key.CursorDown, Direct);
+        fx.Injector.InjectKey (Key.X, Direct);
+
+        Assert.Equal ("aa\naxa\naxa", fx.Top.Editor.Document?.Text);
+    }
+
+    [Fact]
     public async Task Typing_NUL_Does_Not_Insert ()
     {
         // Regression guard: U+0000 must be filtered out of OnKeyDownNotHandled — Rune.IsControl

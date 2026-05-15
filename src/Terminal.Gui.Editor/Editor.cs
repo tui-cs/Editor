@@ -388,6 +388,7 @@ public partial class Editor : View
         var changed = clamped != current;
         _caretAnchor = _document is null ? null : CreateCaretAnchor (clamped);
         _lastKnownCaretOffset = clamped;
+        NormalizeAdditionalCarets ();
 
         if (resetVirtualColumn)
         {
@@ -447,6 +448,7 @@ public partial class Editor : View
         }
 
         RefreshSelectionAnchorMovement ();
+        NormalizeAdditionalCarets ();
         EnsureCaretVisible ();
         SetNeedsDraw ();
     }

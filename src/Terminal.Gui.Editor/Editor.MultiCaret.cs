@@ -456,6 +456,31 @@ public partial class Editor
         SetNeedsDraw ();
     }
 
+    private void NormalizeAdditionalCarets ()
+    {
+        if (_additionalCarets.Count == 0)
+        {
+            return;
+        }
+
+        HashSet<int> seenOffsets = [CaretOffset];
+        var changed = false;
+
+        for (var i = _additionalCarets.Count - 1; i >= 0; i--)
+        {
+            if (_additionalCarets[i].CaretAnchor is not { IsDeleted: false } anchor || !seenOffsets.Add (anchor.Offset))
+            {
+                _additionalCarets.RemoveAt (i);
+                changed = true;
+            }
+        }
+
+        if (changed)
+        {
+            SetNeedsDraw ();
+        }
+    }
+
     private bool TryGetVerticalOffset (int startOffset, int delta, out int targetOffset)
     {
         targetOffset = startOffset;
