@@ -20,23 +20,15 @@ var requestedPath = args.FirstOrDefault (static arg => arg is not ("--read-only"
 
 using TedApp ted = new (readOnly);
 
-if (!string.IsNullOrWhiteSpace (requestedPath) && File.Exists (requestedPath))
+if (!string.IsNullOrWhiteSpace (requestedPath))
 {
-    ted.SetDocument (File.ReadAllText (requestedPath), requestedPath);
-}
-else
-{
-    // If running from within the repo, open TedApp.cs as the default file.
-    var repoRoot = FindRepoRoot (AppContext.BaseDirectory);
-
-    if (repoRoot is not null)
+    if (File.Exists (requestedPath))
     {
-        var tedAppPath = Path.Combine (repoRoot, "examples", "ted", "TedApp.cs");
-
-        if (File.Exists (tedAppPath))
-        {
-            ted.SetDocument (File.ReadAllText (tedAppPath), tedAppPath);
-        }
+        ted.SetDocument (File.ReadAllText (requestedPath), requestedPath);
+    }
+    else
+    {
+        ted.OpenMissingFile (requestedPath);
     }
 }
 
@@ -44,18 +36,3 @@ app.Run (ted);
 ted.PersistViewSettingsOnExit ();
 
 return;
-
-static string? FindRepoRoot (string? directory)
-{
-    while (directory is not null)
-    {
-        if (File.Exists (Path.Combine (directory, "Terminal.Gui.Editor.slnx")))
-        {
-            return directory;
-        }
-
-        directory = Path.GetDirectoryName (directory);
-    }
-
-    return null;
-}

@@ -19,6 +19,14 @@ namespace Terminal.Gui.Editor.IntegrationTests;
 /// </summary>
 public class TedAppTests
 {
+    private static void DeleteIfExists (string filePath)
+    {
+        if (File.Exists (filePath))
+        {
+            File.Delete (filePath);
+        }
+    }
+
     [Fact]
     public void NewFile_ClearsEditor_AndCurrentFilePath ()
     {
@@ -70,6 +78,27 @@ public class TedAppTests
         finally
         {
             File.Delete (filePath);
+        }
+    }
+
+    [Fact]
+    public void OpenMissingFile_SetsPath_AndMarksDocumentModified ()
+    {
+        var filePath = Path.Combine (Path.GetTempPath (), $"ted-missing-{Guid.NewGuid ():N}.txt");
+        DeleteIfExists (filePath);
+
+        try
+        {
+            TedApp app = new ();
+            app.OpenMissingFile (filePath);
+
+            Assert.Equal (filePath, app.CurrentFilePath);
+            Assert.Equal (string.Empty, app.Editor.Document!.Text);
+            Assert.True (app.IsDocumentModified);
+        }
+        finally
+        {
+            DeleteIfExists (filePath);
         }
     }
 
@@ -213,6 +242,51 @@ public class TedAppTests
         Assert.Equal ("/tmp/ted-save-on-quit.txt", savedPath);
         Assert.Equal ("after", savedText);
         Assert.False (fx.Top.IsDocumentModified);
+    }
+
+    [Fact]
+    public void QuitFile_MissingFile_DiscardChoice_DoesNotCreateFile ()
+    {
+        var filePath = Path.Combine (Path.GetTempPath (), $"ted-missing-discard-{Guid.NewGuid ():N}.txt");
+        DeleteIfExists (filePath);
+
+        try
+        {
+            TedApp app = new ();
+            app.OpenMissingFile (filePath);
+            app.ShowSaveChangesDialog = () => SaveChangesChoice.Discard;
+
+            Assert.True (app.QuitFile ());
+            Assert.False (File.Exists (filePath));
+        }
+        finally
+        {
+            DeleteIfExists (filePath);
+        }
+    }
+
+    [Fact]
+    public void QuitFile_MissingFile_SaveChoice_CreatesEmptyFile ()
+    {
+        var filePath = Path.Combine (Path.GetTempPath (), $"ted-missing-save-{Guid.NewGuid ():N}.txt");
+        DeleteIfExists (filePath);
+
+        try
+        {
+            TedApp app = new ();
+            app.OpenMissingFile (filePath);
+            app.ShowSaveChangesDialog = () => SaveChangesChoice.Save;
+
+            Assert.True (app.QuitFile ());
+
+            Assert.True (File.Exists (filePath));
+            Assert.Equal (string.Empty, File.ReadAllText (filePath));
+            Assert.False (app.IsDocumentModified);
+        }
+        finally
+        {
+            DeleteIfExists (filePath);
+        }
     }
 
     [Fact]
