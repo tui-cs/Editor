@@ -1,11 +1,15 @@
 // Claude - claude-opus-4-7
 
 using System.Drawing;
+using Terminal.Gui.Drawing;
+using Terminal.Gui.Drivers;
 using Terminal.Gui.Editor.IntegrationTests.Testing;
 using Terminal.Gui.Input;
 using Terminal.Gui.Testing;
+using Terminal.Gui.ViewBase;
 using Terminal.Gui.Editor;
 using Xunit;
+using Attribute = Terminal.Gui.Drawing.Attribute;
 
 namespace Terminal.Gui.Editor.IntegrationTests;
 
@@ -276,6 +280,173 @@ public class EditorMouseTests
         Assert.Equal (0, fx.Top.Editor.SelectionStart);
         Assert.Equal (16, fx.Top.Editor.SelectionEnd);
         Assert.Equal ("alpha\nbeta\ngamma", fx.Top.Editor.SelectedText);
+    }
+
+    [Fact]
+    public async Task CtrlClick_Above_Primary_Adds_Additional_Caret ()
+    {
+        // Bug: Ctrl+Click above the primary caret failed to add an additional caret because
+        // the drag handler (LeftButtonPressed | PositionReport) fired after the press and called
+        // ExtendCaretTo, which moved the primary caret instead of preserving the new additional caret.
+        await using AppFixture<EditorTestHost> fx = new (() => new ("alpha\nbeta\ngamma"));
+        fx.Top.Editor.SetFocus ();
+        fx.Top.Editor.CaretOffset = 12; // start of "gamma"
+
+        // Ctrl+Click on line 0, col 2 (within "alpha") — above the primary caret.
+        fx.Injector.InjectMouse (
+            new ()
+            {
+                ScreenPosition = new (2, 0),
+                Flags = MouseFlags.LeftButtonPressed | MouseFlags.Ctrl,
+                Timestamp = BaseTime
+            },
+            Direct);
+
+        // Simulate a PositionReport (micro-drag) at the same position — common during clicks.
+        fx.Injector.InjectMouse (
+            new ()
+            {
+                ScreenPosition = new (2, 0),
+                Flags = MouseFlags.LeftButtonPressed | MouseFlags.PositionReport,
+                Timestamp = BaseTime.AddMilliseconds (20)
+            },
+            Direct);
+
+        // The additional caret should exist and the primary should NOT have moved.
+        Assert.True (fx.Top.Editor.HasMultipleCarets);
+        Assert.Equal (12, fx.Top.Editor.CaretOffset);
+        Assert.Contains (2, fx.Top.Editor.AdditionalCaretOffsets);
+        Assert.False (fx.Top.Editor.HasSelection);
+    }
+
+    [Fact]
+    public async Task CtrlClick_Below_Primary_Preserves_Primary_Position ()
+    {
+        // Even clicking below should preserve the primary caret position — the drag handler
+        // was moving the primary on every Ctrl+Click.
+        await using AppFixture<EditorTestHost> fx = new (() => new ("alpha\nbeta\ngamma"));
+        fx.Top.Editor.SetFocus ();
+        fx.Top.Editor.CaretOffset = 0; // start of "alpha"
+
+        // Ctrl+Click on line 2, col 1 (within "gamma") — below the primary caret.
+        fx.Injector.InjectMouse (
+            new ()
+            {
+                ScreenPosition = new (1, 2),
+                Flags = MouseFlags.LeftButtonPressed | MouseFlags.Ctrl,
+                Timestamp = BaseTime
+            },
+            Direct);
+
+        // Simulate the drag/position-report that comes with click jitter.
+        fx.Injector.InjectMouse (
+            new ()
+            {
+                ScreenPosition = new (1, 2),
+                Flags = MouseFlags.LeftButtonPressed | MouseFlags.PositionReport,
+                Timestamp = BaseTime.AddMilliseconds (20)
+            },
+            Direct);
+
+        Assert.True (fx.Top.Editor.HasMultipleCarets);
+        Assert.Equal (0, fx.Top.Editor.CaretOffset);
+        Assert.False (fx.Top.Editor.HasSelection);
+    }
+
+    [Fact]
+    public async Task CtrlClick_First_Slash_Only_Highlights_One_Cell ()
+    {
+        // Verify that Ctrl+clicking the first '/' of "//" only applies the caret attribute to
+        // that one cell, not to adjacent characters. (The visual "bleed" some users see is a
+        // font-ligature artifact in the terminal — see README FAQ — not a Cell buffer bug.)
+        await using AppFixture<EditorTestHost> fx = new (() => new ("// comment"));
+        fx.Top.Editor.SetFocus ();
+        fx.Top.Editor.CaretOffset = 5; // primary on 'o'
+
+        // Ctrl+Click on col 0 (first '/').
+        fx.Injector.InjectMouse (
+            new ()
+            {
+                ScreenPosition = new (0, 0),
+                Flags = MouseFlags.LeftButtonPressed | MouseFlags.Ctrl,
+                Timestamp = BaseTime
+            },
+            Direct);
+
+        fx.Injector.InjectMouse (
+            new ()
+            {
+                ScreenPosition = new (0, 0),
+                Flags = MouseFlags.LeftButtonReleased,
+                Timestamp = BaseTime.AddMilliseconds (50)
+            },
+            Direct);
+
+        fx.Render ();
+
+        Assert.True (fx.Top.Editor.HasMultipleCarets);
+        Assert.Contains (0, fx.Top.Editor.AdditionalCaretOffsets);
+        Assert.Equal (5, fx.Top.Editor.CaretOffset); // primary didn't move
+
+        Attribute normal = fx.Top.Editor.GetAttributeForRole (VisualRole.Normal);
+        Attribute caretAttr = new (normal.Foreground, normal.Background, TextStyle.Underline | TextStyle.Blink);
+
+        // Cell 0 (first '/') should have the caret attribute.
+        Cell cell0 = fx.Driver.Contents![0, 0];
+        Assert.Equal ("/", cell0.Grapheme);
+        Assert.Equal (caretAttr, cell0.Attribute);
+
+        // Cell 1 (second '/') must NOT have the caret attribute.
+        Cell cell1 = fx.Driver.Contents![0, 1];
+        Assert.Equal ("/", cell1.Grapheme);
+        Assert.NotEqual (caretAttr, cell1.Attribute);
+    }
+
+    [Fact]
+    public async Task CtrlClick_First_Slash_Of_TripleSlash_Only_Highlights_One_Cell ()
+    {
+        // Same as above but for "///".
+        await using AppFixture<EditorTestHost> fx = new (() => new ("/// summary"));
+        fx.Top.Editor.SetFocus ();
+        fx.Top.Editor.CaretOffset = 5; // primary elsewhere
+
+        fx.Injector.InjectMouse (
+            new ()
+            {
+                ScreenPosition = new (0, 0),
+                Flags = MouseFlags.LeftButtonPressed | MouseFlags.Ctrl,
+                Timestamp = BaseTime
+            },
+            Direct);
+
+        fx.Injector.InjectMouse (
+            new ()
+            {
+                ScreenPosition = new (0, 0),
+                Flags = MouseFlags.LeftButtonReleased,
+                Timestamp = BaseTime.AddMilliseconds (50)
+            },
+            Direct);
+
+        fx.Render ();
+
+        Assert.True (fx.Top.Editor.HasMultipleCarets);
+        Assert.Contains (0, fx.Top.Editor.AdditionalCaretOffsets);
+
+        Attribute normal = fx.Top.Editor.GetAttributeForRole (VisualRole.Normal);
+        Attribute caretAttr = new (normal.Foreground, normal.Background, TextStyle.Underline | TextStyle.Blink);
+
+        Cell cell0 = fx.Driver.Contents![0, 0];
+        Assert.Equal ("/", cell0.Grapheme);
+        Assert.Equal (caretAttr, cell0.Attribute);
+
+        Cell cell1 = fx.Driver.Contents![0, 1];
+        Assert.Equal ("/", cell1.Grapheme);
+        Assert.NotEqual (caretAttr, cell1.Attribute);
+
+        Cell cell2 = fx.Driver.Contents![0, 2];
+        Assert.Equal ("/", cell2.Grapheme);
+        Assert.NotEqual (caretAttr, cell2.Attribute);
     }
 
     private static void InjectClick (AppFixture<EditorTestHost> fx, Point pos)
