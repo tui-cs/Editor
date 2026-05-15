@@ -188,12 +188,7 @@ internal static class EditorSettings
             if (commentStart >= 0)
             {
                 string withoutComment = line[..commentStart];
-                int lastNonWhitespace = withoutComment.Length - 1;
-
-                while (lastNonWhitespace >= 0 && char.IsWhiteSpace (withoutComment[lastNonWhitespace]))
-                {
-                    lastNonWhitespace--;
-                }
+                int lastNonWhitespace = withoutComment.TrimEnd ().Length - 1;
 
                 if (lastNonWhitespace >= 0)
                 {
