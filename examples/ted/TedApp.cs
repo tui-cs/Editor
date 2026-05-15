@@ -40,11 +40,7 @@ public sealed partial class TedApp : Window
             ShowTabs = EditorSettings.ShowTabs,
             UseThemeBackground = EditorSettings.UseThemeBackground,
             ReadOnly = readOnly,
-
-            ViewportSettings = ViewportSettingsFlags.HasScrollBars,
-
-            // Default to C# highlighting from the built-in xshd definitions.
-            HighlightingDefinition = HighlightingManager.Instance.GetDefinition ("C#")
+            ViewportSettings = ViewportSettingsFlags.HasScrollBars
         };
 
         GutterOptions initialGutter = GutterOptions.None;
@@ -122,7 +118,7 @@ public sealed partial class TedApp : Window
             }
         };
 
-        LanguageShortcut = new Shortcut (Key.Empty, "C#", null) { MouseHighlightStates = MouseState.None };
+        LanguageShortcut = new Shortcut (Key.Empty, "Plain Text", null) { MouseHighlightStates = MouseState.None };
         ShowTabsCheckBox.Value = Editor.ShowTabs ? CheckState.Checked : CheckState.UnChecked;
         PreviewCheckBox.ValueChanged += (_, e) =>
         {

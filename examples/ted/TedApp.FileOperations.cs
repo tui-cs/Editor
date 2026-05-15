@@ -52,6 +52,20 @@ public sealed partial class TedApp
         return true;
     }
 
+    /// <summary>Opens a CLI-requested missing file path as an empty, modified document bound to that path.</summary>
+    public void OpenMissingFile (string filePath)
+    {
+        if (string.IsNullOrWhiteSpace (filePath))
+        {
+            throw new ArgumentException ("Path must not be null, empty, or whitespace.", nameof (filePath));
+        }
+
+        SetDocument (string.Empty, filePath);
+        TextDocument document = Editor.Document
+            ?? throw new InvalidOperationException ("ted cannot open a missing file because the editor has no document.");
+        document.UndoStack.DiscardOriginalFileMarker ();
+    }
+
     /// <summary>Saves the editor text to the current file, or prompts for a path if the buffer is untitled.</summary>
     public bool SaveFile ()
     {
@@ -93,7 +107,6 @@ public sealed partial class TedApp
             return false;
         }
 
-        SaveViewSettings ();
         RequestStop ();
 
         return true;
@@ -173,7 +186,7 @@ public sealed partial class TedApp
             "Save changes?",
             "The document has unsaved changes. Save before quitting?",
             Strings.btnCancel,
-            "_Don't Save",
+            "Do_n't Save",
             Strings.btnSave);
 
         return result switch

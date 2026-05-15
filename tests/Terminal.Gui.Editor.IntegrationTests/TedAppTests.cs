@@ -3,7 +3,6 @@
 using System.Drawing;
 using Ted;
 using Terminal.Gui.Editor.IntegrationTests.Testing;
-using Terminal.Gui.Highlighting;
 using Terminal.Gui.Input;
 using Terminal.Gui.Text.Indentation;
 using Terminal.Gui.Testing;
@@ -19,6 +18,14 @@ namespace Terminal.Gui.Editor.IntegrationTests;
 /// </summary>
 public class TedAppTests
 {
+    private static void DeleteIfExists (string filePath)
+    {
+        if (File.Exists (filePath))
+        {
+            File.Delete (filePath);
+        }
+    }
+
     [Fact]
     public void NewFile_ClearsEditor_AndCurrentFilePath ()
     {
@@ -70,6 +77,27 @@ public class TedAppTests
         finally
         {
             File.Delete (filePath);
+        }
+    }
+
+    [Fact]
+    public void OpenMissingFile_SetsPath_AndMarksDocumentModified ()
+    {
+        var filePath = Path.Combine (Path.GetTempPath (), $"ted-missing-{Guid.NewGuid ():N}.txt");
+        DeleteIfExists (filePath);
+
+        try
+        {
+            TedApp app = new ();
+            app.OpenMissingFile (filePath);
+
+            Assert.Equal (filePath, app.CurrentFilePath);
+            Assert.Equal (string.Empty, app.Editor.Document!.Text);
+            Assert.True (app.IsDocumentModified);
+        }
+        finally
+        {
+            DeleteIfExists (filePath);
         }
     }
 
@@ -216,6 +244,51 @@ public class TedAppTests
     }
 
     [Fact]
+    public void QuitFile_MissingFile_DiscardChoice_DoesNotCreateFile ()
+    {
+        var filePath = Path.Combine (Path.GetTempPath (), $"ted-missing-discard-{Guid.NewGuid ():N}.txt");
+        DeleteIfExists (filePath);
+
+        try
+        {
+            TedApp app = new ();
+            app.OpenMissingFile (filePath);
+            app.ShowSaveChangesDialog = () => SaveChangesChoice.Discard;
+
+            Assert.True (app.QuitFile ());
+            Assert.False (File.Exists (filePath));
+        }
+        finally
+        {
+            DeleteIfExists (filePath);
+        }
+    }
+
+    [Fact]
+    public void QuitFile_MissingFile_SaveChoice_CreatesEmptyFile ()
+    {
+        var filePath = Path.Combine (Path.GetTempPath (), $"ted-missing-save-{Guid.NewGuid ():N}.txt");
+        DeleteIfExists (filePath);
+
+        try
+        {
+            TedApp app = new ();
+            app.OpenMissingFile (filePath);
+            app.ShowSaveChangesDialog = () => SaveChangesChoice.Save;
+
+            Assert.True (app.QuitFile ());
+
+            Assert.True (File.Exists (filePath));
+            Assert.Equal (string.Empty, File.ReadAllText (filePath));
+            Assert.False (app.IsDocumentModified);
+        }
+        finally
+        {
+            DeleteIfExists (filePath);
+        }
+    }
+
+    [Fact]
     public async Task Renders_FileMenu_Header ()
     {
         await using AppFixture<TedApp> fx = new (() => new TedApp ());
@@ -240,18 +313,32 @@ public class TedAppTests
     }
 
     [Fact]
-    public async Task Highlighting_Auto_Detects_From_File_Extension ()
+    public async Task Constructor_Defaults_To_Plain_Text_Highlighting ()
     {
         await using AppFixture<TedApp> fx = new (() => new TedApp ());
 
-        // Default is C# (set in constructor).
-        Assert.NotNull (fx.Top.Editor.HighlightingDefinition);
-        Assert.Equal ("C#", fx.Top.Editor.HighlightingDefinition!.Name);
+        Assert.Null (fx.Top.Editor.HighlightingDefinition);
+        Assert.Equal ("Plain Text", fx.Top.LanguageShortcut.Title);
+    }
 
-        // Switching to XML highlighting works.
-        fx.Top.Editor.HighlightingDefinition = HighlightingManager.Instance.GetDefinitionByExtension (".xml");
-        Assert.NotNull (fx.Top.Editor.HighlightingDefinition);
-        Assert.Equal ("XML", fx.Top.Editor.HighlightingDefinition!.Name);
+    [Fact]
+    public async Task Highlighting_Auto_Detects_From_File_Extension ()
+    {
+        var tempXmlFilePath = Path.Combine (Path.GetTempPath (), $"ted-highlight-{Guid.NewGuid ():N}.xml");
+
+        try
+        {
+            await using AppFixture<TedApp> fx = new (() => new TedApp ());
+            fx.Top.OpenMissingFile (tempXmlFilePath);
+
+            Assert.NotNull (fx.Top.Editor.HighlightingDefinition);
+            Assert.Equal ("XML", fx.Top.Editor.HighlightingDefinition!.Name);
+            Assert.Equal ("XML", fx.Top.LanguageShortcut.Title);
+        }
+        finally
+        {
+            DeleteIfExists (tempXmlFilePath);
+        }
     }
 
     [Fact]

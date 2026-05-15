@@ -105,7 +105,7 @@ internal sealed class EditorSettingsDialog : Dialog
 
     internal void ApplyTo (Editor editor)
     {
-        editor.IndentationSize = _indentSize.Value;
+        editor.IndentationSize = Math.Max (1, _indentSize.Value);
         editor.ConvertTabsToSpaces = _convertTabsCheck.Value == CheckState.Checked;
         editor.IndentationStrategy = _autoIndentCheck.Value == CheckState.Checked
             ? new DefaultIndentationStrategy ()

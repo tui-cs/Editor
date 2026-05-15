@@ -87,7 +87,7 @@ internal static class EditorSettings
 
                 if (lastBrace >= 0)
                 {
-                    int insertCommaAfter = FindLastJsonTokenPosition (text, lastBrace);
+                    int insertCommaAfter = FindLastObjectMemberCharacterPosition (text, lastBrace);
 
                     if (insertCommaAfter >= 0 && text[insertCommaAfter] != ',' && text[insertCommaAfter] != '{')
                     {
@@ -157,7 +157,7 @@ internal static class EditorSettings
         return value ? "true" : "false";
     }
 
-    private static int FindLastJsonTokenPosition (string text, int braceIndex)
+    private static int FindLastObjectMemberCharacterPosition (string text, int braceIndex)
     {
         int i = braceIndex - 1;
 
@@ -173,10 +173,28 @@ internal static class EditorSettings
             }
 
             int lineStart = text.LastIndexOf ('\n', i) + 1;
-            string line = text[lineStart..(i + 1)].TrimStart ();
+            string line = text[lineStart..(i + 1)];
+            string trimmedLine = line.TrimStart ();
 
-            if (line.StartsWith ("//", StringComparison.Ordinal))
+            if (trimmedLine.StartsWith ("//", StringComparison.Ordinal))
             {
+                i = lineStart - 1;
+
+                continue;
+            }
+
+            int commentStart = line.IndexOf ("//", StringComparison.Ordinal);
+
+            if (commentStart >= 0)
+            {
+                string withoutComment = line[..commentStart];
+                int lastNonWhitespace = withoutComment.TrimEnd ().Length - 1;
+
+                if (lastNonWhitespace >= 0)
+                {
+                    return lineStart + lastNonWhitespace;
+                }
+
                 i = lineStart - 1;
 
                 continue;
