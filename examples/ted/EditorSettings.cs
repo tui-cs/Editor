@@ -175,14 +175,21 @@ internal static class EditorSettings
 
     private static bool ReadBool (string json, string key, bool defaultValue)
     {
-        Match m = Regex.Match (json, $@"""{Regex.Escape (key)}""\s*:\s*(?<v>true|false)", RegexOptions.IgnoreCase);
+        // Anchor to start-of-line and require no leading "//" to skip JSONC comments
+        Match m = Regex.Match (
+            json,
+            $@"^(?!\s*//).*""{Regex.Escape (key)}""\s*:\s*(?<v>true|false)",
+            RegexOptions.IgnoreCase | RegexOptions.Multiline);
 
         return m.Success ? string.Equals (m.Groups["v"].Value, "true", StringComparison.OrdinalIgnoreCase) : defaultValue;
     }
 
     private static int ReadInt (string json, string key, int defaultValue)
     {
-        Match m = Regex.Match (json, $@"""{Regex.Escape (key)}""\s*:\s*(?<v>-?\d+)");
+        Match m = Regex.Match (
+            json,
+            $@"^(?!\s*//).*""{Regex.Escape (key)}""\s*:\s*(?<v>-?\d+)",
+            RegexOptions.Multiline);
 
         return m.Success && int.TryParse (m.Groups["v"].Value, out int v) ? v : defaultValue;
     }

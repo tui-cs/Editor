@@ -91,6 +91,32 @@ public class TedSettingsPersistenceTests
     }
 
     [Fact]
+    public void Load_Skips_Commented_Out_Settings ()
+    {
+        using ConfigPathScope scope = new ();
+
+        string? dir = Path.GetDirectoryName (scope.ConfigPath);
+        Assert.NotNull (dir);
+        Directory.CreateDirectory (dir);
+        File.WriteAllText (
+            scope.ConfigPath,
+            """
+            {
+              // "EditorSettings.WordWrap": true,
+              "EditorSettings.WordWrap": false,
+              // "EditorSettings.IndentSize": 99,
+              "EditorSettings.IndentSize": 3
+            }
+            """);
+
+        EditorSettings.Load (scope.ConfigPath);
+        TedApp app = new ();
+
+        Assert.False (app.Editor.WordWrap, "Should use active value (false), not commented value (true)");
+        Assert.Equal (3, app.Editor.IndentationSize);
+    }
+
+    [Fact]
     public async Task ViewMenu_WordWrap_Toggle_Creates_ConfigFile ()
     {
         using ConfigPathScope scope = new ();
