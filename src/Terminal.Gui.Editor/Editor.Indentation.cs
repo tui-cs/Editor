@@ -17,6 +17,11 @@ public partial class Editor
             return true;
         }
 
+        if (HasMultipleCarets)
+        {
+            return MultiCaretInsertTab ();
+        }
+
         if (HasSelection && SelectionSpansMultipleLines ())
         {
             IndentSelectedLines ();

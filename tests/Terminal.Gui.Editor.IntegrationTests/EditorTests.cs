@@ -1,5 +1,6 @@
 // Claude - claude-opus-4-7
 
+using Terminal.Gui.Drivers;
 using Terminal.Gui.Editor.IntegrationTests.Testing;
 using Terminal.Gui.Input;
 using Terminal.Gui.Testing;
@@ -301,5 +302,186 @@ public class EditorTests
 
         Assert.Equal (0, fx.Top.Editor.Viewport.Y);
         DriverAssert.ContentsContains (fx.Driver, "line-00");
+    }
+
+    // ---------------------------------------------------------------------------------------------
+    // Vertical multi-caret (specs/vertical-multi-caret/spec.md). Ported from the PR #125 test set,
+    // re-keyed to the VS Code chords: Ctrl+Alt+Up/Down for add-caret-above/below. These are the
+    // executable contract; they fail on a tip-of-develop baseline and pass after the implementation.
+    // ---------------------------------------------------------------------------------------------
+
+    [Fact]
+    public async Task CtrlAltDown_Adds_Vertically_Aligned_Carets ()
+    {
+        await using AppFixture<EditorTestHost> fx = new (() => new ("longer line\nshrt\nanother line"));
+        fx.Top.Editor.SetFocus ();
+        fx.Top.Editor.CaretOffset = 8;
+
+        fx.Injector.InjectKey (Key.CursorDown.WithCtrl.WithAlt, Direct);
+        fx.Injector.InjectKey (Key.CursorDown.WithCtrl.WithAlt, Direct);
+
+        Assert.Equal (8, fx.Top.Editor.CaretOffset);
+        Assert.True (fx.Top.Editor.HasMultipleCarets);
+        Assert.Equal (2, fx.Top.Editor.AdditionalCaretOffsets.Count);
+        Assert.Contains (16, fx.Top.Editor.AdditionalCaretOffsets);
+        Assert.Contains (25, fx.Top.Editor.AdditionalCaretOffsets);
+    }
+
+    [Fact]
+    public async Task CtrlAltUp_Adds_Caret_On_Line_Above ()
+    {
+        await using AppFixture<EditorTestHost> fx = new (() => new ("abcd\nabcd\nabcd"));
+        fx.Top.Editor.SetFocus ();
+        fx.Top.Editor.CaretOffset = 11;
+
+        fx.Injector.InjectKey (Key.CursorUp.WithCtrl.WithAlt, Direct);
+        fx.Injector.InjectKey (Key.CursorUp.WithCtrl.WithAlt, Direct);
+
+        // A third Ctrl+Alt+Up is past line 1 — a no-op, not a throw and not an extra caret.
+        fx.Injector.InjectKey (Key.CursorUp.WithCtrl.WithAlt, Direct);
+
+        Assert.Equal (11, fx.Top.Editor.CaretOffset);
+        Assert.True (fx.Top.Editor.HasMultipleCarets);
+        Assert.Equal (2, fx.Top.Editor.AdditionalCaretOffsets.Count);
+        Assert.Contains (6, fx.Top.Editor.AdditionalCaretOffsets);
+        Assert.Contains (1, fx.Top.Editor.AdditionalCaretOffsets);
+    }
+
+    [Fact]
+    public async Task CtrlAltDown_Preserves_Exact_Column_On_Next_Long_Line_After_Short_Line ()
+    {
+        await using AppFixture<EditorTestHost> fx = new (() => new ("abcde\nx\nabcde"));
+        fx.Top.Editor.SetFocus ();
+        fx.Top.Editor.CaretOffset = 4;
+
+        fx.Injector.InjectKey (Key.CursorDown.WithCtrl.WithAlt, Direct);
+        fx.Injector.InjectKey (Key.CursorDown.WithCtrl.WithAlt, Direct);
+
+        Assert.Contains ("abcde\nx\nabcd".Length, fx.Top.Editor.AdditionalCaretOffsets);
+    }
+
+    [Fact]
+    public async Task CtrlAltDown_Preserves_Column_With_Tabs ()
+    {
+        await using AppFixture<EditorTestHost> fx = new (() => new ("a\tbcde\na\tbcde\na\tbcde"));
+        fx.Top.Editor.SetFocus ();
+        fx.Top.Editor.CaretOffset = 3;
+
+        fx.Injector.InjectKey (Key.CursorDown.WithCtrl.WithAlt, Direct);
+        fx.Injector.InjectKey (Key.CursorDown.WithCtrl.WithAlt, Direct);
+
+        Assert.Contains ("a\tbcde\n".Length + 3, fx.Top.Editor.AdditionalCaretOffsets);
+        Assert.Contains ("a\tbcde\na\tbcde\n".Length + 3, fx.Top.Editor.AdditionalCaretOffsets);
+    }
+
+    [Fact]
+    public async Task Esc_Dismisses_MultiCaret_And_Down_Can_Move_Past_Previous_Block ()
+    {
+        await using AppFixture<EditorTestHost> fx = new (() => new ("abcd\nabcd\nabcd\nabcd"));
+        fx.Top.Editor.SetFocus ();
+        fx.Top.Editor.CaretOffset = 1;
+
+        fx.Injector.InjectKey (Key.CursorDown.WithCtrl.WithAlt, Direct);
+        fx.Injector.InjectKey (Key.CursorDown.WithCtrl.WithAlt, Direct);
+        fx.Injector.InjectKey (Key.Esc, Direct);
+
+        Assert.False (fx.Top.Editor.HasMultipleCarets);
+        Assert.Equal (1, fx.Top.Editor.CaretOffset);
+
+        fx.Injector.InjectKey (Key.CursorDown, Direct);
+        fx.Injector.InjectKey (Key.CursorDown, Direct);
+        fx.Injector.InjectKey (Key.CursorDown, Direct);
+
+        Assert.Equal ("abcd\nabcd\nabcd\n".Length + 1, fx.Top.Editor.CaretOffset);
+    }
+
+    [Fact]
+    public async Task Esc_After_Moving_Within_MultiCaret_Allows_Moving_Below_Last_Former_Multi ()
+    {
+        await using AppFixture<EditorTestHost> fx = new (() => new ("abcd\nabcd\nabcd\nabcd"));
+        fx.Top.Editor.SetFocus ();
+        fx.Top.Editor.CaretOffset = 1;
+
+        fx.Injector.InjectKey (Key.CursorDown.WithCtrl.WithAlt, Direct);
+        fx.Injector.InjectKey (Key.CursorDown.WithCtrl.WithAlt, Direct);
+        fx.Injector.InjectKey (Key.CursorDown, Direct);
+        fx.Injector.InjectKey (Key.CursorDown, Direct);
+        fx.Injector.InjectKey (Key.Esc, Direct);
+        fx.Injector.InjectKey (Key.CursorDown, Direct);
+
+        Assert.Equal ("abcd\nabcd\nabcd\n".Length + 1, fx.Top.Editor.CaretOffset);
+    }
+
+    [Fact]
+    public async Task Vertical_MultiCaret_Does_Not_Duplicate_When_Primary_Moves_Onto_Additional ()
+    {
+        await using AppFixture<EditorTestHost> fx = new (() => new ("aa\naa\naa"));
+        fx.Top.Editor.SetFocus ();
+        fx.Top.Editor.CaretOffset = 1;
+
+        fx.Injector.InjectKey (Key.CursorDown.WithCtrl.WithAlt, Direct);
+        fx.Injector.InjectKey (Key.CursorDown.WithCtrl.WithAlt, Direct);
+        fx.Injector.InjectKey (Key.CursorDown, Direct);
+        fx.Injector.InjectKey (Key.X, Direct);
+
+        Assert.Equal ("aa\naxa\naxa", fx.Top.Editor.Document?.Text);
+    }
+
+    [Fact]
+    public async Task Tab_Inserts_At_All_Carets ()
+    {
+        await using AppFixture<EditorTestHost> fx = new (() => new ("ab\nab\nab"));
+        fx.Top.Editor.SetFocus ();
+        fx.Top.Editor.CaretOffset = 1;
+
+        fx.Injector.InjectKey (Key.CursorDown.WithCtrl.WithAlt, Direct);
+        fx.Injector.InjectKey (Key.CursorDown.WithCtrl.WithAlt, Direct);
+        fx.Injector.InjectKey (Key.Tab, Direct);
+
+        Assert.Equal ("a\tb\na\tb\na\tb", fx.Top.Editor.Document?.Text);
+    }
+
+    [Fact]
+    public async Task Tab_Twice_Inserts_Consistently_At_All_Vertical_Carets_With_Spaces ()
+    {
+        await using AppFixture<EditorTestHost> fx =
+            new (() => new ("using Ted;\nusing Terminal.Gui.App;\nusing Terminal.Gui.Configuration;"));
+        fx.Top.Editor.SetFocus ();
+        fx.Top.Editor.ConvertTabsToSpaces = true;
+        fx.Top.Editor.CaretOffset = "using".Length;
+
+        fx.Injector.InjectKey (Key.CursorDown.WithCtrl.WithAlt, Direct);
+        fx.Injector.InjectKey (Key.CursorDown.WithCtrl.WithAlt, Direct);
+        fx.Injector.InjectKey (Key.Tab, Direct);
+
+        Assert.Equal (
+            "using    Ted;\nusing    Terminal.Gui.App;\nusing    Terminal.Gui.Configuration;",
+            fx.Top.Editor.Document?.Text);
+
+        fx.Injector.InjectKey (Key.Tab, Direct);
+
+        Assert.Equal (
+            "using        Ted;\nusing        Terminal.Gui.App;\nusing        Terminal.Gui.Configuration;",
+            fx.Top.Editor.Document?.Text);
+    }
+
+    [Fact]
+    public async Task Primary_Caret_Is_Visible_After_Exiting_MultiCaret ()
+    {
+        await using AppFixture<EditorTestHost> fx = new (() => new ("abcd\nabcd\nabcd\nabcd"));
+        fx.Top.Editor.SetFocus ();
+        fx.Top.Editor.CaretOffset = 1;
+
+        fx.Injector.InjectKey (Key.CursorDown.WithCtrl.WithAlt, Direct);
+        fx.Injector.InjectKey (Key.CursorDown.WithCtrl.WithAlt, Direct);
+        fx.Injector.InjectKey (Key.Esc, Direct);
+        fx.Render ();
+
+        Assert.False (fx.Top.Editor.HasMultipleCarets);
+        Assert.Equal (1, fx.Top.Editor.CaretOffset);
+
+        // The primary caret is the terminal cursor. After dismissing the block it must still be
+        // drawn (visible, not the hidden default cursor) and positioned on the primary offset.
+        Assert.Equal (CursorStyle.BlinkingBar, fx.Top.Editor.Cursor.Style);
     }
 }

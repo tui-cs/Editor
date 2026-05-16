@@ -7,7 +7,12 @@ Place multiple carets in the document and type, delete, or press Enter at all of
 | Action | Effect |
 |---|---|
 | **Ctrl+Click** | Toggle an additional caret at the clicked position. Click an existing additional caret to remove it. |
+| **Ctrl+Alt+↑** | Add a caret on the line above the topmost caret, at the sticky visual column (VS Code parity). |
+| **Ctrl+Alt+↓** | Add a caret on the line below the bottommost caret, at the sticky visual column (VS Code parity). |
+| **Shift+Alt + drag** | Build a vertical column of carets from the press row through the drag row at the press column (carets only). |
 | **Escape** | Collapse back to the primary caret (clears all additional carets). |
+
+`Ctrl+Alt+↑/↓` track a *sticky visual column*: a short or tab-indented intervening line doesn't lose the column — the next long-enough line restores it. The chords are configurable per platform via `Editor.DefaultKeyBindings`; a terminal or window manager that grabs `Ctrl+Alt+arrow` is handled by remapping in config, not a separate built-in chord.
 
 The primary caret (the one controlled by normal navigation keys) is never removed by Ctrl+Click.
 
@@ -46,4 +51,5 @@ Additional carets are backed by `TextAnchor` instances, so they track insertions
 
 - Selection is not yet per-caret; only the primary caret carries a selection.
 - Find/Replace operates on the primary caret only.
-- Ctrl+Click is the only gesture for adding carets; column-select (Alt+Shift+Arrow) is planned.
+- `Shift+Alt`+drag produces a column of *carets*, not a column *selection*. To replace a column, drag to place the carets, then `Shift+→`/`←` to grow each caret's selection, then type. Per-row column selection during the drag is the planned follow-up.
+- Toggling Word Wrap while a vertical block is live dismisses the block.

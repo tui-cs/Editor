@@ -44,6 +44,21 @@ This page lists all default keyboard shortcuts. All shortcuts are `Command`-boun
 | `Tab` | Indent line / indent selected lines |
 | `Shift+Tab` | Un-indent line / un-indent selected lines |
 
+## Multi-Caret
+
+| Key | Action |
+|---|---|
+| `Ctrl+Click` | Toggle an additional caret at the clicked position |
+| `Ctrl+Alt+↑` | Add a caret on the line above (at the sticky column) — VS Code parity |
+| `Ctrl+Alt+↓` | Add a caret on the line below (at the sticky column) — VS Code parity |
+| `Shift+Alt`+drag | Build a vertical column of carets from the press row to the drag row (carets only) |
+| `Tab` / `Shift+Tab` | Indent / un-indent at every caret (one undo step) |
+| `Esc` | Collapse back to the primary caret |
+
+`Ctrl+Alt+↑/↓` and the `Shift+Alt`+drag modifier are configurable per platform via
+`Terminal.Gui.Editor.Editor.DefaultKeyBindings` (see *Remapping shortcuts* below) — there is no
+separate built-in fallback chord for terminals/WMs that grab `Ctrl+Alt+arrow`.
+
 ## Clipboard
 
 | Key | Action |

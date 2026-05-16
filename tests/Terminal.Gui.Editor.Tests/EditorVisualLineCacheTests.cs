@@ -69,6 +69,25 @@ public class EditorVisualLineCacheTests
     }
 
     [Fact]
+    public void Same_Line_Count_Edit_Drops_Downstream_Entries_Whose_Offsets_Shifted ()
+    {
+        Editor editor = new () { Document = new TextDocument ("alpha\nbeta\ngamma") };
+        ForceCachePopulation (editor);
+        CellVisualLine line3Before = ReadCache (editor, 3)!;
+
+        // Insert on line 1 with NO newline: line numbers are unchanged, but every line after the
+        // edit shifts by 3 absolute offsets. A cached visual line for line 3 still carries the
+        // pre-edit absolute element offsets, so it must be dropped even though lineDelta == 0.
+        // This is the visual-line cache defect the "Tab twice with spaces" scenario exposes.
+        editor.Document!.Insert (2, "XYZ");
+
+        CellVisualLine? line3After = ReadCache (editor, 3);
+        Assert.False (ReferenceEquals (line3Before, line3After),
+            "Downstream cache entries must be dropped when an edit shifts their absolute offsets, "
+            + "even with no net newline change (specs/vertical-multi-caret 'Cache invalidation on offset shift').");
+    }
+
+    [Fact]
     public void IndentationSize_Change_Drops_Stale_Cached_Lines ()
     {
         Editor editor = new () { Document = new TextDocument ("\talpha\n\tbeta") };

@@ -105,3 +105,23 @@ Decisions are recorded here when an open question from the plan is resolved. Eac
 **Rationale**: Matches VS Code's default behavior with `editor.wrappingIndent: "none"`. Simplifies implementation — no need to compute or track the original line's indentation level for each wrap segment. Revisit in a future version if users need indented continuation lines.
 
 **Date**: 2026-05-13
+
+---
+
+### DEC-006: Vertical multi-caret keybindings (VS Code parity, no fallback chord)
+
+**Decision**: Vertical multi-caret uses the VS Code chords — `Ctrl+Alt+CursorUp` / `Ctrl+Alt+CursorDown` for add-caret-above/below and `Shift+Alt + LeftButton` drag for the column-of-carets gesture (carets only; per-row selection is a follow-up). The keys ship as a `[ConfigurationProperty]` `PlatformKeyBinding` entry in `Editor.DefaultKeyBindings`; there is **no** editor-specific fallback chord. Users whose terminal/WM grabs the chord override it through `View.ViewKeyBindings` config like any other binding. Because TG's `Command` enum (consumed via the pinned `Terminal.Gui` package) has no vertical-multi-caret slot, the two commands are registered as Editor-local `Command` ids (`(Command) 1001` / `1002`) via `AddCommand` and bound through the same configurable path as every other Editor binding — not an inline `if` in `OnKeyDownNotHandled`.
+
+**Rationale**: Matches `specs/vertical-multi-caret/spec.md` Resolved Decisions (2026-05-15). VS Code parity preserves muscle memory; the TG-standard `[ConfigurationProperty]` + `PlatformKeyBinding` mechanism makes the chord fully user-overridable without bespoke editor knobs. Upstream follow-up: TG should reserve a documented view-local `Command` range so consumers don't pick magic ints — filed as a TG issue per Constitution tenet "This Is TG" (workarounds require a great TG issue).
+
+**Date**: 2026-05-16
+
+---
+
+### DEC-007: `ClearAdditionalCarets` stays `public`
+
+**Decision**: `Editor.ClearAdditionalCarets ()` remains `public` (resolves spec Open Decision "ClearAdditionalCarets visibility").
+
+**Rationale**: It is already shipped multi-caret API documented in `specs/public-api.md`, and `Editor` itself is a `src/` consumer (Esc handler, plain-click handler, the `Shift+Alt` column-drag reset). R9 requires a `src/`/`examples/` consumer (tests don't count) — that bar is met, so demoting to `internal` would be a gratuitous breaking change to documented surface.
+
+**Date**: 2026-05-16

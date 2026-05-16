@@ -1,3 +1,4 @@
+using System.Drawing;
 using Terminal.Gui.Document;
 
 namespace Terminal.Gui.Editor;
@@ -23,8 +24,10 @@ public partial class Editor
     public bool HasMultipleCarets => _additionalCarets.Count > 0;
 
     /// <summary>
-    ///     Adds an additional caret at the given <paramref name="offset" />. If a caret already exists
-    ///     within tolerance (same offset), it is removed instead (toggle behavior for Ctrl+Click).
+    ///     Adds an additional caret at the given <paramref name="offset" />, or removes the one
+    ///     already there (toggle behavior for Ctrl+Click). The add path goes through
+    ///     <see cref="AddAdditionalCaretAt" />; the toggle-off is an explicit, user-driven single
+    ///     removal. The primary caret is never removed.
     /// </summary>
     public void ToggleCaretAt (int offset)
     {
@@ -35,40 +38,193 @@ public partial class Editor
 
         offset = Math.Clamp (offset, 0, _document.TextLength);
 
-        // If clicking on the primary caret, ignore — we never remove the primary.
         if (offset == CaretOffset)
         {
             return;
         }
 
-        // Check if there's already an additional caret at this offset — remove it if so.
         for (var i = _additionalCarets.Count - 1; i >= 0; i--)
         {
-            if (_additionalCarets[i].CaretAnchor is { IsDeleted: false } anchor && anchor.Offset == offset)
+            if (_additionalCarets[i].CaretAnchor is not { IsDeleted: false } anchor || anchor.Offset != offset)
             {
-                _additionalCarets.RemoveAt (i);
-                SetNeedsDraw ();
+                continue;
+            }
 
+            _additionalCarets.RemoveAt (i);
+            SetNeedsDraw ();
+
+            return;
+        }
+
+        AddAdditionalCaretAt (offset);
+    }
+
+    /// <summary>
+    ///     Adds one additional caret at <paramref name="offset" />. The single add path that
+    ///     mutates <see cref="_additionalCarets" />: it never duplicates the primary and never
+    ///     stacks two additional carets on one offset, so the caret set is deduped by construction
+    ///     rather than normalized after the fact.
+    /// </summary>
+    private void AddAdditionalCaretAt (int offset)
+    {
+        if (_document is null)
+        {
+            return;
+        }
+
+        offset = Math.Clamp (offset, 0, _document.TextLength);
+
+        if (offset == CaretOffset)
+        {
+            return;
+        }
+
+        foreach (CaretInfo caret in _additionalCarets)
+        {
+            if (caret.CaretAnchor is { IsDeleted: false } anchor && anchor.Offset == offset)
+            {
                 return;
             }
         }
 
-        // Add a new additional caret.
-        TextAnchor caretAnchor = CreateCaretAnchor (offset);
-        _additionalCarets.Add (new CaretInfo { CaretAnchor = caretAnchor });
+        _additionalCarets.Add (new CaretInfo { CaretAnchor = CreateCaretAnchor (offset) });
         SetNeedsDraw ();
     }
 
-    /// <summary>Removes all additional carets, leaving only the primary.</summary>
-    public void ClearAdditionalCarets ()
+    /// <summary>
+    ///     Re-establishes the multi-caret invariant: drops any additional caret whose anchor was
+    ///     deleted, any that coincides with the primary, and collapses duplicates at the same
+    ///     offset. Called after every primary-caret move and every document change (before the
+    ///     next edit applies) — the single invariant-trim path that mutates
+    ///     <see cref="_additionalCarets" />.
+    /// </summary>
+    private void NormalizeAdditionalCarets ()
     {
         if (_additionalCarets.Count == 0)
         {
             return;
         }
 
-        _additionalCarets.Clear ();
+        HashSet<int> seen = [CaretOffset];
+        var removed = false;
+
+        for (var i = _additionalCarets.Count - 1; i >= 0; i--)
+        {
+            if (_additionalCarets[i].CaretAnchor is { IsDeleted: false } anchor && seen.Add (anchor.Offset))
+            {
+                continue;
+            }
+
+            _additionalCarets.RemoveAt (i);
+            removed = true;
+        }
+
+        if (removed)
+        {
+            SetNeedsDraw ();
+        }
+    }
+
+    /// <summary>
+    ///     Extends the vertical caret block one line above (<paramref name="delta" /> &lt; 0) the
+    ///     topmost caret or below (&gt; 0) the bottommost, landing on the sticky visual column.
+    ///     Crossing the top/bottom document bound is a no-op. Bound to
+    ///     <c>Ctrl+Alt+CursorUp</c> / <c>Ctrl+Alt+CursorDown</c> via the configurable
+    ///     <see cref="DefaultKeyBindings" />.
+    /// </summary>
+    private bool? AddCaretVertically (int delta)
+    {
+        if (_document is null)
+        {
+            return true;
+        }
+
+        // The sticky column is captured once, when the block is first created, from the primary
+        // caret's column — then preserved across extensions (single-caret virtual-column
+        // behavior, reused rather than re-derived).
+        if (!HasMultipleCarets)
+        {
+            _virtualCaretColumn = GetVisualColumnForOffset (CaretOffset);
+        }
+
+        // Reference = the extreme caret in the requested direction: topmost for up, bottommost
+        // for down. The block grows past that edge.
+        var reference = CaretOffset;
+
+        foreach (var offset in AdditionalCaretOffsets)
+        {
+            reference = delta < 0 ? Math.Min (reference, offset) : Math.Max (reference, offset);
+        }
+
+        if (TryGetVerticalOffset (reference, delta, _virtualCaretColumn, out var target))
+        {
+            AddAdditionalCaretAt (target);
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    ///     Builds a column of carets from the <paramref name="anchorViewRow" /> (which hosts the
+    ///     primary) through the <paramref name="activeViewRow" />, all at
+    ///     <paramref name="viewColumn" />. Used by the <c>Shift+Alt</c> column-drag. Rebuilt from
+    ///     scratch on every drag event so the end state is identical to a single press at the
+    ///     final position.
+    /// </summary>
+    private void SetVerticalCaretsFromViewRows (int anchorViewRow, int activeViewRow, int viewColumn)
+    {
+        if (_document is null)
+        {
+            return;
+        }
+
+        var primaryOffset = MousePositionToOffset (new Point (viewColumn, anchorViewRow));
+
+        ClearSelection ();
+        ClearAdditionalCarets ();
+
+        // The CaretOffset setter resets the sticky column from the anchor row's primary.
+        CaretOffset = primaryOffset;
+
+        var top = Math.Min (anchorViewRow, activeViewRow);
+        var bottom = Math.Max (anchorViewRow, activeViewRow);
+
+        for (var row = top; row <= bottom; row++)
+        {
+            if (row == anchorViewRow)
+            {
+                continue;
+            }
+
+            AddAdditionalCaretAt (MousePositionToOffset (new Point (viewColumn, row)));
+        }
+
         SetNeedsDraw ();
+    }
+
+    /// <summary>Removes all additional carets, leaving only the primary.</summary>
+    public void ClearAdditionalCarets ()
+    {
+        var had = _additionalCarets.Count > 0;
+
+        if (had)
+        {
+            _additionalCarets.Clear ();
+        }
+
+        // Refresh the sticky virtual column to the primary's current column so vertical
+        // navigation resumes freely from where the primary actually is — not wherever the
+        // dismissed block left it. (specs/vertical-multi-caret: "Esc clears multi-caret and
+        // refreshes sticky column".)
+        if (_document is not null)
+        {
+            _virtualCaretColumn = GetCaretColumn ();
+        }
+
+        if (had)
+        {
+            SetNeedsDraw ();
+        }
     }
 
     /// <summary>
@@ -350,6 +506,57 @@ public partial class Editor
                         caretStrategy.IndentLine (_document, newLine);
                     }
                 }
+            }
+        }
+
+        ClearAdditionalCaretSelections ();
+
+        return true;
+    }
+
+    /// <summary>
+    ///     Inserts a tab (or its space expansion) at every caret in one undo scope. Each caret's
+    ///     insertion text is computed from <em>that caret's</em> own visual column via
+    ///     <see cref="GetTabInsertionText" />, so every caret advances to the same next tab stop
+    ///     and the column stays aligned across repeated presses. Carets are processed in
+    ///     descending offset order so an earlier (higher) edit doesn't shift a not-yet-processed
+    ///     offset. Caller (<see cref="InsertTab" />) guarantees a non-null, writable document and
+    ///     <see cref="HasMultipleCarets" />.
+    /// </summary>
+    private bool MultiCaretInsertTab ()
+    {
+        using (_document!.RunUpdate ())
+        {
+            foreach (CaretEditInfo caret in GetAllCaretsDescending ())
+            {
+                if (caret.IsPrimary)
+                {
+                    if (HasSelection)
+                    {
+                        ReplaceSelection (GetTabInsertionText (SelectionStart));
+                    }
+                    else
+                    {
+                        _document.Insert (CaretOffset, GetTabInsertionText (CaretOffset));
+                    }
+
+                    continue;
+                }
+
+                if (caret.SelectionAnchor is { IsDeleted: false } selAnchor)
+                {
+                    var selStart = Math.Min (selAnchor.Offset, caret.Offset);
+                    var selEnd = Math.Max (selAnchor.Offset, caret.Offset);
+
+                    if (selEnd > selStart)
+                    {
+                        _document.Replace (selStart, selEnd - selStart, GetTabInsertionText (selStart));
+
+                        continue;
+                    }
+                }
+
+                _document.Insert (caret.Offset, GetTabInsertionText (caret.Offset));
             }
         }
 

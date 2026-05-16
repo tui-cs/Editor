@@ -1,4 +1,4 @@
-<![CDATA[# Feature Specification: Vertical Multi-Caret (Ctrl+Alt+Up/Down, Shift+Alt+Drag)
+# Feature Specification: Vertical Multi-Caret (Ctrl+Alt+Up/Down, Shift+Alt+Drag)
 
 **Status**: Draft — supersedes the throwaway implementation in PR #125
 **Created**: 2026-05-15
@@ -225,4 +225,3 @@ These were open in earlier drafts of this spec and are now resolved.
 - The visual-line cache fix (see *Cache invalidation on offset shift* requirement and the *Tab twice* scenario) is the most subtle defect the test set exposes. Treat it as the riskiest piece — write the unit test in `Terminal.Gui.Editor.Tests` before touching the cache.
 - R5 (single `Document.OpenUpdateScope ()` per multi-caret edit) is non-negotiable. Tab at N carets is one undo step, not N.
 - R8: append two lines to `specs/public-api.md` describing the new keybindings. No new public Editor API is introduced by this spec — the existing `AdditionalCaretOffsets` / `HasMultipleCarets` / `ToggleCaretAt` / `ClearAdditionalCarets` surface is sufficient.
-]]>

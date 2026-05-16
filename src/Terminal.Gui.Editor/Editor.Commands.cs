@@ -20,6 +20,14 @@ public partial class Editor
     ///     Process-wide static. Do not mutate from parallel tests — see Terminal.Gui's same convention
     ///     on <see cref="Terminal.Gui.Views.TextField.DefaultKeyBindings" />.
     /// </remarks>
+    // TG's Command enum (consumed via the pinned Terminal.Gui package) has no
+    // vertical-multi-caret slot. We register Editor-local Command ids and bind them through the
+    // same configurable DefaultKeyBindings path as every other Editor binding — there is no
+    // inline if-chain in OnKeyDownNotHandled. Upstream follow-up (TG should reserve a view-local
+    // Command range) is recorded in specs/decisions.md.
+    private const Command InsertCaretAbove = (Command)1001;
+    private const Command InsertCaretBelow = (Command)1002;
+
     [ConfigurationProperty (Scope = typeof (SettingsScope))]
     public new static Dictionary<Command, PlatformKeyBinding>? DefaultKeyBindings { get; set; } = new ()
     {
@@ -39,7 +47,14 @@ public partial class Editor
         [Command.FindNext] = Bind.All (Key.F3),
         [Command.FindPrevious] = Bind.All (Key.F3.WithShift),
         [Command.Find] = Bind.All (Key.F.WithCtrl),
-        [Command.Replace] = Bind.All (Key.H.WithCtrl)
+        [Command.Replace] = Bind.All (Key.H.WithCtrl),
+
+        // Vertical multi-caret — VS Code parity (Ctrl+Alt+Up/Down). A PlatformKeyBinding, so a
+        // user whose terminal/WM grabs the chord overrides it via View.ViewKeyBindings config;
+        // no editor-specific fallback chord. macOS uses the same chord pending real-terminal
+        // validation (specs/decisions.md DEC-006).
+        [InsertCaretAbove] = Bind.All (Key.CursorUp.WithCtrl.WithAlt),
+        [InsertCaretBelow] = Bind.All (Key.CursorDown.WithCtrl.WithAlt)
     };
 
     private void CreateCommandsAndBindings ()
@@ -201,6 +216,10 @@ public partial class Editor
         AddCommand (Command.Replace, InvokeReplaceRequested);
         AddCommand (Command.FindNext, FindNextCommand);
         AddCommand (Command.FindPrevious, FindPreviousCommand);
+
+        // Vertical multi-caret: add a caret one line above / below the block at the sticky column.
+        AddCommand (InsertCaretAbove, () => AddCaretVertically (-1));
+        AddCommand (InsertCaretBelow, () => AddCaretVertically (1));
 
         ApplyKeyBindings (View.DefaultKeyBindings, DefaultKeyBindings);
 
