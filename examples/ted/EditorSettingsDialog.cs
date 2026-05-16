@@ -35,6 +35,13 @@ internal sealed class EditorSettingsDialog : Dialog
             Value = editor.IndentationSize,
             Width = 8
         };
+        _indentSize.ValueChanging += (_, e) =>
+        {
+            if (e.NewValue is < 1)
+            {
+                e.Handled = true;
+            }
+        };
 
         _convertTabsCheck = new ()
         {

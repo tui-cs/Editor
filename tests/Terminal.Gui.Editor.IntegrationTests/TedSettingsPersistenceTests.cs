@@ -4,6 +4,7 @@ using System.Drawing;
 using System.Reflection;
 using Ted;
 using Terminal.Gui.Input;
+using Terminal.Gui.Views;
 using Terminal.Gui.Editor.IntegrationTests.Testing;
 using Terminal.Gui.Testing;
 using Xunit;
@@ -288,35 +289,25 @@ public class TedSettingsPersistenceTests
     }
 
     [Fact]
-    public void SettingsDialog_ApplyTo_Clamps_IndentSize_To_One ()
+    public void SettingsDialog_IndentSize_Rejects_Zero ()
     {
         TedApp app = new ();
-        // Reflection is used because EditorSettingsDialog is internal to the ted assembly.
-        Type? dialogType = typeof (TedApp).Assembly.GetType ("Ted.EditorSettingsDialog");
-        Assert.NotNull (dialogType);
+        EditorSettingsDialog dialog = new (app.Editor);
 
-        object? dialog = Activator.CreateInstance (
-            dialogType,
-            BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public,
-            binder: null,
-            args: [app.Editor],
-            culture: null);
-        Assert.NotNull (dialog);
-
-        FieldInfo? indentSizeField = dialogType.GetField ("_indentSize", BindingFlags.Instance | BindingFlags.NonPublic);
+        // Access _indentSize via reflection (it's private)
+        FieldInfo? indentSizeField = typeof (EditorSettingsDialog).GetField ("_indentSize", BindingFlags.Instance | BindingFlags.NonPublic);
         Assert.NotNull (indentSizeField);
-        object? indentControl = indentSizeField.GetValue (dialog);
-        Assert.NotNull (indentControl);
+        var indentControl = (NumericUpDown<int>)indentSizeField.GetValue (dialog)!;
 
-        PropertyInfo? valueProperty = indentControl.GetType ().GetProperty ("Value");
-        Assert.NotNull (valueProperty);
-        valueProperty.SetValue (indentControl, 0);
+        int valueBefore = indentControl.Value;
+        Assert.True (valueBefore >= 1);
 
-        MethodInfo? applyTo = dialogType.GetMethod ("ApplyTo", BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
-        Assert.NotNull (applyTo);
-        applyTo.Invoke (dialog, [app.Editor]);
+        // Attempt to set Value to 0 — ValueChanging should reject it
+        indentControl.Value = 0;
+        Assert.Equal (valueBefore, indentControl.Value);
 
-        Assert.Equal (1, app.Editor.IndentationSize);
+        dialog.ApplyTo (app.Editor);
+        Assert.True (app.Editor.IndentationSize >= 1);
     }
 
     private static string GetTedConfigPath ()
