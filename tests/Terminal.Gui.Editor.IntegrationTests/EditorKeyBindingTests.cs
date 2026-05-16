@@ -1,9 +1,12 @@
 // Copilot - gpt-4.1
 
 using Terminal.Gui.Document.Search;
+using Terminal.Gui.Drawing;
 using Terminal.Gui.Editor.IntegrationTests.Testing;
 using Terminal.Gui.Input;
 using Terminal.Gui.Testing;
+using Terminal.Gui.ViewBase;
+using Terminal.Gui.Views;
 using Xunit;
 
 namespace Terminal.Gui.Editor.IntegrationTests;
@@ -15,6 +18,8 @@ namespace Terminal.Gui.Editor.IntegrationTests;
 /// </summary>
 public class EditorKeyBindingTests
 {
+    private static readonly InputInjectionOptions Direct = new () { Mode = InputInjectionMode.Direct };
+
     // ───────────────────── DefaultKeyBindings dictionary ─────────────────────
 
     [Theory]
@@ -200,5 +205,64 @@ public class EditorKeyBindingTests
         fx.Top.Editor.SetFocus ();
 
         Assert.Contains (Command.Replace, fx.Top.Editor.KeyBindings.GetCommands (Key.H.WithCtrl));
+    }
+
+    [Fact]
+    public async Task Removing_Tab_KeyBinding_Restores_Default_View_Navigation ()
+    {
+        await using AppFixture<FocusNavigationHost> fx = new (() => new ());
+        fx.Top.Editor.SetFocus ();
+
+        fx.Top.Editor.KeyBindings.Remove (Key.Tab);
+        fx.Injector.InjectKey (Key.Tab, Direct);
+
+        Assert.True (fx.Top.Next.HasFocus);
+    }
+
+    [Fact]
+    public async Task Removing_ShiftTab_KeyBinding_Restores_Default_View_Navigation ()
+    {
+        await using AppFixture<FocusNavigationHost> fx = new (() => new ());
+        fx.Top.Editor.SetFocus ();
+
+        fx.Top.Editor.KeyBindings.Remove (Key.Tab.WithShift);
+        fx.Injector.InjectKey (Key.Tab.WithShift, Direct);
+
+        Assert.True (fx.Top.Previous.HasFocus);
+    }
+
+    private sealed class FocusNavigationHost : Window
+    {
+        public FocusNavigationHost ()
+        {
+            BorderStyle = LineStyle.None;
+            Previous = new TextField ()
+            {
+                Text = "prev",
+                X = 0,
+                Y = 0,
+                Width = 10
+            };
+            Editor = new ()
+            {
+                Document = new (),
+                X = 0,
+                Y = 1,
+                Width = Dim.Fill (),
+                Height = 1
+            };
+            Next = new TextField ()
+            {
+                Text = "next",
+                X = 0,
+                Y = 2,
+                Width = 10
+            };
+            Add (Previous, Editor, Next);
+        }
+
+        public Editor Editor { get; }
+        public TextField Next { get; }
+        public TextField Previous { get; }
     }
 }
