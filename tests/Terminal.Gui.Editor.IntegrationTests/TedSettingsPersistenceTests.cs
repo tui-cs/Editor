@@ -60,7 +60,7 @@ public class TedSettingsPersistenceTests
     }
 
     [Fact]
-    public void Load_Reads_Settings_From_ConfigFile ()
+    public void Load_TedApp_Applies_Persisted_Settings ()
     {
         using ConfigPathScope scope = new ();
 
@@ -79,44 +79,15 @@ public class TedSettingsPersistenceTests
             }
             """);
 
+        // Load settings and construct TedApp — simulates real app startup
         EditorSettings.Load (scope.ConfigPath);
+        TedApp app = new ();
 
-        try
-        {
-            Assert.True (EditorSettings.WordWrap);
-            Assert.True (EditorSettings.ShowTabs);
-            Assert.False (EditorSettings.LineNumbers);
-            Assert.Equal (2, EditorSettings.IndentSize);
-        }
-        finally
-        {
-            ResetEditorSettingsDefaults ();
-        }
-    }
-
-    [Fact]
-    public void Load_TedApp_Applies_Persisted_WordWrap ()
-    {
-        using ConfigPathScope scope = new ();
-
-        // Save with WordWrap=true
-        string? dir = Path.GetDirectoryName (scope.ConfigPath);
-        Assert.NotNull (dir);
-        Directory.CreateDirectory (dir);
-        File.WriteAllText (scope.ConfigPath, "{\"EditorSettings.WordWrap\": true}");
-
-        // Load settings and construct TedApp — simulates app startup
-        EditorSettings.Load (scope.ConfigPath);
-
-        try
-        {
-            TedApp app = new ();
-            Assert.True (app.Editor.WordWrap, "Editor.WordWrap should reflect persisted config on startup");
-        }
-        finally
-        {
-            ResetEditorSettingsDefaults ();
-        }
+        // Assert via TedApp.Editor instance properties (not statics)
+        Assert.True (app.Editor.WordWrap);
+        Assert.True (app.Editor.ShowTabs);
+        Assert.False (app.Editor.GutterOptions.HasFlag (Terminal.Gui.Editor.GutterOptions.LineNumbers));
+        Assert.Equal (2, app.Editor.IndentationSize);
     }
 
     [Fact]
@@ -324,18 +295,6 @@ public class TedSettingsPersistenceTests
         Assert.True (app.Editor.IndentationSize >= 1);
     }
 
-    private static void ResetEditorSettingsDefaults ()
-    {
-        EditorSettings.LineNumbers = true;
-        EditorSettings.FoldIndicators = true;
-        EditorSettings.WordWrap = false;
-        EditorSettings.ShowTabs = false;
-        EditorSettings.UseThemeBackground = true;
-        EditorSettings.IndentSize = 4;
-        EditorSettings.ConvertTabsToSpaces = true;
-        EditorSettings.AutoIndent = true;
-    }
-
     private static string GetTedConfigPath ()
     {
         string home =
@@ -384,6 +343,16 @@ public class TedSettingsPersistenceTests
 
         public void Dispose ()
         {
+            // Reset EditorSettings statics to defaults (tests may have mutated them via Load)
+            EditorSettings.LineNumbers = true;
+            EditorSettings.FoldIndicators = true;
+            EditorSettings.WordWrap = false;
+            EditorSettings.ShowTabs = false;
+            EditorSettings.UseThemeBackground = true;
+            EditorSettings.IndentSize = 4;
+            EditorSettings.ConvertTabsToSpaces = true;
+            EditorSettings.AutoIndent = true;
+
             if (_hadExistingConfig)
             {
                 string? configDirectory = Path.GetDirectoryName (ConfigPath);
