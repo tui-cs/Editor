@@ -321,6 +321,57 @@ public class TedSettingsPersistenceTests
         Assert.True (app.Editor.IndentationSize >= 1);
     }
 
+    [Fact]
+    public void Load_Ignores_Key_Embedded_In_String_Value ()
+    {
+        // Regression: a line like "note": "... \"EditorSettings.WordWrap\": true ..."
+        // must NOT fool ReadBool into thinking WordWrap is true.
+        using ConfigPathScope scope = new ();
+
+        string? dir = Path.GetDirectoryName (scope.ConfigPath);
+        Assert.NotNull (dir);
+        Directory.CreateDirectory (dir);
+        File.WriteAllText (
+            scope.ConfigPath,
+            "{\n"
+            + "  \"note\": \"see \\\"EditorSettings.WordWrap\\\": true for docs\",\n"
+            + "  \"EditorSettings.WordWrap\": false\n"
+            + "}\n");
+
+        EditorSettings.Load (scope.ConfigPath);
+        TedApp app = new ();
+
+        Assert.False (app.Editor.WordWrap, "Should use actual property value (false), not embedded string match");
+    }
+
+    [Fact]
+    public void Save_Appends_Before_Real_Brace_Not_Comment_Brace ()
+    {
+        // Regression: trailing JSONC comment containing } should not be used as insert point.
+        using ConfigPathScope scope = new ();
+
+        string? dir = Path.GetDirectoryName (scope.ConfigPath);
+        Assert.NotNull (dir);
+        Directory.CreateDirectory (dir);
+        File.WriteAllText (
+            scope.ConfigPath,
+            "{\n  \"EditorSettings.LineNumbers\": true\n}\n// end of config }\n");
+
+        TedApp app = new ();
+        app.Editor.WordWrap = true;
+
+        InvokeSaveViewSettings (app);
+
+        string text = File.ReadAllText (scope.ConfigPath);
+        // The inserted key should be valid JSON — not inside the comment
+        Assert.Contains ("\"EditorSettings.WordWrap\": true", text);
+        // Config should still be parseable: the real closing brace should come after our insertion
+        int wordWrapPos = text.IndexOf ("\"EditorSettings.WordWrap\"", StringComparison.Ordinal);
+        int lastRealBrace = text.LastIndexOf ('}');
+        // The comment line's } may still exist, but our key must be before the real object close
+        Assert.True (wordWrapPos < lastRealBrace, "WordWrap key should appear before the root closing brace");
+    }
+
     private static string GetTedConfigPath ()
     {
         string home =

@@ -118,7 +118,7 @@ internal static class EditorSettings
 
             if (toInsert.Count > 0)
             {
-                int lastBrace = text.LastIndexOf ('}');
+                int lastBrace = FindRootClosingBrace (text);
 
                 if (lastBrace >= 0)
                 {
@@ -127,7 +127,7 @@ internal static class EditorSettings
                     if (insertCommaAfter >= 0 && text[insertCommaAfter] != ',' && text[insertCommaAfter] != '{')
                     {
                         text = text.Insert (insertCommaAfter + 1, ",");
-                        lastBrace = text.LastIndexOf ('}');
+                        lastBrace = FindRootClosingBrace (text);
                     }
 
                     string insertion = $"\n\n{string.Join (",\n", toInsert)}\n";
@@ -175,10 +175,11 @@ internal static class EditorSettings
 
     private static bool ReadBool (string json, string key, bool defaultValue)
     {
-        // Anchor to start-of-line and require no leading "//" to skip JSONC comments
+        // Match key only at a JSON property position: line starts with optional whitespace,
+        // then the key. Negative lookahead skips // comment lines.
         Match m = Regex.Match (
             json,
-            $@"^(?!\s*//).*""{Regex.Escape (key)}""\s*:\s*(?<v>true|false)",
+            $@"^(?!\s*//)\s*""{Regex.Escape (key)}""\s*:\s*(?<v>true|false)",
             RegexOptions.IgnoreCase | RegexOptions.Multiline);
 
         return m.Success ? string.Equals (m.Groups["v"].Value, "true", StringComparison.OrdinalIgnoreCase) : defaultValue;
@@ -188,10 +189,44 @@ internal static class EditorSettings
     {
         Match m = Regex.Match (
             json,
-            $@"^(?!\s*//).*""{Regex.Escape (key)}""\s*:\s*(?<v>-?\d+)",
+            $@"^(?!\s*//)\s*""{Regex.Escape (key)}""\s*:\s*(?<v>-?\d+)",
             RegexOptions.Multiline);
 
         return m.Success && int.TryParse (m.Groups["v"].Value, out int v) ? v : defaultValue;
+    }
+
+    /// <summary>
+    ///     Finds the last '}' that is NOT inside a // comment.
+    ///     Scans backwards, skipping any '}' on a line whose non-whitespace content starts with //.
+    /// </summary>
+    private static int FindRootClosingBrace (string text)
+    {
+        int i = text.Length - 1;
+
+        while (i >= 0)
+        {
+            i = text.LastIndexOf ('}', i);
+
+            if (i < 0)
+            {
+                return -1;
+            }
+
+            // Check if this '}' is on a comment line
+            int lineStart = text.LastIndexOf ('\n', i) + 1;
+            string lineBeforeBrace = text[lineStart..i];
+
+            if (lineBeforeBrace.TrimStart ().StartsWith ("//", StringComparison.Ordinal))
+            {
+                i--;
+
+                continue;
+            }
+
+            return i;
+        }
+
+        return -1;
     }
 
     private static int FindLastObjectMemberCharacterPosition (string text, int braceIndex)
