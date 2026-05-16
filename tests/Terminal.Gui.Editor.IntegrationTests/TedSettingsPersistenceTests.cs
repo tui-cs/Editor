@@ -135,7 +135,7 @@ public class TedSettingsPersistenceTests
         string[] lines = fx.Driver.ToString ().Split ('\n');
         int y = Array.FindIndex (lines, static line => line.Contains ("Word Wrap", StringComparison.Ordinal));
         Assert.True (y >= 0);
-        int x = lines[y].IndexOf ("☐", StringComparison.Ordinal);
+        int x = lines[y].IndexOf ("Word Wrap", StringComparison.Ordinal);
         Assert.True (x >= 0);
 
         DateTime ts = new (2025, 1, 1, 12, 0, 0);
@@ -152,6 +152,62 @@ public class TedSettingsPersistenceTests
         fx.Render ();
 
         Assert.True (File.Exists (scope.ConfigPath));
+    }
+
+    [Fact]
+    public async Task ViewMenu_WordWrap_Toggle_Persists_True ()
+    {
+        // Reproduces the user-reported bug: toggling Word Wrap via the View menu
+        // should create ted.config.json AND persist "EditorSettings.WordWrap": true.
+        // Before the fix, a conflicting ValueChanged handler caused a double-toggle
+        // that reverted WordWrap to false immediately.
+        using ConfigPathScope scope = new ();
+        await using AppFixture<TedApp> fx = new (() => new TedApp ());
+        InputInjectionOptions options = new () { Mode = InputInjectionMode.Direct };
+        DateTime ts = new (2025, 1, 1, 12, 0, 0);
+
+        // Precondition: word wrap is initially off
+        Assert.False (fx.Top.Editor.WordWrap);
+
+        // Open View menu via keyboard (Alt+V) - same as real user interaction
+        fx.Injector.InjectKey (Key.V.WithAlt, options);
+        fx.Render ();
+
+        // Find and click "Word Wrap"
+        string[] menuLines = fx.Driver.ToString ().Split ('\n');
+        int y = Array.FindIndex (menuLines, static line => line.Contains ("Word Wrap", StringComparison.Ordinal));
+        Assert.True (y >= 0, "Could not find 'Word Wrap' in menu");
+        int x = menuLines[y].IndexOf ("Word Wrap", StringComparison.Ordinal);
+        Assert.True (x >= 0);
+        Point wordWrapItem = new (x, y);
+
+        fx.Injector.InjectMouse (
+            new Mouse
+            {
+                ScreenPosition = wordWrapItem,
+                Flags = MouseFlags.LeftButtonPressed,
+                Timestamp = ts
+            },
+            options);
+        fx.Injector.InjectMouse (
+            new Mouse
+            {
+                ScreenPosition = wordWrapItem,
+                Flags = MouseFlags.LeftButtonReleased,
+                Timestamp = ts.AddMilliseconds (25)
+            },
+            options);
+        fx.Render ();
+
+        // Assert: Editor.WordWrap is now true (not toggled back by double-fire)
+        Assert.True (fx.Top.Editor.WordWrap, "Editor.WordWrap should be true after toggle");
+
+        // Assert: config file created
+        Assert.True (File.Exists (scope.ConfigPath), "Config file was not created");
+
+        // Assert: config file contains the correct persisted value
+        string configContent = File.ReadAllText (scope.ConfigPath);
+        Assert.Contains ("\"EditorSettings.WordWrap\": true", configContent);
     }
 
     [Fact]
