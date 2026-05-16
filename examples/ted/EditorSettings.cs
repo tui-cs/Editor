@@ -32,6 +32,41 @@ internal static class EditorSettings
     [ConfigurationProperty (Scope = typeof (TedSettingsScope))]
     public static bool AutoIndent { get; set; } = true;
 
+    /// <summary>
+    ///     Loads settings from the config file at <see cref="GetConfigPath" />.
+    ///     Called once at startup before constructing <see cref="TedApp" />.
+    /// </summary>
+    internal static void Load ()
+    {
+        Load (GetConfigPath ());
+    }
+
+    internal static void Load (string path)
+    {
+        if (!File.Exists (path))
+        {
+            return;
+        }
+
+        try
+        {
+            string text = File.ReadAllText (path);
+
+            LineNumbers = ReadBool (text, "EditorSettings.LineNumbers", LineNumbers);
+            FoldIndicators = ReadBool (text, "EditorSettings.FoldIndicators", FoldIndicators);
+            WordWrap = ReadBool (text, "EditorSettings.WordWrap", WordWrap);
+            ShowTabs = ReadBool (text, "EditorSettings.ShowTabs", ShowTabs);
+            UseThemeBackground = ReadBool (text, "EditorSettings.UseThemeBackground", UseThemeBackground);
+            IndentSize = ReadInt (text, "EditorSettings.IndentSize", IndentSize);
+            ConvertTabsToSpaces = ReadBool (text, "EditorSettings.ConvertTabsToSpaces", ConvertTabsToSpaces);
+            AutoIndent = ReadBool (text, "EditorSettings.AutoIndent", AutoIndent);
+        }
+        catch (Exception ex)
+        {
+            Logging.Error ($"EditorSettings.Load: {ex.GetType ().Name}: {ex.Message}");
+        }
+    }
+
     internal static void Save ()
     {
         Save (GetConfigPath ());
@@ -101,12 +136,6 @@ internal static class EditorSettings
             }
 
             File.WriteAllText (path, text);
-
-            if (ConfigurationManager.IsEnabled)
-            {
-                ConfigurationManager.Load (ConfigLocations.All);
-                ConfigurationManager.Apply ();
-            }
         }
         catch (Exception ex)
         {
@@ -114,27 +143,14 @@ internal static class EditorSettings
         }
     }
 
-    private static string GetConfigPath ()
+    internal static string GetConfigPath ()
     {
-        string baseDirectory;
+        string home =
+            Environment.GetEnvironmentVariable ("HOME")
+            ?? Environment.GetFolderPath (Environment.SpecialFolder.UserProfile)
+            ?? Directory.GetCurrentDirectory ();
 
-        if (OperatingSystem.IsWindows ())
-        {
-            string appData = Environment.GetFolderPath (Environment.SpecialFolder.ApplicationData);
-            baseDirectory = string.IsNullOrWhiteSpace (appData)
-                ? Path.Combine (Directory.GetCurrentDirectory (), ".tui")
-                : Path.Combine (appData, "tui");
-        }
-        else
-        {
-            string home =
-                Environment.GetEnvironmentVariable ("HOME")
-                ?? Environment.GetFolderPath (Environment.SpecialFolder.UserProfile)
-                ?? Directory.GetCurrentDirectory ();
-            baseDirectory = Path.Combine (home, ".tui");
-        }
-
-        return Path.Combine (baseDirectory, "ted.config.json");
+        return Path.Combine (home, ".tui", "ted.config.json");
     }
 
     private static void EnsureConfigFile (string path)
@@ -155,6 +171,20 @@ internal static class EditorSettings
     private static string ToJson (bool value)
     {
         return value ? "true" : "false";
+    }
+
+    private static bool ReadBool (string json, string key, bool defaultValue)
+    {
+        Match m = Regex.Match (json, $@"""{Regex.Escape (key)}""\s*:\s*(?<v>true|false)", RegexOptions.IgnoreCase);
+
+        return m.Success ? string.Equals (m.Groups["v"].Value, "true", StringComparison.OrdinalIgnoreCase) : defaultValue;
+    }
+
+    private static int ReadInt (string json, string key, int defaultValue)
+    {
+        Match m = Regex.Match (json, $@"""{Regex.Escape (key)}""\s*:\s*(?<v>-?\d+)");
+
+        return m.Success && int.TryParse (m.Groups["v"].Value, out int v) ? v : defaultValue;
     }
 
     private static int FindLastObjectMemberCharacterPosition (string text, int braceIndex)

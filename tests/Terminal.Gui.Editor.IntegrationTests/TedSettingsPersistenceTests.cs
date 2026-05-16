@@ -59,6 +59,52 @@ public class TedSettingsPersistenceTests
     }
 
     [Fact]
+    public void Load_Reads_Settings_From_ConfigFile ()
+    {
+        using ConfigPathScope scope = new ();
+
+        // Write a config file with non-default values
+        string? dir = Path.GetDirectoryName (scope.ConfigPath);
+        Assert.NotNull (dir);
+        Directory.CreateDirectory (dir);
+        File.WriteAllText (
+            scope.ConfigPath,
+            """
+            {
+              "EditorSettings.WordWrap": true,
+              "EditorSettings.ShowTabs": true,
+              "EditorSettings.LineNumbers": false,
+              "EditorSettings.IndentSize": 2
+            }
+            """);
+
+        EditorSettings.Load (scope.ConfigPath);
+
+        Assert.True (EditorSettings.WordWrap);
+        Assert.True (EditorSettings.ShowTabs);
+        Assert.False (EditorSettings.LineNumbers);
+        Assert.Equal (2, EditorSettings.IndentSize);
+    }
+
+    [Fact]
+    public void Load_TedApp_Applies_Persisted_WordWrap ()
+    {
+        using ConfigPathScope scope = new ();
+
+        // Save with WordWrap=true
+        string? dir = Path.GetDirectoryName (scope.ConfigPath);
+        Assert.NotNull (dir);
+        Directory.CreateDirectory (dir);
+        File.WriteAllText (scope.ConfigPath, "{\"EditorSettings.WordWrap\": true}");
+
+        // Load settings and construct TedApp — simulates app startup
+        EditorSettings.Load (scope.ConfigPath);
+        TedApp app = new ();
+
+        Assert.True (app.Editor.WordWrap, "Editor.WordWrap should reflect persisted config on startup");
+    }
+
+    [Fact]
     public async Task ViewMenu_WordWrap_Toggle_Creates_ConfigFile ()
     {
         using ConfigPathScope scope = new ();
@@ -275,25 +321,12 @@ public class TedSettingsPersistenceTests
 
     private static string GetTedConfigPath ()
     {
-        string baseDirectory;
+        string home =
+            Environment.GetEnvironmentVariable ("HOME")
+            ?? Environment.GetFolderPath (Environment.SpecialFolder.UserProfile)
+            ?? Directory.GetCurrentDirectory ();
 
-        if (OperatingSystem.IsWindows ())
-        {
-            string appData = Environment.GetFolderPath (Environment.SpecialFolder.ApplicationData);
-            baseDirectory = string.IsNullOrWhiteSpace (appData)
-                ? Path.Combine (Directory.GetCurrentDirectory (), ".tui")
-                : Path.Combine (appData, "tui");
-        }
-        else
-        {
-            string home =
-                Environment.GetEnvironmentVariable ("HOME")
-                ?? Environment.GetFolderPath (Environment.SpecialFolder.UserProfile)
-                ?? Directory.GetCurrentDirectory ();
-            baseDirectory = Path.Combine (home, ".tui");
-        }
-
-        return Path.Combine (baseDirectory, "ted.config.json");
+        return Path.Combine (home, ".tui", "ted.config.json");
     }
 
     private static void InvokeSaveViewSettings (TedApp app)
@@ -309,7 +342,6 @@ public class TedSettingsPersistenceTests
     {
         private readonly string _tempRoot;
         private readonly string? _originalHome;
-        private readonly string? _originalAppData;
         private readonly bool _hadExistingConfig;
         private readonly string? _existingConfigContent;
 
@@ -319,9 +351,7 @@ public class TedSettingsPersistenceTests
             Directory.CreateDirectory (_tempRoot);
 
             _originalHome = Environment.GetEnvironmentVariable ("HOME");
-            _originalAppData = Environment.GetEnvironmentVariable ("APPDATA");
             Environment.SetEnvironmentVariable ("HOME", _tempRoot);
-            Environment.SetEnvironmentVariable ("APPDATA", Path.Combine (_tempRoot, "appdata"));
 
             ConfigPath = GetTedConfigPath ();
             _hadExistingConfig = File.Exists (ConfigPath);
@@ -355,7 +385,6 @@ public class TedSettingsPersistenceTests
             }
 
             Environment.SetEnvironmentVariable ("HOME", _originalHome);
-            Environment.SetEnvironmentVariable ("APPDATA", _originalAppData);
 
             if (Directory.Exists (_tempRoot))
             {
