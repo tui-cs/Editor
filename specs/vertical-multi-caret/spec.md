@@ -18,7 +18,7 @@ Both flows produce a primary caret plus zero or more additional carets, all shar
 
 The feature also makes Tab work uniformly across all carets in the multi-caret system (an existing gap that vertical-caret usage exposes), and fixes interaction bugs that block the vertical-caret flow from being usable.
 
-**Terminal compatibility**: `Ctrl+Alt+Up/Down` and `Shift+Alt+mouse` rely on the terminal forwarding the modifier flags. Some Linux desktops grab `Ctrl+Alt+arrow` for workspace switching, and a few terminals don't distinguish `Ctrl+Alt+arrow` from `Ctrl+arrow` without `modifyOtherKeys` / the Kitty keyboard protocol. The TG keybinding system makes the chords overridable; users in those environments rebind. See **Keybinding overridable** in Requirements.
+**Terminal compatibility & platform defaults**: `Ctrl+Alt+Up/Down` and `Shift+Alt+mouse` rely on the terminal forwarding the modifier flags. Some Linux desktops grab `Ctrl+Alt+arrow` for workspace switching, and a few terminals don't distinguish `Ctrl+Alt+arrow` from `Ctrl+arrow` without the Kitty keyboard protocol. The fix is **not** an editor-specific fallback chord — it is to ship per-platform defaults the TG way: a `[ConfigurationProperty]` `DefaultKeyBindings` populated from a `PlatformKeyBinding` record (`All` / `Windows` / `Linux` / `Macos`), wholly overridable by the user through TG configuration (`View.ViewKeyBindings`). See TG's `docfx/docs/keyboard.md` for the binding-layer model (`Application.DefaultKeyBindings` → `View.DefaultKeyBindings` → per-view defaults; `Bind.AllPlus()` helper). See **Platform default keybindings** in Requirements.
 
 ## User Scenarios
 
@@ -87,7 +87,7 @@ Symmetric to the previous scenario. **Given** carets at lines `n`, `n-1`, …, `
 
 Named requirements — every label is also a search anchor used by tests and code review.
 
-- **Add caret above** — `Ctrl+Alt+CursorUp` adds an additional caret one line above the topmost caret in the current caret block at the sticky visual column. The binding is registered via the standard `KeyBindings.Add` mechanism, not an inline if-chain in `OnKeyDownNotHandled`.
+- **Add caret above** — `Ctrl+Alt+CursorUp` (default; see *Platform default keybindings*) adds an additional caret one line above the topmost caret in the current caret block at the sticky visual column.
 - **Add caret below** — `Ctrl+Alt+CursorDown` does the same below the bottommost caret.
 - **Top/bottom bounds are no-ops** — `Ctrl+Alt+CursorUp` past line 1 and `Ctrl+Alt+CursorDown` past the last line do nothing (no throw, no change to existing carets).
 - **Column-drag press** — `Shift+Alt + LeftButtonPressed` followed by `PositionReport+Shift+Alt` drag events build a column of carets at the press column from anchor row to active row, replacing any prior selection/multi-caret state. The first row (anchor) is the primary; the other rows are additional. `LeftButtonReleased` ends the drag without altering the state already built. Plain `Shift+LeftButton` (no Alt) continues to extend selection per the existing mouse handler; the Alt modifier is what switches the drag into column-of-carets mode.
@@ -108,12 +108,15 @@ Named requirements — every label is also a search anchor used by tests and cod
 - **Primary caret stays visible** — the primary caret is always drawn after the additional carets are cleared. `UpdateCursor ()` reports its position; no code path leaves the terminal cursor hidden or pointed at a stale offset after dismissing multi-caret.
 - **Cache invalidation on offset shift** — internal `DocumentLine` / `CellVisualLine` caches keyed by line number are invalidated for *all* lines whose element offsets shift, not only lines whose line *number* changes. A multi-caret edit that inserts on three lines but adds no newlines must still invalidate any downstream cached line whose absolute offsets moved.
 - **ted demonstrates the feature** — `examples/ted` works end-to-end: `Ctrl+Alt+Up`, `Ctrl+Alt+Down`, `Shift+Alt+Drag`, Tab in vertical mode, Esc to exit. No new ted UI affordance is required (the keybindings are discoverable; existing status bar / help text gets a one-line update — see § Files in Scope).
-- **Keybindings overridable** — both chords are registered via `KeyBindings.Add (...)` so a user whose terminal or window manager intercepts `Ctrl+Alt+arrow` (e.g. GNOME workspace switching) or doesn't forward `Shift+Alt` mouse modifiers can rebind. The default binding is the VS Code chord; ted ships no alternate default. The keybindings must round-trip through TG's config (i.e. they show up in any keybinding inspector and can be overridden in user settings).
+- **Platform default keybindings** — the feature declares an `AddCommand` entry and binds it through a `[ConfigurationProperty]` `DefaultKeyBindings` populated from a `PlatformKeyBinding` record, *not* a hard-coded `if (key == ...)` in `OnKeyDownNotHandled`. Per-platform defaults:
+  - `Windows` / `Linux`: `Ctrl+Alt+CursorUp` / `Ctrl+Alt+CursorDown` (VS Code parity).
+  - `Macos`: the chord that the common macOS terminals (Terminal.app, iTerm2) actually deliver to a TUI process. macOS GUI VS Code uses `Cmd+Opt+Up/Down`, but terminal emulators typically intercept `Cmd` and may not forward `Ctrl+Alt+arrow` cleanly — the exact macOS string is settled at wiring time against a real terminal (see Open Decisions). Use `Bind.AllPlus()` to layer the shared and per-OS keys.
+  Because `DefaultKeyBindings` is a `[ConfigurationProperty]`, a user whose terminal or WM grabs the default chord overrides it via `View.ViewKeyBindings` in TG config — no editor-specific knob, no alternate built-in chord. The binding must round-trip through TG config (appears in a keybinding inspector, overridable in user settings).
 
 ## Files in Scope
 
 - `src/Terminal.Gui.Editor/Editor.MultiCaret.cs` — new private helpers (`AddCaretVertically`, `AddAdditionalCaretAt`, `NormalizeAdditionalCarets`, `TryGetVerticalOffset`, `GetVisualColumnForOffset`, `SetVerticalCaretsFromViewRows`, `MultiCaretInsertTab`). Replace the corresponding helpers in PR #125 with versions that share infrastructure with the single-caret Up/Down logic rather than re-deriving wrap maps and visual columns.
-- `src/Terminal.Gui.Editor/Editor.Keyboard.cs` — `Ctrl+Alt+CursorUp` / `Ctrl+Alt+CursorDown` bindings registered via `KeyBindings.Add` (R8-friendly: no inline if-chain in `OnKeyDownNotHandled`). Esc handler routes through `ClearAdditionalCarets ()` which is responsible for sticky-column refresh.
+- `src/Terminal.Gui.Editor/Editor.Keyboard.cs` — declare the add-caret-above/below command via `AddCommand` and bind it through a `[ConfigurationProperty]` `DefaultKeyBindings` built from a `PlatformKeyBinding` record (`Windows`/`Linux` → `Ctrl+Alt+CursorUp/Down`; `Macos` → TBD-against-real-terminal). No inline if-chain in `OnKeyDownNotHandled`. Esc handler routes through `ClearAdditionalCarets ()` which is responsible for sticky-column refresh. Follow the binding-layer model documented in TG `docfx/docs/keyboard.md`.
 - `src/Terminal.Gui.Editor/Editor.Mouse.cs` — `Shift+Alt`-drag press/drag/release state machine. Factor the existing Ctrl+Click drag-suppression into a small state enum so Ctrl, Shift+Alt, and plain drags don't fight via three orthogonal booleans. Plain `Shift+LeftButton` extend-selection path is preserved; the Alt bit on the mouse event is what dispatches to the column-of-carets branch.
 - `src/Terminal.Gui.Editor/Editor.Indentation.cs` — Tab/Shift-Tab fall through to `MultiCaretInsertTab` / `MultiCaretUnindent` when `HasMultipleCarets`.
 - `src/Terminal.Gui.Editor/Editor.cs` — `OnDocumentChanged` runs `NormalizeAdditionalCarets`; `SetCaretOffset` runs `NormalizeAdditionalCarets` *after* the offset is committed; visual-line cache invalidation key set includes lines whose absolute offsets shifted, gated only by `lineDelta == 0 && offsetDelta != 0`.
@@ -207,13 +210,14 @@ Cross-walk of every user-facing behavior against the two reference editors. Wher
 
 - **Alt+Click alias for add-caret-at-click** — existing multi-caret uses `Ctrl+Click`. Both VS Code and VS use `Alt+Click`. This spec does *not* change the binding, but adding `Alt+Click` as an *alias* (both work, no breakage) is a small win for newcomers. Out of scope here; worth filing as a follow-up if the maintainer agrees.
 
-- **Terminal/WM workspace-switch collisions** — `Ctrl+Alt+arrow` is grabbed by some Linux desktops for workspace switching. *Keybindings overridable* says rebind, but should `examples/ted` ship a fallback chord (e.g. `Alt+Shift+Up/Down` matching VS) for environments where the primary chord is unreachable? Default: no second default binding, but if user testing shows the primary is unreachable for a noticeable fraction of users, revisit.
+- **macOS default chord** — the `Macos` entry in the `PlatformKeyBinding` must be settled against a real terminal. macOS GUI VS Code uses `Cmd+Opt+Up/Down`, but Terminal.app and iTerm2 typically swallow `Cmd` and may not deliver `Ctrl+Alt+arrow` distinctly to a TUI process. The implementer validates against Terminal.app + iTerm2 (and ideally Ghostty/kitty) and picks the chord those actually deliver, recording it in `specs/decisions.md`. This is a wiring-time empirical question, not a design fork.
 
 ## Resolved Decisions
 
 These were open in earlier drafts of this spec and are now resolved.
 
 - **Keybinding choice for the new chords.** Resolved 2026-05-15: match VS Code. `Ctrl+Alt+Up`/`Down` for add-caret-above/below; `Shift+Alt + drag` modifier for the column-drag. Cross-link to `specs/decisions.md` when that entry is written.
+- **No editor-specific fallback chord.** Resolved 2026-05-15: do **not** ship a second built-in chord for environments that grab `Ctrl+Alt+arrow`. Keys are fully adjustable through TG keybindings; instead pre-ship per-platform defaults via a `[ConfigurationProperty]` `DefaultKeyBindings` + `PlatformKeyBinding` (the TG-standard mechanism, per `docfx/docs/keyboard.md`). Users in hostile terminal/WM environments override through `View.ViewKeyBindings` config like any other binding.
 
 ## Notes
 
