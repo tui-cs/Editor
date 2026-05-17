@@ -58,7 +58,7 @@ Decisions are recorded here when an open question from the plan is resolved. Eac
 
 ### DEC-008: Single-line / embeddable-input mode (resolves former OPEN-006)
 
-**Decision**: **Yes** — `Editor` adds a single-line / fixed-height input mode: `Multiline` (default `true`), `EnterKeyAddsLine` (default `true`; when `false`, Enter raises `Accepting` instead of inserting a newline), `TabKeyAddsTab` (default `true`; when `false`, Tab traverses focus). Defaults preserve today's multi-line behavior exactly. Tracked in [#147](https://github.com/gui-cs/Editor/issues/147).
+**Decision**: **Yes** — `Editor` adds a `Multiline` property (default `true`) that enables a single-line / fixed-height input mode. When `false`, newlines are suppressed (Enter is a no-op), vertical navigation is constrained, WordWrap is forced off, and multi-caret is disabled. Follow-up properties `EnterKeyAddsLine` and `TabKeyAddsTab` (Enter raises `Accepting`, Tab traverses focus) are tracked separately in [#147](https://github.com/gui-cs/Editor/issues/147) and not yet implemented. Defaults preserve today's multi-line behavior exactly.
 
 **Rationale**: The earlier "tension" rested on the CLAUDE.md non-goal *"`Editor` ships beside `TextView`, not as a replacement."* Maintainer direction (2026-05-17): `Editor` **will** functionally replace `TextView` — just **not** in a source/API- or UI-compatible way. For *feature* purposes that dissolves the tension: a code-aware single-/few-line input (highlighted expression field, REPL line) is a capability `TextView` serves and `Editor` must therefore serve. The behavior is mostly binding-shaped (Enter/Tab semantics + an `Accepting` event + a height/scroll constraint), so the cost is low and the defaults are non-breaking.
 

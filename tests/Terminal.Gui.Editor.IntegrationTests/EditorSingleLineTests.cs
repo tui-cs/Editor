@@ -186,4 +186,31 @@ public class EditorSingleLineTests
         Assert.Equal (2, fx.Top.Editor.CaretOffset);
         Assert.False (fx.Top.Editor.HasSelection);
     }
+
+    [Fact]
+    public async Task SingleLine_Paste_Strips_Newlines ()
+    {
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("ab"));
+        fx.Top.Editor.Multiline = false;
+        fx.Top.Editor.SetFocus ();
+        fx.Top.Editor.CaretOffset = 2;
+
+        fx.App.Clipboard!.SetClipboardData ("cd\nef\r\ngh");
+        fx.Injector.InjectKey (Key.V.WithCtrl, Direct);
+
+        Assert.Equal ("abcdefgh", fx.Top.Editor.Document!.Text);
+        Assert.Equal (1, fx.Top.Editor.Document.LineCount);
+    }
+
+    [Fact]
+    public async Task SingleLine_Transition_Strips_Existing_Newlines ()
+    {
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("line1\nline2\nline3"));
+        Assert.Equal (3, fx.Top.Editor.Document!.LineCount);
+
+        fx.Top.Editor.Multiline = false;
+
+        Assert.Equal ("line1line2line3", fx.Top.Editor.Document.Text);
+        Assert.Equal (1, fx.Top.Editor.Document.LineCount);
+    }
 }

@@ -188,6 +188,14 @@ public partial class Editor : View
 
                 // Collapse additional carets — vertical multi-caret is a multi-line concept.
                 ClearAdditionalCarets ();
+
+                // Strip existing newlines so the document is guaranteed single-line.
+                if (_document is { LineCount: > 1 })
+                {
+                    string flat = _document.Text.ReplaceLineEndings (string.Empty);
+                    _document.Text = flat;
+                    CaretOffset = Math.Min (CaretOffset, _document.TextLength);
+                }
             }
 
             ClearVisualLineCaches ();
