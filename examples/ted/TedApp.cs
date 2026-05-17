@@ -1,10 +1,10 @@
+using System.Collections.Immutable;
 using Terminal.Gui.App;
 using Terminal.Gui.Configuration;
 using Terminal.Gui.Document;
 using Terminal.Gui.Document.Folding;
 using Terminal.Gui.Drawing;
 using Terminal.Gui.Editor;
-using Terminal.Gui.Highlighting;
 using Terminal.Gui.Input;
 using Terminal.Gui.Resources;
 using Terminal.Gui.Text.Indentation;
@@ -38,7 +38,6 @@ public sealed partial class TedApp : Window
             IndentationSize = EditorSettings.IndentSize,
             WordWrap = EditorSettings.WordWrap,
             ShowTabs = EditorSettings.ShowTabs,
-            UseThemeBackground = EditorSettings.UseThemeBackground,
             ReadOnly = readOnly,
             ViewportSettings = ViewportSettingsFlags.HasScrollBars
         };
@@ -87,14 +86,6 @@ public sealed partial class TedApp : Window
             Value = Editor.GutterOptions.HasFlag (GutterOptions.Folding) ? CheckState.Checked : CheckState.UnChecked
         };
 
-        CheckBox useThemeBackgroundCheckBox = new ()
-        {
-            AllowCheckStateNone = false,
-            CanFocus = false,
-            Text = "Use _Theme Background",
-            Value = Editor.UseThemeBackground ? CheckState.Checked : CheckState.UnChecked
-        };
-
         CheckBox wordWrapCheckBox = new ()
         {
             AllowCheckStateNone = false,
@@ -118,6 +109,7 @@ public sealed partial class TedApp : Window
         };
 
         LanguageShortcut = new Shortcut (Key.Empty, "Plain Text", null) { MouseHighlightStates = MouseState.None };
+        ThemeShortcut = new Shortcut (Key.Empty, ThemeManager.Theme, CycleTheme);
         ShowTabsCheckBox.Value = Editor.ShowTabs ? CheckState.Checked : CheckState.UnChecked;
         PreviewCheckBox.ValueChanged += (_, e) =>
         {
@@ -128,6 +120,7 @@ public sealed partial class TedApp : Window
         StatusBar statusBar =
             new ([
                 new Shortcut { Title = "Language", CommandView = LanguageShortcut },
+                new Shortcut { Title = "Theme", CommandView = ThemeShortcut },
                 LocShortcut = new Shortcut (Key.Empty, FormatLoc (1, 1), null)
                     { MouseHighlightStates = MouseState.None }
             ])
@@ -166,7 +159,7 @@ public sealed partial class TedApp : Window
                 {
                     Action = () =>
                     {
-                        bool shouldEnableLineNumbers = !Editor.GutterOptions.HasFlag (GutterOptions.LineNumbers);
+                        var shouldEnableLineNumbers = !Editor.GutterOptions.HasFlag (GutterOptions.LineNumbers);
 
                         if (shouldEnableLineNumbers)
                         {
@@ -188,7 +181,7 @@ public sealed partial class TedApp : Window
                 {
                     Action = () =>
                     {
-                        bool shouldEnableFoldIndicators = !Editor.GutterOptions.HasFlag (GutterOptions.Folding);
+                        var shouldEnableFoldIndicators = !Editor.GutterOptions.HasFlag (GutterOptions.Folding);
 
                         if (shouldEnableFoldIndicators)
                         {
@@ -199,7 +192,8 @@ public sealed partial class TedApp : Window
                             Editor.GutterOptions &= ~GutterOptions.Folding;
                         }
 
-                        foldIndicatorsCheckBox.Value = shouldEnableFoldIndicators ? CheckState.Checked : CheckState.UnChecked;
+                        foldIndicatorsCheckBox.Value =
+                            shouldEnableFoldIndicators ? CheckState.Checked : CheckState.UnChecked;
                         Editor.SetNeedsDraw ();
                         SaveViewSettings ();
                     },
@@ -210,7 +204,7 @@ public sealed partial class TedApp : Window
                 {
                     Action = () =>
                     {
-                        bool wordWrapEnabled = !Editor.WordWrap;
+                        var wordWrapEnabled = !Editor.WordWrap;
                         Editor.WordWrap = wordWrapEnabled;
                         wordWrapCheckBox.Value = wordWrapEnabled ? CheckState.Checked : CheckState.UnChecked;
                         SaveViewSettings ();
@@ -222,25 +216,7 @@ public sealed partial class TedApp : Window
                 {
                     Action = () =>
                     {
-                        bool useThemeBackgroundEnabled = !Editor.UseThemeBackground;
-                        Editor.UseThemeBackground = useThemeBackgroundEnabled;
-                        useThemeBackgroundCheckBox.Value = useThemeBackgroundEnabled ? CheckState.Checked : CheckState.UnChecked;
-
-                        if (_markdownPreview is not null)
-                        {
-                            _markdownPreview.UseThemeBackground = Editor.UseThemeBackground;
-                        }
-
-                        SaveViewSettings ();
-                    },
-                    CommandView = useThemeBackgroundCheckBox,
-                    HelpText = "Use theme background for highlighted text"
-                },
-                new MenuItem
-                {
-                    Action = () =>
-                    {
-                        bool showTabsEnabled = !Editor.ShowTabs;
+                        var showTabsEnabled = !Editor.ShowTabs;
                         Editor.ShowTabs = showTabsEnabled;
                         ShowTabsCheckBox.Value = showTabsEnabled ? CheckState.Checked : CheckState.UnChecked;
                         SaveViewSettings ();
@@ -280,6 +256,9 @@ public sealed partial class TedApp : Window
 
     /// <summary>The status-bar shortcut that displays the current syntax-highlighting language name.</summary>
     public Shortcut LanguageShortcut { get; }
+
+    /// <summary>The status-bar shortcut that cycles <see cref="ThemeManager.Theme" /> on click.</summary>
+    public Shortcut ThemeShortcut { get; }
 
     /// <summary>The settings checkbox state for visible tab glyphs.</summary>
     public CheckBox ShowTabsCheckBox { get; } = new ()
@@ -360,6 +339,22 @@ public sealed partial class TedApp : Window
         _fileNameShortcut.SetNeedsDraw ();
     }
 
+    private void CycleTheme ()
+    {
+        ImmutableList<string> names = ThemeManager.GetThemeNames ();
+
+        if (names.Count == 0)
+        {
+            return;
+        }
+
+        var index = names.IndexOf (ThemeManager.Theme);
+        var next = names[(index + 1) % names.Count];
+        ThemeManager.Theme = next;
+        ThemeShortcut.Title = next;
+        ThemeShortcut.SetNeedsDraw ();
+    }
+
     private void UpdateLocShortcut ()
     {
         TextDocument? document = Editor.Document;
@@ -400,7 +395,6 @@ public sealed partial class TedApp : Window
         EditorSettings.FoldIndicators = Editor.GutterOptions.HasFlag (GutterOptions.Folding);
         EditorSettings.WordWrap = Editor.WordWrap;
         EditorSettings.ShowTabs = Editor.ShowTabs;
-        EditorSettings.UseThemeBackground = Editor.UseThemeBackground;
         EditorSettings.IndentSize = Editor.IndentationSize;
         EditorSettings.ConvertTabsToSpaces = Editor.ConvertTabsToSpaces;
         EditorSettings.AutoIndent = Editor.IndentationStrategy is not null;

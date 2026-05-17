@@ -336,6 +336,7 @@ internal static class V2Loader
         color.Italic = ParseFontStyle (reader.GetAttribute ("fontStyle"));
         color.Underline = reader.GetBoolAttribute ("underline");
         color.Strikethrough = reader.GetBoolAttribute ("strikethrough");
+        color.Category = reader.GetAttribute ("category");
         return color;
     }
 

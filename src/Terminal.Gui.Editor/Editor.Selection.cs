@@ -1,4 +1,5 @@
 using Terminal.Gui.Document;
+using Terminal.Gui.Input;
 
 namespace Terminal.Gui.Editor;
 
@@ -278,12 +279,7 @@ public partial class Editor
                 return 1;
             }
 
-            if (visibleIndex >= map.Count)
-            {
-                return map[^1].LineNumber;
-            }
-
-            return map[visibleIndex].LineNumber;
+            return visibleIndex >= map.Count ? map[^1].LineNumber : map[visibleIndex].LineNumber;
         }
 
         List<int> visibleLines = GetVisibleLineNumbers ();

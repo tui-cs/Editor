@@ -78,7 +78,7 @@ public partial class Editor
     /// </summary>
     private List<CaretEditInfo> GetAllCaretsDescending ()
     {
-        List<CaretEditInfo> result = [new CaretEditInfo { Offset = CaretOffset, IsPrimary = true }];
+        List<CaretEditInfo> result = [new () { Offset = CaretOffset, IsPrimary = true }];
 
         foreach (CaretInfo caret in _additionalCarets)
         {
@@ -102,16 +102,17 @@ public partial class Editor
     ///     Executes a multi-caret insert. Each caret has <paramref name="text" /> inserted at its
     ///     position. Wrapped in a single undo scope.
     /// </summary>
-    private bool? MultiCaretInsert (string text)
+    private void MultiCaretInsert (string text)
     {
         if (ReadOnly || _document is null)
         {
-            return true;
+            return;
         }
 
         if (!HasMultipleCarets)
         {
-            return InsertOrReplace (text);
+            InsertOrReplace (text);
+            return;
         }
 
         using (_document.RunUpdate ())
@@ -154,8 +155,6 @@ public partial class Editor
         // Clear per-caret selections after edit.
         // Editing collapses per-caret selections, matching single-caret behavior.
         ClearAdditionalCaretSelections ();
-
-        return true;
     }
 
     /// <summary>
@@ -369,7 +368,7 @@ public partial class Editor
     /// <summary>Holds anchor state for one additional caret.</summary>
     private sealed class CaretInfo
     {
-        public TextAnchor? CaretAnchor { get; set; }
+        public TextAnchor? CaretAnchor { get; init; }
         public TextAnchor? SelectionAnchor { get; set; }
     }
 

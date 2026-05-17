@@ -71,14 +71,9 @@ public sealed class TedLogo : View
                 {
                     Point c = new (col, row);
 
-                    if (colorMap.TryGetValue (c, out Color color))
-                    {
-                        SetAttribute (new Attribute (color, normalAttr.Background));
-                    }
-                    else
-                    {
-                        SetAttribute (normalAttr);
-                    }
+                    SetAttribute (colorMap.TryGetValue (c, out Color color)
+                        ? new Attribute (color, normalAttr.Background)
+                        : normalAttr);
                 }
                 else
                 {

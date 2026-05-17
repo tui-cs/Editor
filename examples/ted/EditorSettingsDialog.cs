@@ -1,6 +1,4 @@
-using Terminal.Gui.App;
 using Terminal.Gui.Editor;
-using Terminal.Gui.Input;
 using Terminal.Gui.Text.Indentation;
 using Terminal.Gui.ViewBase;
 using Terminal.Gui.Views;
@@ -9,11 +7,9 @@ namespace Ted;
 
 internal sealed class EditorSettingsDialog : Dialog
 {
-    private readonly NumericUpDown<int> _indentSize;
-    private readonly CheckBox _convertTabsCheck;
     private readonly CheckBox _autoIndentCheck;
-
-    internal bool WasAccepted { get; private set; }
+    private readonly CheckBox _convertTabsCheck;
+    private readonly NumericUpDown<int> _indentSize;
 
     internal EditorSettingsDialog (Editor editor)
     {
@@ -28,7 +24,7 @@ internal sealed class EditorSettingsDialog : Dialog
             Height = Dim.Fill ()
         };
 
-        _indentSize = new ()
+        _indentSize = new NumericUpDown<int>
         {
             X = 20,
             Y = 1,
@@ -43,7 +39,7 @@ internal sealed class EditorSettingsDialog : Dialog
             }
         };
 
-        _convertTabsCheck = new ()
+        _convertTabsCheck = new CheckBox
         {
             X = 1,
             Y = 3,
@@ -51,7 +47,7 @@ internal sealed class EditorSettingsDialog : Dialog
             Value = editor.ConvertTabsToSpaces ? CheckState.Checked : CheckState.UnChecked
         };
 
-        _autoIndentCheck = new ()
+        _autoIndentCheck = new CheckBox
         {
             X = 1,
             Y = 5,
@@ -60,7 +56,7 @@ internal sealed class EditorSettingsDialog : Dialog
         };
 
         tabSettingsTab.Add (
-            new Label () { X = 1, Y = 1, Text = "_Indent size:" },
+            new Label { X = 1, Y = 1, Text = "_Indent size:" },
             _indentSize,
             _convertTabsCheck,
             _autoIndentCheck);
@@ -72,7 +68,7 @@ internal sealed class EditorSettingsDialog : Dialog
             Height = Dim.Fill ()
         };
 
-        configTab.Add (new Label () { X = 1, Y = 1, Text = "No settings yet." });
+        configTab.Add (new Label { X = 1, Y = 1, Text = "No settings yet." });
 
         Tabs tabs = new ()
         {
@@ -109,6 +105,8 @@ internal sealed class EditorSettingsDialog : Dialog
         cancelBtn.Accepting += (_, _) => RequestStop ();
         Add (tabs, okBtn, cancelBtn);
     }
+
+    internal bool WasAccepted { get; private set; }
 
     internal void ApplyTo (Editor editor)
     {
