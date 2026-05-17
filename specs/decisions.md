@@ -60,7 +60,7 @@ Decisions are recorded here when an open question from the plan is resolved. Eac
 
 **Decision**: Use a fresh LSP-flavored `IEditorCompletionProvider` interface and `CompletionItem` type (`Terminal.Gui.Editor.Completion` namespace), **not** Terminal.Gui's existing `IAutocomplete` / `PopupAutocomplete`.
 
-**Rationale**: TG's `IAutocomplete` is tightly coupled to `TextView` (it assumes its own `PopupAutocomplete` rendering, owns selection state, and embeds key-handling that conflicts with `Editor`'s command architecture). A clean provider interface — `GetCompletions(document, caretOffset, prefix)` + `ShouldTrigger(key)` — keeps the completion *data* separate from the *UI*. `CompletionItem` follows the LSP shape (Label, InsertText, Detail) rather than reusing `IAutocomplete`'s string list, which simplifies future LSP integration. The popup uses a TG-native `DropDownList` (which internally uses `Popover`) positioned at the caret. Accept applies inside a single `RunUpdate` scope so the entire replacement is one undo step.
+**Rationale**: TG's `IAutocomplete` is tightly coupled to `TextView` (it assumes its own `PopupAutocomplete` rendering, owns selection state, and embeds key-handling that conflicts with `Editor`'s command architecture). A clean provider interface — `GetCompletions(document, caretOffset, prefix)` + `ShouldTrigger(key)` — keeps the completion *data* separate from the *UI*. `CompletionItem` follows the LSP shape (Label, InsertText, Detail) rather than reusing `IAutocomplete`'s string list, which simplifies future LSP integration. The popup uses a `Popover<ListView, CompletionItem?>` positioned at the caret. Accept applies inside a single `RunUpdate` scope so the entire replacement is one undo step.
 
 **Date**: 2026-05-17
 

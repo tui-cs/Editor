@@ -233,7 +233,7 @@ Don't accidentally do these — they were considered and rejected:
 - Source/API compatibility with `Terminal.Gui.TextView`. `Editor` ships beside it, not as a replacement.
 - RTL bidi or rich text shaping beyond grapheme width.
 - Pixel/proportional font fidelity.
-- Porting AvaloniaEdit's `Editing/`, `Rendering/`, or `CodeCompletion/` namespaces — those are Avalonia-UI-specific and replaced by TG-native equivalents (`Editor` partials, cell-grid `Rendering/`, `DropDownList` + `Popover` for completion).
+- Porting AvaloniaEdit's `Editing/`, `Rendering/`, or `CodeCompletion/` namespaces — those are Avalonia-UI-specific and replaced by TG-native equivalents (`Editor` partials, cell-grid `Rendering/`, `Popover<ListView>` for completion).
 
 ## Open decisions
 

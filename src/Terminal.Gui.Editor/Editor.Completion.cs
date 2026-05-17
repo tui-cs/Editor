@@ -1,15 +1,18 @@
 using System.Collections.ObjectModel;
 using System.Drawing;
+using Terminal.Gui.App;
 using Terminal.Gui.Editor.Completion;
 using Terminal.Gui.Input;
+using Terminal.Gui.ViewBase;
 using Terminal.Gui.Views;
 
 namespace Terminal.Gui.Editor;
 
 public partial class Editor
 {
-    private DropDownList? _completionDropDown;
     private IReadOnlyList<CompletionItem> _completionItems = [];
+    private ListView? _completionListView;
+    private Popover<ListView, CompletionItem?>? _completionPopover;
     private int _completionPrefixStart;
     private int _completionSelectedIndex;
 
@@ -184,11 +187,12 @@ public partial class Editor
     /// <summary>Hides the completion popup if it is visible.</summary>
     internal void DismissCompletion ()
     {
-        if (_completionDropDown is not null)
+        if (_completionPopover is not null)
         {
-            SuperView?.Remove (_completionDropDown);
-            _completionDropDown.Dispose ();
-            _completionDropDown = null;
+            _completionPopover.Visible = false;
+            _completionPopover.Dispose ();
+            _completionPopover = null;
+            _completionListView = null;
         }
 
         _completionItems = [];
@@ -234,54 +238,53 @@ public partial class Editor
 
     private void ShowCompletionPopup ()
     {
-        if (_completionItems.Count == 0 || SuperView is null)
+        if (_completionItems.Count == 0)
         {
             return;
         }
 
-        // Dispose previous dropdown if any — create fresh each time so the list is rebuilt.
-        if (_completionDropDown is not null)
+        // Dispose previous popover if any — create fresh each time so the list is rebuilt.
+        if (_completionPopover is not null)
         {
-            SuperView.Remove (_completionDropDown);
-            _completionDropDown.Dispose ();
-            _completionDropDown = null;
+            _completionPopover.Visible = false;
+            _completionPopover.Dispose ();
+            _completionPopover = null;
+            _completionListView = null;
         }
 
-        // Build the label list and measure max width in a single pass.
-        var maxLen = 0;
-        ObservableCollection<string> labels = [];
+        // Build the label list for the ListView.
+        ObservableCollection<string> labels = new (_completionItems.Select (i => i.Label));
 
-        foreach (CompletionItem item in _completionItems)
-        {
-            labels.Add (item.Label);
-            maxLen = Math.Max (maxLen, item.Label.Length);
-        }
+        // Cap visible height at 10 items to avoid oversized popups.
+        var visibleCount = Math.Min (_completionItems.Count, 10);
 
-        // Compute the caret position in SuperView coordinates for placement.
-        Point caretScreen = GetCaretScreenPosition ();
-        Point inSuperView = SuperView.ScreenToViewport (caretScreen);
-
-        _completionDropDown = new DropDownList
+        _completionListView = new ListView
         {
             Source = new ListWrapper<string> (labels),
-            ReadOnly = true,
-            Width = maxLen + 4,
-            X = inSuperView.X,
-            Y = inSuperView.Y + 1
+            Width = _completionItems.Max (i => i.Label.Length) + 2,
+            Height = visibleCount
+        };
+        _completionListView.SelectedItem = _completionSelectedIndex;
+
+        IReadOnlyList<CompletionItem> capturedItems = _completionItems;
+
+        _completionPopover = new Popover<ListView, CompletionItem?> (_completionListView)
+        {
+            Target = new WeakReference<View> (this),
+            ResultExtractor = lv =>
+            {
+                if (lv.SelectedItem is not { } idx || idx < 0 || idx >= capturedItems.Count)
+                {
+                    return null;
+                }
+
+                return capturedItems[idx];
+            }
         };
 
-        // Pre-select the first item (bounds-checked).
-        if (labels.Count > 0 && _completionSelectedIndex >= 0 && _completionSelectedIndex < labels.Count)
-        {
-            _completionDropDown.Text = labels[_completionSelectedIndex];
-        }
-
-        SuperView.Add (_completionDropDown);
-        SuperView.Layout ();
-
-        // Open the dropdown list immediately via the Toggle command.
-        _completionDropDown.SetFocus ();
-        _completionDropDown.InvokeCommand (Command.Toggle);
+        // Position the popup just below the caret.
+        Point caretScreen = GetCaretScreenPosition ();
+        _completionPopover.MakeVisible (new Point (caretScreen.X, caretScreen.Y + 1));
     }
 
     private void SelectCompletionItem (int index)
@@ -293,10 +296,15 @@ public partial class Editor
 
         _completionSelectedIndex = index;
 
-        if (_completionDropDown is not null)
+        // If the popover and list are already visible, just update the selection in place.
+        if (_completionListView is not null && _completionPopover is { Visible: true })
         {
-            _completionDropDown.Text = _completionItems[index].Label;
+            _completionListView.SelectedItem = index;
+
+            return;
         }
+
+        ShowCompletionPopup ();
     }
 
     /// <summary>
