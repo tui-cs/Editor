@@ -4,8 +4,6 @@ using Terminal.Gui.Drivers;
 using Terminal.Gui.Editor.IntegrationTests.Testing;
 using Terminal.Gui.Input;
 using Terminal.Gui.Testing;
-using Terminal.Gui.ViewBase;
-using Terminal.Gui.Views;
 using Xunit;
 
 namespace Terminal.Gui.Editor.IntegrationTests;
@@ -204,25 +202,44 @@ public class EditorKillRingTests
     [Fact]
     public async Task ConsecutiveKillToBOL_Prepends ()
     {
-        // "abcdef" — caret at 6 (EOL), two consecutive CutToStartOfLine should prepend
-        // so clipboard accumulates in document order.
-        await using AppFixture<EditorTestHost> fx = new (() => new ("abc\ndefghi"));
+        // Two consecutive CutToStartOfLine on a single line should prepend so clipboard
+        // accumulates in document order.
+        // "abcdef" — caret at 6 (end)
+        await using AppFixture<EditorTestHost> fx = new (() => new ("abcdef"));
         EnsureFakeClipboard (fx);
         fx.Top.Editor.SetFocus ();
-        fx.Top.Editor.CaretOffset = 7; // after "def" in "defghi"
+        fx.Top.Editor.CaretOffset = 6; // end of "abcdef"
 
-        // First kill-to-BOL: kills "def" → clipboard = "def", text = "abc\nghi"
+        // First kill-to-BOL: kills "abcdef" → clipboard = "abcdef", text = ""
         fx.Top.Editor.InvokeCommand (Command.CutToStartOfLine);
-        Assert.Equal ("abc\nghi", fx.Top.Editor.Document?.Text);
+        Assert.Equal ("", fx.Top.Editor.Document?.Text);
 
         string? data = null;
         Assert.True (fx.App.Clipboard?.TryGetClipboardData (out data));
-        Assert.Equal ("def", data);
+        Assert.Equal ("abcdef", data);
+    }
 
-        // Second consecutive kill-to-EOL: kills "ghi" → clipboard = "def" + "ghi" = "defghi"
-        fx.Top.Editor.InvokeCommand (Command.CutToEndOfLine);
+    [Fact]
+    public async Task ConsecutiveKillToBOL_TwoLines_Prepends ()
+    {
+        // Consecutive CutToStartOfLine across different lines should prepend in document order.
+        // "abc\ndef\nghi" — start at end of line 3 (offset 11, after "ghi")
+        await using AppFixture<EditorTestHost> fx = new (() => new ("abc\ndef\nghi"));
+        EnsureFakeClipboard (fx);
+        fx.Top.Editor.SetFocus ();
+        fx.Top.Editor.CaretOffset = 11; // end of "ghi"
 
-        data = null;
+        // First kill-to-BOL: kills "ghi" → clipboard = "ghi", text = "abc\ndef\n"
+        fx.Top.Editor.InvokeCommand (Command.CutToStartOfLine);
+        Assert.Equal ("abc\ndef\n", fx.Top.Editor.Document?.Text);
+
+        // Move caret to end of line 2 (offset 7, end of "def")
+        fx.Top.Editor.CaretOffset = 7;
+
+        // Second consecutive kill-to-BOL: kills "def" → prepend → clipboard = "def" + "ghi" = "defghi"
+        fx.Top.Editor.InvokeCommand (Command.CutToStartOfLine);
+
+        string? data = null;
         Assert.True (fx.App.Clipboard?.TryGetClipboardData (out data));
         Assert.Equal ("defghi", data);
     }
@@ -251,5 +268,37 @@ public class EditorKillRingTests
 
         // Selection replaced with empty — "hello" removed.
         Assert.Equal (" world", fx.Top.Editor.Document?.Text);
+    }
+
+    // ───────────────────── Clipboard failure ─────────────────────
+
+    [Fact]
+    public async Task CutToEndOfLine_PreservesText_When_Clipboard_Unavailable ()
+    {
+        await using AppFixture<EditorTestHost> fx = new (() => new ("hello world"));
+
+        // FakeClipboard(false, true) → IsSupported = false, writes fail.
+        fx.Driver.Clipboard = new FakeClipboard (false, true);
+        fx.Top.Editor.SetFocus ();
+        fx.Top.Editor.CaretOffset = 5;
+
+        fx.Top.Editor.InvokeCommand (Command.CutToEndOfLine);
+
+        // Text must be preserved because the clipboard write failed.
+        Assert.Equal ("hello world", fx.Top.Editor.Document?.Text);
+    }
+
+    [Fact]
+    public async Task CutToStartOfLine_PreservesText_When_Clipboard_Unavailable ()
+    {
+        await using AppFixture<EditorTestHost> fx = new (() => new ("hello world"));
+
+        fx.Driver.Clipboard = new FakeClipboard (false, true);
+        fx.Top.Editor.SetFocus ();
+        fx.Top.Editor.CaretOffset = 5;
+
+        fx.Top.Editor.InvokeCommand (Command.CutToStartOfLine);
+
+        Assert.Equal ("hello world", fx.Top.Editor.Document?.Text);
     }
 }

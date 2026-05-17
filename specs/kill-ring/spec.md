@@ -23,9 +23,11 @@ Both commands:
 ## Kill-Ring Append Semantics
 
 - A `_lastCommandWasKill` flag tracks whether the immediately preceding command was a kill.
+- A `_previousCommandWasKill` field is set by `OnKeyDown` — it snapshots `_lastCommandWasKill` before clearing it, so the dispatched kill command can read whether the preceding command was a kill.
 - The flag is **cleared** at the top of `OnKeyDown` (before the base class dispatches any command).
-- Each kill command **sets** the flag after executing.
-- When the flag is set at the time of a new kill:
+- Each kill command **sets** `_lastCommandWasKill` after executing.
+- Kill commands read `_previousCommandWasKill` (keyboard path) or `_lastCommandWasKill` (programmatic `InvokeCommand` path) to decide whether to append or prepend.
+- When the preceding command was a kill:
   - `CutToEndOfLine` **appends** killed text after the existing clipboard content.
   - `CutToStartOfLine` **prepends** killed text before the existing clipboard content (so the clipboard accumulates in document order).
 - Any non-kill command (movement, insertion, undo, etc.) breaks the run because `OnKeyDown` clears the flag before dispatch.
@@ -38,7 +40,7 @@ appears in `Editor.DefaultKeyBindings`. Users opt in via the `[ConfigurationProp
 
 ## Files Changed
 
-- `src/Terminal.Gui.Editor/Editor.cs` — `_lastCommandWasKill` field.
+- `src/Terminal.Gui.Editor/Editor.cs` — `_lastCommandWasKill` and `_previousCommandWasKill` fields.
 - `src/Terminal.Gui.Editor/Editor.Commands.cs` — `AddCommand` registrations, `CutToEndOfLine()`, `CutToStartOfLine()`, `WriteKillToClipboard()`.
 - `src/Terminal.Gui.Editor/Editor.Keyboard.cs` — `OnKeyDown` override to clear the kill flag.
 - `tests/Terminal.Gui.Editor.IntegrationTests/EditorKillRingTests.cs` — integration tests.

@@ -497,10 +497,9 @@ public partial class Editor
     /// </summary>
     private bool? CutToEndOfLine ()
     {
-        // Snapshot the kill-run flag for append decisions. When invoked via OnKeyDown, the flag
-        // was already snapshotted there and _lastCommandWasKill is false, making this a no-op.
-        // When invoked directly via InvokeCommand, this is the only snapshot site.
-        _previousCommandWasKill = _lastCommandWasKill;
+        // For keyboard dispatch, _previousCommandWasKill was set by OnKeyDown.
+        // For InvokeCommand dispatch, fall back to _lastCommandWasKill (OnKeyDown was not called).
+        bool consecutiveKill = _previousCommandWasKill || _lastCommandWasKill;
         _lastCommandWasKill = false;
 
         if (ReadOnly || _document is null)
@@ -542,7 +541,7 @@ public partial class Editor
 
         var killed = _document.GetText (start, length);
 
-        if (!WriteKillToClipboard (killed, append: _previousCommandWasKill, prepend: false))
+        if (!WriteKillToClipboard (killed, append: consecutiveKill, prepend: false))
         {
             return true;
         }
@@ -564,8 +563,8 @@ public partial class Editor
     /// </summary>
     private bool? CutToStartOfLine ()
     {
-        // Snapshot the kill-run flag — see CutToEndOfLine for rationale.
-        _previousCommandWasKill = _lastCommandWasKill;
+        // See CutToEndOfLine for rationale on the dual-path flag check.
+        bool consecutiveKill = _previousCommandWasKill || _lastCommandWasKill;
         _lastCommandWasKill = false;
 
         if (ReadOnly || _document is null)
@@ -592,7 +591,7 @@ public partial class Editor
 
         var killed = _document.GetText (start, length);
 
-        if (!WriteKillToClipboard (killed, append: false, prepend: _previousCommandWasKill))
+        if (!WriteKillToClipboard (killed, append: false, prepend: consecutiveKill))
         {
             return true;
         }

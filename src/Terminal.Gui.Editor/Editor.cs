@@ -49,12 +49,19 @@ public partial class Editor : View
 
     // Kill-ring: consecutive CutToEndOfLine / CutToStartOfLine appends to the clipboard instead
     // of replacing. Any non-kill command (including plain character insertion) breaks the run.
+    //
     // _lastCommandWasKill is set to true by kill commands after executing.
-    // _previousCommandWasKill captures the flag's value before clearing, so the kill commands can
-    // read whether the *preceding* command was a kill.  Two snapshot sites cover both dispatch paths:
-    //   • OnKeyDown (keyboard dispatch): snapshots then clears before base.OnKeyDown.
-    //   • Each kill command entry (InvokeCommand dispatch): snapshots then clears inline.
-    // The second snapshot is a no-op when the first already ran (flag is already false).
+    // _previousCommandWasKill is set by OnKeyDown (keyboard path) — it snapshots _lastCommandWasKill
+    // before clearing it, so the dispatched kill command can read whether the preceding command was
+    // a kill for append/prepend decisions.
+    //
+    // Keyboard path: OnKeyDown snapshots _lastCommandWasKill → _previousCommandWasKill, clears
+    //   _lastCommandWasKill, then dispatches.  Kill commands read _previousCommandWasKill.
+    // InvokeCommand path (programmatic): OnKeyDown is bypassed.  Kill commands fall back to
+    //   _lastCommandWasKill directly.  Note: non-kill commands invoked via InvokeCommand do NOT
+    //   clear _lastCommandWasKill, so a sequence like InvokeCommand(Kill) → InvokeCommand(Right) →
+    //   InvokeCommand(Kill) will incorrectly append.  This is a known limitation of the
+    //   programmatic path; keyboard dispatch (the primary use case) is unaffected.
     private bool _lastCommandWasKill;
     private bool _previousCommandWasKill;
 

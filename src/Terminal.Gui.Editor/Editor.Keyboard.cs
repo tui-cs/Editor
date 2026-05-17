@@ -20,7 +20,14 @@ public partial class Editor
         _previousCommandWasKill = _lastCommandWasKill;
         _lastCommandWasKill = false;
 
-        return base.OnKeyDown (key);
+        bool result = base.OnKeyDown (key);
+
+        // Clear the snapshot so it does not leak into a subsequent InvokeCommand call.
+        // If the dispatched command was a kill, _lastCommandWasKill is already true;
+        // _previousCommandWasKill is no longer needed.
+        _previousCommandWasKill = false;
+
+        return result;
     }
 
     /// <summary>
