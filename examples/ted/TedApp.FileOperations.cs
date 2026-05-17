@@ -504,12 +504,17 @@ public sealed partial class TedApp
                 ? $"{totalCharacters:N0} chars"
                 : null;
 
-        if (total is not null && progress.Fraction is { } fraction)
+        if (total is null)
+        {
+            return $"{verb} {processed}";
+        }
+
+        if (progress.Fraction is { } fraction)
         {
             return $"{verb} {processed} of {total} ({fraction:P0})";
         }
 
-        return $"{verb} {processed}";
+        return $"{verb} {processed} of {total}";
     }
 
     private static string FormatStartingProgress (string verb, long? totalBytes)
@@ -548,8 +553,8 @@ public sealed partial class TedApp
             unitIndex++;
         }
 
-        return unitIndex == 0
-            ? $"{bytes:N0} {units[unitIndex]}"
-            : $"{value:N1} {units[unitIndex]}";
+        var format = unitIndex == 0 ? "N0" : "N1";
+
+        return $"{value.ToString (format)} {units[unitIndex]}";
     }
 }
