@@ -4,6 +4,10 @@ using Terminal.Gui.ViewBase;
 
 namespace Terminal.Gui.Editor;
 
+/// <summary>
+///     Design-time support for <see cref="Editor" /> so designers can preview representative
+///     content with highlighting and line numbers enabled.
+/// </summary>
 public partial class Editor : IDesignable
 {
     /// <summary>
