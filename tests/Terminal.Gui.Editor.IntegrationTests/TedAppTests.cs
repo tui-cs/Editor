@@ -112,6 +112,9 @@ public class TedAppTests
         Assert.True (await app.OpenFileAsync (TestContext.Current.CancellationToken));
 
         Assert.Equal ("Loaded", app.LoadStatusShortcut.Title);
+        Assert.Same (app.LoadStatusSpinner, app.LoadSpinnerShortcut.CommandView);
+        Assert.False (app.LoadStatusSpinner.Visible);
+        Assert.False (app.LoadStatusSpinner.AutoSpin);
         Assert.Equal (100_000, app.Editor.Document!.TextLength);
     }
 
