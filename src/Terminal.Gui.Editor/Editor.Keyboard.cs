@@ -26,15 +26,6 @@ public partial class Editor
             return true;
         }
 
-        // Esc dismisses an active completion (handled above); when no popup is active, let it
-        // fall through to multi-caret clear or default handling.
-        if (key == Key.Esc && IsCompletionActive)
-        {
-            DismissCompletion ();
-
-            return true;
-        }
-
         if (key.IsCtrl || key.IsAlt)
         {
             return false;
