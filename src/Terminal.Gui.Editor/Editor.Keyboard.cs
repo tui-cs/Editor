@@ -9,6 +9,9 @@ public partial class Editor
     ///     Runs before command bindings. When completion is active, intercepts navigation and
     ///     accept/dismiss keys (Enter, Tab, arrows, Esc) so they don't trigger the normal
     ///     editor command bindings. Also checks provider-specific trigger keys (e.g. Ctrl+Space).
+    ///     Additionally tracks the kill-ring consecutive-kill flag: snapshots
+    ///     <c>_lastCommandWasKill</c> into <c>_previousCommandWasKill</c>, then clears
+    ///     <c>_lastCommandWasKill</c>. The kill commands re-set it after executing.
     /// </summary>
     /// <inheritdoc />
     protected override bool OnKeyDown (Key key)
@@ -18,7 +21,17 @@ public partial class Editor
             return true;
         }
 
-        return base.OnKeyDown (key);
+        _previousCommandWasKill = _lastCommandWasKill;
+        _lastCommandWasKill = false;
+
+        bool result = base.OnKeyDown (key);
+
+        // Clear the snapshot so it does not leak into a subsequent InvokeCommand call.
+        // If the dispatched command was a kill, _lastCommandWasKill is already true;
+        // _previousCommandWasKill is no longer needed.
+        _previousCommandWasKill = false;
+
+        return result;
     }
 
     /// <summary>
