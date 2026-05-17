@@ -1,5 +1,6 @@
 using System.Drawing;
 using Terminal.Gui.Document;
+using Terminal.Gui.Editor.Rendering;
 
 namespace Terminal.Gui.Editor;
 
@@ -13,6 +14,7 @@ namespace Terminal.Gui.Editor;
 public partial class Editor
 {
     private readonly List<CaretInfo> _additionalCarets = [];
+    private int _verticalCaretKeyboardDirection;
 
     /// <summary>Gets the offsets of all additional carets (excludes the primary).</summary>
     public IReadOnlyList<int> AdditionalCaretOffsets => _additionalCarets
@@ -35,6 +37,8 @@ public partial class Editor
         {
             return;
         }
+
+        _verticalCaretKeyboardDirection = 0;
 
         offset = Math.Clamp (offset, 0, _document.TextLength);
 
@@ -102,6 +106,8 @@ public partial class Editor
     {
         if (_additionalCarets.Count == 0)
         {
+            _verticalCaretKeyboardDirection = 0;
+
             return;
         }
 
@@ -121,6 +127,11 @@ public partial class Editor
 
         if (removed)
         {
+            if (_additionalCarets.Count == 0)
+            {
+                _verticalCaretKeyboardDirection = 0;
+            }
+
             SetNeedsDraw ();
         }
     }
@@ -136,6 +147,19 @@ public partial class Editor
     {
         if (_document is null)
         {
+            return true;
+        }
+
+        if (HasMultipleCarets
+            && _verticalCaretKeyboardDirection != 0
+            && delta != _verticalCaretKeyboardDirection
+            && TryRemoveEdgeCaret (_verticalCaretKeyboardDirection))
+        {
+            if (!HasMultipleCarets)
+            {
+                _verticalCaretKeyboardDirection = 0;
+            }
+
             return true;
         }
 
@@ -159,6 +183,7 @@ public partial class Editor
         if (TryGetVerticalOffset (reference, delta, _virtualCaretColumn, out var target))
         {
             AddAdditionalCaretAt (target);
+            _verticalCaretKeyboardDirection = delta;
         }
 
         return true;
@@ -179,6 +204,7 @@ public partial class Editor
         }
 
         var primaryOffset = MousePositionToOffset (new Point (viewColumn, anchorViewRow));
+        _verticalCaretKeyboardDirection = 0;
 
         ClearSelection ();
         ClearAdditionalCarets ();
@@ -206,6 +232,7 @@ public partial class Editor
     public void ClearAdditionalCarets ()
     {
         var had = _additionalCarets.Count > 0;
+        _verticalCaretKeyboardDirection = 0;
 
         if (had)
         {
@@ -234,7 +261,7 @@ public partial class Editor
     /// </summary>
     private List<CaretEditInfo> GetAllCaretsDescending ()
     {
-        List<CaretEditInfo> result = [new CaretEditInfo { Offset = CaretOffset, IsPrimary = true }];
+        List<CaretEditInfo> result = [new () { Offset = CaretOffset, IsPrimary = true }];
 
         foreach (CaretInfo caret in _additionalCarets)
         {
@@ -574,23 +601,19 @@ public partial class Editor
     /// </summary>
     private bool MultiCaretUnindent ()
     {
-        HashSet<int> seenLineOffsets = [];
+        HashSet<int> seenRemovalOffsets = [];
         List<(int offset, int length)> removals = [];
 
         foreach (CaretEditInfo caret in GetAllCaretsDescending ())
         {
-            DocumentLine line = _document!.GetLineByOffset (caret.Offset);
-
-            if (!seenLineOffsets.Add (line.Offset))
+            if (!TryGetUnindentRemovalAt (caret.Offset, out (int offset, int length) removal))
             {
                 continue;
             }
 
-            ISegment segment = TextUtilities.GetSingleIndentationSegment (_document, line.Offset, IndentationSize);
-
-            if (segment.Length > 0)
+            if (seenRemovalOffsets.Add (removal.offset))
             {
-                removals.Add ((segment.Offset, segment.Length));
+                removals.Add (removal);
             }
         }
 
@@ -608,6 +631,93 @@ public partial class Editor
         }
 
         ClearAdditionalCaretSelections ();
+
+        return true;
+    }
+
+    private bool TryGetUnindentRemovalAt (int caretOffset, out (int offset, int length) removal)
+    {
+        removal = default;
+
+        if (_document is null || caretOffset == 0)
+        {
+            return false;
+        }
+
+        DocumentLine line = _document.GetLineByOffset (caretOffset);
+        CellVisualLine visualLine = GetOrBuildDefaultVisualLine (line);
+        var logicalColumn = caretOffset - line.Offset;
+        var visualColumn = visualLine.GetVisualColumn (logicalColumn);
+
+        if (visualColumn <= 0)
+        {
+            return false;
+        }
+
+        var previousTabStop = visualColumn - 1;
+        previousTabStop -= previousTabStop % IndentationSize;
+
+        var removalStartOffset = line.Offset + visualLine.GetRelativeOffset (previousTabStop);
+
+        if (removalStartOffset >= caretOffset)
+        {
+            return false;
+        }
+
+        var removalLength = caretOffset - removalStartOffset;
+        var segmentText = _document.GetText (removalStartOffset, removalLength);
+
+        if (segmentText.Any (static c => c != ' ' && c != '\t'))
+        {
+            return false;
+        }
+
+        removal = (removalStartOffset, removalLength);
+
+        return true;
+    }
+
+    private bool TryRemoveEdgeCaret (int direction)
+    {
+        var candidateIndex = -1;
+        var candidateOffset = direction < 0 ? int.MaxValue : int.MinValue;
+
+        for (var i = 0; i < _additionalCarets.Count; i++)
+        {
+            if (_additionalCarets[i].CaretAnchor is not { IsDeleted: false } anchor)
+            {
+                continue;
+            }
+
+            if (direction < 0)
+            {
+                if (anchor.Offset >= candidateOffset)
+                {
+                    continue;
+                }
+
+                candidateOffset = anchor.Offset;
+                candidateIndex = i;
+
+                continue;
+            }
+
+            if (anchor.Offset <= candidateOffset)
+            {
+                continue;
+            }
+
+            candidateOffset = anchor.Offset;
+            candidateIndex = i;
+        }
+
+        if (candidateIndex < 0)
+        {
+            return false;
+        }
+
+        _additionalCarets.RemoveAt (candidateIndex);
+        SetNeedsDraw ();
 
         return true;
     }

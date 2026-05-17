@@ -485,6 +485,51 @@ public class EditorTests
     }
 
     [Fact]
+    public async Task ShiftTab_After_Tab_Removes_Previous_Tab_Stop_At_Each_Caret ()
+    {
+        await using AppFixture<EditorTestHost> fx = new (() => new ("ab  Editor\nab  Editor"));
+        fx.Top.Editor.SetFocus ();
+        fx.Top.Editor.ConvertTabsToSpaces = true;
+        fx.Top.Editor.CaretOffset = 4;
+
+        fx.Injector.InjectKey (Key.CursorDown.WithCtrl.WithAlt, Direct);
+        fx.Injector.InjectKey (Key.Tab, Direct);
+        fx.Injector.InjectKey (Key.Tab.WithShift, Direct);
+
+        Assert.Equal ("ab  Editor\nab  Editor", fx.Top.Editor.Document?.Text);
+    }
+
+    [Fact]
+    public async Task CtrlAltDown_Then_CtrlAltUp_Collapses_Last_Down_Selection ()
+    {
+        await using AppFixture<EditorTestHost> fx = new (() => new ("a\nb\nc"));
+        fx.Top.Editor.SetFocus ();
+        fx.Top.Editor.CaretOffset = 0;
+
+        fx.Injector.InjectKey (Key.CursorDown.WithCtrl.WithAlt, Direct);
+        fx.Injector.InjectKey (Key.CursorUp.WithCtrl.WithAlt, Direct);
+
+        Assert.False (fx.Top.Editor.HasMultipleCarets);
+        Assert.Equal (0, fx.Top.Editor.CaretOffset);
+        Assert.Empty (fx.Top.Editor.AdditionalCaretOffsets);
+    }
+
+    [Fact]
+    public async Task CtrlAltUp_Then_CtrlAltDown_Collapses_Last_Up_Selection ()
+    {
+        await using AppFixture<EditorTestHost> fx = new (() => new ("a\nb\nc"));
+        fx.Top.Editor.SetFocus ();
+        fx.Top.Editor.CaretOffset = 2;
+
+        fx.Injector.InjectKey (Key.CursorUp.WithCtrl.WithAlt, Direct);
+        fx.Injector.InjectKey (Key.CursorDown.WithCtrl.WithAlt, Direct);
+
+        Assert.False (fx.Top.Editor.HasMultipleCarets);
+        Assert.Equal (2, fx.Top.Editor.CaretOffset);
+        Assert.Empty (fx.Top.Editor.AdditionalCaretOffsets);
+    }
+
+    [Fact]
     public async Task Primary_Caret_Is_Visible_After_Exiting_MultiCaret ()
     {
         await using AppFixture<EditorTestHost> fx = new (() => new ("abcd\nabcd\nabcd\nabcd"));

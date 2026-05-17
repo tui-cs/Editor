@@ -145,6 +145,20 @@ public partial class Editor
     /// </summary>
     private bool TryDeleteIndentationLeftAt (int offset)
     {
+        if (!TryGetIndentationRemovalAt (offset, out (int offset, int length) removal))
+        {
+            return false;
+        }
+
+        _document!.Remove (removal.offset, removal.length);
+
+        return true;
+    }
+
+    private bool TryGetIndentationRemovalAt (int offset, out (int offset, int length) removal)
+    {
+        removal = default;
+
         if (_document is null || offset == 0)
         {
             return false;
@@ -158,7 +172,6 @@ public partial class Editor
             return false;
         }
 
-        // Walk forward through indent units; delete the last complete one ending at the caret.
         var scanOffset = line.Offset;
         (int offset, int length) lastSegment = (0, 0);
 
@@ -180,7 +193,7 @@ public partial class Editor
             return false;
         }
 
-        _document.Remove (lastSegment.offset, lastSegment.length);
+        removal = lastSegment;
 
         return true;
     }
