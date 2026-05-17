@@ -202,9 +202,12 @@ public class EditorContextMenuTests
 
         PopoverMenu? menu = fx.Top.Editor.ContextMenu;
         Assert.NotNull (menu);
+        Assert.NotNull (menu.Root);
 
-        // Verify that each MenuItem uses declarative binding (TargetView targets the Editor, no Action)
-        foreach (View child in menu.Root!.SubViews)
+        // Collect the commands from all MenuItems (skip Line separators).
+        List<Command> commands = [];
+
+        foreach (View child in menu.Root.SubViews)
         {
             if (child is not MenuItem menuItem)
             {
@@ -213,7 +216,13 @@ public class EditorContextMenuTests
 
             Assert.Equal (fx.Top.Editor, menuItem.TargetView);
             Assert.Null (menuItem.Action);
+            commands.Add (menuItem.Command);
         }
+
+        // Verify the expected commands in order.
+        Assert.Equal (
+            [Command.Undo, Command.Redo, Command.Cut, Command.Copy, Command.Paste, Command.SelectAll],
+            commands);
     }
 
     [Fact]
