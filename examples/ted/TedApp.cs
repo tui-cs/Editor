@@ -6,6 +6,7 @@ using Terminal.Gui.Document;
 using Terminal.Gui.Document.Folding;
 using Terminal.Gui.Drawing;
 using Terminal.Gui.Editor;
+using Terminal.Gui.Editor.Completion;
 using Terminal.Gui.Input;
 using Terminal.Gui.Resources;
 using Terminal.Gui.Text.Indentation;
@@ -40,6 +41,7 @@ public sealed partial class TedApp : Window
             WordWrap = EditorSettings.WordWrap,
             ShowTabs = EditorSettings.ShowTabs,
             ReadOnly = readOnly,
+            CompletionProvider = new WordCompletionProvider (),
             ViewportSettings = ViewportSettingsFlags.HasScrollBars
         };
 

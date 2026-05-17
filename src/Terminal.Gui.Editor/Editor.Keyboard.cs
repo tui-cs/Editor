@@ -13,9 +13,24 @@ public partial class Editor
     /// <inheritdoc />
     protected override bool OnKeyDownNotHandled (Key key)
     {
+        // Completion popup gets first priority for navigation / accept / dismiss / trigger keys.
+        if (HandleCompletionKey (key))
+        {
+            return true;
+        }
+
         if (key == Key.Esc && HasMultipleCarets)
         {
             ClearAdditionalCarets ();
+
+            return true;
+        }
+
+        // Esc dismisses an active completion (handled above); when no popup is active, let it
+        // fall through to multi-caret clear or default handling.
+        if (key == Key.Esc && IsCompletionActive)
+        {
+            DismissCompletion ();
 
             return true;
         }
@@ -51,6 +66,9 @@ public partial class Editor
         {
             _document!.Insert (CaretOffset, rune.ToString ());
         }
+
+        // After inserting a character, notify the completion system so it can open / filter.
+        NotifyCompletionAfterInsert ();
 
         return true;
     }
