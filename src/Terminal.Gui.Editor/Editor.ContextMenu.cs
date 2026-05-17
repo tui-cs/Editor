@@ -7,8 +7,6 @@ namespace Terminal.Gui.Editor;
 
 public partial class Editor
 {
-    private PopoverMenu? _contextMenu;
-
     /// <summary>
     ///     Gets or sets the built-in context menu shown on right-click or <see cref="Command.Context" />.
     ///     Defaults to a standard editing menu (Undo, Redo, Cut, Copy, Paste, Select All) whose items
@@ -19,41 +17,47 @@ public partial class Editor
     /// </summary>
     public PopoverMenu? ContextMenu
     {
-        get => _contextMenu;
+        get;
         set
         {
-            _contextMenu = value;
+            field = value;
 
-            if (_contextMenu is not null)
+            if (field is not null)
             {
-                _contextMenu.Target = new WeakReference<View> (this);
+                field.Target = new WeakReference<View> (this);
             }
         }
     }
 
-    /// <summary>Creates the default editing context menu items.</summary>
+    /// <summary>Creates the default editing context menu items using declarative command binding.</summary>
+    /// <remarks>
+    ///     Each <see cref="MenuItem" /> is constructed with <c>this</c> as the target view and a
+    ///     <see cref="Command" />. The framework resolves title, help text, and key from
+    ///     <c>GlobalResources</c> and routes the command to this <see cref="Editor" /> via command
+    ///     bubbling — no explicit <see cref="MenuItem.Action" /> delegates are needed.
+    /// </remarks>
     private View[] CreateDefaultContextMenuItems ()
     {
         return
         [
-            new MenuItem { Title = "_Undo", Command = Command.Undo },
-            new MenuItem { Title = "_Redo", Command = Command.Redo },
+            new MenuItem (this, Command.Undo),
+            new MenuItem (this, Command.Redo),
             new Line (),
-            new MenuItem { Title = "Cu_t", Command = Command.Cut },
-            new MenuItem { Title = "_Copy", Command = Command.Copy },
-            new MenuItem { Title = "_Paste", Command = Command.Paste },
+            new MenuItem (this, Command.Cut),
+            new MenuItem (this, Command.Copy),
+            new MenuItem (this, Command.Paste),
             new Line (),
-            new MenuItem { Title = "Select _all", Command = Command.SelectAll }
+            new MenuItem (this, Command.SelectAll)
         ];
     }
 
     /// <summary>
-    ///     Updates the <see cref="Enabled" /> state of the context menu items to reflect the current
+    ///     Updates the <see cref="View.Enabled" /> state of the context menu items to reflect the current
     ///     editor state (ReadOnly, selection, clipboard, undo/redo).
     /// </summary>
     private void UpdateContextMenuState ()
     {
-        if (_contextMenu?.Root is null)
+        if (ContextMenu?.Root is null)
         {
             return;
         }
@@ -64,7 +68,7 @@ public partial class Editor
         var canPaste = !ReadOnly;
         var canCut = !ReadOnly && hasSelection;
 
-        foreach (View child in _contextMenu.Root.SubViews)
+        foreach (View child in ContextMenu.Root.SubViews)
         {
             if (child is not MenuItem menuItem)
             {
@@ -88,13 +92,13 @@ public partial class Editor
     /// </summary>
     private void ShowContextMenu (Point? screenPosition = null)
     {
-        if (_contextMenu is null)
+        if (ContextMenu is null)
         {
             return;
         }
 
         UpdateContextMenuState ();
-        _contextMenu.MakeVisible (screenPosition);
+        ContextMenu.MakeVisible (screenPosition);
     }
 
     /// <summary>Builds and assigns the default context menu.</summary>

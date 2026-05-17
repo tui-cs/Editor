@@ -194,4 +194,66 @@ public class EditorContextMenuTests
 
         Assert.NotNull (fx.Top.Editor.ContextMenu);
     }
+
+    [Fact]
+    public async Task ContextMenu_Items_Use_Declarative_Binding ()
+    {
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("hello world"));
+
+        PopoverMenu? menu = fx.Top.Editor.ContextMenu;
+        Assert.NotNull (menu);
+        Assert.NotNull (menu.Root);
+
+        // Collect the commands from all MenuItems (skip Line separators).
+        List<Command> commands = [];
+
+        foreach (View child in menu.Root.SubViews)
+        {
+            if (child is not MenuItem menuItem)
+            {
+                continue;
+            }
+
+            Assert.Equal (fx.Top.Editor, menuItem.TargetView);
+            Assert.Null (menuItem.Action);
+            commands.Add (menuItem.Command);
+        }
+
+        // Verify the expected commands in order.
+        Assert.Equal (
+            [Command.Undo, Command.Redo, Command.Cut, Command.Copy, Command.Paste, Command.SelectAll],
+            commands);
+    }
+
+    [Fact]
+    public async Task ContextMenu_SelectAll_Routes_Via_CommandView ()
+    {
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("hello world"));
+        fx.Top.Editor.SetFocus ();
+        Assert.False (fx.Top.Editor.HasSelection);
+
+        // Invoke SelectAll on the Editor via InvokeCommand — this is the same path the framework
+        // takes when the user clicks the declaratively-bound MenuItem.
+        fx.Top.Editor.InvokeCommand (Command.SelectAll);
+
+        Assert.True (fx.Top.Editor.HasSelection, "Select All should select all text");
+        Assert.Equal ("hello world", fx.Top.Editor.SelectedText);
+    }
+
+    [Fact]
+    public async Task ContextMenu_Undo_Routes_Via_CommandView ()
+    {
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("hello"));
+        fx.Top.Editor.SetFocus ();
+
+        // Make an edit
+        fx.Top.Editor.Document!.Insert (5, "X");
+        Assert.Equal ("helloX", fx.Top.Editor.Document.Text);
+
+        // Invoke Undo on the Editor via InvokeCommand — this is the same path the framework
+        // takes when the user clicks the declaratively-bound MenuItem.
+        fx.Top.Editor.InvokeCommand (Command.Undo);
+
+        Assert.Equal ("hello", fx.Top.Editor.Document.Text);
+    }
 }
