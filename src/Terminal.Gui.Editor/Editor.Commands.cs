@@ -54,7 +54,7 @@ public partial class Editor
         // no editor-specific fallback chord. macOS uses the same chord pending real-terminal
         // validation (specs/decisions.md DEC-006).
         [InsertCaretAbove] = Bind.All (Key.CursorUp.WithCtrl.WithAlt),
-        [InsertCaretBelow] = Bind.All (Key.CursorDown.WithCtrl.WithAlt)
+        [InsertCaretBelow] = Bind.All (Key.CursorDown.WithCtrl.WithAlt),
         [Command.WordLeft] = Bind.All (Key.CursorLeft.WithCtrl),
         [Command.WordRight] = Bind.All (Key.CursorRight.WithCtrl),
         [Command.WordLeftExtend] = Bind.All (Key.CursorLeft.WithCtrl.WithShift),

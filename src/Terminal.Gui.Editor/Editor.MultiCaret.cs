@@ -261,7 +261,7 @@ public partial class Editor
     /// </summary>
     private List<CaretEditInfo> GetAllCaretsDescending ()
     {
-        List<CaretEditInfo> result = [new () { Offset = CaretOffset, IsPrimary = true }];
+        List<CaretEditInfo> result = [new CaretEditInfo { Offset = CaretOffset, IsPrimary = true }];
 
         foreach (CaretInfo caret in _additionalCarets)
         {
