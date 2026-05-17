@@ -25,8 +25,10 @@ using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.IO;
+using System.Text;
 using Terminal.Gui.Document.Utils;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace Terminal.Gui.Document
 {
@@ -87,6 +89,64 @@ namespace Terminal.Gui.Document
         public TextDocument(ITextSource initialText)
             : this(GetTextFromTextSource(initialText))
         {
+        }
+
+        private Encoding _encoding = new UTF8Encoding(false);
+
+        /// <summary>
+        /// Gets or sets the encoding detected during streaming load and used by streaming save.
+        /// </summary>
+        public Encoding Encoding
+        {
+            get => _encoding;
+            set => _encoding = value ?? throw new ArgumentNullException(nameof(value));
+        }
+
+        /// <summary>
+        /// Streams text from <paramref name="stream"/> into a new <see cref="TextDocument"/> without materializing the
+        /// entire document as a single string.
+        /// </summary>
+        public static async Task<TextDocument> LoadAsync(Stream stream, Encoding encoding = null,
+            IProgress<TextDocumentProgress> progress = null, CancellationToken cancellationToken = default)
+        {
+            if (stream == null)
+                throw new ArgumentNullException(nameof(stream));
+
+            const int bufferSize = 32 * 1024;
+            Encoding fallbackEncoding = encoding ?? new UTF8Encoding(false);
+            long? totalBytes = stream.CanSeek ? stream.Length : null;
+            Rope<char> rope = new Rope<char>();
+            char[] buffer = new char[bufferSize];
+            long charactersRead = 0;
+
+            using (StreamReader reader = new StreamReader(
+                       stream, fallbackEncoding, detectEncodingFromByteOrderMarks: true, bufferSize, leaveOpen: true))
+            {
+                while (true)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    int read = await reader.ReadAsync(buffer.AsMemory(0, buffer.Length), cancellationToken).ConfigureAwait(false);
+
+                    if (read == 0)
+                    {
+                        break;
+                    }
+
+                    rope.AddRange(buffer, 0, read);
+                    charactersRead += read;
+                    progress?.Report(new TextDocumentProgress(charactersRead, null,
+                        stream.CanSeek ? stream.Position : null, totalBytes));
+                }
+
+                TextDocument document = new TextDocument(rope)
+                {
+                    Encoding = reader.CurrentEncoding
+                };
+                document.UndoStack.MarkAsOriginalFile();
+                document.SetOwnerThread(null);
+
+                return document;
+            }
         }
 
         // gets the text from a text source, directly retrieving the underlying rope where possible
@@ -162,6 +222,13 @@ namespace Terminal.Gui.Document
 
         private void VerifyAccess()
         {
+            if (ownerThread == null)
+            {
+                SetOwnerThread(Thread.CurrentThread);
+
+                return;
+            }
+
             if(Thread.CurrentThread != ownerThread)
             {
                 throw new InvalidOperationException("Call from invalid thread.");
@@ -244,6 +311,47 @@ namespace Terminal.Gui.Document
                 if (value == null)
                     throw new ArgumentNullException(nameof(value));
                 Replace(0, _rope.Length, value);
+            }
+        }
+
+        /// <summary>
+        /// Streams the document to <paramref name="stream"/> using <see cref="Encoding"/> without materializing the
+        /// entire document as a single string.
+        /// </summary>
+        public async Task SaveAsync(Stream stream, IProgress<TextDocumentProgress> progress = null,
+            CancellationToken cancellationToken = default)
+        {
+            VerifyAccess();
+
+            if (stream == null)
+                throw new ArgumentNullException(nameof(stream));
+
+            const int bufferSize = 32 * 1024;
+            ITextSource snapshot = CreateSnapshot();
+            SetOwnerThread(null);
+            char[] buffer = new char[bufferSize];
+            long charactersWritten = 0;
+            long totalCharacters = snapshot.TextLength;
+
+            using (TextReader reader = snapshot.CreateReader())
+            using (StreamWriter writer = new StreamWriter(stream, Encoding, bufferSize, leaveOpen: true))
+            {
+                while (true)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    int read = await reader.ReadAsync(buffer.AsMemory(0, buffer.Length), cancellationToken).ConfigureAwait(false);
+
+                    if (read == 0)
+                    {
+                        break;
+                    }
+
+                    await writer.WriteAsync(buffer.AsMemory(0, read), cancellationToken).ConfigureAwait(false);
+                    charactersWritten += read;
+                    progress?.Report(new TextDocumentProgress(charactersWritten, totalCharacters));
+                }
+
+                await writer.FlushAsync(cancellationToken).ConfigureAwait(false);
             }
         }
 

@@ -139,6 +139,8 @@ public sealed partial class TedApp : Window
             new ([
                 new Shortcut { Title = "Language", CommandView = LanguageShortcut },
                 new Shortcut { Title = "Theme", CommandView = ThemeDropDown },
+                LoadStatusShortcut = new Shortcut (Key.Empty, string.Empty, null)
+                    { MouseHighlightStates = MouseState.None },
                 LocShortcut = new Shortcut (Key.Empty, FormatLoc (1, 1), null)
                     { MouseHighlightStates = MouseState.None }
             ])
@@ -277,6 +279,9 @@ public sealed partial class TedApp : Window
 
     /// <summary>The status-bar dropdown that selects <see cref="ThemeManager.Theme" />.</summary>
     public DropDownList ThemeDropDown { get; }
+
+    /// <summary>The status-bar shortcut that reports streaming file load/save progress.</summary>
+    public Shortcut LoadStatusShortcut { get; }
 
     /// <summary>The settings checkbox state for visible tab glyphs.</summary>
     public CheckBox ShowTabsCheckBox { get; } = new ()

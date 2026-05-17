@@ -2,6 +2,7 @@
 
 using System.Collections.Immutable;
 using System.Drawing;
+using System.Text;
 using Ted;
 using Terminal.Gui.Configuration;
 using Terminal.Gui.Editor.IntegrationTests.Testing;
@@ -33,7 +34,7 @@ public class TedAppTests
     {
         TedApp app = new ();
         app.ShowOpenDialog = () => "/tmp/ted-open.txt";
-        app.ReadAllText = _ => "opened";
+        app.OpenRead = _ => new MemoryStream (Encoding.UTF8.GetBytes ("opened"));
 
         Assert.True (app.OpenFile ());
         app.Editor.SelectAll ();
@@ -51,7 +52,7 @@ public class TedAppTests
     {
         TedApp app = new ();
         app.ShowOpenDialog = () => null;
-        app.ReadAllText = _ => throw new InvalidOperationException ("Canceled open should not read.");
+        app.OpenRead = _ => throw new InvalidOperationException ("Canceled open should not read.");
 
         Assert.False (app.OpenFile ());
 
@@ -104,6 +105,19 @@ public class TedAppTests
     }
 
     [Fact]
+    public async Task OpenFileAsync_Updates_LoadStatusShortcut ()
+    {
+        TedApp app = new ();
+        app.ShowOpenDialog = () => "/tmp/ted-progress.txt";
+        app.OpenRead = _ => new MemoryStream (Encoding.UTF8.GetBytes (new string ('x', 100_000)));
+
+        Assert.True (await app.OpenFileAsync (TestContext.Current.CancellationToken));
+
+        Assert.Equal ("Loaded", app.LoadStatusShortcut.Title);
+        Assert.Equal (100_000, app.Editor.Document!.TextLength);
+    }
+
+    [Fact]
     public void SaveFile_WritesCurrentEditorText_ToCurrentPath ()
     {
         var filePath = Path.Combine (Path.GetTempPath (), $"ted-save-{Guid.NewGuid ():N}.txt");
@@ -132,10 +146,10 @@ public class TedAppTests
     {
         TedApp app = new ();
         app.ShowOpenDialog = () => "/tmp/ted-save.txt";
-        app.ReadAllText = _ => "before";
+        app.OpenRead = _ => new MemoryStream (Encoding.UTF8.GetBytes ("before"));
         Assert.True (app.OpenFile ());
         app.Editor.Document!.Text = "after";
-        app.WriteAllText = (_, _) => { };
+        app.CreateWrite = _ => new MemoryStream ();
 
         Assert.True (app.IsDocumentModified);
 
@@ -172,7 +186,12 @@ public class TedAppTests
         var wrote = false;
         TedApp app = new ();
         app.ShowSaveDialog = () => " ";
-        app.WriteAllText = (_, _) => wrote = true;
+        app.CreateWrite = _ =>
+        {
+            wrote = true;
+
+            return new MemoryStream ();
+        };
 
         Assert.False (app.SaveFileAs ());
 
@@ -228,14 +247,15 @@ public class TedAppTests
         string? savedPath = null;
         string? savedText = null;
         fx.Top.ShowOpenDialog = () => "/tmp/ted-save-on-quit.txt";
-        fx.Top.ReadAllText = _ => "before";
+        fx.Top.OpenRead = _ => new MemoryStream (Encoding.UTF8.GetBytes ("before"));
         Assert.True (fx.Top.OpenFile ());
         fx.Top.Editor.Document!.Text = "after";
         fx.Top.ShowSaveChangesDialog = () => SaveChangesChoice.Save;
-        fx.Top.WriteAllText = (path, text) =>
+        fx.Top.CreateWrite = path =>
         {
             savedPath = path;
-            savedText = text;
+
+            return new CapturingWriteStream (text => savedText = text);
         };
 
         Assert.True (fx.Top.QuitFile ());
@@ -243,6 +263,32 @@ public class TedAppTests
         Assert.Equal ("/tmp/ted-save-on-quit.txt", savedPath);
         Assert.Equal ("after", savedText);
         Assert.False (fx.Top.IsDocumentModified);
+    }
+
+    private sealed class CapturingWriteStream : MemoryStream
+    {
+        private readonly Action<string> _capture;
+
+        public CapturingWriteStream (Action<string> capture)
+        {
+            _capture = capture;
+        }
+
+        protected override void Dispose (bool disposing)
+        {
+            if (disposing)
+            {
+                _capture (Encoding.UTF8.GetString (ToArray ()));
+            }
+
+            base.Dispose (disposing);
+        }
+
+        public override async ValueTask DisposeAsync ()
+        {
+            _capture (Encoding.UTF8.GetString (ToArray ()));
+            await base.DisposeAsync ();
+        }
     }
 
     [Fact]
