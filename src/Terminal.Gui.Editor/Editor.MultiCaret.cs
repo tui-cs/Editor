@@ -540,48 +540,116 @@ public partial class Editor
     }
 
     /// <summary>
-    ///     Inserts a tab (or its space expansion) at every caret in one undo scope. Each caret's
-    ///     insertion text is computed from <em>that caret's</em> own visual column via
-    ///     <see cref="GetTabInsertionText" />, so every caret advances to the same next tab stop
-    ///     and the column stays aligned across repeated presses. Carets are processed in
-    ///     descending offset order so an earlier (higher) edit doesn't shift a not-yet-processed
-    ///     offset. Caller (<see cref="InsertTab" />) guarantees a non-null, writable document and
-    ///     <see cref="HasMultipleCarets" />.
+    ///     Resolves the selection range for a caret. The primary caret uses the editor's
+    ///     selection; an additional caret uses its own anchor + offset. Returns
+    ///     <see langword="false" /> (and a zero-width range at the caret) when there is no
+    ///     selection.
+    /// </summary>
+    private bool TryGetCaretSelectionRange (CaretEditInfo caret, out int start, out int end)
+    {
+        if (caret.IsPrimary)
+        {
+            if (HasSelection)
+            {
+                start = SelectionStart;
+                end = SelectionEnd;
+
+                return end > start;
+            }
+        }
+        else if (caret.SelectionAnchor is { IsDeleted: false } anchor)
+        {
+            start = Math.Min (anchor.Offset, caret.Offset);
+            end = Math.Max (anchor.Offset, caret.Offset);
+
+            return end > start;
+        }
+
+        start = end = caret.Offset;
+
+        return false;
+    }
+
+    private bool RangeSpansMultipleLines (int start, int end)
+    {
+        DocumentLine first = _document!.GetLineByOffset (start);
+        DocumentLine last = _document.GetLineByOffset (Math.Max (start, end - 1));
+
+        return first.LineNumber != last.LineNumber;
+    }
+
+    private List<DocumentLine> LinesInRange (int start, int end)
+    {
+        DocumentLine first = _document!.GetLineByOffset (start);
+        DocumentLine last = _document.GetLineByOffset (Math.Max (start, end - 1));
+        List<DocumentLine> lines = [];
+
+        for (var lineNumber = first.LineNumber; lineNumber <= last.LineNumber; lineNumber++)
+        {
+            lines.Add (_document.GetLineByNumber (lineNumber));
+        }
+
+        return lines;
+    }
+
+    /// <summary>
+    ///     Tab at every caret, one undo scope. Per caret: a selection that spans multiple lines
+    ///     <em>block-indents</em> every line it touches (never replace/delete it — that was the
+    ///     Codex P1 data-loss bug); a single-line selection is type-over-replaced with a tab; a
+    ///     caret with no selection gets a tab inserted at its own visual column via
+    ///     <see cref="GetTabInsertionText" /> so the column stays aligned across repeated
+    ///     presses. Block-indent lines are deduped; every edit is applied strictly
+    ///     high-offset-first so an earlier edit doesn't shift a not-yet-applied offset. Caller
+    ///     (<see cref="InsertTab" />) guarantees a non-null, writable document and
+    ///     <see cref="HasMultipleCarets" />. See specs/vertical-multi-caret/spec.md
+    ///     (<i>Tab with a multi-line selection plus an extra caret</i>).
     /// </summary>
     private bool MultiCaretInsertTab ()
     {
-        using (_document!.RunUpdate ())
+        HashSet<int> indentLineOffsets = [];
+        List<(int offset, int length, string text)> edits = [];
+
+        foreach (CaretEditInfo caret in GetAllCaretsDescending ())
         {
-            foreach (CaretEditInfo caret in GetAllCaretsDescending ())
+            if (TryGetCaretSelectionRange (caret, out int selStart, out int selEnd))
             {
-                if (caret.IsPrimary)
+                if (RangeSpansMultipleLines (selStart, selEnd))
                 {
-                    if (HasSelection)
+                    foreach (DocumentLine line in LinesInRange (selStart, selEnd))
                     {
-                        ReplaceSelection (GetTabInsertionText (SelectionStart));
-                    }
-                    else
-                    {
-                        _document.Insert (CaretOffset, GetTabInsertionText (CaretOffset));
+                        indentLineOffsets.Add (line.Offset);
                     }
 
                     continue;
                 }
 
-                if (caret.SelectionAnchor is { IsDeleted: false } selAnchor)
+                edits.Add ((selStart, selEnd - selStart, GetTabInsertionText (selStart)));
+
+                continue;
+            }
+
+            edits.Add ((caret.Offset, 0, GetTabInsertionText (caret.Offset)));
+        }
+
+        var indentText = GetIndentText ();
+
+        foreach (var lineOffset in indentLineOffsets)
+        {
+            edits.Add ((lineOffset, 0, indentText));
+        }
+
+        using (_document!.RunUpdate ())
+        {
+            foreach ((int offset, int length, string text) edit in edits.OrderByDescending (static e => e.offset))
+            {
+                if (edit.length > 0)
                 {
-                    var selStart = Math.Min (selAnchor.Offset, caret.Offset);
-                    var selEnd = Math.Max (selAnchor.Offset, caret.Offset);
-
-                    if (selEnd > selStart)
-                    {
-                        _document.Replace (selStart, selEnd - selStart, GetTabInsertionText (selStart));
-
-                        continue;
-                    }
+                    _document.Replace (edit.offset, edit.length, edit.text);
                 }
-
-                _document.Insert (caret.Offset, GetTabInsertionText (caret.Offset));
+                else
+                {
+                    _document.Insert (edit.offset, edit.text);
+                }
             }
         }
 
@@ -591,11 +659,13 @@ public partial class Editor
     }
 
     /// <summary>
-    ///     Removes one indentation unit from every distinct line that hosts a caret, in a single
-    ///     undo scope. Lines are deduped (two carets on one line unindent it once) and removals
-    ///     run high-offset-first so earlier removals don't shift later ones. Carets are anchors,
-    ///     so they follow the removals automatically. Caller (<see cref="Unindent" />) guarantees
-    ///     a non-null, writable document and <see cref="HasMultipleCarets" />.
+    ///     Shift+Tab at every caret, one undo scope. Per caret: a selection that spans multiple
+    ///     lines block-unindents <em>every</em> line it touches (not just the caret's line — that
+    ///     gap was the related Codex P2); any other caret unindents its own line. Lines are
+    ///     deduped (two carets / overlapping selections unindent a line once) and removals run
+    ///     high-offset-first so earlier removals don't shift later ones. Carets are anchors, so
+    ///     they follow the removals automatically. Caller (<see cref="Unindent" />) guarantees a
+    ///     non-null, writable document and <see cref="HasMultipleCarets" />.
     /// </summary>
     private bool MultiCaretUnindent ()
     {
@@ -604,18 +674,23 @@ public partial class Editor
 
         foreach (CaretEditInfo caret in GetAllCaretsDescending ())
         {
-            DocumentLine line = _document!.GetLineByOffset (caret.Offset);
+            List<DocumentLine> lines = TryGetCaretSelectionRange (caret, out int selStart, out int selEnd) && RangeSpansMultipleLines (selStart, selEnd)
+                                           ? LinesInRange (selStart, selEnd)
+                                           : [_document!.GetLineByOffset (caret.Offset)];
 
-            if (!seenLineOffsets.Add (line.Offset))
+            foreach (DocumentLine line in lines)
             {
-                continue;
-            }
+                if (!seenLineOffsets.Add (line.Offset))
+                {
+                    continue;
+                }
 
-            ISegment segment = TextUtilities.GetSingleIndentationSegment (_document, line.Offset, IndentationSize);
+                ISegment segment = TextUtilities.GetSingleIndentationSegment (_document!, line.Offset, IndentationSize);
 
-            if (segment.Length > 0)
-            {
-                removals.Add ((segment.Offset, segment.Length));
+                if (segment.Length > 0)
+                {
+                    removals.Add ((segment.Offset, segment.Length));
+                }
             }
         }
 
