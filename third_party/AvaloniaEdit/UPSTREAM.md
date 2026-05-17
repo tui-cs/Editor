@@ -103,6 +103,11 @@ Each lifted file carries `// Adapted for Terminal.Gui from AvaloniaEdit d7a6b63`
 | `Highlighting/Xshd/XshdColor.cs` | Replaced `FontWeight?` / `FontStyle?` / `FontFamily` / `FontSize` with `bool? Bold` / `bool? Italic`. |
 | `Highlighting/Xshd/SaveXshdVisitor.cs` | `WriteColorAttributes` updated to write `bold`/`italic` boolean attributes instead of `fontWeight`/`fontStyle`/`fontFamily`/`fontSize`. |
 | `Highlighting/Xshd/V1Loader.cs` | Commented-out stub — V1 format is obsolete and unused by any carried `.xshd` file. Kept as placeholder for future lift if needed. |
+| `Highlighting/HighlightingColor.cs` | **Fork addition (syntax-theme, `specs/syntax-theme/spec.md`).** Added `VisualRole? Role` — the Terminal.Gui scheme role this color resolves to (populated at load; consumed by `Rendering/HighlightingColorizer`). Not an upstream concept; AvaloniaEdit bakes colors directly. Uses a `_role` backing field with the same `IsFrozen` guard as `Foreground`/`Background` (post-`Freeze()` immutability). `MergeWith` carries `_role` over; `Equals`/`GetHashCode` include `_role` (a fork addition to the lifted equality members — required because role-only colors differ solely by `Role` and `HighlightingEngine.PushColor` coalesces adjacent sections by color equality). |
+| `Highlighting/Xshd/XshdColor.cs` | **Fork addition.** Added optional `string Category` — an xshd `category="..."` attribute (a TG `VisualRole` name) that overrides the built-in name→role table for a single `<Color>`. Not present in upstream xshd. A future xshd re-sync must preserve this attribute and the parser/writer plumbing below. |
+| `Highlighting/Xshd/V2Loader.cs` | **Fork addition.** `ParseColorAttributes` reads the new `category=` attribute into `XshdColor.Category`. (Plus the pre-existing font-weight/style and `HighlightingBrush` changes noted above.) |
+| `Highlighting/Xshd/XmlHighlightingDefinition.cs` | **Fork addition.** The populating `VisitColor` sets `HighlightingColor.Role = XshdRoleMap.ResolveRole (color.Name, color.Category)` (`category=` wins over the name table). (Plus the pre-existing `Bold`/`Italic` change noted above.) |
+| `Highlighting/Xshd/SaveXshdVisitor.cs` | **Fork addition.** `VisitColor` round-trips the new `category` attribute. (Plus the pre-existing `bold`/`italic` change noted above.) |
 
 ## Skipped from `Highlighting/`
 
@@ -124,6 +129,7 @@ Resources for languages not yet carried (can be added later by dropping in the `
 ## New supporting files
 
 - `Utils/ImmutableStackExtensions.cs` — single `PeekOrDefault<T>(this ImmutableStack<T>)` extension method, lifted verbatim from AvaloniaEdit's `Utils/ExtensionMethods.cs`. The rest of `ExtensionMethods.cs` is Avalonia-UI-specific and intentionally not carried.
+- `Highlighting/XshdRoleMap.cs` — **not an AvaloniaEdit file.** Terminal.Gui-native bridge from xshd `<Color name>` values to `VisualRole` code-token roles (`specs/syntax-theme/spec.md`). A re-sync never touches it.
 
 ## Re-sync procedure
 

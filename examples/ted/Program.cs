@@ -34,5 +34,3 @@ if (!string.IsNullOrWhiteSpace (requestedPath))
 }
 
 app.Run (ted);
-
-return;

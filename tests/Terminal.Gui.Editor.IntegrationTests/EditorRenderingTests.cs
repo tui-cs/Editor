@@ -331,48 +331,56 @@ public class EditorRenderingTests
     }
 
     [Fact]
-    public async Task UseThemeBackground_True_Preserves_Highlighter_Background ()
+    public async Task Highlighted_Tokens_Follow_The_Active_Scheme ()
     {
         const string text = "public class C";
 
         await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost (text));
 
         fx.Top.Editor.HighlightingDefinition = HighlightingManager.Instance.GetDefinition ("C#");
-        fx.Top.Editor.UseThemeBackground = true;
+
+        // xshd colors "public" via "Visibility", which XshdRoleMap maps to CodeKeyword.
+        // Scheme A explicitly themes CodeKeyword magenta.
+        Terminal.Gui.Drawing.Color black = Terminal.Gui.Drawing.Color.Black;
+        Scheme schemeA = new (new Attribute (Terminal.Gui.Drawing.Color.White, black))
+        {
+            CodeKeyword = new Attribute (Terminal.Gui.Drawing.Color.Magenta, black)
+        };
+        fx.Top.Editor.SetScheme (schemeA);
         fx.Render ();
 
-        // With xshd highlighting active, the keyword should get a highlighting color.
-        Attribute normal = fx.Top.Editor.GetAttributeForRole (VisualRole.Normal);
         Cell cell = fx.Driver.Contents![0, 0];
         Assert.Equal ("p", cell.Grapheme);
-        Assert.NotEqual (normal, cell.Attribute);
+        Assert.Equal (Terminal.Gui.Drawing.Color.Magenta, cell.Attribute!.Value.Foreground);
+
+        // Swapping the scheme re-renders the same token with the new theme's color.
+        Scheme schemeB = new (new Attribute (Terminal.Gui.Drawing.Color.White, black))
+        {
+            CodeKeyword = new Attribute (Terminal.Gui.Drawing.Color.BrightGreen, black)
+        };
+        fx.Top.Editor.SetScheme (schemeB);
+        fx.Render ();
+
+        cell = fx.Driver.Contents![0, 0];
+        Assert.Equal (Terminal.Gui.Drawing.Color.BrightGreen, cell.Attribute!.Value.Foreground);
     }
 
     [Fact]
-    public async Task UseThemeBackground_False_Overrides_Highlighter_Background ()
+    public async Task Editor_Background_Follows_Scheme_Not_Highlighter ()
     {
         const string text = "public class C";
 
         await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost (text));
 
         fx.Top.Editor.HighlightingDefinition = HighlightingManager.Instance.GetDefinition ("C#");
-        fx.Top.Editor.UseThemeBackground = false;
         fx.Render ();
 
+        // The xshd definition's hardcoded background must never reach the cell — the editor's
+        // scheme background wins (the #128 fix), whether the token is themed or falls back.
         Attribute normal = fx.Top.Editor.GetAttributeForRole (VisualRole.Normal);
         Cell cell = fx.Driver.Contents![0, 0];
         Assert.Equal ("p", cell.Grapheme);
-
-        // The background must match the TG theme's Normal background, not the highlighter's.
         Assert.Equal (normal.Background, cell.Attribute!.Value.Background);
-    }
-
-    [Fact]
-    public async Task UseThemeBackground_Defaults_To_True ()
-    {
-        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("Hello"));
-
-        Assert.True (fx.Top.Editor.UseThemeBackground);
     }
 
     [Fact]

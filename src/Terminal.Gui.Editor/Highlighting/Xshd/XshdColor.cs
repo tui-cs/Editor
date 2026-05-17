@@ -66,6 +66,13 @@ public class XshdColor : XshdElement
     /// </summary>
     public string ExampleText { get; set; }
 
+    /// <summary>
+    ///     Gets/Sets the optional <c>category</c> attribute: a Terminal.Gui <c>VisualRole</c> name
+    ///     that overrides the built-in xshd-name → role mapping for this color. Terminal.Gui
+    ///     fork addition over upstream AvaloniaEdit xshd.
+    /// </summary>
+    public string Category { get; set; }
+
     /// <inheritdoc />
     public override object AcceptVisitor (IXshdVisitor visitor)
     {

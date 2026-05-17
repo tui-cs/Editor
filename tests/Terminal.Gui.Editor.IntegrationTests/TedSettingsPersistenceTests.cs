@@ -425,7 +425,6 @@ public class TedSettingsPersistenceTests
             EditorSettings.FoldIndicators = true;
             EditorSettings.WordWrap = false;
             EditorSettings.ShowTabs = false;
-            EditorSettings.UseThemeBackground = true;
             EditorSettings.IndentSize = 4;
             EditorSettings.ConvertTabsToSpaces = true;
             EditorSettings.AutoIndent = true;
