@@ -47,7 +47,7 @@ internal static class EditorSettings
 
         try
         {
-            string text = File.ReadAllText (path);
+            var text = File.ReadAllText (path);
 
             LineNumbers = ReadBool (text, "EditorSettings.LineNumbers", LineNumbers);
             FoldIndicators = ReadBool (text, "EditorSettings.FoldIndicators", FoldIndicators);
@@ -73,7 +73,7 @@ internal static class EditorSettings
         try
         {
             EnsureConfigFile (path);
-            string text = File.ReadAllText (path);
+            var text = File.ReadAllText (path);
             Dictionary<string, string> entries = new ()
             {
                 ["EditorSettings.LineNumbers"] = ToJson (LineNumbers),
@@ -87,12 +87,12 @@ internal static class EditorSettings
 
             List<string> toInsert = [];
 
-            foreach ((string key, string value) in entries)
+            foreach (var (key, value) in entries)
             {
                 Regex pattern = new (
                     $@"^(?<prefix>\s*""{Regex.Escape (key)}""\s*:\s*)(?:true|false|-?\d+)(?<suffix>\s*,?\s*(?://.*)?)$",
                     RegexOptions.Multiline);
-                bool replaced = false;
+                var replaced = false;
                 text = pattern.Replace (
                     text,
                     match =>
@@ -113,11 +113,11 @@ internal static class EditorSettings
 
             if (toInsert.Count > 0)
             {
-                int lastBrace = FindRootClosingBrace (text);
+                var lastBrace = FindRootClosingBrace (text);
 
                 if (lastBrace >= 0)
                 {
-                    int insertCommaAfter = FindLastObjectMemberCharacterPosition (text, lastBrace);
+                    var insertCommaAfter = FindLastObjectMemberCharacterPosition (text, lastBrace);
 
                     if (insertCommaAfter >= 0 && text[insertCommaAfter] != ',' && text[insertCommaAfter] != '{')
                     {
@@ -125,7 +125,7 @@ internal static class EditorSettings
                         lastBrace = FindRootClosingBrace (text);
                     }
 
-                    string insertion = $"\n\n{string.Join (",\n", toInsert)}\n";
+                    var insertion = $"\n\n{string.Join (",\n", toInsert)}\n";
                     text = text.Insert (lastBrace, insertion);
                 }
             }
@@ -140,17 +140,16 @@ internal static class EditorSettings
 
     internal static string GetConfigPath ()
     {
-        string home =
+        var home =
             Environment.GetEnvironmentVariable ("HOME")
-            ?? Environment.GetFolderPath (Environment.SpecialFolder.UserProfile)
-            ?? Directory.GetCurrentDirectory ();
+            ?? Environment.GetFolderPath (Environment.SpecialFolder.UserProfile);
 
         return Path.Combine (home, ".tui", "ted.config.json");
     }
 
     private static void EnsureConfigFile (string path)
     {
-        string? directory = Path.GetDirectoryName (path);
+        var directory = Path.GetDirectoryName (path);
 
         if (!string.IsNullOrWhiteSpace (directory))
         {
@@ -177,7 +176,9 @@ internal static class EditorSettings
             $@"^(?!\s*//)\s*""{Regex.Escape (key)}""\s*:\s*(?<v>true|false)",
             RegexOptions.IgnoreCase | RegexOptions.Multiline);
 
-        return m.Success ? string.Equals (m.Groups["v"].Value, "true", StringComparison.OrdinalIgnoreCase) : defaultValue;
+        return m.Success
+            ? string.Equals (m.Groups["v"].Value, "true", StringComparison.OrdinalIgnoreCase)
+            : defaultValue;
     }
 
     private static int ReadInt (string json, string key, int defaultValue)
@@ -187,7 +188,7 @@ internal static class EditorSettings
             $@"^(?!\s*//)\s*""{Regex.Escape (key)}""\s*:\s*(?<v>-?\d+)",
             RegexOptions.Multiline);
 
-        return m.Success && int.TryParse (m.Groups["v"].Value, out int v) ? v : defaultValue;
+        return m.Success && int.TryParse (m.Groups["v"].Value, out var v) ? v : defaultValue;
     }
 
     /// <summary>
@@ -196,7 +197,7 @@ internal static class EditorSettings
     /// </summary>
     private static int FindRootClosingBrace (string text)
     {
-        int i = text.Length - 1;
+        var i = text.Length - 1;
 
         while (i >= 0)
         {
@@ -208,8 +209,8 @@ internal static class EditorSettings
             }
 
             // Check if this '}' is on a comment line
-            int lineStart = text.LastIndexOf ('\n', i) + 1;
-            string lineBeforeBrace = text[lineStart..i];
+            var lineStart = text.LastIndexOf ('\n', i) + 1;
+            var lineBeforeBrace = text[lineStart..i];
 
             if (lineBeforeBrace.TrimStart ().StartsWith ("//", StringComparison.Ordinal))
             {
@@ -226,11 +227,11 @@ internal static class EditorSettings
 
     private static int FindLastObjectMemberCharacterPosition (string text, int braceIndex)
     {
-        int i = braceIndex - 1;
+        var i = braceIndex - 1;
 
         while (i >= 0)
         {
-            char c = text[i];
+            var c = text[i];
 
             if (char.IsWhiteSpace (c))
             {
@@ -239,9 +240,9 @@ internal static class EditorSettings
                 continue;
             }
 
-            int lineStart = text.LastIndexOf ('\n', i) + 1;
-            string line = text[lineStart..(i + 1)];
-            string trimmedLine = line.TrimStart ();
+            var lineStart = text.LastIndexOf ('\n', i) + 1;
+            var line = text[lineStart..(i + 1)];
+            var trimmedLine = line.TrimStart ();
 
             if (trimmedLine.StartsWith ("//", StringComparison.Ordinal))
             {
@@ -250,12 +251,12 @@ internal static class EditorSettings
                 continue;
             }
 
-            int commentStart = line.IndexOf ("//", StringComparison.Ordinal);
+            var commentStart = line.IndexOf ("//", StringComparison.Ordinal);
 
             if (commentStart >= 0)
             {
-                string withoutComment = line[..commentStart];
-                int lastNonWhitespace = withoutComment.TrimEnd ().Length - 1;
+                var withoutComment = line[..commentStart];
+                var lastNonWhitespace = withoutComment.TrimEnd ().Length - 1;
 
                 if (lastNonWhitespace >= 0)
                 {

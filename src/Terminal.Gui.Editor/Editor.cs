@@ -4,11 +4,11 @@ using Terminal.Gui.Configuration;
 using Terminal.Gui.Document;
 using Terminal.Gui.Document.Folding;
 using Terminal.Gui.Drawing;
-using Terminal.Gui.Highlighting;
-using Terminal.Gui.Text.Indentation;
-using Terminal.Gui.Text;
-using Terminal.Gui.ViewBase;
 using Terminal.Gui.Editor.Rendering;
+using Terminal.Gui.Highlighting;
+using Terminal.Gui.Text;
+using Terminal.Gui.Text.Indentation;
+using Terminal.Gui.ViewBase;
 using Attribute = Terminal.Gui.Drawing.Attribute;
 
 namespace Terminal.Gui.Editor;
@@ -42,6 +42,7 @@ public partial class Editor : View
     private TextAnchor? _caretAnchor;
     private TextDocument? _document;
     private Gutter? _gutter;
+    private GutterOptions _gutterOptions;
     private DocumentHighlighter? _highlighter;
     private HighlightingColorizer? _highlightingColorizer;
     private int _lastKnownCaretOffset;
@@ -53,14 +54,6 @@ public partial class Editor : View
     private int _maxVisualWidth;
     private bool _maxWidthDirty = true;
     private int _maxWidthLineNumber;
-    private GutterOptions _gutterOptions;
-
-    // Word-wrap map: when WordWrap == true, maps visual row indices to (lineNumber, segmentIndex)
-    // pairs. Lazily built and cached. Cleared on any document change or property change that
-    // affects wrapping. _wrapMapColumn tracks the wrap column used to build the map so we
-    // can detect viewport-width changes and rebuild.
-    private List<WrapMapEntry>? _wrapMap;
-    private int _wrapMapColumn;
 
     /// <summary>
     ///     Sticky column for vertical caret moves. Tracks the column the user *intends* to be in,
@@ -69,24 +62,21 @@ public partial class Editor : View
     /// </summary>
     private int _virtualCaretColumn;
 
+    // Word-wrap map: when WordWrap == true, maps visual row indices to (lineNumber, segmentIndex)
+    // pairs. Lazily built and cached. Cleared on any document change or property change that
+    // affects wrapping. _wrapMapColumn tracks the wrap column used to build the map so we
+    // can detect viewport-width changes and rebuild.
+    private List<WrapMapEntry>? _wrapMap;
+    private int _wrapMapColumn;
+
     /// <summary>Initializes a new <see cref="Editor" /> with an empty <see cref="TextDocument" />.</summary>
     public Editor ()
     {
         CanFocus = true;
         CreateCommandsAndBindings ();
-        OverlayRenderers.Add (new Rendering.MultiCaretRenderer (this));
+        OverlayRenderers.Add (new MultiCaretRenderer (this));
         Document = new TextDocument ();
         ThemeManager.ThemeChanged += OnThemeChanged;
-    }
-
-    /// <summary>
-    ///     Re-renders with the new TG theme's attributes when <see cref="ThemeManager.Theme" />
-    ///     changes. Visual-line caches bake in resolved attributes, so they are dropped.
-    /// </summary>
-    private void OnThemeChanged (object? sender, EventArgs<string> e)
-    {
-        ClearVisualLineCaches ();
-        SetNeedsDraw ();
     }
 
     /// <summary>The backing <see cref="TextDocument" />. Setting this rewires change handlers and clamps the caret.</summary>
@@ -330,6 +320,16 @@ public partial class Editor : View
         }
     }
 
+    /// <summary>
+    ///     Re-renders with the new TG theme's attributes when <see cref="ThemeManager.Theme" />
+    ///     changes. Visual-line caches bake in resolved attributes, so they are dropped.
+    /// </summary>
+    private void OnThemeChanged (object? sender, EventArgs<string> e)
+    {
+        ClearVisualLineCaches ();
+        SetNeedsDraw ();
+    }
+
     private void OnFoldingChanged (object? sender, EventArgs e)
     {
         ClearVisualLineCaches ();
@@ -513,9 +513,9 @@ public partial class Editor : View
 
         // Find which lines are affected by the change.
         DocumentLine firstAffected = _document.GetLineByOffset (Math.Min (e.Offset, _document.TextLength));
-        var insertedText = e.InsertedText?.Text ?? "";
+        var insertedText = e.InsertedText.Text;
         var newlineCount = insertedText.Count (c => c == '\n');
-        var removedText = e.RemovedText?.Text ?? "";
+        var removedText = e.RemovedText.Text;
         var removedNewlines = removedText.Count (c => c == '\n');
 
         // If the widest line was deleted or its content changed, we must recompute.
@@ -587,7 +587,7 @@ public partial class Editor : View
     ///     and handles incremental invalidation internally, so no per-edit work is needed here
     ///     beyond clearing the visual-line caches (handled separately).
     /// </summary>
-    private void InvalidateHighlighterState (DocumentChangeEventArgs e)
+    private void InvalidateHighlighterState (DocumentChangeEventArgs _)
     {
         // DocumentHighlighter (an ILineTracker) is notified of edits automatically
         // by the TextDocument. No explicit invalidation needed.
@@ -620,7 +620,9 @@ public partial class Editor : View
         _highlightingColorizer = new HighlightingColorizer (
             _highlighter,
             normal,
-            role => GetScheme ().TryGetExplicitlySetAttributeForRole (role, out Attribute? explicitAttr) ? explicitAttr : null);
+            role => GetScheme ().TryGetExplicitlySetAttributeForRole (role, out Attribute? explicitAttr)
+                ? explicitAttr
+                : null);
         LineTransformers.Insert (0, _highlightingColorizer);
     }
 
@@ -635,9 +637,9 @@ public partial class Editor : View
         var threshold = firstAffected.LineNumber;
 
         // Count net newline delta: downstream line numbers shift by this amount.
-        var insertedText = e.InsertedText?.Text ?? "";
+        var insertedText = e.InsertedText.Text;
         var insertedNewlines = insertedText.Count (c => c == '\n');
-        var removedText = e.RemovedText?.Text ?? "";
+        var removedText = e.RemovedText.Text;
         var removedNewlines = removedText.Count (c => c == '\n');
         var lineDelta = insertedNewlines - removedNewlines;
 
@@ -824,7 +826,7 @@ public partial class Editor : View
             return GetCaretWrapRow ();
         }
 
-        var docLineNumber = (_document?.GetLineByOffset (CaretOffset).LineNumber ?? 1);
+        var docLineNumber = _document?.GetLineByOffset (CaretOffset).LineNumber ?? 1;
         List<int> visible = GetVisibleLineNumbers ();
         var idx = visible.IndexOf (docLineNumber);
 
@@ -921,12 +923,7 @@ public partial class Editor : View
 
     private int GetCaretOffset ()
     {
-        if (_caretAnchor is not { IsDeleted: false } anchor)
-        {
-            return _lastKnownCaretOffset;
-        }
-
-        return anchor.Offset;
+        return _caretAnchor is not { IsDeleted: false } anchor ? _lastKnownCaretOffset : anchor.Offset;
     }
 
     private TextAnchor CreateCaretAnchor (int offset)
@@ -1062,8 +1059,6 @@ public partial class Editor : View
         }
     }
 
-    private readonly record struct DrawCacheEntry (CellVisualLine Line, Attribute Normal, Attribute Selected);
-
     /// <summary>
     ///     Computes the visual column for a character offset within a text segment without
     ///     allocating a <see cref="TextDocument" />. Walks graphemes and accumulates widths.
@@ -1073,7 +1068,7 @@ public partial class Editor : View
         var visualCol = 0;
         var logicalCol = 0;
 
-        foreach (var grapheme in Terminal.Gui.Drawing.GraphemeHelper.GetGraphemes (segmentText))
+        foreach (var grapheme in GraphemeHelper.GetGraphemes (segmentText))
         {
             if (logicalCol >= targetOffset)
             {
@@ -1106,7 +1101,7 @@ public partial class Editor : View
         var visualCol = 0;
         var logicalCol = 0;
 
-        foreach (var grapheme in Terminal.Gui.Drawing.GraphemeHelper.GetGraphemes (segmentText))
+        foreach (var grapheme in GraphemeHelper.GetGraphemes (segmentText))
         {
             int width;
 
@@ -1131,9 +1126,6 @@ public partial class Editor : View
 
         return logicalCol;
     }
-
-    /// <summary>Maps a visual row (in the wrap map) to a document line and segment within that line.</summary>
-    private readonly record struct WrapMapEntry (int LineNumber, int SegmentIndex, int SegmentStartOffset);
 
     /// <summary>
     ///     Returns the wrap map, building it lazily. Each entry corresponds to one visual row
@@ -1182,4 +1174,9 @@ public partial class Editor : View
 
         return viewport.Width > 0 ? viewport.Width : 80;
     }
+
+    private readonly record struct DrawCacheEntry (CellVisualLine Line, Attribute Normal, Attribute Selected);
+
+    /// <summary>Maps a visual row (in the wrap map) to a document line and segment within that line.</summary>
+    private readonly record struct WrapMapEntry (int LineNumber, int SegmentIndex, int SegmentStartOffset);
 }

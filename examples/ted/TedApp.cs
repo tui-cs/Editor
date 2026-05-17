@@ -5,7 +5,6 @@ using Terminal.Gui.Document;
 using Terminal.Gui.Document.Folding;
 using Terminal.Gui.Drawing;
 using Terminal.Gui.Editor;
-using Terminal.Gui.Highlighting;
 using Terminal.Gui.Input;
 using Terminal.Gui.Resources;
 using Terminal.Gui.Text.Indentation;
@@ -160,7 +159,7 @@ public sealed partial class TedApp : Window
                 {
                     Action = () =>
                     {
-                        bool shouldEnableLineNumbers = !Editor.GutterOptions.HasFlag (GutterOptions.LineNumbers);
+                        var shouldEnableLineNumbers = !Editor.GutterOptions.HasFlag (GutterOptions.LineNumbers);
 
                         if (shouldEnableLineNumbers)
                         {
@@ -182,7 +181,7 @@ public sealed partial class TedApp : Window
                 {
                     Action = () =>
                     {
-                        bool shouldEnableFoldIndicators = !Editor.GutterOptions.HasFlag (GutterOptions.Folding);
+                        var shouldEnableFoldIndicators = !Editor.GutterOptions.HasFlag (GutterOptions.Folding);
 
                         if (shouldEnableFoldIndicators)
                         {
@@ -193,7 +192,8 @@ public sealed partial class TedApp : Window
                             Editor.GutterOptions &= ~GutterOptions.Folding;
                         }
 
-                        foldIndicatorsCheckBox.Value = shouldEnableFoldIndicators ? CheckState.Checked : CheckState.UnChecked;
+                        foldIndicatorsCheckBox.Value =
+                            shouldEnableFoldIndicators ? CheckState.Checked : CheckState.UnChecked;
                         Editor.SetNeedsDraw ();
                         SaveViewSettings ();
                     },
@@ -204,7 +204,7 @@ public sealed partial class TedApp : Window
                 {
                     Action = () =>
                     {
-                        bool wordWrapEnabled = !Editor.WordWrap;
+                        var wordWrapEnabled = !Editor.WordWrap;
                         Editor.WordWrap = wordWrapEnabled;
                         wordWrapCheckBox.Value = wordWrapEnabled ? CheckState.Checked : CheckState.UnChecked;
                         SaveViewSettings ();
@@ -216,7 +216,7 @@ public sealed partial class TedApp : Window
                 {
                     Action = () =>
                     {
-                        bool showTabsEnabled = !Editor.ShowTabs;
+                        var showTabsEnabled = !Editor.ShowTabs;
                         Editor.ShowTabs = showTabsEnabled;
                         ShowTabsCheckBox.Value = showTabsEnabled ? CheckState.Checked : CheckState.UnChecked;
                         SaveViewSettings ();

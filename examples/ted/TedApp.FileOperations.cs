@@ -62,7 +62,8 @@ public sealed partial class TedApp
 
         SetDocument (string.Empty, filePath);
         TextDocument document = Editor.Document
-            ?? throw new InvalidOperationException ("ted cannot open a missing file because the editor has no document.");
+                                ?? throw new InvalidOperationException (
+                                    "ted cannot open a missing file because the editor has no document.");
         document.UndoStack.DiscardOriginalFileMarker ();
     }
 

@@ -3,11 +3,10 @@ using Terminal.Gui.Document;
 using Terminal.Gui.Document.Folding;
 using Terminal.Gui.Drawing;
 using Terminal.Gui.Drivers;
+using Terminal.Gui.Editor.Rendering;
 using Terminal.Gui.Highlighting;
 using Terminal.Gui.ViewBase;
-using Terminal.Gui.Editor.Rendering;
 using Attribute = Terminal.Gui.Drawing.Attribute;
-using Color = Terminal.Gui.Drawing.Color;
 
 namespace Terminal.Gui.Editor;
 
