@@ -270,6 +270,19 @@ public partial class Editor
             return true;
         });
 
+        // Context menu — return false when suppressed so the command can bubble.
+        AddCommand (Command.Context, () =>
+        {
+            if (ContextMenu is null)
+            {
+                return false;
+            }
+
+            ShowContextMenu ();
+
+            return true;
+        });
+
         ApplyKeyBindings (View.DefaultKeyBindings, DefaultKeyBindings);
 
         // Reclaim Tab / Shift+Tab from the framework's default focus-cycling bindings so our
@@ -681,10 +694,7 @@ public partial class Editor
             }
         }
 
-        if (fold is not null)
-        {
-            fold.IsFolded = !fold.IsFolded;
-        }
+        fold?.IsFolded = !fold.IsFolded;
 
         return true;
     }
