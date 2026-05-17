@@ -364,7 +364,13 @@ public partial class Editor
         }
 
         Point screen = ViewportToScreen (new Point (col, row));
-        Cursor = new Cursor { Position = screen, Style = CursorStyle.BlinkingBar };
+        CursorStyle style = OverwriteMode ? CursorStyle.SteadyBlock :
+            Cursor.Style == CursorStyle.Hidden ? CursorStyle.Default : Cursor.Style;
+        Cursor = Cursor with
+        {
+            Position = screen,
+            Style = style
+        };
     }
 
     private void ApplyAdditionalCaretSelections (CellVisualLine visualLine, Attribute selected)

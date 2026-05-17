@@ -366,6 +366,19 @@ public class EditorRenderingTests
     }
 
     [Fact]
+    public async Task Cursor_Style_Is_Preserved_When_Position_Updates ()
+    {
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("abc"));
+        fx.Top.Editor.SetFocus ();
+        fx.Top.Editor.Cursor = new Cursor { Style = CursorStyle.SteadyUnderline };
+        fx.Top.Editor.CaretOffset = 2;
+        fx.Render ();
+
+        Assert.Equal (new Point (2, 0), fx.Top.Editor.Cursor.Position);
+        Assert.Equal (CursorStyle.SteadyUnderline, fx.Top.Editor.Cursor.Style);
+    }
+
+    [Fact]
     public async Task Highlighted_Tokens_Follow_The_Active_Scheme ()
     {
         const string text = "public class C";

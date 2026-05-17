@@ -1,8 +1,10 @@
 # gui-cs/Editor — Beta Plan
 
-**Updated**: 2026-05-13 | **Target**: Beta | **Bar**: full MLP feature set + Terminal.Gui's `TextView` marked `[Obsolete]`
+**Updated**: 2026-05-17 | **Target**: Beta | **Bar**: full MLP feature set + Terminal.Gui's `TextView` marked `[Obsolete]`
 
 > **Alpha shipped 2026-05-12** off `develop` (rolling pre-release stream). This plan supersedes the original MLP/Alpha plan and tracks the work remaining for the **beta** cut.
+>
+> **All four beta features merged 2026-05-13/14** (find-and-replace tail #104, clipboard #107, word-wrap #106, multi-caret #105). The remaining beta gate is now external/verification work plus the `develop`→`main` cut — see the rescoped Status Snapshot and Definition of Done below.
 
 ---
 
@@ -17,7 +19,7 @@ The beta of `gui-cs/Editor` ships when:
 
 The `textmate-grammars` feature ships in the release **after** beta.
 
-## Status Snapshot (2026-05-13)
+## Status Snapshot (2026-05-17)
 
 ### Done (alpha)
 
@@ -33,20 +35,46 @@ The `textmate-grammars` feature ships in the release **after** beta.
 - **syntax-colorizer** ✅ (PR #94): `HighlightingColorizer`, xshd loader integration, ted theme dropdown.
 - **auto-indent** ✅ (PR #95): `IIndentationStrategy`, `DefaultIndentationStrategy`, Enter auto-indent wrapped in single undo group.
 - **find-and-replace (engine + dialog)**: `Editor.SearchStrategy` swap; regex / whole-word / case-sensitivity toggles; `ReplaceAll` single-step undo via `RunUpdate`. Renderer + keybindings still pending (see Remaining).
-- **ted demo**: file menu, find/replace dialog, theme dropdown, tab controls, status bar, gutter toggles, ted-side clipboard wiring (will move into Editor for beta — see Remaining).
+- **ted demo**: file menu, find/replace dialog, theme dropdown, tab controls, status bar, gutter toggles, ted-side clipboard wiring (since lifted into `Editor` — clipboard #107, see Done (beta)).
+
+### Done (beta — landed since the alpha snapshot)
+
+All four beta features merged. Plus follow-on UX/quality work the beta bar implies.
+
+| Feature | Status | PR / Issue | Notes |
+|---------|--------|------------|-------|
+| [find-and-replace tail](find-and-replace/spec.md) | ✅ Done | PR #104 · issue #100 closed | `SearchHitRenderer : IBackgroundRenderer` + F3 / Shift+F3 / Ctrl+F / Ctrl+H + edit-driven highlight invalidation. |
+| [clipboard](clipboard/spec.md) | ✅ Done | PR #107 · issue #101 closed | Cut/Copy/Paste lifted into `Editor` as first-class commands w/ default keybindings + single-step undo. DEC-005: no-selection Cut/Copy is a no-op. |
+| [word-wrap](word-wrap/spec.md) | ✅ Done | PR #106 (+#114) · issue #102 closed | `WordWrapStrategy` + `VisualLineBuilder` + `Editor.WordWrap` + ted toggle; mouse/gutter-under-wrap fixes in #114. DEC-005: continuation lines flush at col 0. |
+| [multi-caret](multi-caret/spec.md) | ✅ Done | PR #105 (+#121) · issue #103 closed | `AdditionalCaretOffsets`, Ctrl+Click add/remove, per-caret selection, single-step undo across all carets. |
+| [vertical-multi-caret](vertical-multi-caret/spec.md) | ✅ Done | PR #133 · issues #124/#125 closed | Ctrl+Alt+Up/Down + Alt+Drag column of carets; re-implemented per spec, superseding throwaway PR #125. Carets-only. |
+| [syntax-theme](syntax-theme/spec.md) Phase 2 | ✅ Done | PR #134 · issues #99/#128/#132 closed | xshd colorizer routed through TG `Scheme` code-token `VisualRole`s + ted Theme switcher. Phases 0–1 are TG-repo work. |
+| Word navigation | ✅ Done | PR #138 · issue #137 closed | Ctrl+Left/Right + Ctrl+Shift+Left/Right word-wise move/select. |
+| Configurable keybindings | ✅ Done | PRs #118/#120 · issue #119 closed | Hardcoded keys migrated to `[ConfigurationProperty] Editor.DefaultKeyBindings`; config tests. |
+| ted settings UX | ✅ Done | PR #123 · issue #122 closed | View/Options menus, immediate persistence to `~/.tui`, ported from `clet edit`. |
+| ted Markdown preview | ✅ Done | PR #112 · issue #111 closed | Side-by-side highlighted Markdown preview for `.md`, bidirectional scroll sync. |
+| End-user docs | ✅ Done | PR #116 · issue #115 closed | `Docs/Help` markdown; README rewrite (PR #110). |
 
 ### Remaining for beta
 
-**Composition rule** (constitution R9): every feature listed here is end-to-end — `Terminal.Gui.Editor` model layer + `Editor : View` consumer + `examples/ted` UI wiring, in a single PR. AvaloniaEdit lifts and pure-plumbing sub-features are subsumed into the feature that ships them to the user. Lift-only PRs are not accepted.
+**Composition rule** (constitution R9): every feature is end-to-end — `Terminal.Gui.Editor` model layer + `Editor : View` consumer + `examples/ted` UI wiring, in a single PR. Lift-only PRs are not accepted.
 
-| Feature | Status | Issue | Notes |
-|---------|--------|-------|-------|
-| [find-and-replace tail](find-and-replace/spec.md) | Ready | [#100](https://github.com/gui-cs/Editor/issues/100) | `SearchHitRenderer : IBackgroundRenderer` + F3 / Shift+F3 / Ctrl+F / Ctrl+H keybindings + edit-driven highlight invalidation. Engine + ted dialog already landed. |
-| [clipboard](clipboard/spec.md) | Ready | [#101](https://github.com/gui-cs/Editor/issues/101) | Lift Cut/Copy/Paste from ted into `Editor` as first-class `Command.Cut/Copy/Paste` with default keybindings and single-step undo. |
-| [word-wrap](word-wrap/spec.md) | Ready | [#102](https://github.com/gui-cs/Editor/issues/102) | `WordWrapStrategy` + `VisualLineBuilder` integration + `Editor.WordWrap` + ted toggle. |
-| [multi-caret](multi-caret/spec.md) | Ready | [#103](https://github.com/gui-cs/Editor/issues/103) | `AdditionalCaretOffsets`, Ctrl+Click add/remove, per-caret selection, single-step undo across all carets. |
-| Terminal.Gui `[Obsolete]` TextView | External | [Terminal.Gui#5303](https://github.com/gui-cs/Terminal.Gui/issues/5303) | TG-side change. Lands in the TG release that ships alongside our beta. |
-| [textmate-grammars](textmate-grammars/spec.md) | Post-beta | — | Ships in the release after beta. Builds on `syntax-colorizer`. |
+No feature work is left. The remaining beta gate is external coordination, decision-log closure, verification, and the release cut:
+
+| Item | Status | Tracking | Notes |
+|------|--------|----------|-------|
+| Terminal.Gui `[Obsolete]` TextView |  ✅ Done | | [Terminal.Gui#5303](https://github.com/gui-cs/Terminal.Gui/issues/5303) | TG-side. Lands in the TG release alongside our beta; don't block our cut on theirs. |
+| `gui-cs/clet edit` ships against beta |  ✅ Done | | — | External-consumer smoke test (Beta DoD). |
+| Open decisions OPEN-001…005 |  ✅ Done | | `decisions.md` | OPEN-005 (`HighlightingColor` mapping) settled by syntax-theme  |
+| Verification pass | Pending | Beta DoD | Cross-platform build, all test projects green, `Editor.Tests` ≥90%, perf gate within 3× baseline. |
+| `develop` → `main` + `v*` tag cut |  ✅ Done | | release.yml | The merge-to-main + tag is the beta. |
+| [textmate-grammars](textmate-grammars/spec.md) | Post-beta | — | Ships in the release **after** beta. Builds on `syntax-colorizer`. |
+
+**Open follow-ups (post-beta candidates, not beta blockers):**
+
+- **Multi-select PR** — `Alt+Drag` producing a *selection per row* (column/box select), not just carets; render additional-caret selections. The natural successor to vertical-multi-caret. Tracked by issue #139 and open PR #142. Per commit `494261d`, this PR **must** restore multi-caret `Tab`/`Shift+Tab` selection-preservation parity with the single-caret `IndentSelectedLines` path.
+- Open bugs/PRs awaiting review: #144/#143 (Editor cursor-style preservation on `UpdateCursor`), #141/#140 (swallowed Tab after raw ANSI Shift+Tab in ted).
+- **TextView parity gaps** — `Editor` will functionally replace `Terminal.Gui.TextView` (not API/UI-compatible). Survey + per-gap dispositions in [`textview-parity-gap/spec.md`](textview-parity-gap/spec.md); all seven gaps filed as issues #145–#151: autocomplete (#145), overwrite mode (#146), single-line/input mode (#147, decided — DEC-008), kill-ring (#148), context menu (#149), large-file streaming (#150), `IDesignable` (#151). All post-beta.
 
 ### Subsumed / archived
 
@@ -94,31 +122,31 @@ third_party/AvaloniaEdit/
 
 ## Dependencies
 
-User-visible features remaining for beta — independent unless an edge is shown.
+All beta feature work is merged; the dependency graph below is historical (every `gui-cs/Editor` edge resolved). Only the external edge remains.
 
 ```
-   ── find-and-replace tail (#100)   — independent (engine already landed)
-   ── clipboard            (#101)    — independent
-   ── word-wrap            (#102)    — independent (rendering-pipeline done)
-   ── multi-caret          (#103)    — independent (caret-anchors done)
+   find-and-replace tail (#100)  ✅ merged (PR #104)
+   clipboard             (#101)  ✅ merged (PR #107)
+   word-wrap             (#102)  ✅ merged (PR #106)
+   multi-caret           (#103)  ✅ merged (PR #105)
+   vertical-multi-caret  (#124)  ✅ merged (PR #133) — needed multi-caret + word-wrap + caret-anchors
+   syntax-theme Phase 2  (#132)  ✅ merged (PR #134) — consumes TG #5311 via <TerminalGuiVersion>
 
-   TG #5303 (TextView [Obsolete])    — external, on TG release schedule
+   TG #5303 (TextView [Obsolete])  — external, on TG release schedule (not a cut blocker)
 ```
-
-All four `gui-cs/Editor` features can be picked up immediately and worked in parallel.
 
 ## Beta Definition of Done
 
 Each criterion is testable. This is the merge-to-`main` + `v*` tag gate.
 
-- [ ] All beta features merged: find-and-replace tail, clipboard, word-wrap, multi-caret.
-- [ ] `dotnet build Terminal.Gui.Editor.slnx` clean on Linux/macOS/Windows on net10.0.
-- [ ] All test projects pass. Coverage: `Editor.Tests` ≥ 90%. `PerformanceTests` smoke tests + the `*VisualLineBuild*` BenchmarkDotNet gate stay within 3× of `benchmarks/baseline.json`.
-- [ ] `Editor.OnDrawingContent` does not iterate `text` by `char`. R1, R2, R4, R5 hold. *(carried from MLP; already true at alpha)*
-- [ ] No file under `src/Terminal.Gui.Editor/` references `Terminal.Gui`. *(carried from MLP)*
-- [ ] ted exercises: typing, selection, multi-caret, undo/redo, find/replace (with highlights + keybindings), folding, word wrap, line numbers, mouse, clipboard, large-file (10 MB < 200 ms initial render).
-- [ ] `specs/public-api.md` and `specs/decisions.md` populated; every open decision resolved. Decisions logged for #101 no-selection Cut/Copy and #102 continuation-line indent policy.
-- [ ] README documents MIT licensing, AvaloniaEdit attribution, targets, install, and a usage example.
+- [x] All beta features merged: find-and-replace tail (#104), clipboard (#107), word-wrap (#106), multi-caret (#105). *(2026-05-14)*
+- [ ] `dotnet build Terminal.Gui.Editor.slnx` clean on Linux/macOS/Windows on net10.0. *(verify at cut)*
+- [ ] All test projects pass. Coverage: `Editor.Tests` ≥ 90%. `PerformanceTests` smoke tests + the `*VisualLineBuild*` BenchmarkDotNet gate stay within 3× of `benchmarks/baseline.json`. *(verify at cut)*
+- [ ] `Editor.OnDrawingContent` does not iterate `text` by `char`. R1, R2, R4, R5 hold. *(carried from MLP; held at alpha — re-verify at cut)*
+- [ ] No file under `src/Terminal.Gui.Editor/` references `Terminal.Gui`. *(carried from MLP — re-verify at cut)*
+- [ ] ted exercises: typing, selection, multi-caret, undo/redo, find/replace (with highlights + keybindings), folding, word wrap, line numbers, mouse, clipboard, large-file (10 MB < 200 ms initial render). *(all wired; needs an explicit end-to-end pass)*
+- [ ] `specs/public-api.md` and `specs/decisions.md` populated; every open decision resolved. **Partial**: DEC-005 (#101 no-selection Cut/Copy) ✅ and DEC-005 word-wrap (#102 continuation-line indent) ✅ logged; DEC-006/007 logged. Still open: OPEN-001…005 (OPEN-005 effectively settled by syntax-theme — confirm + move to Resolved).
+- [ ] README documents MIT licensing, AvaloniaEdit attribution, targets, install, and a usage example. *(README rewritten PR #110 — confirm licensing/attribution section present)*
 - [ ] `gui-cs/clet edit` builds and ships against the beta package.
 - [ ] Terminal.Gui#5303 lands or is committed for the next TG release with the warning message pointing at `gui-cs/Editor`.
 
@@ -134,8 +162,8 @@ Each criterion is testable. This is the merge-to-`main` + `v*` tag gate.
 ## How to Use This Plan
 
 1. Read `specs/constitution.md`. Internalize rules R1–R10. Reject any implementation path that violates them.
-2. Pick one ready feature from the Remaining table. All four are unblocked and independent — choose by size and risk fit.
-3. Read that feature's `specs/<name>/spec.md` and its tracking issue (#100–#103) verbatim before editing.
+2. All beta features are merged. Remaining work is the external/verification/cut checklist in **Remaining for beta** and the **Beta Definition of Done** — work those, not new feature specs.
+3. For post-beta or follow-up work (e.g. the multi-select PR, textmate-grammars), read that feature's `specs/<name>/spec.md` and its tracking issue verbatim before editing.
 4. Work on a feature branch off `develop`; merge back to `develop`; route releases through the existing workflow.
 5. Track each PR against the Definition of Done in its spec, not the agent's self-report.
 6. Update the status table in this file every time an item lands.

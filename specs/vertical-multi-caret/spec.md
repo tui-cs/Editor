@@ -1,8 +1,8 @@
 # Feature Specification: Vertical Multi-Caret (Ctrl+Alt+Up/Down, Alt+Drag)
 
-**Status**: Draft — supersedes the throwaway implementation in PR #125
+**Status**: Done — re-implemented per this spec in PR #133 (merged into `develop` 2026-05-17), superseding the throwaway PR #125; issues #124/#125 closed. Carets-only flow shipped; column/per-row selection is the follow-up "multi-select" PR (Out of Scope below; tracked in issue #139 / open PR #142).
 **Created**: 2026-05-15
-**Last updated**: 2026-05-15
+**Last updated**: 2026-05-17
 **Depends on**: multi-caret ✅, word-wrap ✅, caret-anchors ✅
 **Blocked by**: —
 **Reference (do not merge)**: [PR #125](https://github.com/gui-cs/Editor/pull/125) — copilot-authored prototype. The functionality is right in the simplest case; the implementation is hacky and the maintainer has documented multiple regressions on it (see § Reference behavior from PR #125 below). Use the test cases from that PR as the executable contract; re-implement the editor changes against this spec. **Note**: PR #125 used `Alt+Up/Down` and `Alt+drag`; this spec adopts the VS Code chords (`Ctrl+Alt+Up/Down`, `Shift+Alt+drag`). The tests must be ported with the new key combinations.
