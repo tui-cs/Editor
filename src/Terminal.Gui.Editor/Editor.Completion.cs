@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.Drawing;
+using System.Text;
 using Terminal.Gui.App;
 using Terminal.Gui.Editor.Completion;
 using Terminal.Gui.Input;
@@ -90,8 +91,17 @@ public partial class Editor
 
     /// <summary>
     ///     Called before normal key dispatch. Returns <see langword="true" /> when the completion
-    ///     popup consumed the key (navigation / accept / dismiss / trigger keys).
+    ///     popup consumed the key (navigation / accept / dismiss / character insert). This runs
+    ///     in <see cref="OnKeyDown" />, which fires before command bindings.
     /// </summary>
+    /// <remarks>
+    ///     The Popover is set to <c>Enabled = false</c> after <see cref="IPopoverView.MakeVisible" />
+    ///     so that it functions as a visual-only overlay — the Editor retains keyboard focus and
+    ///     all keyboard events flow through this method. This mirrors how
+    ///     <c>PopupAutocomplete.ProcessKey</c> in Terminal.Gui works: the host control intercepts
+    ///     keys and routes navigation / accept / dismiss / character insertion to the autocomplete
+    ///     system. Mouse interaction is handled by <see cref="HandleCompletionMouse" />.
+    /// </remarks>
     internal bool HandleCompletionKey (Key key)
     {
         if (CompletionProvider is null)
@@ -133,6 +143,48 @@ public partial class Editor
 
                 return true;
             }
+
+            // Character keys: insert directly into the document while the popup is open,
+            // then refresh the completion list. We handle this here (rather than letting it
+            // fall through to OnKeyDownNotHandled) because the Popover is Enabled = false
+            // and this is the only place that processes keyboard input during a completion
+            // session.
+            if (!key.IsCtrl && !key.IsAlt && key.AsRune is { } rune && !Rune.IsControl (rune))
+            {
+                if (_document is not null && !ReadOnly)
+                {
+                    if (HasSelection)
+                    {
+                        ReplaceSelection (rune.ToString ());
+                    }
+                    else if (OverwriteMode)
+                    {
+                        OverwriteAtCaret (rune.ToString ());
+                    }
+                    else
+                    {
+                        _document.Insert (CaretOffset, rune.ToString ());
+                    }
+
+                    // Refresh the completion list with the updated prefix.
+                    NotifyCompletionAfterInsert ();
+                }
+
+                return true;
+            }
+
+            // Backspace: delete the character before the caret and refresh.
+            if (key == Key.Backspace)
+            {
+                if (_document is not null && !ReadOnly && CaretOffset > 0)
+                {
+                    _document.Remove (CaretOffset - 1, 1);
+                }
+
+                NotifyCompletionAfterInsert ();
+
+                return true;
+            }
         }
 
         // Check provider-specific triggers (e.g. Ctrl+Space).
@@ -144,6 +196,53 @@ public partial class Editor
         }
 
         return false;
+    }
+
+    /// <summary>
+    ///     Handles mouse events for the completion popup. When the popup is visible
+    ///     (rendered as a <c>Popover</c> with <c>Enabled = false</c>), mouse clicks
+    ///     in the popup area are detected by the Editor and mapped to completion items.
+    ///     Single-click on an item accepts the completion.
+    /// </summary>
+    internal bool HandleCompletionMouse (Mouse mouse)
+    {
+        if (!IsCompletionActive || _completionPopover is null || _completionListView is null)
+        {
+            return false;
+        }
+
+        if (!mouse.IsSingleClicked)
+        {
+            return false;
+        }
+
+        // Map the click's screen position to the Popover's content area.
+        // The ListView's frame within the Popover determines the hit region.
+        Rectangle popoverScreenFrame = _completionPopover.Frame;
+
+        if (mouse.ScreenPosition.X < popoverScreenFrame.X
+            || mouse.ScreenPosition.X >= popoverScreenFrame.Right
+            || mouse.ScreenPosition.Y < popoverScreenFrame.Y
+            || mouse.ScreenPosition.Y >= popoverScreenFrame.Bottom)
+        {
+            // Click is outside the popup — dismiss.
+            DismissCompletion ();
+
+            return false;
+        }
+
+        // Determine which item was clicked by Y offset within the Popover.
+        var clickedIdx = mouse.ScreenPosition.Y - popoverScreenFrame.Y;
+
+        if (clickedIdx < 0 || clickedIdx >= _completionItems.Count)
+        {
+            return false;
+        }
+
+        _completionSelectedIndex = clickedIdx;
+        AcceptCompletion ();
+
+        return true;
     }
 
     /// <summary>
@@ -270,6 +369,7 @@ public partial class Editor
 
         _completionListView.SelectedItem = index;
         _completionListView.SetNeedsDraw ();
+        _completionPopover?.SetNeedsDraw ();
     }
 
     private void ShowCompletionPopup ()
@@ -322,8 +422,11 @@ public partial class Editor
         Point caretScreen = GetCaretScreenPosition ();
         _completionPopover.MakeVisible (new Point (caretScreen.X, caretScreen.Y + 1));
 
-        // Disable keyboard dispatch so the Popover doesn't capture text input.
-        // All navigation (Up/Down/Enter/Tab/Esc) is handled by HandleCompletionKey.
+        // Disable the Popover so it acts as a visual-only overlay. All keyboard events
+        // flow to the Editor via HandleCompletionKey (the Editor retains focus). Mouse
+        // clicks in the popup area are handled by HandleCompletionMouse called from
+        // OnMouseEvent. This follows the PopupAutocomplete pattern from Terminal.Gui:
+        // the host control owns all input dispatch, the popup just renders.
         _completionPopover.Enabled = false;
     }
 

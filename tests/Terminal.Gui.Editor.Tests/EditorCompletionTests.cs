@@ -151,10 +151,12 @@ public class EditorCompletionTests
     }
 
     [Fact]
-    public void HandleCompletionKey_Returns_False_For_Regular_Chars_While_Active ()
+    public void HandleCompletionKey_Handles_Regular_Chars_While_Active ()
     {
-        // When the popup is active, regular character keys must NOT be consumed
-        // so the Editor can insert the character and re-filter the list.
+        // When the popup is active, regular character keys ARE consumed by
+        // HandleCompletionKey — the character is inserted directly into the document
+        // and the completion list is refreshed. This avoids the Popover intercepting
+        // the key when it is visible.
         Editor editor = new ()
         {
             Document = new TextDocument ("us"),
@@ -165,8 +167,10 @@ public class EditorCompletionTests
         editor.NotifyCompletionAfterInsert ();
         Assert.True (editor.IsCompletionActive);
 
-        // A regular character key should return false — not consumed by the popup.
-        Assert.False (editor.HandleCompletionKey (new Key ('i')));
+        // A regular character key should be consumed and the character inserted.
+        Assert.True (editor.HandleCompletionKey (new Key ('i')));
+        Assert.Equal ("usi", editor.Document!.Text);
+        Assert.True (editor.IsCompletionActive, "Completion should still be active after 'usi' (matches 'using')");
     }
 
     [Fact]
