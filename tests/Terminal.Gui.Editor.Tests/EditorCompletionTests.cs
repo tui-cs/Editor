@@ -155,7 +155,10 @@ public class EditorCompletionTests
     {
         private readonly string _word;
 
-        public StubCompletionProvider (string word) { _word = word; }
+        public StubCompletionProvider (string word)
+        {
+            _word = word;
+        }
 
         public IReadOnlyList<CompletionItem> GetCompletions (TextDocument document, int caretOffset, string prefix)
         {
@@ -169,7 +172,10 @@ public class EditorCompletionTests
                 : [];
         }
 
-        public bool ShouldTrigger (Key key) { return key == Key.Space.WithCtrl; }
+        public bool ShouldTrigger (Key key)
+        {
+            return key == Key.Space.WithCtrl;
+        }
     }
 
     /// <summary>Provider that always returns an empty list.</summary>
@@ -180,6 +186,9 @@ public class EditorCompletionTests
             return [];
         }
 
-        public bool ShouldTrigger (Key key) { return false; }
+        public bool ShouldTrigger (Key key)
+        {
+            return false;
+        }
     }
 }
