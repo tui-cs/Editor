@@ -389,7 +389,7 @@ public class EditorMouseTests
         Assert.Equal (5, fx.Top.Editor.CaretOffset); // primary didn't move
 
         Attribute normal = fx.Top.Editor.GetAttributeForRole (VisualRole.Normal);
-        Attribute caretAttr = new (normal.Foreground, normal.Background, TextStyle.Underline | TextStyle.Blink);
+        Attribute caretAttr = new (normal.Foreground, normal.Background, TextStyle.Blink | TextStyle.Reverse);
 
         // Cell 0 (first '/') should have the caret attribute.
         Cell cell0 = fx.Driver.Contents![0, 0];
@@ -434,7 +434,7 @@ public class EditorMouseTests
         Assert.Contains (0, fx.Top.Editor.AdditionalCaretOffsets);
 
         Attribute normal = fx.Top.Editor.GetAttributeForRole (VisualRole.Normal);
-        Attribute caretAttr = new (normal.Foreground, normal.Background, TextStyle.Underline | TextStyle.Blink);
+        Attribute caretAttr = new (normal.Foreground, normal.Background, TextStyle.Blink | TextStyle.Reverse);
 
         Cell cell0 = fx.Driver.Contents![0, 0];
         Assert.Equal ("/", cell0.Grapheme);

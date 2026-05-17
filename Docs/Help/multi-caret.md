@@ -29,7 +29,7 @@ All edits are wrapped in a single `Document.RunUpdate` scope, so **Undo (Ctrl+Z)
 
 ## Visual feedback
 
-Additional carets are rendered as inverted-attribute cells by the `MultiCaretRenderer` (an `IBackgroundRenderer`). The status bar in `ted` shows the total caret count when in multi-caret mode (e.g. "Ln 4, Col 1 (3 carets)").
+Additional carets are rendered as blinking, reverse-video cells by the `MultiCaretRenderer` (an `IOverlayRenderer`). The status bar in `ted` shows the total caret count when in multi-caret mode (e.g. "Ln 4, Col 1 (3 carets)").
 
 ## Programmatic API
 

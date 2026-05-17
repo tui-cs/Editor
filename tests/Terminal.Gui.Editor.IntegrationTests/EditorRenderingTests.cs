@@ -376,7 +376,7 @@ public class EditorRenderingTests
     }
 
     [Fact]
-    public async Task MultiCaret_Renders_Underline_Blink_Attribute_On_Text ()
+    public async Task MultiCaret_Renders_Reverse_Blink_Attribute_On_Text ()
     {
         // P1: MultiCaretRenderer must draw AFTER text elements so that the caret
         // cell is not overwritten by the subsequent element.Draw call.
@@ -388,9 +388,9 @@ public class EditorRenderingTests
         fx.Render ();
 
         Attribute normal = fx.Top.Editor.GetAttributeForRole (VisualRole.Normal);
-        Attribute caretAttr = new (normal.Foreground, normal.Background, TextStyle.Underline | TextStyle.Blink);
+        Attribute caretAttr = new (normal.Foreground, normal.Background, TextStyle.Blink | TextStyle.Reverse);
 
-        // The cell at column 3 ('d') should have the underline+blink attribute, not the normal one.
+        // The cell at column 3 ('d') should have the reverse+blink attribute, not the normal one.
         Cell cell = fx.Driver.Contents![0, 3];
         Assert.Equal ("d", cell.Grapheme);
         Assert.Equal (caretAttr, cell.Attribute);
@@ -428,9 +428,9 @@ public class EditorRenderingTests
         fx.Render ();
 
         Attribute normal = fx.Top.Editor.GetAttributeForRole (VisualRole.Normal);
-        Attribute caretAttr = new (normal.Foreground, normal.Background, TextStyle.Underline | TextStyle.Blink);
+        Attribute caretAttr = new (normal.Foreground, normal.Background, TextStyle.Blink | TextStyle.Reverse);
 
-        // Column 0 (first '/') should have the underline+blink caret attribute.
+        // Column 0 (first '/') should have the reverse+blink caret attribute.
         Cell cell0 = fx.Driver.Contents![0, 0];
         Assert.Equal ("/", cell0.Grapheme);
         Assert.Equal (caretAttr, cell0.Attribute);
@@ -469,18 +469,18 @@ public class EditorRenderingTests
         Assert.Equal ("/", cell1.Grapheme);
         Assert.Equal ("/", cell2.Grapheme);
 
-        // cell0 must have Underline|Blink (the caret style).
+        // cell0 must have Blink|Reverse (the caret style).
         Assert.True (
-            cell0.Attribute!.Value.Style.HasFlag (TextStyle.Underline | TextStyle.Blink),
-            $"Cell 0 should have Underline|Blink but has Style={cell0.Attribute!.Value.Style}");
+            cell0.Attribute!.Value.Style.HasFlag (TextStyle.Blink | TextStyle.Reverse),
+            $"Cell 0 should have Blink|Reverse but has Style={cell0.Attribute!.Value.Style}");
 
-        // cell1 and cell2 must NOT have Underline or Blink.
+        // cell1 and cell2 must NOT have Reverse or Blink.
         Assert.False (
-            cell1.Attribute!.Value.Style.HasFlag (TextStyle.Underline),
-            $"Cell 1 should NOT have Underline but has Style={cell1.Attribute!.Value.Style}");
+            cell1.Attribute!.Value.Style.HasFlag (TextStyle.Reverse),
+            $"Cell 1 should NOT have Reverse but has Style={cell1.Attribute!.Value.Style}");
         Assert.False (
-            cell2.Attribute!.Value.Style.HasFlag (TextStyle.Underline),
-            $"Cell 2 should NOT have Underline but has Style={cell2.Attribute!.Value.Style}");
+            cell2.Attribute!.Value.Style.HasFlag (TextStyle.Reverse),
+            $"Cell 2 should NOT have Reverse but has Style={cell2.Attribute!.Value.Style}");
     }
 
     [Fact]
@@ -504,7 +504,7 @@ public class EditorRenderingTests
         fx.Render ();
 
         Attribute normal = fx.Top.Editor.GetAttributeForRole (VisualRole.Normal);
-        Attribute caretAttr = new (normal.Foreground, normal.Background, TextStyle.Underline | TextStyle.Blink);
+        Attribute caretAttr = new (normal.Foreground, normal.Background, TextStyle.Blink | TextStyle.Reverse);
 
         // Row 1, col 0 should show the caret attribute on 'f'.
         Cell row1FirstCol = fx.Driver.Contents![1, 0];
