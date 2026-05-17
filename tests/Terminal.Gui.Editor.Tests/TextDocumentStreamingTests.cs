@@ -33,13 +33,12 @@ public class TextDocumentStreamingTests
         var text = new string ('x', 100_000);
         await using MemoryStream input = new (Encoding.UTF8.GetBytes (text));
         List<TextDocumentProgress> reports = [];
-        Progress<TextDocumentProgress> progress = new (reports.Add);
+        CapturingProgress progress = new (reports);
 
         TextDocument document = await TextDocument.LoadAsync (
             input,
             progress: progress,
             cancellationToken: TestContext.Current.CancellationToken);
-        await Task.Delay (50, TestContext.Current.CancellationToken);
 
         Assert.Equal (text.Length, document.TextLength);
         Assert.True (reports.Count > 1);
@@ -71,5 +70,20 @@ public class TextDocumentStreamingTests
         await editor.SaveAsync (output, cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.Equal ("alpha\r\nbeta", Encoding.UTF8.GetString (output.ToArray ()));
+    }
+
+    private sealed class CapturingProgress : IProgress<TextDocumentProgress>
+    {
+        private readonly List<TextDocumentProgress> _reports;
+
+        public CapturingProgress (List<TextDocumentProgress> reports)
+        {
+            _reports = reports;
+        }
+
+        public void Report (TextDocumentProgress value)
+        {
+            _reports.Add (value);
+        }
     }
 }
