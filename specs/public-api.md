@@ -134,4 +134,4 @@ public interface IEditorCompletionProvider
 | 2026-05-11 | ReadOnly property landed on Editor | read-only |
 | 2026-05-12 | `ISearchStrategy?` `SearchStrategy { get; set; }` landed on Editor; string-based FindNext/FindPrevious/ReplaceNext/ReplaceAll overloads retained as convenience wrappers | find-and-replace |
 | 2026-05-16 | Vertical multi-caret keybindings (`Ctrl+Alt+CursorUp/Down`, `Alt+Drag`) added via `Editor.DefaultKeyBindings`; no new public Editor API (R8) | vertical-multi-caret |
-| 2026-05-17 | `IEditorCompletionProvider?` `CompletionProvider` + `bool IsCompletionActive` landed; `CompletionItem` record; `Popover<ListView>`-based popup; DEC-009 resolves OPEN-002 | completion |
+| 2026-05-17 | `IEditorCompletionProvider?` `CompletionProvider` + `bool IsCompletionActive` landed; `CompletionItem` record; `DropDownList`-based popup; DEC-009 resolves OPEN-002 | completion |
