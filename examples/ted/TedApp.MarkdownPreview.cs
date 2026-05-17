@@ -10,7 +10,7 @@ public sealed partial class TedApp
     private Markdown? _markdownPreview;
     private bool _syncingScroll;
 
-    /// <summary>The status-bar checkbox that toggles the Markdown preview pane.</summary>
+    /// <summary>Toggle state used by the View menu item that shows or hides the Markdown preview pane.</summary>
     public CheckBox PreviewCheckBox { get; } = new ()
     {
         AllowCheckStateNone = false,
@@ -30,6 +30,7 @@ public sealed partial class TedApp
     {
         var isMd = IsMarkdownFile;
         PreviewCheckBox.Visible = isMd;
+        _previewMarkdownMenuItem.Enabled = isMd;
 
         if (!isMd && _markdownPreview is not null)
         {
@@ -41,6 +42,10 @@ public sealed partial class TedApp
             // Document was swapped while preview was open — refresh content and re-hook.
             RefreshPreviewDocument ();
         }
+
+        _previewMarkdownMenuItem.Title = ToggleTitle (
+            PreviewCheckBox.Value == CheckState.Checked,
+            "_Preview Markdown");
     }
 
     private void ToggleMarkdownPreview ()
@@ -70,7 +75,8 @@ public sealed partial class TedApp
             Height = Editor.Height,
             Text = Editor.Document?.Text ?? string.Empty,
             ViewportSettings = ViewportSettingsFlags.HasScrollBars,
-            SyntaxHighlighter = new TextMateSyntaxHighlighter (ThemeName.DarkPlus)
+            SyntaxHighlighter = new TextMateSyntaxHighlighter (ThemeName.DarkPlus),
+            UseThemeBackground = Editor.UseThemeBackground
         };
 
         // Editor takes the left half, preview takes the right half.
