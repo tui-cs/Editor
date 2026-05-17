@@ -55,6 +55,12 @@ public partial class Editor
         // validation (specs/decisions.md DEC-006).
         [InsertCaretAbove] = Bind.All (Key.CursorUp.WithCtrl.WithAlt),
         [InsertCaretBelow] = Bind.All (Key.CursorDown.WithCtrl.WithAlt)
+        [Command.WordLeft] = Bind.All (Key.CursorLeft.WithCtrl),
+        [Command.WordRight] = Bind.All (Key.CursorRight.WithCtrl),
+        [Command.WordLeftExtend] = Bind.All (Key.CursorLeft.WithCtrl.WithShift),
+        [Command.WordRightExtend] = Bind.All (Key.CursorRight.WithCtrl.WithShift),
+        [Command.KillWordLeft] = Bind.All (Key.Backspace.WithCtrl),
+        [Command.KillWordRight] = Bind.All (Key.Delete.WithCtrl)
     };
 
     private void CreateCommandsAndBindings ()
@@ -220,6 +226,31 @@ public partial class Editor
         // Vertical multi-caret: add a caret one line above / below the block at the sticky column.
         AddCommand (InsertCaretAbove, () => AddCaretVertically (-1));
         AddCommand (InsertCaretBelow, () => AddCaretVertically (1));
+        // Word navigation and kill
+        AddCommand (Command.WordLeft, () =>
+        {
+            MoveCaretToWordBoundary (false);
+            return true;
+        });
+        AddCommand (Command.WordRight, () =>
+        {
+            MoveCaretToWordBoundary (true);
+            return true;
+        });
+        AddCommand (Command.WordLeftExtend,
+            () => ExtendCommand (() => ExtendCaretTo (GetWordBoundaryOffset (CaretOffset, false))));
+        AddCommand (Command.WordRightExtend,
+            () => ExtendCommand (() => ExtendCaretTo (GetWordBoundaryOffset (CaretOffset, true))));
+        AddCommand (Command.KillWordLeft, () =>
+        {
+            KillToWordBoundary (false);
+            return true;
+        });
+        AddCommand (Command.KillWordRight, () =>
+        {
+            KillToWordBoundary (true);
+            return true;
+        });
 
         ApplyKeyBindings (View.DefaultKeyBindings, DefaultKeyBindings);
 
