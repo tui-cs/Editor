@@ -1,8 +1,8 @@
 # Feature Specification: Word Wrap
 
-**Status**: Ready — tracked in issue #102
+**Status**: Done — shipped in PR #106 (merged into `develop` 2026-05-13); issue #102 closed. Mouse/gutter-under-wrap fixes followed in PR #114.
 **Created**: 2026-05-10
-**Last updated**: 2026-05-13
+**Last updated**: 2026-05-17
 **Depends on**: rendering-pipeline ✅
 **Blocked by**: None
 

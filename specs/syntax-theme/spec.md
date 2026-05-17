@@ -1,8 +1,8 @@
 # Feature Specification: Syntax-Highlighting Theme/Palette Layer
 
-**Status**: Proposed — issues open; implementation pending
+**Status**: Phase 2 (Editor) done — shipped in PR #134 (merged into `develop` 2026-05-17); issues #99/#128/#132 closed. Phases 0–1 are Terminal.Gui-repo work tracked separately in [gui-cs/Terminal.Gui#5310](https://github.com/gui-cs/Terminal.Gui/issues/5310) / [#5311](https://github.com/gui-cs/Terminal.Gui/issues/5311); the Editor consumes them via the `<TerminalGuiVersion>` pin.
 **Created**: 2026-05-15
-**Last updated**: 2026-05-15
+**Last updated**: 2026-05-17
 **Depends on**: syntax-highlighting ✅, syntax-colorizer ✅, [gui-cs/Terminal.Gui#5310](https://github.com/gui-cs/Terminal.Gui/issues/5310) (config benchmarks, Phase 0), [gui-cs/Terminal.Gui#5311](https://github.com/gui-cs/Terminal.Gui/issues/5311) (code-token VisualRoles + Code view + markdown unification, Phase 1)
 **Blocked by**: TG #5310 must land first (establishes baseline). TG #5311 lands second and must not regress the baseline. The Editor PR (this repo, Phase 2, tracked in [#132](https://github.com/gui-cs/Editor/issues/132)) bumps `<TerminalGuiVersion>` once #5311 ships.
 
