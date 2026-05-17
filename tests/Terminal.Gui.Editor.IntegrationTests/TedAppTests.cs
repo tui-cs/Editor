@@ -4,6 +4,7 @@ using System.Drawing;
 using Ted;
 using Terminal.Gui.Editor.IntegrationTests.Testing;
 using Terminal.Gui.Input;
+using Terminal.Gui.Text.Indentation;
 using Terminal.Gui.Testing;
 using Terminal.Gui.Editor;
 using Terminal.Gui.Views;
@@ -304,11 +305,11 @@ public class TedAppTests
     }
 
     [Fact]
-    public async Task Renders_Indent_Size_StatusBar_Item ()
+    public async Task Renders_ViewMenu_Header ()
     {
         await using AppFixture<TedApp> fx = new (() => new TedApp ());
 
-        DriverAssert.ContentsContains (fx.Driver, "Indent");
+        DriverAssert.ContentsContains (fx.Driver, "View");
     }
 
     [Fact]
@@ -323,12 +324,12 @@ public class TedAppTests
     [Fact]
     public async Task Highlighting_Auto_Detects_From_File_Extension ()
     {
-        var filePath = Path.Combine (Path.GetTempPath (), $"ted-highlight-{Guid.NewGuid ():N}.xml");
+        var tempXmlFilePath = Path.Combine (Path.GetTempPath (), $"ted-highlight-{Guid.NewGuid ():N}.xml");
 
         try
         {
             await using AppFixture<TedApp> fx = new (() => new TedApp ());
-            fx.Top.OpenMissingFile (filePath);
+            fx.Top.OpenMissingFile (tempXmlFilePath);
 
             Assert.NotNull (fx.Top.Editor.HighlightingDefinition);
             Assert.Equal ("XML", fx.Top.Editor.HighlightingDefinition!.Name);
@@ -336,28 +337,20 @@ public class TedAppTests
         }
         finally
         {
-            DeleteIfExists (filePath);
+            DeleteIfExists (tempXmlFilePath);
         }
     }
 
     [Fact]
-    public async Task IndentationSize_StatusBar_NumericUpDown_Changes_Editor_IndentationSize ()
+    public async Task OptionsMenu_Contains_Settings_Item ()
     {
         await using AppFixture<TedApp> fx = new (() => new TedApp ());
 
-        fx.Top.IndentationSizeUpDown.Value = 8;
+        InputInjectionOptions options = new () { Mode = InputInjectionMode.Direct };
+        fx.Injector.InjectKey (Key.O.WithAlt, options);
+        fx.Render ();
 
-        Assert.Equal (8, fx.Top.Editor.IndentationSize);
-    }
-
-    [Fact]
-    public async Task ShowTabs_StatusBar_CheckBox_Changes_Editor_ShowTabs ()
-    {
-        await using AppFixture<TedApp> fx = new (() => new TedApp ());
-
-        fx.Top.ShowTabsCheckBox.Value = CheckState.Checked;
-
-        Assert.True (fx.Top.Editor.ShowTabs);
+        DriverAssert.ContentsContains (fx.Driver, "Settings...");
     }
 
     [Fact]
@@ -369,11 +362,19 @@ public class TedAppTests
     }
 
     [Fact]
+    public void Constructor_Defaults_AutoIndent_To_Enabled ()
+    {
+        TedApp app = new ();
+
+        Assert.IsType<DefaultIndentationStrategy> (app.Editor.IndentationStrategy);
+    }
+
+    [Fact]
     public async Task Loc_StatusBar_Shortcut_Initially_Shows_Line_1_Column_1 ()
     {
         await using AppFixture<TedApp> fx = new (() => new TedApp ());
 
-        Assert.Equal ("Ln: 1, Ch: 1", fx.Top.LocShortcut.Title);
+        Assert.Equal ("Ln 1, Col 1", fx.Top.LocShortcut.Title);
     }
 
     [Fact]
@@ -390,7 +391,7 @@ public class TedAppTests
         // Caret at offset 8 → "beta": line 2, column 3 ('t').
         fx.Top.Editor.CaretOffset = 8;
 
-        Assert.Equal ("Ln: 2, Ch: 3", fx.Top.LocShortcut.Title);
+        Assert.Equal ("Ln 2, Col 3", fx.Top.LocShortcut.Title);
     }
 
     [Fact]
@@ -409,7 +410,7 @@ public class TedAppTests
         // Inserting before the caret shifts it to the right; the loc shortcut must follow.
         fx.Top.Editor.Document!.Insert (0, ">>>");
 
-        Assert.Equal ("Ln: 1, Ch: 5", fx.Top.LocShortcut.Title);
+        Assert.Equal ("Ln 1, Col 5", fx.Top.LocShortcut.Title);
     }
 
     [Fact]
@@ -428,25 +429,25 @@ public class TedAppTests
     }
 
     [Fact]
-    public async Task OptionsMenu_TogglesLineNumbers_ViaKeyboard ()
+    public async Task ViewMenu_TogglesLineNumbers_ViaKeyboard ()
     {
         await using AppFixture<TedApp> fx = new (() => new TedApp ());
         Assert.True (fx.Top.Editor.GutterOptions.HasFlag (GutterOptions.LineNumbers));
 
         InputInjectionOptions options = new () { Mode = InputInjectionMode.Direct };
-        fx.Injector.InjectKey (Key.O.WithAlt, options);
+        fx.Injector.InjectKey (Key.V.WithAlt, options);
         fx.Render ();
 
         DriverAssert.ContentsContains (fx.Driver, "Line Numbers");
         DriverAssert.ContentsContains (fx.Driver, "☒ Line Numbers");
-        DriverAssert.ContentsContains (fx.Driver, "Convert Tabs To Spaces");
+        DriverAssert.ContentsContains (fx.Driver, "Show Tabs");
 
         fx.Injector.InjectKey (Key.Enter, options);
         fx.Render ();
 
         Assert.False (fx.Top.Editor.GutterOptions.HasFlag (GutterOptions.LineNumbers));
 
-        fx.Injector.InjectKey (Key.O.WithAlt, options);
+        fx.Injector.InjectKey (Key.V.WithAlt, options);
         fx.Render ();
 
         DriverAssert.ContentsContains (fx.Driver, "☐ Line Numbers");

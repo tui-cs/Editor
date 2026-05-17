@@ -10,6 +10,7 @@ Hosting.ConfigureLogging ();
 Hosting.EnableTracing ();
 
 ConfigurationManager.Enable (ConfigLocations.All);
+EditorSettings.Load ();
 
 using IApplication app = Application.Create ();
 

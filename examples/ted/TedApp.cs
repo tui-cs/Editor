@@ -23,6 +23,7 @@ public sealed partial class TedApp : Window
 {
     private readonly BraceFoldingStrategy _braceFoldingStrategy;
     private readonly Shortcut _fileNameShortcut;
+    private readonly MenuItem _previewMarkdownMenuItem;
 
     /// <summary>Initializes a new <see cref="TedApp" />.</summary>
     public TedApp (bool readOnly = false)
@@ -34,11 +35,28 @@ public sealed partial class TedApp : Window
         // Editor's KeyBindings (any commands the editor doesn't claim fall back to Application).
         Editor = new Editor
         {
-            GutterOptions = GutterOptions.LineNumbers | GutterOptions.Folding,
-            ConvertTabsToSpaces = true,
+            ConvertTabsToSpaces = EditorSettings.ConvertTabsToSpaces,
+            IndentationSize = EditorSettings.IndentSize,
+            WordWrap = EditorSettings.WordWrap,
+            ShowTabs = EditorSettings.ShowTabs,
             ReadOnly = readOnly,
             ViewportSettings = ViewportSettingsFlags.HasScrollBars
         };
+
+        GutterOptions initialGutter = GutterOptions.None;
+
+        if (EditorSettings.LineNumbers)
+        {
+            initialGutter |= GutterOptions.LineNumbers;
+        }
+
+        if (EditorSettings.FoldIndicators)
+        {
+            initialGutter |= GutterOptions.Folding;
+        }
+
+        Editor.GutterOptions = initialGutter;
+        Editor.IndentationStrategy = EditorSettings.AutoIndent ? new DefaultIndentationStrategy () : null;
 
         // Enable brace-based folding. The strategy re-scans on each document change.
         _braceFoldingStrategy = new BraceFoldingStrategy ();
@@ -69,34 +87,6 @@ public sealed partial class TedApp : Window
             Value = Editor.GutterOptions.HasFlag (GutterOptions.Folding) ? CheckState.Checked : CheckState.UnChecked
         };
 
-        CheckBox convertTabsToSpacesCheckBox = new ()
-        {
-            AllowCheckStateNone = false,
-            CanFocus = false,
-            Text = "_Convert Tabs To Spaces",
-            Value = Editor.ConvertTabsToSpaces ? CheckState.Checked : CheckState.UnChecked
-        };
-
-        convertTabsToSpacesCheckBox.ValueChanged += (_, e) =>
-        {
-            Editor.ConvertTabsToSpaces = e.NewValue == CheckState.Checked;
-        };
-
-        CheckBox autoIndentCheckBox = new ()
-        {
-            AllowCheckStateNone = false,
-            CanFocus = false,
-            Text = "_Auto Indent",
-            Value = Editor.IndentationStrategy is not null ? CheckState.Checked : CheckState.UnChecked
-        };
-
-        autoIndentCheckBox.ValueChanged += (_, e) =>
-        {
-            Editor.IndentationStrategy = e.NewValue == CheckState.Checked
-                ? new DefaultIndentationStrategy ()
-                : null;
-        };
-
         CheckBox wordWrapCheckBox = new ()
         {
             AllowCheckStateNone = false,
@@ -104,55 +94,34 @@ public sealed partial class TedApp : Window
             Text = "_Word Wrap",
             Value = Editor.WordWrap ? CheckState.Checked : CheckState.UnChecked
         };
-
-        wordWrapCheckBox.ValueChanged += (_, e) =>
+        _previewMarkdownMenuItem = new MenuItem
         {
-            Editor.WordWrap = e.NewValue == CheckState.Checked;
+            Title = ToggleTitle (false, "_Preview Markdown"),
+            Enabled = false
+        };
+        _previewMarkdownMenuItem.Action = () =>
+        {
+            if (PreviewCheckBox.Visible)
+            {
+                PreviewCheckBox.Value = PreviewCheckBox.Value == CheckState.Checked
+                    ? CheckState.UnChecked
+                    : CheckState.Checked;
+            }
         };
 
         LanguageShortcut = new Shortcut (Key.Empty, "Plain Text", null) { MouseHighlightStates = MouseState.None };
-
         ThemeShortcut = new Shortcut (Key.Empty, ThemeManager.Theme, CycleTheme);
-
-        IndentationSizeUpDown = new NumericUpDown<int>
+        ShowTabsCheckBox.Value = Editor.ShowTabs ? CheckState.Checked : CheckState.UnChecked;
+        PreviewCheckBox.ValueChanged += (_, e) =>
         {
-            Value = Editor.IndentationSize,
-            Increment = 1
+            ToggleMarkdownPreview ();
+            _previewMarkdownMenuItem.Title = ToggleTitle (e.NewValue == CheckState.Checked, "_Preview Markdown");
         };
-
-        IndentationSizeUpDown.ValueChanged += (_, e) =>
-        {
-            if (Editor.IndentationSize == e.NewValue)
-            {
-                return;
-            }
-
-            Editor.IndentationSize = e.NewValue;
-        };
-
-        ShowTabsCheckBox = new CheckBox
-        {
-            AllowCheckStateNone = false,
-            CanFocus = false,
-            Title = "↹",
-            Value = Editor.ShowTabs ? CheckState.Checked : CheckState.UnChecked
-        };
-
-        ShowTabsCheckBox.ValueChanged += (_, e) =>
-        {
-            Editor.ShowTabs = e.NewValue == CheckState.Checked;
-        };
-
-        PreviewCheckBox.ValueChanged += (_, _) => ToggleMarkdownPreview ();
 
         StatusBar statusBar =
             new ([
                 new Shortcut { Title = "Language", CommandView = LanguageShortcut },
                 new Shortcut { Title = "Theme", CommandView = ThemeShortcut },
-                new Shortcut
-                    { Text = "Indent", CommandView = IndentationSizeUpDown, MouseHighlightStates = MouseState.None },
-                new Shortcut { CommandView = ShowTabsCheckBox },
-                new Shortcut { CommandView = PreviewCheckBox },
                 LocShortcut = new Shortcut (Key.Empty, FormatLoc (1, 1), null)
                     { MouseHighlightStates = MouseState.None }
             ])
@@ -185,13 +154,15 @@ public sealed partial class TedApp : Window
                 new MenuItem { Command = Command.Quit, Action = Quit, Key = KeyFor (Command.Quit) }
             ]),
             new MenuBarItem (Strings.menuEdit, CreateEditMenuItems ()),
-            new MenuBarItem ("_Options",
+            new MenuBarItem ("_View",
             [
                 new MenuItem
                 {
                     Action = () =>
                     {
-                        if (lineNumbersCheckBox.Value == CheckState.Checked)
+                        bool shouldEnableLineNumbers = !Editor.GutterOptions.HasFlag (GutterOptions.LineNumbers);
+
+                        if (shouldEnableLineNumbers)
                         {
                             Editor.GutterOptions |= GutterOptions.LineNumbers;
                         }
@@ -200,7 +171,9 @@ public sealed partial class TedApp : Window
                             Editor.GutterOptions &= ~GutterOptions.LineNumbers;
                         }
 
+                        lineNumbersCheckBox.Value = shouldEnableLineNumbers ? CheckState.Checked : CheckState.UnChecked;
                         Editor.SetNeedsDraw ();
+                        SaveViewSettings ();
                     },
                     CommandView = lineNumbersCheckBox,
                     HelpText = "Show line numbers"
@@ -209,7 +182,9 @@ public sealed partial class TedApp : Window
                 {
                     Action = () =>
                     {
-                        if (foldIndicatorsCheckBox.Value == CheckState.Checked)
+                        bool shouldEnableFoldIndicators = !Editor.GutterOptions.HasFlag (GutterOptions.Folding);
+
+                        if (shouldEnableFoldIndicators)
                         {
                             Editor.GutterOptions |= GutterOptions.Folding;
                         }
@@ -218,27 +193,41 @@ public sealed partial class TedApp : Window
                             Editor.GutterOptions &= ~GutterOptions.Folding;
                         }
 
+                        foldIndicatorsCheckBox.Value = shouldEnableFoldIndicators ? CheckState.Checked : CheckState.UnChecked;
                         Editor.SetNeedsDraw ();
+                        SaveViewSettings ();
                     },
                     CommandView = foldIndicatorsCheckBox,
                     HelpText = "Show fold indicators in the gutter"
                 },
                 new MenuItem
                 {
-                    CommandView = convertTabsToSpacesCheckBox,
-                    HelpText = "Insert spaces when Tab is pressed"
-                },
-                new MenuItem
-                {
-                    CommandView = autoIndentCheckBox,
-                    HelpText = "Copy indentation from the previous line on Enter"
-                },
-                new MenuItem
-                {
+                    Action = () =>
+                    {
+                        bool wordWrapEnabled = !Editor.WordWrap;
+                        Editor.WordWrap = wordWrapEnabled;
+                        wordWrapCheckBox.Value = wordWrapEnabled ? CheckState.Checked : CheckState.UnChecked;
+                        SaveViewSettings ();
+                    },
                     CommandView = wordWrapCheckBox,
                     HelpText = "Soft-wrap long lines at viewport edge"
-                }
+                },
+                new MenuItem
+                {
+                    Action = () =>
+                    {
+                        bool showTabsEnabled = !Editor.ShowTabs;
+                        Editor.ShowTabs = showTabsEnabled;
+                        ShowTabsCheckBox.Value = showTabsEnabled ? CheckState.Checked : CheckState.UnChecked;
+                        SaveViewSettings ();
+                    },
+                    CommandView = ShowTabsCheckBox,
+                    HelpText = "Show tab glyphs"
+                },
+                _previewMarkdownMenuItem
             ]),
+            new MenuBarItem ("_Options",
+                [new MenuItem ("_Settings...", string.Empty, ShowSettingsDialog)]),
             new MenuBarItem (Strings.menuHelp,
                 [new MenuItem ("_About", "About ted", ShowAboutDialog)]),
             _fileNameShortcut = new Shortcut (Key.Empty, "<untitled>", Open)
@@ -271,11 +260,13 @@ public sealed partial class TedApp : Window
     /// <summary>The status-bar shortcut that cycles <see cref="ThemeManager.Theme" /> on click.</summary>
     public Shortcut ThemeShortcut { get; }
 
-    /// <summary>The indentation-size selector shown in the status bar.</summary>
-    public NumericUpDown<int> IndentationSizeUpDown { get; }
-
-    /// <summary>The status-bar checkbox that toggles visible tab glyphs.</summary>
-    public CheckBox ShowTabsCheckBox { get; }
+    /// <summary>The settings checkbox state for visible tab glyphs.</summary>
+    public CheckBox ShowTabsCheckBox { get; } = new ()
+    {
+        AllowCheckStateNone = false,
+        CanFocus = false,
+        Title = "Show _Tabs"
+    };
 
     /// <summary>
     ///     The status-bar shortcut that mirrors the editor's caret position. Both line and column are
@@ -390,7 +381,43 @@ public sealed partial class TedApp : Window
 
     private static string FormatLoc (int line, int column)
     {
-        return $"Ln: {line}, Ch: {column}";
+        return $"Ln {line}, Col {column}";
+    }
+
+    private static string ToggleTitle (bool on, string label)
+    {
+        return on ? $"✓ {label}" : $"  {label}";
+    }
+
+    private void SaveViewSettings ()
+    {
+        EditorSettings.LineNumbers = Editor.GutterOptions.HasFlag (GutterOptions.LineNumbers);
+        EditorSettings.FoldIndicators = Editor.GutterOptions.HasFlag (GutterOptions.Folding);
+        EditorSettings.WordWrap = Editor.WordWrap;
+        EditorSettings.ShowTabs = Editor.ShowTabs;
+        EditorSettings.IndentSize = Editor.IndentationSize;
+        EditorSettings.ConvertTabsToSpaces = Editor.ConvertTabsToSpaces;
+        EditorSettings.AutoIndent = Editor.IndentationStrategy is not null;
+        EditorSettings.Save ();
+    }
+
+    private void ShowSettingsDialog ()
+    {
+        if (App is null)
+        {
+            throw new InvalidOperationException ("ted must be running before showing settings.");
+        }
+
+        EditorSettingsDialog dialog = new (Editor);
+        App.Run (dialog);
+
+        if (dialog.WasAccepted)
+        {
+            dialog.ApplyTo (Editor);
+            SaveViewSettings ();
+        }
+
+        dialog.Dispose ();
     }
 
     /// <summary>
