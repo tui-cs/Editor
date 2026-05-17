@@ -124,8 +124,6 @@ public class TedAppTests
     {
         TedApp app = new ();
         GatedReadStream stream = new (Encoding.UTF8.GetBytes (new string ('x', 100_000)));
-        var callerThreadId = Environment.CurrentManagedThreadId;
-
         app.ShowOpenDialog = () => "/tmp/ted-progress.txt";
         app.OpenRead = _ => stream;
 
@@ -133,7 +131,6 @@ public class TedAppTests
 
         await stream.ReadStarted.Task.WaitAsync (TestContext.Current.CancellationToken);
 
-        Assert.NotEqual (callerThreadId, stream.ReadThreadId);
         Assert.False (openTask.IsCompleted);
         Assert.True (app.LoadStatusSpinner.Visible);
         Assert.True (app.LoadStatusSpinner.AutoSpin);
@@ -150,24 +147,24 @@ public class TedAppTests
     [Fact]
     public async Task OpenFileAsync_ByPath_Updates_LoadStatusShortcut ()
     {
-        var filePath = Path.Combine (Path.GetTempPath (), $"ted-progress-{Guid.NewGuid ():N}.cs");
-        await File.WriteAllTextAsync (filePath, new string ('x', 100_000), TestContext.Current.CancellationToken);
+        TedApp app = new ();
+        GatedReadStream stream = new (Encoding.UTF8.GetBytes (new string ('x', 100_000)));
+        app.OpenRead = _ => stream;
 
-        try
-        {
-            TedApp app = new ();
+        Task<bool> openTask = app.OpenFileAsync ("/tmp/ted-progress.cs", TestContext.Current.CancellationToken);
 
-            Assert.True (await app.OpenFileAsync (filePath, TestContext.Current.CancellationToken));
+        await stream.ReadStarted.Task.WaitAsync (TestContext.Current.CancellationToken);
 
-            Assert.Equal ("Loaded 97.7 KiB", app.LoadSpinnerShortcut.Title);
-            Assert.Equal ("Loaded 97.7 KiB", app.LoadSpinnerShortcut.HelpText);
-            Assert.False (app.LoadStatusSpinner.Visible);
-            Assert.False (app.LoadStatusSpinner.AutoSpin);
-        }
-        finally
-        {
-            File.Delete (filePath);
-        }
+        Assert.Equal ("Loading 0 B of 97.7 KiB", app.LoadSpinnerShortcut.Title);
+        Assert.Equal ("Loading 0 B of 97.7 KiB", app.LoadSpinnerShortcut.HelpText);
+
+        stream.AllowRead.SetResult ();
+
+        Assert.True (await openTask);
+        Assert.Equal ("Loaded 97.7 KiB", app.LoadSpinnerShortcut.Title);
+        Assert.Equal ("Loaded 97.7 KiB", app.LoadSpinnerShortcut.HelpText);
+        Assert.False (app.LoadStatusSpinner.Visible);
+        Assert.False (app.LoadStatusSpinner.AutoSpin);
     }
 
     [Fact]

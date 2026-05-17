@@ -289,16 +289,17 @@ public sealed partial class TedApp
         bool marshalToApp,
         CancellationToken cancellationToken = default)
     {
-        var statusOperationId = 0L;
+        long? statusOperationId = null;
 
         try
         {
             await using Stream stream = OpenRead (filePath);
             var fileSize = GetStreamLength (stream);
-            statusOperationId = BeginStreamingStatus (FormatStartingProgress ("Loading", fileSize));
+            var startedStatusOperationId = BeginStreamingStatus (FormatStartingProgress ("Loading", fileSize));
+            statusOperationId = startedStatusOperationId;
 
             IProgress<TextDocumentProgress> progress =
-                CreateStreamingProgress (progress => ReportLoadProgress (statusOperationId, progress));
+                CreateStreamingProgress (progress => ReportLoadProgress (startedStatusOperationId, progress));
             Editor.Document?.SetOwnerThread (null);
             TextDocument document =
                 await Task.Run (
@@ -308,7 +309,7 @@ public sealed partial class TedApp
             void ApplyDocument ()
             {
                 ApplyLoadedDocument (document, filePath);
-                CompleteStreamingStatus (statusOperationId, FormatCompletedProgress ("Loaded", fileSize));
+                CompleteStreamingStatus (startedStatusOperationId, FormatCompletedProgress ("Loaded", fileSize));
             }
 
             if (marshalToApp)
@@ -329,13 +330,13 @@ public sealed partial class TedApp
         }
         catch (OperationCanceledException)
         {
-            if (statusOperationId == 0)
+            if (statusOperationId is not { } startedStatusOperationId)
             {
                 CompleteStreamingStatus ("Load canceled");
             }
             else
             {
-                CompleteStreamingStatus (statusOperationId, "Load canceled");
+                CompleteStreamingStatus (startedStatusOperationId, "Load canceled");
             }
 
             return false;
@@ -454,16 +455,17 @@ public sealed partial class TedApp
 
     private void CompleteStreamingStatus (long statusOperationId, string status)
     {
+        var completionOperationId = statusOperationId + 1;
+
         if (Interlocked.CompareExchange (
                 ref _streamingStatusOperationId,
-                statusOperationId,
+                completionOperationId,
                 statusOperationId)
             != statusOperationId)
         {
             return;
         }
 
-        var completionOperationId = Interlocked.Increment (ref _streamingStatusOperationId);
         SetLoadStatus (status, false, completionOperationId);
     }
 
