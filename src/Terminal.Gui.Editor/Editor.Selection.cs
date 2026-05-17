@@ -340,6 +340,84 @@ public partial class Editor
         return WordWrap ? GetWrapMap ().Count : GetVisibleLineNumbers ().Count;
     }
 
+    /// <summary>
+    ///     Moves the caret to the previous word start (backward) or the next word start (forward),
+    ///     collapsing any existing selection. Used by <see cref="Command.WordLeft" /> and
+    ///     <see cref="Command.WordRight" />.
+    /// </summary>
+    private void MoveCaretToWordBoundary (bool forward)
+    {
+        if (_document is null)
+        {
+            return;
+        }
+
+        if (HasSelection)
+        {
+            var collapseTarget = forward ? SelectionEnd : SelectionStart;
+            ClearSelection ();
+            CaretOffset = collapseTarget;
+        }
+
+        CaretOffset = GetWordBoundaryOffset (CaretOffset, forward);
+    }
+
+    /// <summary>
+    ///     Deletes text between the nearest word boundary and the caret. On <c>forward = true</c>
+    ///     removes from the caret to the next word start; on <c>false</c> removes from the previous
+    ///     word start to the caret. Respects <see cref="ReadOnly" /> and replaces any active
+    ///     selection first (matching <see cref="DeleteLeft" /> / <see cref="DeleteRight" /> behavior).
+    /// </summary>
+    private void KillToWordBoundary (bool forward)
+    {
+        if (ReadOnly || _document is null)
+        {
+            return;
+        }
+
+        if (HasSelection)
+        {
+            ReplaceSelection (string.Empty);
+
+            return;
+        }
+
+        var boundary = GetWordBoundaryOffset (CaretOffset, forward);
+        var start = Math.Min (CaretOffset, boundary);
+        var length = Math.Abs (boundary - CaretOffset);
+
+        if (length == 0)
+        {
+            return;
+        }
+
+        using (_document.RunUpdate ())
+        {
+            _document.Remove (start, length);
+        }
+    }
+
+    /// <summary>
+    ///     Returns the offset of the nearest word boundary from <paramref name="offset" /> in the
+    ///     given direction. Uses <see cref="CaretPositioningMode.WordStartOrSymbol" /> which matches
+    ///     the Ctrl+Left / Ctrl+Right semantics in AvaloniaEdit and Terminal.Gui's own TextView:
+    ///     stops at word starts <em>and</em> between adjacent punctuation/symbol runs, giving
+    ///     intuitive jumps across operators and brackets.
+    /// </summary>
+    private int GetWordBoundaryOffset (int offset, bool forward)
+    {
+        LogicalDirection direction = forward ? LogicalDirection.Forward : LogicalDirection.Backward;
+        var next = TextUtilities.GetNextCaretPosition (_document!, offset, direction,
+            CaretPositioningMode.WordStartOrSymbol);
+
+        if (next < 0)
+        {
+            return forward ? _document!.TextLength : 0;
+        }
+
+        return next;
+    }
+
     private bool IsIdentifierWordCharAt (int offset)
     {
         var ch = _document!.GetCharAt (offset);
