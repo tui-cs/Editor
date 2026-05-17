@@ -372,6 +372,27 @@ public class HighlightingTests
     }
 
     [Fact]
+    public void HighlightingColor_Equality_Considers_Role ()
+    {
+        // HighlightingEngine.PushColor coalesces adjacent sections when their colors are Equal.
+        // Two colors that differ only by Role must NOT be equal, or one token's role would bleed
+        // onto the contiguous next token and theme it wrongly.
+        HighlightingColor a = new () { Name = "X", Foreground = new HighlightingBrush (Color.Red) };
+        HighlightingColor b = new () { Name = "X", Foreground = new HighlightingBrush (Color.Red) };
+
+        Assert.Equal (a, b);
+
+        b.Role = VisualRole.CodeKeyword;
+
+        Assert.NotEqual (a, b);
+        Assert.NotEqual (a.GetHashCode (), b.GetHashCode ());
+
+        a.Role = VisualRole.CodeKeyword;
+        Assert.Equal (a, b);
+        Assert.Equal (a.GetHashCode (), b.GetHashCode ());
+    }
+
+    [Fact]
     public void Colorizer_WithDefaultAttribute_Unchanged_Returns_Same_Instance ()
     {
         TextDocument doc = new ("public");

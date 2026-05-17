@@ -204,6 +204,7 @@ public class HighlightingColor : IFreezable, ICloneable, IEquatable<Highlighting
         return _name == other._name && _bold == other._bold
                                     && _italic == other._italic && _underline == other._underline &&
                                     _strikethrough == other._strikethrough
+                                    && _role == other._role
                                     && Equals (_foreground, other._foreground) &&
                                     Equals (_background, other._background);
     }
@@ -310,6 +311,7 @@ public class HighlightingColor : IFreezable, ICloneable, IEquatable<Highlighting
 
             hashCode += 1000000009 * _bold.GetHashCode ();
             hashCode += 1000000021 * _italic.GetHashCode ();
+            hashCode += 1000000093 * _role.GetHashCode ();
             if (_foreground != null)
             {
                 hashCode += 1000000033 * _foreground.GetHashCode ();
