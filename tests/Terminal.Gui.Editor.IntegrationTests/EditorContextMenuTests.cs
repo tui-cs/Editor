@@ -194,4 +194,66 @@ public class EditorContextMenuTests
 
         Assert.NotNull (fx.Top.Editor.ContextMenu);
     }
+
+    [Fact]
+    public async Task ContextMenu_SelectAll_Action_Invokes_Command ()
+    {
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("hello world"));
+        fx.Top.Editor.SetFocus ();
+        Assert.False (fx.Top.Editor.HasSelection);
+
+        // Find the Select All menu item and invoke its Action directly
+        PopoverMenu? menu = fx.Top.Editor.ContextMenu;
+        Assert.NotNull (menu);
+
+        MenuItem? selectAllItem = null;
+
+        foreach (View child in menu.Root!.SubViews)
+        {
+            if (child is MenuItem { Command: Command.SelectAll } item)
+            {
+                selectAllItem = item;
+            }
+        }
+
+        Assert.NotNull (selectAllItem);
+        Assert.NotNull (selectAllItem.Action);
+
+        selectAllItem.Action ();
+
+        Assert.True (fx.Top.Editor.HasSelection, "Select All should select all text");
+        Assert.Equal ("hello world", fx.Top.Editor.SelectedText);
+    }
+
+    [Fact]
+    public async Task ContextMenu_Undo_Action_Invokes_Command ()
+    {
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("hello"));
+        fx.Top.Editor.SetFocus ();
+
+        // Make an edit
+        fx.Top.Editor.Document!.Insert (5, "X");
+        Assert.Equal ("helloX", fx.Top.Editor.Document.Text);
+
+        // Find the Undo menu item and invoke its Action
+        PopoverMenu? menu = fx.Top.Editor.ContextMenu;
+        Assert.NotNull (menu);
+
+        MenuItem? undoItem = null;
+
+        foreach (View child in menu.Root!.SubViews)
+        {
+            if (child is MenuItem { Command: Command.Undo } item)
+            {
+                undoItem = item;
+            }
+        }
+
+        Assert.NotNull (undoItem);
+        Assert.NotNull (undoItem.Action);
+
+        undoItem.Action ();
+
+        Assert.Equal ("hello", fx.Top.Editor.Document.Text);
+    }
 }

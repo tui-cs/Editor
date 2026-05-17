@@ -36,14 +36,17 @@ public partial class Editor
     {
         return
         [
-            new MenuItem { Title = "_Undo", Command = Command.Undo },
-            new MenuItem { Title = "_Redo", Command = Command.Redo },
+            new MenuItem { Title = "_Undo", Command = Command.Undo, Action = () => InvokeCommand (Command.Undo) },
+            new MenuItem { Title = "_Redo", Command = Command.Redo, Action = () => InvokeCommand (Command.Redo) },
             new Line (),
-            new MenuItem { Title = "Cu_t", Command = Command.Cut },
-            new MenuItem { Title = "_Copy", Command = Command.Copy },
-            new MenuItem { Title = "_Paste", Command = Command.Paste },
+            new MenuItem { Title = "Cu_t", Command = Command.Cut, Action = () => InvokeCommand (Command.Cut) },
+            new MenuItem { Title = "_Copy", Command = Command.Copy, Action = () => InvokeCommand (Command.Copy) },
+            new MenuItem { Title = "_Paste", Command = Command.Paste, Action = () => InvokeCommand (Command.Paste) },
             new Line (),
-            new MenuItem { Title = "Select _all", Command = Command.SelectAll }
+            new MenuItem
+            {
+                Title = "Select _all", Command = Command.SelectAll, Action = () => InvokeCommand (Command.SelectAll)
+            }
         ];
     }
 

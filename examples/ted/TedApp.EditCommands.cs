@@ -16,9 +16,19 @@ public sealed partial class TedApp
             new MenuItem { Command = Command.Undo, Action = Undo, Key = KeyFor (Command.Undo) },
             new MenuItem { Command = Command.Redo, Action = Redo, Key = KeyFor (Command.Redo) },
             new Line (),
-            new MenuItem { Command = Command.Cut, Key = KeyFor (Command.Cut) },
-            new MenuItem { Command = Command.Copy, Key = KeyFor (Command.Copy) },
-            new MenuItem { Command = Command.Paste, Key = KeyFor (Command.Paste) },
+            new MenuItem
+            {
+                Command = Command.Cut, Action = () => Editor.InvokeCommand (Command.Cut), Key = KeyFor (Command.Cut)
+            },
+            new MenuItem
+            {
+                Command = Command.Copy, Action = () => Editor.InvokeCommand (Command.Copy), Key = KeyFor (Command.Copy)
+            },
+            new MenuItem
+            {
+                Command = Command.Paste, Action = () => Editor.InvokeCommand (Command.Paste),
+                Key = KeyFor (Command.Paste)
+            },
             new MenuItem { Command = Command.SelectAll, Action = SelectAll, Key = KeyFor (Command.SelectAll) }
         ];
     }
