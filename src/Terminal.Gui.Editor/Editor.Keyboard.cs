@@ -6,6 +6,21 @@ namespace Terminal.Gui.Editor;
 public partial class Editor
 {
     /// <summary>
+    ///     Intercepts every keystroke before dispatch so the kill-ring consecutive-kill flag is
+    ///     cleared. The kill commands (<see cref="Command.CutToEndOfLine" /> /
+    ///     <see cref="Command.CutToStartOfLine" />) re-set the flag after executing; every other
+    ///     command (and plain character insertion via <see cref="OnKeyDownNotHandled" />) leaves it
+    ///     cleared, which breaks the "consecutive kill → append" run.
+    /// </summary>
+    /// <inheritdoc />
+    protected override bool OnKeyDown (Key key)
+    {
+        _lastCommandWasKill = false;
+
+        return base.OnKeyDown (key);
+    }
+
+    /// <summary>
     ///     Catches keystrokes that didn't match any registered <see cref="Command" /> binding (set up in
     ///     <see cref="CreateCommandsAndBindings" />) and inserts the typed rune into the document. Skips
     ///     modified keys and control characters — those are either bound elsewhere or not editor input.

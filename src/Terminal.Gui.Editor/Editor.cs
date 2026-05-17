@@ -47,6 +47,11 @@ public partial class Editor : View
     private HighlightingColorizer? _highlightingColorizer;
     private int _lastKnownCaretOffset;
 
+    // Kill-ring: consecutive CutToEndOfLine / CutToStartOfLine appends to the clipboard instead
+    // of replacing. Any non-kill command (including plain character insertion) breaks the run.
+    // Reset in OnKeyDown before dispatch; the kill commands re-set it after executing.
+    private bool _lastCommandWasKill;
+
     // Incremental max-width tracking: avoids the O(N) all-lines walk that UpdateContentSize
     // used to do on every edit. _maxVisualWidth is the widest visual line seen; _maxWidthLineNumber
     // tracks which line holds it so we can detect when that line is edited. _maxWidthDirty forces
