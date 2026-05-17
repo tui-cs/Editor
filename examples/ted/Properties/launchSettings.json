@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "ted": {
+      "commandName": "Project",
+      "workingDirectory": "../.."
+    }
+  }
+}

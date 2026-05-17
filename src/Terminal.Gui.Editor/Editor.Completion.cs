@@ -184,10 +184,7 @@ public partial class Editor
     /// <summary>Hides the completion popup if it is visible.</summary>
     internal void DismissCompletion ()
     {
-        if (_completionPopup is not null)
-        {
-            _completionPopup.Visible = false;
-        }
+        _completionPopup?.Visible = false;
 
         _completionItems = [];
     }
@@ -240,8 +237,7 @@ public partial class Editor
         for (var i = 0; i < _completionItems.Count; i++)
         {
             CompletionItem item = _completionItems[i];
-            var label = i == _completionSelectedIndex ? $"> {item.Label}" : $"  {item.Label}";
-            menuItems[i] = new MenuItem { Title = label };
+            menuItems[i] = new MenuItem { Title = item.Label };
         }
 
         // Hide and dispose previous popup if any — create fresh each time so the Root is rebuilt.
