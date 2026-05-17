@@ -56,20 +56,19 @@ internal sealed class EditorSettingsDialog : Dialog
             Value = editor.IndentationStrategy is not null ? CheckState.Checked : CheckState.UnChecked
         };
 
-        _autoCompleteCheck = new CheckBox
-        {
-            X = 1,
-            Y = 7,
-            Title = "Auto _Complete (Ctrl+Space)",
-            Value = editor.CompletionProvider is not null ? CheckState.Checked : CheckState.UnChecked
-        };
-
         tabSettingsTab.Add (
             new Label { X = 1, Y = 1, Text = "_Indent size:" },
             _indentSize,
             _convertTabsCheck,
-            _autoIndentCheck,
-            _autoCompleteCheck);
+            _autoIndentCheck);
+
+        _autoCompleteCheck = new CheckBox
+        {
+            X = 1,
+            Y = 1,
+            Title = "Auto _Complete (Ctrl+Space)",
+            Value = editor.CompletionProvider is not null ? CheckState.Checked : CheckState.UnChecked
+        };
 
         View configTab = new ()
         {
@@ -78,7 +77,7 @@ internal sealed class EditorSettingsDialog : Dialog
             Height = Dim.Fill ()
         };
 
-        configTab.Add (new Label { X = 1, Y = 1, Text = "No settings yet." });
+        configTab.Add (_autoCompleteCheck);
 
         Tabs tabs = new ()
         {
