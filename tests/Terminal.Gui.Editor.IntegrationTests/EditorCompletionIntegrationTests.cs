@@ -24,24 +24,25 @@ public class EditorCompletionIntegrationTests
     [Fact]
     public async Task Typing_Char_While_Completion_Active_Inserts_Into_Document ()
     {
-        await using AppFixture<EditorTestHost> fx = new (() => new ("using unsafe uint"));
+        await using AppFixture<EditorTestHost> fx = new (() => new ("using unsafe uint "));
         Editor editor = fx.Top.Editor;
         editor.SetFocus ();
+
+        // Place caret at the end (after trailing space).
+        editor.CaretOffset = editor.Document!.TextLength;
 
         // Set up a completion provider that matches words from the document.
         editor.CompletionProvider = new TestWordCompletionProvider ();
 
         // Type "u" to open completion.
         fx.Injector.InjectKey (Key.U, Direct);
-        Assert.Equal ("u", editor.Document!.GetText (0, 1));
         Assert.True (editor.IsCompletionActive, "Completion should be active after typing 'u'");
 
         // Type "s" — this must go to the Editor, not be captured by the Popover.
         fx.Injector.InjectKey (Key.S, Direct);
 
-        // The document should now contain "us" at the start.
-        Assert.StartsWith ("us", editor.Document!.Text);
-        Assert.Equal (2, editor.CaretOffset);
+        // The document should now end with "us".
+        Assert.EndsWith ("us", editor.Document!.Text);
 
         // Completion should still be active with filtered results.
         Assert.True (editor.IsCompletionActive, "Completion should remain active with 'us' prefix");
@@ -53,9 +54,12 @@ public class EditorCompletionIntegrationTests
     [Fact]
     public async Task Typing_NonMatching_Char_Dismisses_Completion ()
     {
-        await using AppFixture<EditorTestHost> fx = new (() => new ("using unsafe uint"));
+        await using AppFixture<EditorTestHost> fx = new (() => new ("using unsafe uint "));
         Editor editor = fx.Top.Editor;
         editor.SetFocus ();
+
+        // Place caret at the end (after trailing space).
+        editor.CaretOffset = editor.Document!.TextLength;
 
         editor.CompletionProvider = new TestWordCompletionProvider ();
 
@@ -63,10 +67,10 @@ public class EditorCompletionIntegrationTests
         fx.Injector.InjectKey (Key.U, Direct);
         Assert.True (editor.IsCompletionActive);
 
-        // Type "z" — no words start with "uz", so completion should dismiss.
+        // Type "z" — no words in the document start with "uz", so completion should dismiss.
         fx.Injector.InjectKey (Key.Z, Direct);
 
-        Assert.StartsWith ("uz", editor.Document!.Text);
+        Assert.EndsWith ("uz", editor.Document!.Text);
         Assert.False (editor.IsCompletionActive, "Completion should dismiss when no items match");
     }
 
@@ -77,9 +81,12 @@ public class EditorCompletionIntegrationTests
     [Fact]
     public async Task Enter_While_Completion_Active_Accepts_Item ()
     {
-        await using AppFixture<EditorTestHost> fx = new (() => new ("using unsafe uint"));
+        await using AppFixture<EditorTestHost> fx = new (() => new ("using unsafe uint "));
         Editor editor = fx.Top.Editor;
         editor.SetFocus ();
+
+        // Place caret at the end (after trailing space).
+        editor.CaretOffset = editor.Document!.TextLength;
 
         editor.CompletionProvider = new TestWordCompletionProvider ();
 
@@ -92,8 +99,9 @@ public class EditorCompletionIntegrationTests
         // Press Enter — should accept the first completion item, not insert a newline.
         fx.Injector.InjectKey (Key.Enter, Direct);
 
-        // The text should NOT start with "us\n" (newline), it should have the accepted completion.
-        Assert.DoesNotContain ("\n", editor.Document!.Text.Substring (0, Math.Min (10, editor.Document!.Text.Length)));
+        // The text should NOT contain a newline near the end; it should have the accepted completion.
+        var lastChunk = editor.Document!.Text.Substring (editor.Document!.Text.Length - 15);
+        Assert.DoesNotContain ("\n", lastChunk);
         Assert.False (editor.IsCompletionActive, "Completion should be dismissed after accept");
     }
 

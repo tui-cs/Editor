@@ -214,7 +214,7 @@ public class EditorCompletionTests
         // "us" prefix should match "using" and "unsafe" but not "uint".
         // Verify by accepting — the accepted text should be one of the "us" matches.
         editor.AcceptCompletion ();
-        Assert.Contains (editor.Document!.Text, new [] { "using", "unsafe" });
+        Assert.Contains (editor.Document!.Text, new[] { "using", "unsafe" });
     }
 
     [Fact]
