@@ -466,6 +466,25 @@ public class EditorTests
     }
 
     [Fact]
+    public async Task ShiftTab_Unindents_At_All_Carets_In_One_Undo_Step ()
+    {
+        await using AppFixture<EditorTestHost> fx = new (() => new ("\tab\n\tab\n\tab"));
+        fx.Top.Editor.SetFocus ();
+        fx.Top.Editor.CaretOffset = 1;
+
+        fx.Injector.InjectKey (Key.CursorDown.WithCtrl.WithAlt, Direct);
+        fx.Injector.InjectKey (Key.CursorDown.WithCtrl.WithAlt, Direct);
+        fx.Injector.InjectKey (Key.Tab.WithShift, Direct);
+
+        Assert.Equal ("ab\nab\nab", fx.Top.Editor.Document?.Text);
+
+        // One RunUpdate scope ⇒ a single Ctrl+Z restores the indentation on every line.
+        fx.Injector.InjectKey (Key.Z.WithCtrl, Direct);
+
+        Assert.Equal ("\tab\n\tab\n\tab", fx.Top.Editor.Document?.Text);
+    }
+
+    [Fact]
     public async Task Primary_Caret_Is_Visible_After_Exiting_MultiCaret ()
     {
         await using AppFixture<EditorTestHost> fx = new (() => new ("abcd\nabcd\nabcd\nabcd"));

@@ -55,6 +55,11 @@ public partial class Editor
             return true;
         }
 
+        if (HasMultipleCarets)
+        {
+            return MultiCaretUnindent ();
+        }
+
         List<DocumentLine> lines = HasSelection && SelectionSpansMultipleLines ()
             ? GetSelectedLines ()
             : [_document.GetLineByOffset (CaretOffset)];

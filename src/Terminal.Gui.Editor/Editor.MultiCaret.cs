@@ -565,6 +565,53 @@ public partial class Editor
         return true;
     }
 
+    /// <summary>
+    ///     Removes one indentation unit from every distinct line that hosts a caret, in a single
+    ///     undo scope. Lines are deduped (two carets on one line unindent it once) and removals
+    ///     run high-offset-first so earlier removals don't shift later ones. Carets are anchors,
+    ///     so they follow the removals automatically. Caller (<see cref="Unindent" />) guarantees
+    ///     a non-null, writable document and <see cref="HasMultipleCarets" />.
+    /// </summary>
+    private bool MultiCaretUnindent ()
+    {
+        HashSet<int> seenLineOffsets = [];
+        List<(int offset, int length)> removals = [];
+
+        foreach (CaretEditInfo caret in GetAllCaretsDescending ())
+        {
+            DocumentLine line = _document!.GetLineByOffset (caret.Offset);
+
+            if (!seenLineOffsets.Add (line.Offset))
+            {
+                continue;
+            }
+
+            ISegment segment = TextUtilities.GetSingleIndentationSegment (_document, line.Offset, IndentationSize);
+
+            if (segment.Length > 0)
+            {
+                removals.Add ((segment.Offset, segment.Length));
+            }
+        }
+
+        if (removals.Count == 0)
+        {
+            return true;
+        }
+
+        using (_document!.RunUpdate ())
+        {
+            foreach ((int offset, int length) removal in removals.OrderByDescending (static r => r.offset))
+            {
+                _document.Remove (removal.offset, removal.length);
+            }
+        }
+
+        ClearAdditionalCaretSelections ();
+
+        return true;
+    }
+
     private void ClearAdditionalCaretSelections ()
     {
         foreach (CaretInfo caret in _additionalCarets)
