@@ -26,19 +26,8 @@
     <RepositoryType>git</RepositoryType>
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
 
-    <!--
-      Pinned Terminal.Gui version. CI / release workflows can override via -p:TerminalGuiVersion=<x>.
-
-      TODO(gui-cs/Editor#132): the syntax-theme work (PR #134) consumes the code-token
-      VisualRoles added in gui-cs/Terminal.Gui#5313 (TG issue #5311). #5313 is now MERGED to
-      TG develop (commit cec862317; #5312 benchmarks merged alongside as 209c0a34c) and
-      Editor #134 is verified green against that merged develop. Only the rolling NuGet
-      pre-release publish is pending: bump this to the first published `2.1.1-develop.<n>`
-      that post-dates the #5313 merge (i.e. n > 163), then PR #134 leaves draft / CI goes green.
-      Local verification until then: build TG develop and pass
-      -p:TerminalGuiVersion=<that GitVersion> to dotnet build/run.
-    -->
-    <TerminalGuiVersion Condition="'$(TerminalGuiVersion)' == ''">2.1.1-develop.59</TerminalGuiVersion>
+    <!-- Pinned Terminal.Gui version. CI / release workflows can override via -p:TerminalGuiVersion=<x>. -->
+    <TerminalGuiVersion Condition="'$(TerminalGuiVersion)' == ''">2.1.1-develop.95</TerminalGuiVersion>
   </PropertyGroup>
 
   <ItemGroup>
