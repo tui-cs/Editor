@@ -643,6 +643,7 @@ public class TedAppTests
         }
     }
 
+    /// <summary>Gates async reads and captures the reading thread ID for background-load tests.</summary>
     private sealed class GatedReadStream : MemoryStream
     {
         public GatedReadStream (byte[] buffer)

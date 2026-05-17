@@ -7,8 +7,12 @@ namespace Ted;
 
 public sealed partial class TedApp
 {
+    /// <summary>Minimum byte/character delta between queued streaming status updates.</summary>
     private const long StreamingStatusInterval = 256 * 1024;
+
+    /// <summary>Minimum elapsed milliseconds between queued streaming status updates.</summary>
     private const int StreamingStatusMilliseconds = 100;
+
     private long _lastStreamingStatusUnits;
     private DateTime _lastStreamingStatusUpdate = DateTime.MinValue;
 
@@ -444,23 +448,23 @@ public sealed partial class TedApp
 
     private bool ShouldReportStreamingProgress (TextDocumentProgress progress)
     {
-        var units = progress.BytesProcessed ?? progress.CharactersProcessed;
+        var processedUnits = progress.BytesProcessed ?? progress.CharactersProcessed;
         var totalUnits = progress.TotalBytes ?? progress.TotalCharacters;
 
-        if (totalUnits == units)
+        if (totalUnits == processedUnits)
         {
             return true;
         }
 
         DateTime now = DateTime.UtcNow;
 
-        if (units - _lastStreamingStatusUnits < StreamingStatusInterval
+        if (processedUnits - _lastStreamingStatusUnits < StreamingStatusInterval
             && now - _lastStreamingStatusUpdate < TimeSpan.FromMilliseconds (StreamingStatusMilliseconds))
         {
             return false;
         }
 
-        _lastStreamingStatusUnits = units;
+        _lastStreamingStatusUnits = processedUnits;
         _lastStreamingStatusUpdate = now;
 
         return true;
@@ -553,6 +557,7 @@ public sealed partial class TedApp
             unitIndex++;
         }
 
+        // Whole bytes read cleaner without decimals; larger units need one decimal for useful precision.
         var format = unitIndex == 0 ? "N0" : "N1";
 
         return $"{value.ToString (format)} {units[unitIndex]}";
