@@ -174,22 +174,6 @@ public sealed partial class TedApp : Window
                 AlignmentModes = AlignmentModes.IgnoreFirstOrLast
             };
 
-        PopoverMenu editorContextMenu = new (CreateEditMenuItems ())
-        {
-            Target = new WeakReference<View> (Editor)
-        };
-
-        Editor.MouseEvent += (_, mouse) =>
-        {
-            if (!mouse.Flags.HasFlag (MouseFlags.RightButtonClicked))
-            {
-                return;
-            }
-
-            editorContextMenu.MakeVisible (mouse.ScreenPosition);
-            mouse.Handled = true;
-        };
-
         menu.Add (new MenuBarItem (Strings.menuFile,
             [
                 new MenuItem { Command = Command.New, Action = New, Key = KeyFor (Command.New) },
