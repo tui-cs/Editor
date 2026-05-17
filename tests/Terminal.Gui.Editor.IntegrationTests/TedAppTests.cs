@@ -625,8 +625,7 @@ public class TedAppTests
     {
         await using AppFixture<TedApp> fx = new (() => new TedApp ());
 
-        DriverAssert.ContentsDoesNotContain (fx.Driver, "Find...");
-        DriverAssert.ContentsDoesNotContain (fx.Driver, "Replace...");
+        DriverAssert.ContentsDoesNotContain (fx.Driver, "Select all");
 
         InputInjectionOptions options = new () { Mode = InputInjectionMode.Direct };
 
@@ -640,8 +639,8 @@ public class TedAppTests
             options);
         fx.Render ();
 
-        DriverAssert.ContentsContains (fx.Driver, "Find...");
-        DriverAssert.ContentsContains (fx.Driver, "Replace...");
+        DriverAssert.ContentsContains (fx.Driver, "Undo");
+        DriverAssert.ContentsContains (fx.Driver, "Redo");
         DriverAssert.ContentsContains (fx.Driver, "Select all");
     }
 

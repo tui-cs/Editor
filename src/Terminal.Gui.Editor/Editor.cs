@@ -76,6 +76,7 @@ public partial class Editor : View
         CreateCommandsAndBindings ();
         OverlayRenderers.Add (new MultiCaretRenderer (this));
         Document = new TextDocument ();
+        InitializeDefaultContextMenu ();
         ThemeManager.ThemeChanged += OnThemeChanged;
     }
 
