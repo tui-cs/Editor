@@ -449,6 +449,7 @@ public partial class Editor
 
         DocumentLine line = _document.GetLineByOffset (CaretOffset);
         var lineEnd = line.Offset + line.Length;
+
         int start;
         int length;
 
@@ -467,6 +468,7 @@ public partial class Editor
         else
         {
             // Last line, caret at end — nothing to kill.
+
             return true;
         }
 
