@@ -72,15 +72,32 @@ public partial class Editor
                 continue;
             }
 
-            menuItem.Enabled = menuItem.Command switch
+            switch (menuItem.Command)
             {
-                Command.Undo => canUndo,
-                Command.Redo => canRedo,
-                Command.Cut => canCut,
-                Command.Copy => hasSelection,
-                Command.Paste => canPaste,
-                _ => true
-            };
+                case Command.Undo:
+                    menuItem.Enabled = canUndo;
+
+                    break;
+                case Command.Redo:
+                    menuItem.Enabled = canRedo;
+
+                    break;
+                case Command.Cut:
+                    menuItem.Enabled = canCut;
+
+                    break;
+                case Command.Copy:
+                    menuItem.Enabled = hasSelection;
+
+                    break;
+                case Command.Paste:
+                    menuItem.Enabled = canPaste;
+
+                    break;
+
+                    // Unknown commands (e.g. from a custom ContextMenu) are left untouched
+                    // so the caller's intentional Enabled state is preserved.
+            }
         }
     }
 

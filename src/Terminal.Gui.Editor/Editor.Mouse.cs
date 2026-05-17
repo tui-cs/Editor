@@ -27,8 +27,14 @@ public partial class Editor
         }
 
         // Right-click → show built-in context menu at the click position.
+        // When ContextMenu is null the click is left unhandled so it can bubble.
         if (mouse.Flags.HasFlag (MouseFlags.RightButtonClicked))
         {
+            if (ContextMenu is null)
+            {
+                return false;
+            }
+
             ShowContextMenu (mouse.ScreenPosition);
 
             return true;
