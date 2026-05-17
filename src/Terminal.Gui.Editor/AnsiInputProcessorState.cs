@@ -16,8 +16,10 @@ internal static class AnsiInputProcessorState
         }
 
         // Terminal.Gui 2.1.1-develop.98 suppresses the next printable fallback key after parsing
-        // ANSI Shift+Tab (ESC [ Z) because Shift+Tab reports Tab as printable text. Clear that
-        // one-shot suppression after the editor handles Unindent so the user's next Tab reaches us.
+        // ANSI Shift+Tab (ESC [ Z) because Shift+Tab reports Tab as printable text. Until TG exposes
+        // public input-processor state for this, clear that one-shot suppression after the editor
+        // handles Unindent so the user's next Tab reaches us. If TG renames this private field, the
+        // type checks below intentionally no-op; the only consequence is the original Tab suppression.
         FieldInfo? field = typeof (AnsiInputProcessor).GetField (
             PendingPrintableSuppressionFieldName,
             BindingFlags.Instance | BindingFlags.NonPublic);
