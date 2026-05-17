@@ -163,6 +163,42 @@ public partial class Editor : View
     public bool ReadOnly { get; set; }
 
     /// <summary>
+    ///     Gets or sets whether the editor supports multiple lines. When <see langword="true" /> (default),
+    ///     Enter inserts a newline, vertical navigation moves across lines, and content height reflects the
+    ///     full document. When <see langword="false" />, newline insertion is suppressed, vertical
+    ///     navigation and scroll are constrained to a single row, <see cref="WordWrap" /> is forced off,
+    ///     and multi-caret operations are disabled. Selection and horizontal editing still work.
+    /// </summary>
+    public bool Multiline
+    {
+        get;
+        set
+        {
+            if (field == value)
+            {
+                return;
+            }
+
+            field = value;
+
+            if (!value)
+            {
+                // Force off WordWrap — meaningless for a single-line input.
+                WordWrap = false;
+
+                // Collapse additional carets — vertical multi-caret is a multi-line concept.
+                ClearAdditionalCarets ();
+            }
+
+            ClearVisualLineCaches ();
+            _maxWidthDirty = true;
+            UpdateContentSize ();
+            EnsureCaretVisible ();
+            SetNeedsDraw ();
+        }
+    } = true;
+
+    /// <summary>
     ///     Gets or sets the highlighting definition used for syntax coloring. When set, a
     ///     <see cref="HighlightingColorizer" /> is automatically added to
     ///     <see cref="LineTransformers" />. Set to <see langword="null" /> to disable
@@ -251,6 +287,12 @@ public partial class Editor : View
         get;
         set
         {
+            // Word wrap is meaningless in single-line mode.
+            if (!Multiline && value)
+            {
+                return;
+            }
+
             if (field == value)
             {
                 return;
@@ -463,6 +505,17 @@ public partial class Editor : View
             return;
         }
 
+        if (!Multiline)
+        {
+            // Single-line mode: one row, width from line 1 only.
+            var width = _document.LineCount > 0
+                ? GetOrBuildDefaultVisualLine (_document.GetLineByNumber (1)).VisualLength
+                : 0;
+            SetContentSize (new Size (width + 1, 1));
+
+            return;
+        }
+
         if (WordWrap)
         {
             // In word-wrap mode, the content height is the total number of visual rows
@@ -656,7 +709,7 @@ public partial class Editor : View
         // Net character shift. Cached visual lines store *absolute* element offsets, so a
         // same-line-count edit upstream (no newline added/removed) still leaves every
         // downstream cached line stale even though its line *number* is unchanged.
-        var offsetDelta = (insertedText.Length - removedText.Length);
+        var offsetDelta = insertedText.Length - removedText.Length;
 
         RekeyCache (_defaultVisualLineCache, threshold, lineDelta, removedNewlines, offsetDelta);
         RekeyCache (_drawVisualLineCache, threshold, lineDelta, removedNewlines, offsetDelta);
@@ -948,7 +1001,7 @@ public partial class Editor : View
             return true;
         }
 
-        var targetLineIndex = (_document.GetLineByOffset (startOffset).LineNumber - 1) + delta;
+        var targetLineIndex = _document.GetLineByOffset (startOffset).LineNumber - 1 + delta;
 
         if (targetLineIndex < 0 || targetLineIndex > _document.LineCount - 1)
         {

@@ -81,8 +81,8 @@ public partial class Editor
         // Selection-extending movement
         AddCommand (Command.LeftExtend, () => ExtendCommand (() => ExtendCaretBy (-1)));
         AddCommand (Command.RightExtend, () => ExtendCommand (() => ExtendCaretBy (1)));
-        AddCommand (Command.UpExtend, () => ExtendCommand (() => ExtendCaretVertically (-1)));
-        AddCommand (Command.DownExtend, () => ExtendCommand (() => ExtendCaretVertically (1)));
+        AddCommand (Command.UpExtend, () => Multiline ? ExtendCommand (() => ExtendCaretVertically (-1)) : true);
+        AddCommand (Command.DownExtend, () => Multiline ? ExtendCommand (() => ExtendCaretVertically (1)) : true);
         AddCommand (Command.LeftStartExtend,
             () => ExtendCommand (() => ExtendCaretTo (_document!.GetLineByOffset (CaretOffset).Offset)));
 
@@ -95,9 +95,9 @@ public partial class Editor
         AddCommand (Command.StartExtend, () => ExtendCommand (() => ExtendCaretTo (0)));
         AddCommand (Command.EndExtend, () => ExtendCommand (() => ExtendCaretTo (_document!.TextLength)));
         AddCommand (Command.PageUpExtend,
-            () => ExtendCommand (() => ExtendCaretVertically (-Math.Max (1, Viewport.Height))));
+            () => Multiline ? ExtendCommand (() => ExtendCaretVertically (-Math.Max (1, Viewport.Height))) : true);
         AddCommand (Command.PageDownExtend,
-            () => ExtendCommand (() => ExtendCaretVertically (Math.Max (1, Viewport.Height))));
+            () => Multiline ? ExtendCommand (() => ExtendCaretVertically (Math.Max (1, Viewport.Height))) : true);
 
         // Selection ops
         AddCommand (Command.SelectAll, () =>
@@ -153,6 +153,13 @@ public partial class Editor
             if (clipboard is null || !clipboard.TryGetClipboardData (out var contents))
             {
                 return true;
+            }
+
+            // In single-line mode, strip newlines from pasted content so the document
+            // stays on one line.
+            if (!Multiline)
+            {
+                contents = contents.ReplaceLineEndings (string.Empty);
             }
 
             using (_document!.RunUpdate ())
@@ -278,6 +285,11 @@ public partial class Editor
 
     private bool? MoveCaretVerticallyCollapsing (int delta)
     {
+        if (!Multiline)
+        {
+            return true;
+        }
+
         MoveCaretVerticallyCollapsingSelection (delta);
 
         return true;
@@ -285,7 +297,7 @@ public partial class Editor
 
     private bool? ScrollVerticalCommand (int delta)
     {
-        if (_document is null || ScrollVertical (delta) != true)
+        if (!Multiline || _document is null || ScrollVertical (delta) != true)
         {
             return false;
         }
@@ -309,7 +321,7 @@ public partial class Editor
 
     private bool? InsertNewLineWithAutoIndent ()
     {
-        if (ReadOnly)
+        if (ReadOnly || !Multiline)
         {
             return true;
         }
