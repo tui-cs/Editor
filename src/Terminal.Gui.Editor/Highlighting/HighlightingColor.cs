@@ -39,7 +39,6 @@ public class HighlightingColor : IFreezable, ICloneable, IEquatable<Highlighting
     private bool? _italic;
 
     private string _name;
-    private VisualRole? _role;
     private bool? _strikethrough;
     private bool? _underline;
 
@@ -161,6 +160,8 @@ public class HighlightingColor : IFreezable, ICloneable, IEquatable<Highlighting
             _background = value;
         }
     }
+
+    private VisualRole? _role;
 
     /// <summary>
     ///     Gets/sets the Terminal.Gui <see cref="VisualRole" /> this color maps to, if any.

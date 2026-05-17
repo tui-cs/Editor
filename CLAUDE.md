@@ -131,6 +131,29 @@ public int IndentationSize
 
 Do **not** introduce a separate `private int _indentationSize;` field. The initializer trails the close-brace as shown.
 
+**When an explicit backing field is unavoidable, declare it immediately above the property it backs — never in a field block at the top of the type.** The `field` keyword is the default and removes the question entirely; but some properties still need a real field (a lifted/forked file that preserves upstream style and does not use `field`; a field shared by several members; a field touched by `ref`/`out` or interlocked ops). In those cases the field/property pair stays visually together:
+
+```csharp
+private VisualRole? _role;
+
+/// <summary>...</summary>
+public VisualRole? Role
+{
+    get => _role;
+    set
+    {
+        if (IsFrozen)
+        {
+            throw new InvalidOperationException ();
+        }
+
+        _role = value;
+    }
+}
+```
+
+Fork-policy exception: do **not** reflow a lifted file's *existing* upstream field block to satisfy this — that churns the merge story (see the AvaloniaEdit fork policy). The rule binds *new* fields you add, even inside lifted files.
+
 > **ReSharper bug warning.** ReSharper / Rider's "Convert to auto-property" and "Use auto-property" inspections are unreliable around `field` and may rewrite intentional `field`-backed properties into broken auto-properties. The team-shared `.DotSettings` disables these inspections (`ConvertToAutoProperty`, `ConvertToAutoPropertyWhenPossible`, `ConvertToAutoPropertyWithPrivateSetter` set to `DO_NOT_SHOW`; `CSUseAutoProperty` cleanup step disabled). If you see the suggestion in your IDE, ignore it and check that your local Rider is using the team-shared settings. **`field` is not optional in this codebase.**
 
 For trivial getters with no setter logic, plain auto-properties are fine: `public TextDocument? Document { get; private set; }`.
