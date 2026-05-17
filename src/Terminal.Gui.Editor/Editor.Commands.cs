@@ -244,6 +244,14 @@ public partial class Editor
             return true;
         });
 
+        // Context menu
+        AddCommand (Command.Context, () =>
+        {
+            ShowContextMenu ();
+
+            return true;
+        });
+
         ApplyKeyBindings (View.DefaultKeyBindings, DefaultKeyBindings);
 
         // Reclaim Tab / Shift+Tab from the framework's default focus-cycling bindings so our

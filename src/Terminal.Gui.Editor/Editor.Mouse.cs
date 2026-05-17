@@ -9,31 +9,9 @@ namespace Terminal.Gui.Editor;
 
 public partial class Editor
 {
-    /// <summary>
-    ///     Which gesture the in-progress left-button drag belongs to. One state instead of a set
-    ///     of fighting "suppress…UntilRelease" booleans: the press classifies the gesture, every
-    ///     subsequent drag/release event dispatches on it. Reset to <see cref="DragMode.Select" />
-    ///     (the neutral default) on release.
-    /// </summary>
-    private enum DragMode
-    {
-        /// <summary>Plain or Shift drag: extend the primary selection to the drag point.</summary>
-        Select,
-
-        /// <summary>Ctrl+Click add-caret: swallow drag events so they don't move the primary.</summary>
-        AddCaret,
-
-        /// <summary>
-        ///     Alt drag: build a vertical column of carets from press row to drag row. Alt (not
-        ///     VS Code's Shift+Alt) because Windows Terminal reserves Shift+drag for its own
-        ///     forced/block text selection while an app has mouse mode on — see
-        ///     specs/decisions.md DEC-006 and gui-cs/Terminal.Gui#4888.
-        /// </summary>
-        ColumnCarets
-    }
+    private Point _columnDragAnchor;
 
     private DragMode _dragMode;
-    private Point _columnDragAnchor;
 
     /// <inheritdoc />
     protected override bool OnMouseEvent (Mouse mouse)
@@ -46,6 +24,14 @@ public partial class Editor
         if (mouse.Position is not { } pos)
         {
             return false;
+        }
+
+        // Right-click → show built-in context menu at the click position.
+        if (mouse.Flags.HasFlag (MouseFlags.RightButtonClicked))
+        {
+            ShowContextMenu (mouse.ScreenPosition);
+
+            return true;
         }
 
         var shift = mouse.Flags.HasFlag (MouseFlags.Shift);
@@ -260,5 +246,28 @@ public partial class Editor
         }
 
         return visualLine;
+    }
+
+    /// <summary>
+    ///     Which gesture the in-progress left-button drag belongs to. One state instead of a set
+    ///     of fighting "suppress…UntilRelease" booleans: the press classifies the gesture, every
+    ///     subsequent drag/release event dispatches on it. Reset to <see cref="DragMode.Select" />
+    ///     (the neutral default) on release.
+    /// </summary>
+    private enum DragMode
+    {
+        /// <summary>Plain or Shift drag: extend the primary selection to the drag point.</summary>
+        Select,
+
+        /// <summary>Ctrl+Click add-caret: swallow drag events so they don't move the primary.</summary>
+        AddCaret,
+
+        /// <summary>
+        ///     Alt drag: build a vertical column of carets from press row to drag row. Alt (not
+        ///     VS Code's Shift+Alt) because Windows Terminal reserves Shift+drag for its own
+        ///     forced/block text selection while an app has mouse mode on — see
+        ///     specs/decisions.md DEC-006 and gui-cs/Terminal.Gui#4888.
+        /// </summary>
+        ColumnCarets
     }
 }

@@ -76,6 +76,7 @@ public partial class Editor : View
         CreateCommandsAndBindings ();
         OverlayRenderers.Add (new MultiCaretRenderer (this));
         Document = new TextDocument ();
+        InitializeDefaultContextMenu ();
         ThemeManager.ThemeChanged += OnThemeChanged;
     }
 
@@ -656,7 +657,7 @@ public partial class Editor : View
         // Net character shift. Cached visual lines store *absolute* element offsets, so a
         // same-line-count edit upstream (no newline added/removed) still leaves every
         // downstream cached line stale even though its line *number* is unchanged.
-        var offsetDelta = (insertedText.Length - removedText.Length);
+        var offsetDelta = insertedText.Length - removedText.Length;
 
         RekeyCache (_defaultVisualLineCache, threshold, lineDelta, removedNewlines, offsetDelta);
         RekeyCache (_drawVisualLineCache, threshold, lineDelta, removedNewlines, offsetDelta);
@@ -948,7 +949,7 @@ public partial class Editor : View
             return true;
         }
 
-        var targetLineIndex = (_document.GetLineByOffset (startOffset).LineNumber - 1) + delta;
+        var targetLineIndex = _document.GetLineByOffset (startOffset).LineNumber - 1 + delta;
 
         if (targetLineIndex < 0 || targetLineIndex > _document.LineCount - 1)
         {
