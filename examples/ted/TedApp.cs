@@ -134,6 +134,13 @@ public sealed partial class TedApp : Window
             ToggleMarkdownPreview ();
             _previewMarkdownMenuItem.Title = ToggleTitle (e.NewValue == CheckState.Checked, "_Preview Markdown");
         };
+        LoadStatusSpinner = new SpinnerView
+        {
+            Style = new SpinnerStyle.Aesthetic (),
+            Width = 8,
+            AutoSpin = false,
+            Visible = false
+        };
 
         StatusBar statusBar =
             new ([
@@ -141,6 +148,7 @@ public sealed partial class TedApp : Window
                 new Shortcut { Title = "Theme", CommandView = ThemeDropDown },
                 LoadStatusShortcut = new Shortcut (Key.Empty, string.Empty, null)
                     { MouseHighlightStates = MouseState.None },
+                LoadSpinnerShortcut = new Shortcut { CommandView = LoadStatusSpinner, Title = string.Empty },
                 LocShortcut = new Shortcut (Key.Empty, FormatLoc (1, 1), null)
                     { MouseHighlightStates = MouseState.None }
             ])
@@ -282,6 +290,12 @@ public sealed partial class TedApp : Window
 
     /// <summary>The status-bar shortcut that reports streaming file load/save progress.</summary>
     public Shortcut LoadStatusShortcut { get; }
+
+    /// <summary>The spinner view shown while streaming file load/save is running.</summary>
+    public SpinnerView LoadStatusSpinner { get; }
+
+    /// <summary>The status-bar shortcut that hosts <see cref="LoadStatusSpinner" />.</summary>
+    public Shortcut LoadSpinnerShortcut { get; }
 
     /// <summary>The settings checkbox state for visible tab glyphs.</summary>
     public CheckBox ShowTabsCheckBox { get; } = new ()

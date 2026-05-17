@@ -289,7 +289,7 @@ public sealed partial class TedApp
     {
         try
         {
-            SetLoadStatus ("Loading...");
+            SetLoadStatus ("Loading...", true);
 
             await using Stream stream = OpenRead (filePath);
             IProgress<TextDocumentProgress> progress = new Progress<TextDocumentProgress> (ReportLoadProgress);
@@ -300,7 +300,7 @@ public sealed partial class TedApp
             void ApplyDocument ()
             {
                 ApplyLoadedDocument (document, filePath);
-                SetLoadStatus ("Loaded");
+                SetLoadStatus ("Loaded", false);
             }
 
             if (marshalToApp)
@@ -321,7 +321,7 @@ public sealed partial class TedApp
         }
         catch (OperationCanceledException)
         {
-            SetLoadStatus ("Load canceled");
+            SetLoadStatus ("Load canceled", false);
 
             return false;
         }
@@ -353,7 +353,7 @@ public sealed partial class TedApp
 
     private async Task SaveFileToAsync (string filePath, bool marshalToApp, CancellationToken cancellationToken)
     {
-        SetLoadStatus ("Saving...");
+        SetLoadStatus ("Saving...", true);
 
         await using Stream stream = CreateWrite (filePath);
         IProgress<TextDocumentProgress> progress = new Progress<TextDocumentProgress> (ReportSaveProgress);
@@ -362,7 +362,7 @@ public sealed partial class TedApp
         void MarkSaved ()
         {
             Editor.Document!.UndoStack.MarkAsOriginalFile ();
-            SetLoadStatus ("Saved");
+            SetLoadStatus ("Saved", false);
         }
 
         if (marshalToApp)
@@ -400,18 +400,21 @@ public sealed partial class TedApp
 
     private void ReportLoadProgress (TextDocumentProgress progress)
     {
-        SetLoadStatus (FormatProgress ("Loading", progress));
+        SetLoadStatus (FormatProgress ("Loading", progress), true);
     }
 
     private void ReportSaveProgress (TextDocumentProgress progress)
     {
-        SetLoadStatus (FormatProgress ("Saving", progress));
+        SetLoadStatus (FormatProgress ("Saving", progress), true);
     }
 
-    private void SetLoadStatus (string status)
+    private void SetLoadStatus (string status, bool showSpinner)
     {
         void Update ()
         {
+            LoadStatusSpinner.Visible = showSpinner;
+            LoadStatusSpinner.AutoSpin = showSpinner;
+            LoadSpinnerShortcut.SetNeedsDraw ();
             LoadStatusShortcut.Title = status;
             LoadStatusShortcut.SetNeedsDraw ();
         }
