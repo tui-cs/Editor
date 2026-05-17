@@ -620,8 +620,7 @@ public partial class Editor : View
         _highlightingColorizer = new HighlightingColorizer (
             _highlighter,
             normal,
-            GetAttributeForRole,
-            role => GetScheme ().TryGetExplicitlySetAttributeForRole (role, out _));
+            role => GetScheme ().TryGetExplicitlySetAttributeForRole (role, out Attribute? explicitAttr) ? explicitAttr : null);
         LineTransformers.Insert (0, _highlightingColorizer);
     }
 

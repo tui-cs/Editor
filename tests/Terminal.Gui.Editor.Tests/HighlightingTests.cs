@@ -232,12 +232,13 @@ public class HighlightingTests
         Attribute defaultAttr = new (Color.White, Color.Black);
         var themedKeyword = new Attribute (Color.Magenta, Color.Black);
 
-        // Scheme explicitly themes CodeKeyword; xshd "Keyword" maps to it via XshdRoleMap.
+        // Single delegate: returns the themed attribute when the scheme explicitly defines the
+        // role, null otherwise. One arg is sufficient to fully enable role theming — there is no
+        // separate predicate to forget (the resolve/explicit-check footgun is gone).
         HighlightingColorizer colorizer = new (
             highlighter,
             defaultAttr,
-            role => role == VisualRole.CodeKeyword ? themedKeyword : defaultAttr,
-            role => role == VisualRole.CodeKeyword);
+            role => role == VisualRole.CodeKeyword ? themedKeyword : (Attribute?)null);
 
         VisualLineBuilder builder = new ();
         DocumentLine line = doc.GetLineByNumber (1);
@@ -261,13 +262,12 @@ public class HighlightingTests
         Attribute defaultAttr = new (Color.White, Color.Black);
         var sentinel = new Attribute (Color.Magenta, Color.Black);
 
-        // Scheme leaves CodeKeyword unset (isRoleExplicitlySet → false): use xshd's color,
-        // and the editor (scheme) background — never the sentinel themed attribute.
+        // Resolver returns null for every role → scheme defines none explicitly → use xshd's
+        // foreground over the editor (scheme) background — never the sentinel themed attribute.
         HighlightingColorizer colorizer = new (
             highlighter,
             defaultAttr,
-            _ => sentinel,
-            _ => false);
+            _ => (Attribute?)null);
 
         VisualLineBuilder builder = new ();
         DocumentLine line = doc.GetLineByNumber (1);
@@ -323,6 +323,52 @@ public class HighlightingTests
 
         // No category → built-in table maps Comment → CodeComment.
         Assert.Equal (VisualRole.CodeComment, def.GetNamedColor ("Comment").Role);
+    }
+
+    [Fact]
+    public void Category_Numeric_String_Is_Not_Treated_As_Role ()
+    {
+        // Enum.TryParse accepts numeric strings, so category="999" would otherwise parse to
+        // the undefined (VisualRole)999 and get passed to the scheme. It must be rejected and
+        // fall through to the name table (here: no name → null).
+        Assert.Null (XshdRoleMap.ResolveRole (null, "999"));
+        Assert.Null (XshdRoleMap.ResolveRole ("DefinitelyNotAColor", "999"));
+
+        // A negative / out-of-range numeric is likewise not a real role.
+        Assert.Null (XshdRoleMap.ResolveRole (null, "-1"));
+
+        // The name table still applies when the numeric category is rejected.
+        Assert.Equal (VisualRole.CodeKeyword, XshdRoleMap.ResolveRole ("Keyword", "999"));
+
+        // Real role names still win as before.
+        Assert.Equal (VisualRole.CodeString, XshdRoleMap.ResolveRole ("Keyword", "CodeString"));
+    }
+
+    [Fact]
+    public void Anonymous_Category_Only_Color_Materializes_With_Role ()
+    {
+        // An inline (unnamed) color carrying only category= must still reach the colorizer.
+        // Previously VisitColor dropped it because foreground/italic/bold were all null.
+        const string xshd = """
+                            <?xml version="1.0"?>
+                            <SyntaxDefinition name="CatOnly" xmlns="http://icsharpcode.net/sharpdevelop/syntaxdefinition/2008">
+                              <RuleSet>
+                                <Keywords category="CodeKeyword">
+                                  <Word>foo</Word>
+                                </Keywords>
+                              </RuleSet>
+                            </SyntaxDefinition>
+                            """;
+
+        using System.Xml.XmlReader reader = System.Xml.XmlReader.Create (new StringReader (xshd));
+        IHighlightingDefinition def = HighlightingLoader.Load (reader, null!);
+
+        TextDocument doc = new ("foo bar");
+        using DocumentHighlighter highlighter = new (doc, def);
+        HighlightedLine highlighted = highlighter.HighlightLine (1);
+
+        var themed = highlighted.Sections.Any (s => s.Color?.Role == VisualRole.CodeKeyword);
+        Assert.True (themed, "An unnamed <Keywords category=\"CodeKeyword\"> must materialize a color carrying that Role.");
     }
 
     [Fact]

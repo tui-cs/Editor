@@ -186,6 +186,7 @@ private void ExtendCaretBy (int delta)
 - **No file longer than 1000 lines.** When a file approaches that, split — by partial class (`Editor.Drawing.cs`, `Editor.Mouse.cs`), by helper extraction, or by genuinely splitting the type. The cleanup hook does not enforce this; the reviewer does.
 - **C# 14 `extension` blocks**: prefer extension blocks over a static class full of `this`-prefixed extension methods when the extensions form a coherent group on a single receiver type.
 - **Namespace per folder.** `src/Terminal.Gui.Editor/Document/` ⇒ `Terminal.Gui.Document`; `src/Terminal.Gui.Editor/Rendering/` ⇒ `Terminal.Gui.Views.Rendering`. Don't put unrelated types in the same namespace just because they share a folder.
+- **No static members on `View`-derived types.** A class that derives from `Terminal.Gui.View` (e.g. `Editor`) must not declare `static` members — not fields, not properties, not events, not even "harmless" caches or lookup tables. Terminal.Gui's `Application` lifetime is per-instance (see "Testing tiers"); static state on a View is process-global, survives across `IApplication` instances, and silently couples otherwise-independent windows and parallel tests (the canonical cause of parallel-test hangs). Shared/lookup data lives in a dedicated non-View type (e.g. `XshdRoleMap`), exposed read-only (`private` + `FrozenDictionary`/`IReadOnlyXxx`), and is injected or queried — never hung off the View. `const` is the only exception (it is not state). This is a hard rule; a reviewer blocks on it.
 
 ### Testing convention
 

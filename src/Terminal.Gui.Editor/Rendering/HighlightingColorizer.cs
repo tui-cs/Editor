@@ -24,8 +24,7 @@ namespace Terminal.Gui.Editor.Rendering;
 public sealed class HighlightingColorizer : IVisualLineTransformer
 {
     private readonly Attribute _defaultAttribute;
-    private readonly Func<VisualRole, Attribute>? _getRoleAttribute;
-    private readonly Func<VisualRole, bool>? _isRoleExplicitlySet;
+    private readonly Func<VisualRole, Attribute?>? _resolveExplicitRoleAttribute;
 
     /// <summary>Creates a new <see cref="HighlightingColorizer" />.</summary>
     /// <param name="highlighter">The document highlighter that produces per-line color information.</param>
@@ -33,26 +32,22 @@ public sealed class HighlightingColorizer : IVisualLineTransformer
     ///     The editor's normal attribute, used as the background for highlighted tokens and as the
     ///     fallback when a highlighting color specifies no foreground.
     /// </param>
-    /// <param name="getRoleAttribute">
-    ///     Resolves a <see cref="VisualRole" /> against the editor's active TG scheme (typically
-    ///     <c>role =&gt; GetAttributeForRole (role)</c>). When <see langword="null" />, role-based
-    ///     theming is disabled and colors fall back to their xshd-declared foreground.
-    /// </param>
-    /// <param name="isRoleExplicitlySet">
-    ///     Reports whether the active scheme explicitly defines a <see cref="VisualRole" /> (as
-    ///     opposed to deriving it). A role is only themed when explicitly set; otherwise the
-    ///     xshd-declared color is preserved so stylized themes keep their look.
+    /// <param name="resolveExplicitRoleAttribute">
+    ///     Single role-theming hook: given a <see cref="VisualRole" />, returns the active scheme's
+    ///     <see cref="Attribute" /> for it <b>only if the scheme explicitly defines that role</b>,
+    ///     or <see langword="null" /> if the role is unset (so the xshd-declared color is preserved
+    ///     and stylized themes keep their look). Combining "is it explicit?" and "what is it?" into
+    ///     one delegate makes role theming all-or-nothing — it cannot be half-wired. When the whole
+    ///     delegate is <see langword="null" />, role-based theming is disabled.
     /// </param>
     public HighlightingColorizer (
         IHighlighter highlighter,
         Attribute defaultAttribute,
-        Func<VisualRole, Attribute>? getRoleAttribute = null,
-        Func<VisualRole, bool>? isRoleExplicitlySet = null)
+        Func<VisualRole, Attribute?>? resolveExplicitRoleAttribute = null)
     {
         Highlighter = highlighter ?? throw new ArgumentNullException (nameof (highlighter));
         _defaultAttribute = defaultAttribute;
-        _getRoleAttribute = getRoleAttribute;
-        _isRoleExplicitlySet = isRoleExplicitlySet;
+        _resolveExplicitRoleAttribute = resolveExplicitRoleAttribute;
     }
 
     /// <summary>Gets the underlying highlighter.</summary>
@@ -100,7 +95,7 @@ public sealed class HighlightingColorizer : IVisualLineTransformer
             return this;
         }
 
-        return new HighlightingColorizer (Highlighter, defaultAttribute, _getRoleAttribute, _isRoleExplicitlySet);
+        return new HighlightingColorizer (Highlighter, defaultAttribute, _resolveExplicitRoleAttribute);
     }
 
     /// <summary>
@@ -153,11 +148,8 @@ public sealed class HighlightingColorizer : IVisualLineTransformer
             return _defaultAttribute;
         }
 
-        if (color.Role is { } role
-            && _getRoleAttribute is { } getRole
-            && _isRoleExplicitlySet?.Invoke (role) == true)
+        if (color.Role is { } role && _resolveExplicitRoleAttribute?.Invoke (role) is { } themed)
         {
-            Attribute themed = getRole (role);
             Color background = themed.Background == Color.None ? _defaultAttribute.Background : themed.Background;
 
             return new Attribute (themed.Foreground, background, themed.Style);

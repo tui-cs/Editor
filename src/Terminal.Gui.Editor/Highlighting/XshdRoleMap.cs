@@ -1,3 +1,4 @@
+using System.Collections.Frozen;
 using Terminal.Gui.Drawing;
 
 namespace Terminal.Gui.Highlighting;
@@ -6,7 +7,7 @@ namespace Terminal.Gui.Highlighting;
 ///     Bridges xshd <c>&lt;Color name="..."&gt;</c> names to Terminal.Gui code-token
 ///     <see cref="VisualRole" />s. This is the grammar-specific half of the syntax-theme layer:
 ///     the colorizer asks for a <see cref="VisualRole" />, the active <see cref="Scheme" /> resolves
-///     the actual <see cref="Attribute" />. Names absent from <see cref="Defaults" /> (and without a
+///     the actual <see cref="Attribute" />. Names absent from the built-in table (and without a
 ///     per-color <c>category=</c> override) have no role and fall back to the xshd-declared color.
 /// </summary>
 /// <remarks>
@@ -19,8 +20,10 @@ internal static class XshdRoleMap
     ///     Built-in xshd-name → <see cref="VisualRole" /> table covering the common cross-language
     ///     names across the bundled <c>.xshd</c> definitions. Keys are the literal
     ///     <c>&lt;Color name="..."&gt;</c> values and are matched case-sensitively (xshd convention).
+    ///     Private and frozen: this is process-wide shared state, so it must not be mutable or
+    ///     reachable (even via <c>InternalsVisibleTo</c>) for accidental reassignment.
     /// </summary>
-    internal static readonly Dictionary<string, VisualRole> Defaults = new (StringComparer.Ordinal)
+    private static readonly FrozenDictionary<string, VisualRole> Defaults = new Dictionary<string, VisualRole> (StringComparer.Ordinal)
     {
         // CodeComment
         ["Comment"] = VisualRole.CodeComment,
@@ -134,7 +137,7 @@ internal static class XshdRoleMap
         ["VBScriptTag"] = VisualRole.CodeAttribute,
         ["UnknownScriptTag"] = VisualRole.CodeAttribute,
         ["UnknownAttribute"] = VisualRole.CodeAttribute
-    };
+    }.ToFrozenDictionary (StringComparer.Ordinal);
 
     /// <summary>
     ///     Looks up the <see cref="VisualRole" /> for an xshd color name, or <see langword="null" />
@@ -152,13 +155,17 @@ internal static class XshdRoleMap
 
     /// <summary>
     ///     Resolves the <see cref="VisualRole" /> for an xshd color. A per-color <c>category=</c>
-    ///     attribute (parsed as a <see cref="VisualRole" /> name, case-insensitive) wins over the
-    ///     built-in <paramref name="name" /> table. An unparseable <paramref name="category" />
-    ///     falls through to the name table; an unmapped name yields <see langword="null" />.
+    ///     attribute (parsed as a defined <see cref="VisualRole" /> name, case-insensitive) wins
+    ///     over the built-in <paramref name="name" /> table. A <paramref name="category" /> that is
+    ///     not a defined role name — including numeric strings, which <see cref="Enum.TryParse{T}(string,bool,out T)" />
+    ///     would otherwise accept — falls through to the name table; an unmapped name yields
+    ///     <see langword="null" />.
     /// </summary>
     internal static VisualRole? ResolveRole (string? name, string? category)
     {
-        if (!string.IsNullOrEmpty (category) && Enum.TryParse (category, true, out VisualRole parsed))
+        if (!string.IsNullOrEmpty (category)
+            && Enum.TryParse (category, true, out VisualRole parsed)
+            && Enum.IsDefined (parsed))
         {
             return parsed;
         }

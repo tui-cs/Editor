@@ -57,9 +57,10 @@ re-render with the new theme's `CodeXxx` Attributes within one draw cycle.
 ### Scenario 3 — Theme without code-role overrides still works
 
 **Given** a TG theme (e.g. `TurboPascal 5`) that defines no `CodeXxx` entries, **When** the editor
-renders, **Then** all code-token attributes derive through `Code` → `Editable` → `Normal` per
-TG's existing derivation chain. No xshd or editor change required for stylized themes to look
-acceptable.
+renders, **Then** code tokens keep their xshd-declared foreground over the editor's scheme
+background. The colorizer consults the scheme **only for roles a theme sets explicitly**; an unset
+`CodeXxx` role is *not* derived through `Code` → `Editable` → `Normal` — the xshd color is used
+instead, so stylized themes look as their `.xshd` intends with no xshd or editor change.
 
 ### Scenario 4 — xshd name not in the role table falls back to xshd color
 
@@ -127,7 +128,7 @@ none exist, use ">2× wall-time regression fails the gate" as the starting bar.
 
 ### Phase 1 — Terminal.Gui code-token VisualRole PR 
 
-**This can be implemented while Phase 0 is being implemented; but it can't be ACCEPTED unitl after**
+**This can be implemented while Phase 0 is being implemented; but it can't be ACCEPTED until after**
 
 #### Add code-token VisualRoles
 Append 12 entries to `Terminal.Gui/Drawing/VisualRole.cs`, after `Code`:
@@ -250,8 +251,11 @@ Rewrite `HighlightingColorizer.ToAttribute`. Resolution order:
 2. Else fall back to xshd's declared `Foreground` paired with the editor's scheme background.
 3. Else return the editor's default attribute.
 
-The constructor gains a `Func<VisualRole, Attribute>? getRoleAttribute` parameter, supplied by
-`Editor` as `role => GetAttributeForRole(role)`.
+The constructor gains a single `Func<VisualRole, Attribute?>? resolveExplicitRoleAttribute`
+parameter — it returns the scheme's attribute for a role **only when the scheme sets it
+explicitly**, else `null`. One delegate (not a separate resolver + explicit-check predicate) keeps
+role theming all-or-nothing. `Editor` supplies
+`role => GetScheme().TryGetExplicitlySetAttributeForRole(role, out var a) ? a : null`.
 
 #### Retire the UseThemeBackground knob
 Remove `Editor.UseThemeBackground` (the property at `Editor.cs:231-245`), the

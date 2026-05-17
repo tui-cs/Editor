@@ -265,7 +265,7 @@ internal sealed class XmlHighlightingDefinition : IHighlightingDefinition
             {
                 c = _def._colorDict[color.Name];
             }
-            else if (color.Foreground == null && color.Italic == null && color.Bold == null)
+            else if (color.Foreground == null && color.Italic == null && color.Bold == null && color.Category == null)
             {
                 return null;
             }

@@ -167,8 +167,9 @@ public class HighlightingColor : IFreezable, ICloneable, IEquatable<Highlighting
     ///     Gets/sets the Terminal.Gui <see cref="VisualRole" /> this color maps to, if any.
     ///     Populated at load time from the xshd <c>category=</c> attribute or the
     ///     <see cref="XshdRoleMap" /> name table. When set and the active <see cref="Scheme" />
-    ///     explicitly defines that role, the colorizer uses the scheme's themed attribute instead
-    ///     of this color's hardcoded foreground; otherwise this color is used unchanged.
+    ///     explicitly defines that role, the colorizer uses the scheme's themed attribute;
+    ///     otherwise it keeps only this color's xshd-declared foreground over the editor's scheme
+    ///     background (the xshd background is not used).
     /// </summary>
     public VisualRole? Role
     {
