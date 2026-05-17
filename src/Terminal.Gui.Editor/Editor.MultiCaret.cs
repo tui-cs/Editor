@@ -718,10 +718,10 @@ public partial class Editor
     }
 
     /// <summary>
-    ///     Tab at every caret, one undo scope. Per caret: a selection that spans multiple lines
-    ///     <em>block-indents</em> every line it touches (never replace/delete it — that was the
-    ///     Codex P1 data-loss bug); a single-line selection is type-over-replaced with a tab; a
-    ///     caret with no selection gets a tab inserted at its own visual column via
+    ///     Tab at every caret, one undo scope. Per caret: any selection
+    ///     <em>block-indents</em> every line it touches and preserves the selection (never
+    ///     replace/delete it — that was the Codex P1 data-loss bug and the column-selection
+    ///     follow-up); a caret with no selection gets a tab inserted at its own visual column via
     ///     <see cref="GetTabInsertionText" /> so the column stays aligned across repeated
     ///     presses. Block-indent lines are deduped; every edit is applied strictly
     ///     high-offset-first so an earlier edit doesn't shift a not-yet-applied offset. Caller
