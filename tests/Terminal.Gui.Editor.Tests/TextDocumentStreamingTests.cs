@@ -11,9 +11,9 @@ public class TextDocumentStreamingTests
     [Fact]
     public async Task LoadAsync_SaveAsync_RoundTrips_MixedLineEndings_AndBom ()
     {
-        UTF8Encoding encoding = new (encoderShouldEmitUTF8Identifier: true);
+        UTF8Encoding encoding = new (true);
         var text = "one\r\ntwo\nthree\rfour";
-        byte[] bytes = encoding.GetPreamble ().Concat (encoding.GetBytes (text)).ToArray ();
+        var bytes = encoding.GetPreamble ().Concat (encoding.GetBytes (text)).ToArray ();
 
         await using MemoryStream input = new (bytes);
         TextDocument document = await TextDocument.LoadAsync (
@@ -53,8 +53,8 @@ public class TextDocumentStreamingTests
         using CancellationTokenSource cts = new ();
         await cts.CancelAsync ();
 
-        await Assert.ThrowsAsync<OperationCanceledException> (
-            () => TextDocument.LoadAsync (input, cancellationToken: cts.Token));
+        await Assert.ThrowsAsync<OperationCanceledException> (() =>
+            TextDocument.LoadAsync (input, cancellationToken: cts.Token));
     }
 
     [Fact]

@@ -10,7 +10,7 @@ public class StreamingLoadPerformanceTests
     [Fact]
     public async Task StreamingLoad_10Mb_ReportsInitialProgressWithinBudget ()
     {
-        byte[] bytes = Encoding.UTF8.GetBytes (new string ('x', 10 * 1024 * 1024));
+        var bytes = Encoding.UTF8.GetBytes (new string ('x', 10 * 1024 * 1024));
         await using MemoryStream stream = new (bytes);
         TaskCompletionSource firstProgress = new ();
         Progress<TextDocumentProgress> progress = new (_ => firstProgress.TrySetResult ());

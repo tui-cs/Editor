@@ -35,7 +35,8 @@ public partial class Editor
         CancellationToken cancellationToken = default)
     {
         TextDocument document = Document
-                                ?? throw new InvalidOperationException ("Cannot save because the editor has no document.");
+                                ?? throw new InvalidOperationException (
+                                    "Cannot save because the editor has no document.");
 
         return document.SaveAsync (stream, progress, cancellationToken);
     }

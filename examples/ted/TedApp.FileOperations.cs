@@ -68,7 +68,7 @@ public sealed partial class TedApp
             return false;
         }
 
-        return await OpenFileAsync (filePath, marshalToApp: false, cancellationToken);
+        return await OpenFileAsync (filePath, false, cancellationToken);
     }
 
     /// <summary>Opens a CLI-requested missing file path as an empty, modified document bound to that path.</summary>
@@ -98,11 +98,16 @@ public sealed partial class TedApp
     }
 
     /// <summary>Asynchronously streams the editor text to the current file, or prompts for a path if untitled.</summary>
-    public async Task<bool> SaveFileAsync (CancellationToken cancellationToken = default, bool marshalToApp = false)
+    public Task<bool> SaveFileAsync (CancellationToken cancellationToken = default)
+    {
+        return SaveFileAsync (false, cancellationToken);
+    }
+
+    private async Task<bool> SaveFileAsync (bool marshalToApp, CancellationToken cancellationToken = default)
     {
         if (CurrentFilePath is null)
         {
-            return await SaveFileAsAsync (cancellationToken, marshalToApp);
+            return await SaveFileAsAsync (marshalToApp, cancellationToken);
         }
 
         await SaveFileToAsync (CurrentFilePath, marshalToApp, cancellationToken);
@@ -124,7 +129,12 @@ public sealed partial class TedApp
     }
 
     /// <summary>Prompts for a file path, then asynchronously streams the editor text to that path.</summary>
-    public async Task<bool> SaveFileAsAsync (CancellationToken cancellationToken = default, bool marshalToApp = false)
+    public Task<bool> SaveFileAsAsync (CancellationToken cancellationToken = default)
+    {
+        return SaveFileAsAsync (false, cancellationToken);
+    }
+
+    private async Task<bool> SaveFileAsAsync (bool marshalToApp, CancellationToken cancellationToken = default)
     {
         var filePath = ShowSaveDialog ();
 
@@ -215,13 +225,6 @@ public sealed partial class TedApp
         };
     }
 
-    private string GetEditorText ()
-    {
-        return Editor.Document is null
-            ? throw new InvalidOperationException ("ted cannot save because the editor has no document.")
-            : Editor.Document.Text;
-    }
-
     private void New ()
     {
         if (!ConfirmSaveChanges ())
@@ -246,17 +249,17 @@ public sealed partial class TedApp
             return;
         }
 
-        CurrentLoadTask = OpenFileAsync (filePath, marshalToApp: true);
+        CurrentLoadTask = OpenFileAsync (filePath, true);
     }
 
     private void Save ()
     {
-        _ = SaveFileAsync (marshalToApp: true);
+        _ = SaveFileAsync (true);
     }
 
     private void SaveAs ()
     {
-        _ = SaveFileAsAsync (marshalToApp: true);
+        _ = SaveFileAsAsync (true);
     }
 
     private void Quit ()
@@ -291,7 +294,9 @@ public sealed partial class TedApp
             await using Stream stream = OpenRead (filePath);
             IProgress<TextDocumentProgress> progress = new Progress<TextDocumentProgress> (ReportLoadProgress);
             Editor.Document?.SetOwnerThread (null);
-            TextDocument document = await TextDocument.LoadAsync (stream, progress: progress, cancellationToken: cancellationToken);
+            TextDocument document =
+                await TextDocument.LoadAsync (stream, progress: progress, cancellationToken: cancellationToken);
+
             void ApplyDocument ()
             {
                 ApplyLoadedDocument (document, filePath);
@@ -353,6 +358,7 @@ public sealed partial class TedApp
         await using Stream stream = CreateWrite (filePath);
         IProgress<TextDocumentProgress> progress = new Progress<TextDocumentProgress> (ReportSaveProgress);
         await Editor.SaveAsync (stream, progress, cancellationToken);
+
         void MarkSaved ()
         {
             Editor.Document!.UndoStack.MarkAsOriginalFile ();

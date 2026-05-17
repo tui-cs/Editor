@@ -7,10 +7,8 @@ using Ted;
 using Terminal.Gui.Configuration;
 using Terminal.Gui.Editor.IntegrationTests.Testing;
 using Terminal.Gui.Input;
-using Terminal.Gui.Text.Indentation;
 using Terminal.Gui.Testing;
-using Terminal.Gui.Editor;
-using Terminal.Gui.Views;
+using Terminal.Gui.Text.Indentation;
 using Xunit;
 
 namespace Terminal.Gui.Editor.IntegrationTests;
@@ -263,32 +261,6 @@ public class TedAppTests
         Assert.Equal ("/tmp/ted-save-on-quit.txt", savedPath);
         Assert.Equal ("after", savedText);
         Assert.False (fx.Top.IsDocumentModified);
-    }
-
-    private sealed class CapturingWriteStream : MemoryStream
-    {
-        private readonly Action<string> _capture;
-
-        public CapturingWriteStream (Action<string> capture)
-        {
-            _capture = capture;
-        }
-
-        protected override void Dispose (bool disposing)
-        {
-            if (disposing)
-            {
-                _capture (Encoding.UTF8.GetString (ToArray ()));
-            }
-
-            base.Dispose (disposing);
-        }
-
-        public override async ValueTask DisposeAsync ()
-        {
-            _capture (Encoding.UTF8.GetString (ToArray ()));
-            await base.DisposeAsync ();
-        }
     }
 
     [Fact]
@@ -588,7 +560,7 @@ public class TedAppTests
         ImmutableList<string> expected = ThemeManager.GetThemeNames ();
         Assert.True (expected.Count > 0, "ThemeManager should expose at least one theme.");
 
-        var actual = fx.Top.ThemeDropDown.Source!.ToList ()
+        List<string> actual = fx.Top.ThemeDropDown.Source!.ToList ()
             .Cast<string> ()
             .ToList ();
 
@@ -614,5 +586,31 @@ public class TedAppTests
         fx.Top.ThemeDropDown.Text = target;
 
         Assert.Equal (target, ThemeManager.Theme);
+    }
+
+    private sealed class CapturingWriteStream : MemoryStream
+    {
+        private readonly Action<string> _capture;
+
+        public CapturingWriteStream (Action<string> capture)
+        {
+            _capture = capture;
+        }
+
+        protected override void Dispose (bool disposing)
+        {
+            if (disposing)
+            {
+                _capture (Encoding.UTF8.GetString (ToArray ()));
+            }
+
+            base.Dispose (disposing);
+        }
+
+        public override async ValueTask DisposeAsync ()
+        {
+            _capture (Encoding.UTF8.GetString (ToArray ()));
+            await base.DisposeAsync ();
+        }
     }
 }
