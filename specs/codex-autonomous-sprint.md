@@ -87,6 +87,8 @@ The launcher creates or updates the local `experiment/codex/develop` checkout an
 
 Codex should use the dependency table in `specs/plan.md`.
 
+> **Stale as of 2026-05-17**: the pool below is the *historical* post-tab-handling state. Every item in it has since shipped, and all four beta features are merged. The live work list is the **Remaining for beta** + **Beta Definition of Done** sections in `specs/plan.md` — consult those, not this list.
+
 At the current post-tab-handling state, the parallel-ready work pool is:
 
 - `folding`

@@ -96,6 +96,18 @@ Decisions are recorded here when an open question from the plan is resolved. Eac
 
 **Affected features**: syntax-highlighting, syntax-colorizer.
 
+**Note (2026-05-17)**: effectively settled by syntax-theme Phase 2 (PR #134) — xshd colors now route through TG `Scheme` code-token `VisualRole`s and `HighlightingColor.Style` continues to carry `TextStyle` flags. Confirm no xshd attribute is silently dropped, then move to Resolved.
+
+---
+
+### OPEN-006: Single-line / embeddable-input mode (→ DEC-008 on resolution)
+
+**Question**: Does `Editor` add a single-line / fixed-height input mode (`Multiline`, `EnterKeyAddsLine` raising `Accepting`, `TabKeyAddsTab` focus traversal) so it can be embedded as a code-aware text field in dialogs/forms — or is single-line input explicitly ceded to `Terminal.Gui.TextView`?
+
+**Tension**: directly opposes the CLAUDE.md non-goal *"Source/API compatibility with `TextView` — `Editor` ships beside it, not as a replacement."* A single-line field is the canonical `TextView` use case. Counter-pull: a syntax-highlighted single-/few-line expression or REPL input is a real product want `TextView` serves poorly.
+
+**Affected features**: see [`textview-parity-gap/spec.md`](textview-parity-gap/spec.md) Gap 3. Spec only follows a "yes."
+
 ---
 
 ### DEC-005: Word-wrap continuation-line indent policy
