@@ -967,7 +967,8 @@ public partial class Editor : View
 
         for (var i = 1; i <= _document!.LineCount; i++)
         {
-            CellVisualLine visualLine = GetOrBuildDefaultVisualLine (_document.GetLineByNumber (i));
+            DocumentLine line = _document.GetLineByNumber (i);
+            CellVisualLine visualLine = GetOrBuildDefaultVisualLine (line);
             var lineWidth = visualLine.VisualLength;
 
             if (i < _document.LineCount && remaining > lineWidth)
@@ -976,8 +977,6 @@ public partial class Editor : View
             }
             else
             {
-                DocumentLine line = _document.GetLineByNumber (i);
-
                 return line.Offset + visualLine.GetRelativeOffset (Math.Min (remaining, lineWidth));
             }
         }
