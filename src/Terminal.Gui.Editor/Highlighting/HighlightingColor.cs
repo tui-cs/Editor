@@ -39,6 +39,7 @@ public class HighlightingColor : IFreezable, ICloneable, IEquatable<Highlighting
     private bool? _italic;
 
     private string _name;
+    private VisualRole? _role;
     private bool? _strikethrough;
     private bool? _underline;
 
@@ -168,7 +169,19 @@ public class HighlightingColor : IFreezable, ICloneable, IEquatable<Highlighting
     ///     explicitly defines that role, the colorizer uses the scheme's themed attribute instead
     ///     of this color's hardcoded foreground; otherwise this color is used unchanged.
     /// </summary>
-    public VisualRole? Role { get; set; }
+    public VisualRole? Role
+    {
+        get => _role;
+        set
+        {
+            if (IsFrozen)
+            {
+                throw new InvalidOperationException ();
+            }
+
+            _role = value;
+        }
+    }
 
     internal bool IsEmptyForMerge => _bold == null && _italic == null && _underline == null
                                      && _strikethrough == null && _foreground == null && _background == null;
@@ -346,9 +359,9 @@ public class HighlightingColor : IFreezable, ICloneable, IEquatable<Highlighting
             _strikethrough = color._strikethrough;
         }
 
-        if (color.Role != null)
+        if (color._role != null)
         {
-            Role = color.Role;
+            _role = color._role;
         }
     }
 }
