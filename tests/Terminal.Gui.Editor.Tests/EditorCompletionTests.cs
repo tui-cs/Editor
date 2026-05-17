@@ -170,6 +170,76 @@ public class EditorCompletionTests
     }
 
     [Fact]
+    public void ArrowKeys_Navigate_Completion_Selection ()
+    {
+        // "he" matches "hello" and "help" — two items.
+        Editor editor = new ()
+        {
+            Document = new TextDocument ("he"),
+            CompletionProvider = new MultiWordCompletionProvider ("hello", "help", "world")
+        };
+        editor.CaretOffset = 2;
+
+        editor.NotifyCompletionAfterInsert ();
+        Assert.True (editor.IsCompletionActive);
+        Assert.Equal (0, editor.CompletionSelectedIndex);
+
+        // Down arrow should move to index 1.
+        Assert.True (editor.HandleCompletionKey (Key.CursorDown));
+        Assert.Equal (1, editor.CompletionSelectedIndex);
+
+        // Accept the completion — should insert the second item ("help").
+        editor.AcceptCompletion ();
+        Assert.Equal ("help", editor.Document!.Text);
+    }
+
+    [Fact]
+    public void ArrowUp_Wraps_To_Last_Item ()
+    {
+        // "he" matches "hello" and "help" — two items.
+        Editor editor = new ()
+        {
+            Document = new TextDocument ("he"),
+            CompletionProvider = new MultiWordCompletionProvider ("hello", "help")
+        };
+        editor.CaretOffset = 2;
+
+        editor.NotifyCompletionAfterInsert ();
+        Assert.True (editor.IsCompletionActive);
+
+        // Up from index 0 should wrap to last item (index 1 = "help").
+        Assert.True (editor.HandleCompletionKey (Key.CursorUp));
+        Assert.Equal (1, editor.CompletionSelectedIndex);
+
+        editor.AcceptCompletion ();
+        Assert.Equal ("help", editor.Document!.Text);
+    }
+
+    [Fact]
+    public void ArrowDown_Wraps_To_First_Item ()
+    {
+        // "he" matches "hello" and "help" — two items.
+        Editor editor = new ()
+        {
+            Document = new TextDocument ("he"),
+            CompletionProvider = new MultiWordCompletionProvider ("hello", "help")
+        };
+        editor.CaretOffset = 2;
+
+        editor.NotifyCompletionAfterInsert ();
+        Assert.True (editor.IsCompletionActive);
+
+        // Down to index 1, then down again wraps to 0.
+        Assert.True (editor.HandleCompletionKey (Key.CursorDown));
+        Assert.Equal (1, editor.CompletionSelectedIndex);
+        Assert.True (editor.HandleCompletionKey (Key.CursorDown));
+        Assert.Equal (0, editor.CompletionSelectedIndex);
+
+        editor.AcceptCompletion ();
+        Assert.Equal ("hello", editor.Document!.Text);
+    }
+
+    [Fact]
     public void Setting_CompletionProvider_To_Null_Dismisses_Active_Session ()
     {
         Editor editor = new ()

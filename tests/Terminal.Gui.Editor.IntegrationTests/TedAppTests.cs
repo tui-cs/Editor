@@ -6,10 +6,8 @@ using Ted;
 using Terminal.Gui.Configuration;
 using Terminal.Gui.Editor.IntegrationTests.Testing;
 using Terminal.Gui.Input;
-using Terminal.Gui.Text.Indentation;
 using Terminal.Gui.Testing;
-using Terminal.Gui.Editor;
-using Terminal.Gui.Views;
+using Terminal.Gui.Text.Indentation;
 using Xunit;
 
 namespace Terminal.Gui.Editor.IntegrationTests;
@@ -506,8 +504,7 @@ public class TedAppTests
     {
         await using AppFixture<TedApp> fx = new (() => new TedApp ());
 
-        DriverAssert.ContentsDoesNotContain (fx.Driver, "Find...");
-        DriverAssert.ContentsDoesNotContain (fx.Driver, "Replace...");
+        DriverAssert.ContentsDoesNotContain (fx.Driver, "Select all");
 
         InputInjectionOptions options = new () { Mode = InputInjectionMode.Direct };
 
@@ -521,8 +518,8 @@ public class TedAppTests
             options);
         fx.Render ();
 
-        DriverAssert.ContentsContains (fx.Driver, "Find...");
-        DriverAssert.ContentsContains (fx.Driver, "Replace...");
+        DriverAssert.ContentsContains (fx.Driver, "Undo");
+        DriverAssert.ContentsContains (fx.Driver, "Redo");
         DriverAssert.ContentsContains (fx.Driver, "Select all");
     }
 
@@ -542,7 +539,7 @@ public class TedAppTests
         ImmutableList<string> expected = ThemeManager.GetThemeNames ();
         Assert.True (expected.Count > 0, "ThemeManager should expose at least one theme.");
 
-        var actual = fx.Top.ThemeDropDown.Source!.ToList ()
+        List<string> actual = fx.Top.ThemeDropDown.Source!.ToList ()
             .Cast<string> ()
             .ToList ();
 

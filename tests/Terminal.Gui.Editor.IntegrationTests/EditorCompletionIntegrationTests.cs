@@ -107,6 +107,38 @@ public class EditorCompletionIntegrationTests
     }
 
     /// <summary>
+    ///     Arrow keys while completion is active should navigate the list, not move the caret.
+    ///     Down arrow then Enter should accept the second item.
+    /// </summary>
+    [Fact]
+    public async Task ArrowDown_Then_Enter_Accepts_Second_Item ()
+    {
+        // "hello help world" — typing "he" at the end matches "hello" and "help".
+        await using AppFixture<EditorTestHost> fx = new (() => new ("hello help world "));
+        Editor editor = fx.Top.Editor;
+        editor.SetFocus ();
+
+        editor.CaretOffset = editor.Document!.TextLength;
+        editor.CompletionProvider = new TestWordCompletionProvider ();
+
+        // Type "he" to open completion.
+        fx.Injector.InjectKey (Key.H, Direct);
+        fx.Injector.InjectKey (Key.E, Direct);
+
+        Assert.True (editor.IsCompletionActive, "Completion should be active after 'he'");
+
+        // Down arrow to select the second item.
+        fx.Injector.InjectKey (Key.CursorDown, Direct);
+
+        // Enter to accept.
+        fx.Injector.InjectKey (Key.Enter, Direct);
+
+        // The accepted text should be the second match as returned by the provider.
+        Assert.EndsWith ("help", editor.Document!.Text.TrimEnd ());
+        Assert.False (editor.IsCompletionActive, "Completion should be dismissed after accept");
+    }
+
+    /// <summary>
     ///     Minimal word-completion provider for integration tests. Returns all word tokens
     ///     from the document that start with the prefix.
     /// </summary>
