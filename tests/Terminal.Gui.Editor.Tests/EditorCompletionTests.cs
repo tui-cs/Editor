@@ -150,6 +150,96 @@ public class EditorCompletionTests
         Assert.False (editor.HandleCompletionKey (Key.Esc));
     }
 
+    [Fact]
+    public void HandleCompletionKey_Returns_False_For_Regular_Chars_While_Active ()
+    {
+        // When the popup is active, regular character keys must NOT be consumed
+        // so the Editor can insert the character and re-filter the list.
+        Editor editor = new ()
+        {
+            Document = new TextDocument ("us"),
+            CompletionProvider = new MultiWordCompletionProvider ("using", "unsafe", "uint")
+        };
+        editor.CaretOffset = 2; // after "us"
+
+        editor.NotifyCompletionAfterInsert ();
+        Assert.True (editor.IsCompletionActive);
+
+        // A regular character key should return false — not consumed by the popup.
+        Assert.False (editor.HandleCompletionKey (new Key ('i')));
+    }
+
+    [Fact]
+    public void Setting_CompletionProvider_To_Null_Dismisses_Active_Session ()
+    {
+        Editor editor = new ()
+        {
+            Document = new TextDocument ("hel"),
+            CompletionProvider = new StubCompletionProvider ("hello")
+        };
+        editor.CaretOffset = 3;
+
+        editor.NotifyCompletionAfterInsert ();
+        Assert.True (editor.IsCompletionActive);
+
+        // Setting provider to null should dismiss the active session.
+        editor.CompletionProvider = null;
+        Assert.False (editor.IsCompletionActive);
+    }
+
+    [Fact]
+    public void Typing_Characters_While_Completion_Active_Filters_List ()
+    {
+        // Simulates: document has "u", popup shows [using, unsafe, uint].
+        // User types "s" → document becomes "us", popup re-filters to [using, unsafe].
+        Editor editor = new ()
+        {
+            Document = new TextDocument ("u"),
+            CompletionProvider = new MultiWordCompletionProvider ("using", "unsafe", "uint")
+        };
+        editor.CaretOffset = 1;
+
+        // Open completion.
+        editor.NotifyCompletionAfterInsert ();
+        Assert.True (editor.IsCompletionActive);
+
+        // Simulate the Editor inserting "s" (as OnKeyDownNotHandled would).
+        editor.Document!.Insert (editor.CaretOffset, "s");
+        editor.CaretOffset = 2;
+
+        // Re-filter via NotifyCompletionAfterInsert.
+        editor.NotifyCompletionAfterInsert ();
+        Assert.True (editor.IsCompletionActive);
+
+        // "us" prefix should match "using" and "unsafe" but not "uint".
+        // Verify by accepting — the accepted text should be one of the "us" matches.
+        editor.AcceptCompletion ();
+        Assert.Contains (editor.Document!.Text, new [] { "using", "unsafe" });
+    }
+
+    [Fact]
+    public void Typing_NonMatching_Char_While_Completion_Active_Dismisses ()
+    {
+        // Simulates: document has "x", popup shows items for "x".
+        // User types "z" → document becomes "xz", no matches → popup dismissed.
+        Editor editor = new ()
+        {
+            Document = new TextDocument ("us"),
+            CompletionProvider = new MultiWordCompletionProvider ("using", "unsafe")
+        };
+        editor.CaretOffset = 2;
+
+        editor.NotifyCompletionAfterInsert ();
+        Assert.True (editor.IsCompletionActive);
+
+        // Simulate inserting a character that breaks all matches.
+        editor.Document!.Insert (editor.CaretOffset, "z");
+        editor.CaretOffset = 3;
+
+        editor.NotifyCompletionAfterInsert ();
+        Assert.False (editor.IsCompletionActive);
+    }
+
     /// <summary>Stub provider that always returns a single hard-coded item.</summary>
     private sealed class StubCompletionProvider : IEditorCompletionProvider
     {
@@ -189,6 +279,35 @@ public class EditorCompletionTests
         public bool ShouldTrigger (Key key)
         {
             return false;
+        }
+    }
+
+    /// <summary>Provider that returns all words starting with the given prefix.</summary>
+    private sealed class MultiWordCompletionProvider : IEditorCompletionProvider
+    {
+        private readonly string[] _words;
+
+        public MultiWordCompletionProvider (params string[] words)
+        {
+            _words = words;
+        }
+
+        public IReadOnlyList<CompletionItem> GetCompletions (TextDocument document, int caretOffset, string prefix)
+        {
+            if (string.IsNullOrEmpty (prefix))
+            {
+                return [];
+            }
+
+            return _words
+                .Where (w => w.StartsWith (prefix, StringComparison.OrdinalIgnoreCase))
+                .Select (w => new CompletionItem { Label = w })
+                .ToList ();
+        }
+
+        public bool ShouldTrigger (Key key)
+        {
+            return key == Key.Space.WithCtrl;
         }
     }
 }
