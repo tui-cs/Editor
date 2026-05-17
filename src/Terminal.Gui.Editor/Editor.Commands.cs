@@ -20,18 +20,6 @@ public partial class Editor
     ///     Process-wide static. Do not mutate from parallel tests — see Terminal.Gui's same convention
     ///     on <see cref="Terminal.Gui.Views.TextField.DefaultKeyBindings" />.
     /// </remarks>
-    // TEMPORARY WORKAROUND — tracked by gui-cs/Terminal.Gui#5318.
-    // TG's Command enum (consumed via the pinned Terminal.Gui package) has no multi-caret
-    // member, and the configurable keybinding surface is keyed by Command, so there is no
-    // sanctioned way to register these without a Command value. Casting magic ints is a hack
-    // (config serializes the key as a bare number; collision risk if TG renumbers). The correct
-    // fix is upstream: add Command.InsertCaretAbove / .InsertCaretBelow to TG. Once TG#5318
-    // ships and Directory.Build.props bumps $(TerminalGuiVersion), replace these casts with the
-    // real enum members and delete this block. Bespoke command values are not an acceptable end
-    // state. See specs/decisions.md DEC-006.
-    private const Command InsertCaretAbove = (Command)1001;
-    private const Command InsertCaretBelow = (Command)1002;
-
     [ConfigurationProperty (Scope = typeof (SettingsScope))]
     public new static Dictionary<Command, PlatformKeyBinding>? DefaultKeyBindings { get; set; } = new ()
     {
@@ -57,8 +45,8 @@ public partial class Editor
         // user whose terminal/WM grabs the chord overrides it via View.ViewKeyBindings config;
         // no editor-specific fallback chord. macOS uses the same chord pending real-terminal
         // validation (specs/decisions.md DEC-006).
-        [InsertCaretAbove] = Bind.All (Key.CursorUp.WithCtrl.WithAlt),
-        [InsertCaretBelow] = Bind.All (Key.CursorDown.WithCtrl.WithAlt),
+        [Command.InsertCaretAbove] = Bind.All (Key.CursorUp.WithCtrl.WithAlt),
+        [Command.InsertCaretBelow] = Bind.All (Key.CursorDown.WithCtrl.WithAlt),
         [Command.WordLeft] = Bind.All (Key.CursorLeft.WithCtrl),
         [Command.WordRight] = Bind.All (Key.CursorRight.WithCtrl),
         [Command.WordLeftExtend] = Bind.All (Key.CursorLeft.WithCtrl.WithShift),
@@ -228,8 +216,8 @@ public partial class Editor
         AddCommand (Command.FindPrevious, FindPreviousCommand);
 
         // Vertical multi-caret: add a caret one line above / below the block at the sticky column.
-        AddCommand (InsertCaretAbove, () => AddCaretVertically (-1));
-        AddCommand (InsertCaretBelow, () => AddCaretVertically (1));
+        AddCommand (Command.InsertCaretAbove, () => AddCaretVertically (-1));
+        AddCommand (Command.InsertCaretBelow, () => AddCaretVertically (1));
         // Word navigation and kill
         AddCommand (Command.WordLeft, () =>
         {
