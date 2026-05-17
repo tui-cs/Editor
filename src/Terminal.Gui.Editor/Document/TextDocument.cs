@@ -91,6 +91,7 @@ namespace Terminal.Gui.Document
         {
         }
 
+#nullable enable
         private Encoding _encoding = new UTF8Encoding (false);
 
         /// <summary>
@@ -106,8 +107,8 @@ namespace Terminal.Gui.Document
         /// Streams text from <paramref name="stream"/> into a new <see cref="TextDocument"/> without materializing the
         /// entire document as a single string.
         /// </summary>
-        public static async Task<TextDocument> LoadAsync (Stream stream, Encoding encoding = null,
-            IProgress<TextDocumentProgress> progress = null, CancellationToken cancellationToken = default)
+        public static async Task<TextDocument> LoadAsync (Stream stream, Encoding? encoding = null,
+            IProgress<TextDocumentProgress>? progress = null, CancellationToken cancellationToken = default)
         {
             ArgumentNullException.ThrowIfNull (stream);
 
@@ -148,6 +149,7 @@ namespace Terminal.Gui.Document
                 return document;
             }
         }
+#nullable disable
 
         // gets the text from a text source, directly retrieving the underlying rope where possible
         private static IEnumerable<char> GetTextFromTextSource(ITextSource textSource)
@@ -314,11 +316,12 @@ namespace Terminal.Gui.Document
             }
         }
 
+#nullable enable
         /// <summary>
         /// Streams the document to <paramref name="stream"/> using <see cref="Encoding"/> without materializing the
         /// entire document as a single string.
         /// </summary>
-        public async Task SaveAsync (Stream stream, IProgress<TextDocumentProgress> progress = null,
+        public async Task SaveAsync (Stream stream, IProgress<TextDocumentProgress>? progress = null,
             CancellationToken cancellationToken = default)
         {
             VerifyAccess ();
@@ -354,6 +357,7 @@ namespace Terminal.Gui.Document
                 await writer.FlushAsync (cancellationToken).ConfigureAwait (false);
             }
         }
+#nullable disable
 
         /// <summary>
         /// This event is called after a group of changes is completed.
