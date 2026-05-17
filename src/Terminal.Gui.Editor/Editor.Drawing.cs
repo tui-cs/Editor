@@ -362,6 +362,10 @@ public partial class Editor
         }
 
         Point screen = ViewportToScreen (new Point (col, row));
-        Cursor = new Cursor { Position = screen, Style = CursorStyle.BlinkingBar };
+        Cursor = Cursor with
+        {
+            Position = screen,
+            Style = Cursor.Style == CursorStyle.Hidden ? CursorStyle.Default : Cursor.Style
+        };
     }
 }
