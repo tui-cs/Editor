@@ -140,14 +140,22 @@ public partial class Editor
         int visibleStart,
         int visibleEnd)
     {
-        // Build a composite visual line from all document lines, inserting newline glyph
-        // elements between them. Uses line 1 as the owning DocumentLine.
-        DocumentLine firstLine = _document!.GetLineByNumber (1);
+        // Build a composite visual line from visible document lines (respecting folds),
+        // inserting newline glyph elements between them. Uses the first visible line as the owner.
+        List<int> visibleLines = GetVisibleLineNumbers ();
+
+        if (visibleLines.Count == 0)
+        {
+            return;
+        }
+
+        DocumentLine firstLine = _document!.GetLineByNumber (visibleLines[0]);
         CellVisualLine composite = new (firstLine);
         var flatColumn = 0;
 
-        for (var lineNum = 1; lineNum <= _document.LineCount; lineNum++)
+        for (var idx = 0; idx < visibleLines.Count; idx++)
         {
+            var lineNum = visibleLines[idx];
             DocumentLine line = _document.GetLineByNumber (lineNum);
             CellVisualLine lineVisual = GetOrBuildDrawVisualLine (line, null, normal, selected, selStart, selEnd);
 
@@ -159,7 +167,7 @@ public partial class Editor
 
             flatColumn += lineVisual.VisualLength;
 
-            if (lineNum < _document.LineCount)
+            if (idx < visibleLines.Count - 1)
             {
                 // The newline delimiter occupies document offsets at the end of the line.
                 var nlOffset = line.Offset + line.Length;

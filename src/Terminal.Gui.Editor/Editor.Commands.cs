@@ -339,7 +339,14 @@ public partial class Editor
 
     private bool? ScrollVerticalCommand (int delta)
     {
-        if (!Multiline || _document is null || ScrollVertical (delta) != true)
+        // In single-line mode, vertical scroll is a no-op but must return true (handled)
+        // to prevent the event from bubbling to parent containers.
+        if (!Multiline)
+        {
+            return true;
+        }
+
+        if (_document is null || ScrollVertical (delta) != true)
         {
             return false;
         }

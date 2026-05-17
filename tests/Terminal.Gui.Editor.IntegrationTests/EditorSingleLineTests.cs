@@ -1,5 +1,6 @@
 // Copilot - claude-sonnet-4
 
+using Terminal.Gui.Drivers;
 using Terminal.Gui.Editor.IntegrationTests.Testing;
 using Terminal.Gui.Input;
 using Terminal.Gui.Testing;
@@ -191,11 +192,12 @@ public class EditorSingleLineTests
     public async Task SingleLine_Paste_Strips_Newlines ()
     {
         await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("ab"));
+        fx.Driver.Clipboard = new FakeClipboard (false, false);
         fx.Top.Editor.Multiline = false;
         fx.Top.Editor.SetFocus ();
         fx.Top.Editor.CaretOffset = 2;
 
-        fx.App.Clipboard!.SetClipboardData ("cd\nef\r\ngh");
+        fx.App.Clipboard!.TrySetClipboardData ("cd\nef\r\ngh");
         fx.Injector.InjectKey (Key.V.WithCtrl, Direct);
 
         // Paste still strips newlines so new content stays on one logical line.
@@ -236,5 +238,58 @@ public class EditorSingleLineTests
         fx.Top.Editor.CaretOffset = 4;
         fx.Injector.InjectKey (Key.End, Direct);
         Assert.Equal (8, fx.Top.Editor.CaretOffset); // end of "ef"
+    }
+
+    /// <summary>
+    ///     CR1: Vertical scroll command should return true (handled) in single-line mode so the
+    ///     event doesn't bubble to parent containers.
+    /// </summary>
+    [Fact]
+    public async Task SingleLine_ScrollVertical_Is_Handled_NoOp ()
+    {
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("hello"));
+        fx.Top.Editor.Multiline = false;
+        fx.Top.Editor.SetFocus ();
+
+        // Scroll commands should not change caret position and should be handled (not bubble).
+        // Viewport.Y should remain 0 since there's only one row.
+        fx.Top.Editor.CaretOffset = 2;
+        fx.Injector.InjectKey (Key.CursorUp.WithCtrl, Direct); // typically triggers scroll
+        Assert.Equal (2, fx.Top.Editor.CaretOffset);
+        Assert.Equal (0, fx.Top.Editor.Viewport.Y);
+    }
+
+    /// <summary>
+    ///     CR2/CR3/CR5: Folded lines should be excluded from the single-line flat view. When lines
+    ///     are hidden by folding, the flat visual width and rendering should skip them.
+    /// </summary>
+    [Fact]
+    public async Task SingleLine_Folding_Hides_Lines_From_Flat_View ()
+    {
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("ab\ncd\nef"));
+        fx.Top.Editor.Multiline = false;
+        fx.Top.Editor.SetFocus ();
+
+        // Install a FoldingManager so we can fold lines.
+        fx.Top.Editor.FoldingManager = new Terminal.Gui.Document.Folding.FoldingManager (fx.Top.Editor.Document!);
+        fx.Render ();
+
+        // Full flat width: "ab" (2) + ⏎ (1) + "cd" (2) + ⏎ (1) + "ef" (2) = 8 plus +1 for caret-past-end = 9
+        Assert.Equal (9, fx.Top.Editor.GetContentSize ().Width);
+
+        // CreateFolding spanning from start of "ab" to end of "cd\n" hides line 2.
+        Terminal.Gui.Document.Folding.FoldingSection fold = fx.Top.Editor.FoldingManager!.CreateFolding (
+            0, fx.Top.Editor.Document!.GetLineByNumber (2).EndOffset);
+        fold.IsFolded = true;
+
+        // Toggling a property that clears caches to force re-computation
+        fx.Top.Editor.SetNeedsDraw ();
+        fx.Render ();
+
+        // After folding, line 2 is hidden. Content width should be smaller than unfolded.
+        // BUG (before fix): UpdateContentSize iterates all physical lines, so width stays at 9.
+        int widthAfterFold = fx.Top.Editor.GetContentSize ().Width;
+        Assert.True (widthAfterFold < 9,
+            $"Content width after fold should decrease from 9, was {widthAfterFold}");
     }
 }

@@ -533,14 +533,15 @@ public partial class Editor : View
 
         if (!Multiline)
         {
-            // Single-line mode: one row, width = sum of all line visual lengths + newline glyphs.
+            // Single-line mode: one row, width = sum of visible line visual lengths + newline glyphs.
+            List<int> visibleLines = GetVisibleLineNumbers ();
             var width = 0;
 
-            for (var i = 1; i <= _document.LineCount; i++)
+            for (var idx = 0; idx < visibleLines.Count; idx++)
             {
-                width += GetOrBuildDefaultVisualLine (_document.GetLineByNumber (i)).VisualLength;
+                width += GetOrBuildDefaultVisualLine (_document.GetLineByNumber (visibleLines[idx])).VisualLength;
 
-                if (i < _document.LineCount)
+                if (idx < visibleLines.Count - 1)
                 {
                     width += 1; // newline glyph
                 }
@@ -567,8 +568,8 @@ public partial class Editor : View
         }
 
         // +1 column lets the caret sit just past the end-of-line.
-        var visibleLines = _document.LineCount - (FoldingManager?.GetHiddenLineCount () ?? 0);
-        SetContentSize (new Size (_maxVisualWidth + 1, Math.Max (1, visibleLines)));
+        var visibleLineCount = _document.LineCount - (FoldingManager?.GetHiddenLineCount () ?? 0);
+        SetContentSize (new Size (_maxVisualWidth + 1, Math.Max (1, visibleLineCount)));
     }
 
     /// <summary>Full O(N) recompute — only called on Document swap, IndentationSize change, etc.</summary>
@@ -939,49 +940,28 @@ public partial class Editor : View
 
     /// <summary>
     ///     Returns the visual column of an offset in a flattened single-line view. Sums the visual
-    ///     lengths of all preceding lines (plus 1-cell newline glyphs) and adds the column within
-    ///     the target line.
+    ///     lengths of all visible preceding lines (plus 1-cell newline glyphs) and adds the column
+    ///     within the target line. Respects folding by using <see cref="GetVisibleLineNumbers" />.
     /// </summary>
     private int GetFlatVisualColumn (DocumentLine targetLine, int offsetInLine)
     {
+        List<int> visibleLines = GetVisibleLineNumbers ();
         var flatColumn = 0;
 
-        for (var i = 1; i < targetLine.LineNumber; i++)
+        foreach (var lineNum in visibleLines)
         {
-            flatColumn += GetOrBuildDefaultVisualLine (_document!.GetLineByNumber (i)).VisualLength;
+            if (lineNum == targetLine.LineNumber)
+            {
+                break;
+            }
+
+            flatColumn += GetOrBuildDefaultVisualLine (_document!.GetLineByNumber (lineNum)).VisualLength;
             flatColumn += 1; // newline glyph
         }
 
         flatColumn += GetOrBuildDefaultVisualLine (targetLine).GetVisualColumn (offsetInLine);
 
         return flatColumn;
-    }
-
-    /// <summary>
-    ///     Returns the document offset for a given flat visual column in single-line mode.
-    ///     Inverse of <see cref="GetFlatVisualColumn" />.
-    /// </summary>
-    private int GetOffsetFromFlatVisualColumn (int flatColumn)
-    {
-        var remaining = flatColumn;
-
-        for (var i = 1; i <= _document!.LineCount; i++)
-        {
-            DocumentLine line = _document.GetLineByNumber (i);
-            CellVisualLine visualLine = GetOrBuildDefaultVisualLine (line);
-            var lineWidth = visualLine.VisualLength;
-
-            if (i < _document.LineCount && remaining > lineWidth)
-            {
-                remaining -= lineWidth + 1; // +1 for newline glyph
-            }
-            else
-            {
-                return line.Offset + visualLine.GetRelativeOffset (Math.Min (remaining, lineWidth));
-            }
-        }
-
-        return _document.TextLength;
     }
 
     /// <summary>
