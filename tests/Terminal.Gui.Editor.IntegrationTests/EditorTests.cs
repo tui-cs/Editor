@@ -548,5 +548,6 @@ public class EditorTests
         // The primary caret is the terminal cursor. After dismissing the block it must still be
         // drawn (visible, not the hidden default cursor) and positioned on the primary offset.
         Assert.True (fx.Top.Editor.Cursor.IsVisible);
+        Assert.Equal (CursorStyle.Default, fx.Top.Editor.Cursor.Style);
     }
 }

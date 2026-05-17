@@ -129,6 +129,8 @@ public sealed partial class TedApp : Window
             }
         };
         ShowTabsCheckBox.Value = Editor.ShowTabs ? CheckState.Checked : CheckState.UnChecked;
+        OverwriteShortcut = new Shortcut (Key.Empty, "INS", null) { MouseHighlightStates = MouseState.None };
+        LocShortcut = new Shortcut (Key.Empty, FormatLoc (1, 1), null) { MouseHighlightStates = MouseState.None };
         PreviewCheckBox.ValueChanged += (_, e) =>
         {
             ToggleMarkdownPreview ();
@@ -139,10 +141,8 @@ public sealed partial class TedApp : Window
             new ([
                 new Shortcut { Title = "Language", CommandView = LanguageShortcut },
                 new Shortcut { Title = "Theme", CommandView = ThemeDropDown },
-                OverwriteShortcut = new Shortcut (Key.Empty, "INS", null)
-                    { MouseHighlightStates = MouseState.None },
-                LocShortcut = new Shortcut (Key.Empty, FormatLoc (1, 1), null)
-                    { MouseHighlightStates = MouseState.None }
+                OverwriteShortcut,
+                LocShortcut
             ])
             {
                 AlignmentModes = AlignmentModes.IgnoreFirstOrLast
