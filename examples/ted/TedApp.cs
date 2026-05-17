@@ -27,9 +27,20 @@ public sealed partial class TedApp : Window
     private readonly Shortcut _fileNameShortcut;
     private readonly MenuItem _previewMarkdownMenuItem;
 
+    // Per-instance config path. Defaults to the real ~/.tui location; tests inject a temp path so they
+    // never touch the developer's real config (and stay parallel-safe — no env/static mutation).
+    private readonly string _configPath;
+
     /// <summary>Initializes a new <see cref="TedApp" />.</summary>
-    public TedApp (bool readOnly = false)
+    /// <param name="readOnly">Opens the editor read-only.</param>
+    /// <param name="configPath">
+    ///     Overrides where view settings persist. <see langword="null" /> uses
+    ///     <see cref="EditorSettings.GetConfigPath" /> (the real <c>~/.tui/ted.config.json</c>).
+    /// </param>
+    public TedApp (bool readOnly = false, string? configPath = null)
     {
+        _configPath = configPath ?? EditorSettings.GetConfigPath ();
+
         Title = "ted — Terminal.Gui.Editor demo";
         BorderStyle = LineStyle.None;
 
@@ -437,7 +448,7 @@ public sealed partial class TedApp : Window
         EditorSettings.IndentSize = Editor.IndentationSize;
         EditorSettings.ConvertTabsToSpaces = Editor.ConvertTabsToSpaces;
         EditorSettings.AutoIndent = Editor.IndentationStrategy is not null;
-        EditorSettings.Save ();
+        EditorSettings.Save (_configPath);
     }
 
     private void ShowSettingsDialog ()

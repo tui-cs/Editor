@@ -300,30 +300,36 @@ public sealed partial class TedApp
 
             IProgress<TextDocumentProgress> progress =
                 CreateStreamingProgress (progress => ReportLoadProgress (startedStatusOperationId, progress));
-            Editor.Document?.SetOwnerThread (null);
-            TextDocument document =
-                await Task.Run (
-                    () => TextDocument.LoadAsync (stream, progress: progress, cancellationToken: cancellationToken),
-                    cancellationToken);
 
-            void ApplyDocument ()
-            {
-                ApplyLoadedDocument (document, filePath);
-                CompleteStreamingStatus (startedStatusOperationId, FormatCompletedProgress ("Loaded", fileSize));
-            }
+            // When there is a running app loop, hand Editor.LoadAsync a UI-thread marshal so it can read on a
+            // background thread and append each chunk on the UI thread — the editor paints an empty buffer
+            // immediately and fills in progressively instead of blocking until the whole file is read.
+            Func<Action, Task>? marshal = marshalToApp ? InvokeOnAppAsync : null;
 
-            if (marshalToApp)
-            {
-                await InvokeOnAppAsync (ApplyDocument);
-            }
-            else
-            {
-                ApplyDocument ();
-            }
+            await Editor.LoadAsync (
+                stream,
+                encoding: null,
+                progress: progress,
+                cancellationToken: cancellationToken,
+                marshal: marshal);
 
-            if (!marshalToApp || App is null)
+            await RunOnApp (
+                marshalToApp,
+                () =>
+                {
+                    CurrentFilePath = filePath;
+                    ApplyFileMetadata (filePath);
+                    CompleteStreamingStatus (
+                        startedStatusOperationId,
+                        FormatCompletedProgress ("Loaded", fileSize));
+                });
+
+            // Non-marshalled (sync / test) path: post-load work above ran on a background continuation thread and
+            // re-claimed TextDocument ownership. Release it as the final step so the caller's thread can use the
+            // document. The marshalled path keeps UI-thread ownership and must not do this.
+            if (!marshalToApp)
             {
-                document.SetOwnerThread (null);
+                Editor.Document?.SetOwnerThread (null);
             }
 
             return true;
@@ -343,15 +349,25 @@ public sealed partial class TedApp
         }
     }
 
-    private void ApplyLoadedDocument (TextDocument document, string filePath)
+    /// <summary>
+    ///     Begins a progressive, UI-marshalled load of <paramref name="filePath" /> against the running app loop.
+    ///     Used by the CLI path so the window appears before the file finishes loading.
+    /// </summary>
+    public void BeginOpenFile (string filePath)
     {
-        document.SetOwnerThread (Thread.CurrentThread);
-        Editor.ClearSelection ();
-        Editor.Document = document;
-        Editor.CaretOffset = 0;
-        CurrentFilePath = filePath;
+        CurrentLoadTask = OpenFileAsync (filePath, true);
+    }
 
-        ApplyFileMetadata (filePath);
+    private Task RunOnApp (bool marshalToApp, Action action)
+    {
+        if (marshalToApp)
+        {
+            return InvokeOnAppAsync (action);
+        }
+
+        action ();
+
+        return Task.CompletedTask;
     }
 
     private async Task<bool> SaveFileAsAsync (

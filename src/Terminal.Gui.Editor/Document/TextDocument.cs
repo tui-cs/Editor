@@ -104,50 +104,103 @@ namespace Terminal.Gui.Document
         }
 
         /// <summary>
+        /// Streams text from <paramref name="stream"/> in decoded chunks, invoking (and awaiting)
+        /// <paramref name="onChunk"/> for each chunk in order as it is read. Awaiting the callback throttles the
+        /// reader to the consumer's cadence (natural backpressure) and lets a UI consumer apply each chunk
+        /// progressively without ever materializing the whole file as a single string. This method does not create
+        /// or mutate a <see cref="TextDocument"/> and has no UI-thread affinity — the consumer decides where and how
+        /// each chunk is applied. See <c>Editor.LoadAsync</c> for the progressive editor consumer.
+        /// </summary>
+        /// <param name="stream">The source stream.</param>
+        /// <param name="encoding">Fallback encoding used when no BOM is detected. Defaults to UTF-8 (no BOM).</param>
+        /// <param name="onChunk">
+        /// Invoked and awaited for every decoded chunk, in order. The supplied memory is only valid for the duration
+        /// of the call; copy it if it must outlive the returned <see cref="ValueTask"/>.
+        /// </param>
+        /// <param name="onEncodingDetected">Invoked once with the encoding the <see cref="StreamReader"/> resolved.</param>
+        /// <param name="progress">Optional progress sink, reported after each applied chunk.</param>
+        /// <param name="cancellationToken">Observed between chunks.</param>
+        public static async Task StreamAsync (
+            Stream stream,
+            Encoding? encoding,
+            Func<ReadOnlyMemory<char>, CancellationToken, ValueTask> onChunk,
+            Action<Encoding>? onEncodingDetected = null,
+            IProgress<TextDocumentProgress>? progress = null,
+            CancellationToken cancellationToken = default)
+        {
+            ArgumentNullException.ThrowIfNull (stream);
+            ArgumentNullException.ThrowIfNull (onChunk);
+
+            const int bufferSize = 32 * 1024;
+            Encoding fallbackEncoding = encoding ?? new UTF8Encoding (false);
+            long? totalBytes = stream.CanSeek ? stream.Length : null;
+            char[] buffer = new char[bufferSize];
+            long charactersRead = 0;
+            var encodingReported = false;
+
+            using StreamReader reader = new (
+                stream, fallbackEncoding, detectEncodingFromByteOrderMarks: true, bufferSize, leaveOpen: true);
+
+            while (true)
+            {
+                cancellationToken.ThrowIfCancellationRequested ();
+                int read = await reader.ReadAsync (buffer.AsMemory (0, buffer.Length), cancellationToken)
+                                       .ConfigureAwait (false);
+
+                if (!encodingReported)
+                {
+                    // CurrentEncoding is only resolved after the first read consumes (or rules out) a BOM.
+                    encodingReported = true;
+                    onEncodingDetected?.Invoke (reader.CurrentEncoding);
+                }
+
+                if (read == 0)
+                {
+                    break;
+                }
+
+                await onChunk (buffer.AsMemory (0, read), cancellationToken).ConfigureAwait (false);
+                charactersRead += read;
+                progress?.Report (new TextDocumentProgress (charactersRead, null,
+                    stream.CanSeek ? stream.Position : null, totalBytes));
+            }
+        }
+
+        /// <summary>
         /// Streams text from <paramref name="stream"/> into a new <see cref="TextDocument"/> without materializing the
-        /// entire document as a single string.
+        /// entire document as a single string. The whole stream is consumed before the document is returned, so this
+        /// is <b>not</b> progressive; UI consumers that want incremental rendering should use
+        /// <see cref="StreamAsync"/> (see <c>Editor.LoadAsync</c>).
         /// </summary>
         public static async Task<TextDocument> LoadAsync (Stream stream, Encoding? encoding = null,
             IProgress<TextDocumentProgress>? progress = null, CancellationToken cancellationToken = default)
         {
             ArgumentNullException.ThrowIfNull (stream);
 
-            const int bufferSize = 32 * 1024;
-            Encoding fallbackEncoding = encoding ?? new UTF8Encoding (false);
-            long? totalBytes = stream.CanSeek ? stream.Length : null;
             Rope<char> rope = new ();
-            char[] buffer = new char[bufferSize];
-            long charactersRead = 0;
+            Encoding detected = encoding ?? new UTF8Encoding (false);
 
-            using (StreamReader reader = new (
-                       stream, fallbackEncoding, detectEncodingFromByteOrderMarks: true, bufferSize, leaveOpen: true))
+            await StreamAsync (
+                stream,
+                encoding,
+                (chunk, _) =>
+                {
+                    rope.AddRange (chunk.ToArray (), 0, chunk.Length);
+
+                    return ValueTask.CompletedTask;
+                },
+                enc => detected = enc,
+                progress,
+                cancellationToken).ConfigureAwait (false);
+
+            TextDocument document = new (rope)
             {
-                while (true)
-                {
-                    cancellationToken.ThrowIfCancellationRequested ();
-                    int read = await reader.ReadAsync (buffer.AsMemory (0, buffer.Length), cancellationToken)
-                                           .ConfigureAwait (false);
+                Encoding = detected
+            };
+            document.UndoStack.MarkAsOriginalFile ();
+            document.SetOwnerThread (null);
 
-                    if (read == 0)
-                    {
-                        break;
-                    }
-
-                    rope.AddRange (buffer, 0, read);
-                    charactersRead += read;
-                    progress?.Report (new TextDocumentProgress (charactersRead, null,
-                        stream.CanSeek ? stream.Position : null, totalBytes));
-                }
-
-                TextDocument document = new (rope)
-                {
-                    Encoding = reader.CurrentEncoding
-                };
-                document.UndoStack.MarkAsOriginalFile ();
-                document.SetOwnerThread (null);
-
-                return document;
-            }
+            return document;
         }
 #nullable disable
 
