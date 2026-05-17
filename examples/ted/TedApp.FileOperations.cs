@@ -310,7 +310,7 @@ public sealed partial class TedApp
                 ApplyDocument ();
             }
 
-            if (App is null)
+            if (!marshalToApp || App is null)
             {
                 document.SetOwnerThread (null);
             }
