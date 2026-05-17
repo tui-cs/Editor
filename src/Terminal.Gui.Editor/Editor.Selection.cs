@@ -290,12 +290,7 @@ public partial class Editor
             return 1;
         }
 
-        if (idx >= visibleLines.Count)
-        {
-            return visibleLines[^1];
-        }
-
-        return visibleLines[idx];
+        return idx >= visibleLines.Count ? visibleLines[^1] : visibleLines[idx];
     }
 
     /// <summary>

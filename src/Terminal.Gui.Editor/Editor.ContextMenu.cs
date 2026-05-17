@@ -22,10 +22,7 @@ public partial class Editor
         {
             field = value;
 
-            if (field is not null)
-            {
-                field.Target = new WeakReference<View> (this);
-            }
+            field?.Target = new WeakReference<View> (this);
         }
     }
 

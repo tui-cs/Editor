@@ -483,10 +483,7 @@ public partial class Editor
             }
         }
 
-        if (fold is not null)
-        {
-            fold.IsFolded = !fold.IsFolded;
-        }
+        fold?.IsFolded = !fold.IsFolded;
 
         return true;
     }
