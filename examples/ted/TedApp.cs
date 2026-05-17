@@ -40,7 +40,7 @@ public sealed partial class TedApp : Window
             WordWrap = EditorSettings.WordWrap,
             ShowTabs = EditorSettings.ShowTabs,
             ReadOnly = readOnly,
-            CompletionProvider = new WordCompletionProvider (),
+            CompletionProvider = EditorSettings.AutoComplete ? new WordCompletionProvider () : null,
             ViewportSettings = ViewportSettingsFlags.HasScrollBars
         };
 
@@ -402,6 +402,7 @@ public sealed partial class TedApp : Window
         EditorSettings.IndentSize = Editor.IndentationSize;
         EditorSettings.ConvertTabsToSpaces = Editor.ConvertTabsToSpaces;
         EditorSettings.AutoIndent = Editor.IndentationStrategy is not null;
+        EditorSettings.AutoComplete = Editor.CompletionProvider is not null;
         EditorSettings.Save ();
     }
 
