@@ -389,7 +389,7 @@ public class EditorMouseTests
         Assert.Equal (5, fx.Top.Editor.CaretOffset); // primary didn't move
 
         Attribute normal = fx.Top.Editor.GetAttributeForRole (VisualRole.Normal);
-        Attribute caretAttr = new (normal.Foreground, normal.Background, TextStyle.Underline | TextStyle.Blink);
+        Attribute caretAttr = new (normal.Foreground, normal.Background, TextStyle.Blink | TextStyle.Reverse);
 
         // Cell 0 (first '/') should have the caret attribute.
         Cell cell0 = fx.Driver.Contents![0, 0];
@@ -434,7 +434,7 @@ public class EditorMouseTests
         Assert.Contains (0, fx.Top.Editor.AdditionalCaretOffsets);
 
         Attribute normal = fx.Top.Editor.GetAttributeForRole (VisualRole.Normal);
-        Attribute caretAttr = new (normal.Foreground, normal.Background, TextStyle.Underline | TextStyle.Blink);
+        Attribute caretAttr = new (normal.Foreground, normal.Background, TextStyle.Blink | TextStyle.Reverse);
 
         Cell cell0 = fx.Driver.Contents![0, 0];
         Assert.Equal ("/", cell0.Grapheme);
@@ -447,6 +447,91 @@ public class EditorMouseTests
         Cell cell2 = fx.Driver.Contents![0, 2];
         Assert.Equal ("/", cell2.Grapheme);
         Assert.NotEqual (caretAttr, cell2.Attribute);
+    }
+
+    // ---------------------------------------------------------------------------------------------
+    // Vertical multi-caret mouse gestures (specs/vertical-multi-caret/spec.md). Ported from PR #125.
+    // Alt + LeftButton drag builds a column of carets — Alt, not VS Code's Shift+Alt, because
+    // Windows Terminal reserves Shift+drag for its own forced/block text selection while an app
+    // has mouse mode on (DEC-006; configurable Shift+Alt parity tracked by gui-cs/Terminal.Gui#4888).
+    // ---------------------------------------------------------------------------------------------
+
+    [Fact]
+    public async Task AltDrag_Adds_Vertically_Aligned_Carets ()
+    {
+        await using AppFixture<EditorTestHost> fx = new (() => new ("abcd\nabcd\nabcd"));
+        fx.Top.Editor.SetFocus ();
+
+        fx.Injector.InjectMouse (
+            new ()
+            {
+                ScreenPosition = new (1, 0),
+                Flags = MouseFlags.LeftButtonPressed | MouseFlags.Alt,
+                Timestamp = BaseTime
+            },
+            Direct);
+
+        fx.Injector.InjectMouse (
+            new ()
+            {
+                ScreenPosition = new (1, 2),
+                Flags = MouseFlags.LeftButtonPressed | MouseFlags.PositionReport | MouseFlags.Alt,
+                Timestamp = BaseTime.AddMilliseconds (20)
+            },
+            Direct);
+
+        fx.Injector.InjectMouse (
+            new ()
+            {
+                ScreenPosition = new (1, 2),
+                Flags = MouseFlags.LeftButtonReleased,
+                Timestamp = BaseTime.AddMilliseconds (40)
+            },
+            Direct);
+
+        Assert.Equal (1, fx.Top.Editor.CaretOffset);
+        Assert.True (fx.Top.Editor.HasMultipleCarets);
+        Assert.Equal (2, fx.Top.Editor.AdditionalCaretOffsets.Count);
+        Assert.Contains (6, fx.Top.Editor.AdditionalCaretOffsets);
+        Assert.Contains (11, fx.Top.Editor.AdditionalCaretOffsets);
+        Assert.False (fx.Top.Editor.HasSelection);
+    }
+
+    [Fact]
+    public async Task CtrlClick_After_VerticalCarets_Uses_Click_Position_When_PositionReport_Arrives_First ()
+    {
+        await using AppFixture<EditorTestHost> fx = new (() => new ("abcd\nabcd\nabcd\nabcd"));
+        fx.Top.Editor.SetFocus ();
+        fx.Top.Editor.CaretOffset = 1;
+
+        fx.Injector.InjectKey (Key.CursorDown.WithCtrl.WithAlt, Direct);
+        fx.Injector.InjectKey (Key.CursorDown.WithCtrl.WithAlt, Direct);
+        Assert.True (fx.Top.Editor.HasMultipleCarets);
+
+        var primaryBefore = fx.Top.Editor.CaretOffset;
+
+        // Some terminals emit PositionReport before the plain LeftButtonPressed during a Ctrl+Click.
+        // The pre-press report must not hijack the primary caret.
+        fx.Injector.InjectMouse (
+            new ()
+            {
+                ScreenPosition = new (3, 3),
+                Flags = MouseFlags.LeftButtonPressed | MouseFlags.PositionReport | MouseFlags.Ctrl,
+                Timestamp = BaseTime
+            },
+            Direct);
+
+        fx.Injector.InjectMouse (
+            new ()
+            {
+                ScreenPosition = new (3, 3),
+                Flags = MouseFlags.LeftButtonPressed | MouseFlags.Ctrl,
+                Timestamp = BaseTime.AddMilliseconds (20)
+            },
+            Direct);
+
+        Assert.Equal (primaryBefore, fx.Top.Editor.CaretOffset);
+        Assert.Contains ("abcd\nabcd\nabcd\nabc".Length, fx.Top.Editor.AdditionalCaretOffsets);
     }
 
     private static void InjectClick (AppFixture<EditorTestHost> fx, Point pos)

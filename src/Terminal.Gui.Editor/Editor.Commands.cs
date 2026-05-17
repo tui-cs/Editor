@@ -40,6 +40,13 @@ public partial class Editor
         [Command.FindPrevious] = Bind.All (Key.F3.WithShift),
         [Command.Find] = Bind.All (Key.F.WithCtrl),
         [Command.Replace] = Bind.All (Key.H.WithCtrl),
+
+        // Vertical multi-caret — VS Code parity (Ctrl+Alt+Up/Down). A PlatformKeyBinding, so a
+        // user whose terminal/WM grabs the chord overrides it via View.ViewKeyBindings config;
+        // no editor-specific fallback chord. macOS uses the same chord pending real-terminal
+        // validation (specs/decisions.md DEC-006).
+        [Command.InsertCaretAbove] = Bind.All (Key.CursorUp.WithCtrl.WithAlt),
+        [Command.InsertCaretBelow] = Bind.All (Key.CursorDown.WithCtrl.WithAlt),
         [Command.WordLeft] = Bind.All (Key.CursorLeft.WithCtrl),
         [Command.WordRight] = Bind.All (Key.CursorRight.WithCtrl),
         [Command.WordLeftExtend] = Bind.All (Key.CursorLeft.WithCtrl.WithShift),
@@ -208,6 +215,9 @@ public partial class Editor
         AddCommand (Command.FindNext, FindNextCommand);
         AddCommand (Command.FindPrevious, FindPreviousCommand);
 
+        // Vertical multi-caret: add a caret one line above / below the block at the sticky column.
+        AddCommand (Command.InsertCaretAbove, () => AddCaretVertically (-1));
+        AddCommand (Command.InsertCaretBelow, () => AddCaretVertically (1));
         // Word navigation and kill
         AddCommand (Command.WordLeft, () =>
         {

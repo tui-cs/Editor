@@ -8,7 +8,7 @@ using Attribute = Terminal.Gui.Drawing.Attribute;
 namespace Terminal.Gui.Editor.Rendering;
 
 /// <summary>
-///     Renders additional (non-primary) caret positions as underlined + blinking cells.
+///     Renders additional (non-primary) caret positions as blinking, reverse-video cells.
 ///     Installed automatically by <see cref="Editor" /> when multi-caret mode is active.
 /// </summary>
 public sealed class MultiCaretRenderer : IOverlayRenderer
@@ -37,9 +37,10 @@ public sealed class MultiCaretRenderer : IOverlayRenderer
 
         Attribute normal = host.GetAttributeForRole (VisualRole.Normal);
 
-        // Use underline + blink to distinguish additional carets — more visible than a simple
-        // foreground/background invert, which can blend with selection or theme highlights.
-        Attribute caretAttr = new (normal.Foreground, normal.Background, TextStyle.Underline | TextStyle.Blink);
+        // Use reverse-video + blink to distinguish additional carets. Underline rendered poorly
+        // and inconsistently across terminals; the reverse (foreground/background swap) is far
+        // more legible and reliably supported.
+        Attribute caretAttr = new (normal.Foreground, normal.Background, TextStyle.Blink | TextStyle.Reverse);
 
         foreach (var offset in _editor.AdditionalCaretOffsets)
         {

@@ -105,3 +105,25 @@ Decisions are recorded here when an open question from the plan is resolved. Eac
 **Rationale**: Matches VS Code's default behavior with `editor.wrappingIndent: "none"`. Simplifies implementation — no need to compute or track the original line's indentation level for each wrap segment. Revisit in a future version if users need indented continuation lines.
 
 **Date**: 2026-05-13
+
+---
+
+### DEC-006: Vertical multi-caret keybindings (VS Code keyboard parity; `Alt`+drag mouse modifier)
+
+**Decision**: Add-caret-above/below use the VS Code keyboard chords `Ctrl+Alt+CursorUp` / `Ctrl+Alt+CursorDown`, shipped as a `[ConfigurationProperty]` `PlatformKeyBinding` entry in `Editor.DefaultKeyBindings` with **no** editor-specific fallback chord (a terminal/WM that grabs the chord is handled by user override via `View.ViewKeyBindings`). The two commands are registered via `AddCommand` against the real `Command.InsertCaretAbove` / `Command.InsertCaretBelow` enum members and bound through the same configurable path — not an inline `if` in `OnKeyDownNotHandled`. (Those members were added upstream by [gui-cs/Terminal.Gui#5318](https://github.com/gui-cs/Terminal.Gui/issues/5318) / PR [#5319](https://github.com/gui-cs/Terminal.Gui/pull/5319) and are consumed by pinning `$(TerminalGuiVersion)` to `2.1.1-develop.98`.)
+
+The column-of-carets mouse gesture uses **`Alt` + LeftButton drag**, **not** VS Code's `Shift+Alt`. Windows Terminal — and the xterm family it emulates — reserves `Shift`+drag as the user's *forced* text-selection override while an application has mouse mode enabled, and `Alt` turns that into a *block/rectangular* selection ([MS docs](https://learn.microsoft.com/en-us/windows/terminal/customize-settings/interaction); cf. microsoft/terminal#9608). So `Shift+Alt`+drag is swallowed by the terminal's own rectangular-select and never reaches the editor; `Alt`+drag is forwarded. The mouse modifier is currently **not** user-configurable (unlike the keybindings) — that gap, and restoring optional `Shift+Alt` parity, is tracked upstream by [gui-cs/Terminal.Gui#4888](https://github.com/gui-cs/Terminal.Gui/issues/4888) (*"Extend the configurable `KeyBindings` to `MouseBindings` (and combos)"*), to be prioritized.
+
+**Rationale**: Keyboard parity preserves muscle memory and is fully user-overridable via the TG-standard `[ConfigurationProperty]` + `PlatformKeyBinding` mechanism. For the *mouse* modifier, terminal reality wins over GUI-editor parity: a TUI lives inside a terminal emulator, so a gesture the terminal eats is simply unusable — and unlike a key, the mouse modifier has no config override yet. `Alt`+drag is terminal-safe today; full configurable parity follows once TG#4888 lands. **Command-enum debt — RESOLVED 2026-05-17:** the two commands were *temporarily* registered as `(Command) 1001/1002` casts (a sanctioned short-term workaround per Constitution "This Is TG", filed as the great TG issue [gui-cs/Terminal.Gui#5318](https://github.com/gui-cs/Terminal.Gui/issues/5318)). That issue shipped the real `Command.InsertCaretAbove` / `Command.InsertCaretBelow` members (TG PR [#5319](https://github.com/gui-cs/Terminal.Gui/pull/5319), in `Terminal.Gui 2.1.1-develop.98`); `$(TerminalGuiVersion)` is now pinned to `2.1.1-develop.98`, the magic-int casts and the workaround block in `Editor.Commands.cs` are deleted, and the bindings use the real members. The broader "should *any* view be able to contribute commands without casting ints" design question is parked (deliberately, as a possibly-YAGNI hypothetical) in [gui-cs/Terminal.Gui#5320](https://github.com/gui-cs/Terminal.Gui/issues/5320).
+
+**Date**: 2026-05-16 (mouse-modifier amendment same day, after Windows Terminal validation; Command-enum debt resolved 2026-05-17 — TG#5318/#5319 shipped, pinned `2.1.1-develop.98`)
+
+---
+
+### DEC-007: `ClearAdditionalCarets` stays `public`
+
+**Decision**: `Editor.ClearAdditionalCarets ()` remains `public` (resolves spec Open Decision "ClearAdditionalCarets visibility").
+
+**Rationale**: It is already shipped multi-caret API documented in `specs/public-api.md`, and `Editor` itself is a `src/` consumer (Esc handler, plain-click handler, the `Alt` column-drag reset). R9 requires a `src/`/`examples/` consumer (tests don't count) — that bar is met, so demoting to `internal` would be a gratuitous breaking change to documented surface.
+
+**Date**: 2026-05-16
