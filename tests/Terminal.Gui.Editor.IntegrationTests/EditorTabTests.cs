@@ -148,7 +148,7 @@ public class EditorTabTests
     }
 
     [Fact]
-    public async Task Ted_RawAnsi_Tab_After_ShiftTab_Reindents_Line_On_First_Keypress ()
+    public async Task RawAnsi_Tab_After_ShiftTab_Reindents_Line_On_First_Keypress ()
     {
         await using AppFixture<TedApp> fx = new (() => new TedApp ());
         fx.Top.Editor.SetFocus ();

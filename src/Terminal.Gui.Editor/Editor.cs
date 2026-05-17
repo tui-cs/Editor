@@ -437,6 +437,8 @@ public partial class Editor : View
             // external code retains the TextDocument (test fixtures, future shared docs across panes,
             // etc.). The Document setter unsubscribes on swap; this covers View-teardown.
             _document.Changed -= OnDocumentChanged;
+            // Dispose can run after document ownership moved; _lastKnownCaretOffset is maintained
+            // during caret movement and document changes, so avoid reading CaretOffset here.
             _caretAnchor = null;
             _selectionAnchor = null;
             _additionalCarets.Clear ();
