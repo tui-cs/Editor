@@ -6,6 +6,22 @@ namespace Terminal.Gui.Editor;
 public partial class Editor
 {
     /// <summary>
+    ///     Runs before command bindings. When completion is active, intercepts navigation and
+    ///     accept/dismiss keys (Enter, Tab, arrows, Esc) so they don't trigger the normal
+    ///     editor command bindings. Also checks provider-specific trigger keys (e.g. Ctrl+Space).
+    /// </summary>
+    /// <inheritdoc />
+    protected override bool OnKeyDown (Key key)
+    {
+        if (HandleCompletionKey (key))
+        {
+            return true;
+        }
+
+        return base.OnKeyDown (key);
+    }
+
+    /// <summary>
     ///     Catches keystrokes that didn't match any registered <see cref="Command" /> binding (set up in
     ///     <see cref="CreateCommandsAndBindings" />) and inserts the typed rune into the document. Skips
     ///     modified keys and control characters — those are either bound elsewhere or not editor input.
@@ -13,12 +29,6 @@ public partial class Editor
     /// <inheritdoc />
     protected override bool OnKeyDownNotHandled (Key key)
     {
-        // Completion popup gets first priority for navigation / accept / dismiss / trigger keys.
-        if (HandleCompletionKey (key))
-        {
-            return true;
-        }
-
         if (key == Key.Esc && HasMultipleCarets)
         {
             ClearAdditionalCarets ();

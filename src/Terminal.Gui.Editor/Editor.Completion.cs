@@ -20,7 +20,24 @@ public partial class Editor
     ///     Gets or sets the completion provider that supplies suggestions for the in-editor
     ///     autocomplete popup. Set to <see langword="null" /> to disable completion.
     /// </summary>
-    public IEditorCompletionProvider? CompletionProvider { get; set; }
+    public IEditorCompletionProvider? CompletionProvider
+    {
+        get;
+        set
+        {
+            if (field == value)
+            {
+                return;
+            }
+
+            field = value;
+
+            if (value is null)
+            {
+                DismissCompletion ();
+            }
+        }
+    }
 
     /// <summary>Whether the completion session is currently active (items are available).</summary>
     public bool IsCompletionActive => _completionItems.Count > 0;
@@ -285,6 +302,10 @@ public partial class Editor
         // Position the popup just below the caret.
         Point caretScreen = GetCaretScreenPosition ();
         _completionPopover.MakeVisible (new Point (caretScreen.X, caretScreen.Y + 1));
+
+        // Disable keyboard dispatch so the Popover doesn't capture text input.
+        // All navigation (Up/Down/Enter/Tab/Esc) is handled by HandleCompletionKey.
+        _completionPopover.Enabled = false;
     }
 
     private void SelectCompletionItem (int index)
