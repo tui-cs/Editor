@@ -39,7 +39,13 @@ public partial class Editor
         [Command.FindNext] = Bind.All (Key.F3),
         [Command.FindPrevious] = Bind.All (Key.F3.WithShift),
         [Command.Find] = Bind.All (Key.F.WithCtrl),
-        [Command.Replace] = Bind.All (Key.H.WithCtrl)
+        [Command.Replace] = Bind.All (Key.H.WithCtrl),
+        [Command.WordLeft] = Bind.All (Key.CursorLeft.WithCtrl),
+        [Command.WordRight] = Bind.All (Key.CursorRight.WithCtrl),
+        [Command.WordLeftExtend] = Bind.All (Key.CursorLeft.WithCtrl.WithShift),
+        [Command.WordRightExtend] = Bind.All (Key.CursorRight.WithCtrl.WithShift),
+        [Command.KillWordLeft] = Bind.All (Key.Backspace.WithCtrl),
+        [Command.KillWordRight] = Bind.All (Key.Delete.WithCtrl)
     };
 
     private void CreateCommandsAndBindings ()
@@ -201,6 +207,32 @@ public partial class Editor
         AddCommand (Command.Replace, InvokeReplaceRequested);
         AddCommand (Command.FindNext, FindNextCommand);
         AddCommand (Command.FindPrevious, FindPreviousCommand);
+
+        // Word navigation and kill
+        AddCommand (Command.WordLeft, () =>
+        {
+            MoveCaretToWordBoundary (false);
+            return true;
+        });
+        AddCommand (Command.WordRight, () =>
+        {
+            MoveCaretToWordBoundary (true);
+            return true;
+        });
+        AddCommand (Command.WordLeftExtend,
+            () => ExtendCommand (() => ExtendCaretTo (GetWordBoundaryOffset (CaretOffset, false))));
+        AddCommand (Command.WordRightExtend,
+            () => ExtendCommand (() => ExtendCaretTo (GetWordBoundaryOffset (CaretOffset, true))));
+        AddCommand (Command.KillWordLeft, () =>
+        {
+            KillToWordBoundary (false);
+            return true;
+        });
+        AddCommand (Command.KillWordRight, () =>
+        {
+            KillToWordBoundary (true);
+            return true;
+        });
 
         ApplyKeyBindings (View.DefaultKeyBindings, DefaultKeyBindings);
 
