@@ -1,7 +1,5 @@
-using Terminal.Gui.App;
 using Terminal.Gui.Input;
 using Terminal.Gui.ViewBase;
-using Terminal.Gui.Editor;
 using Terminal.Gui.Views;
 
 namespace Ted;

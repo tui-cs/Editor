@@ -1,8 +1,8 @@
 using System.Drawing;
 using Terminal.Gui.Document;
 using Terminal.Gui.Drawing;
-using Terminal.Gui.Input;
 using Terminal.Gui.Editor.Rendering;
+using Terminal.Gui.Input;
 using Attribute = Terminal.Gui.Drawing.Attribute;
 
 namespace Terminal.Gui.Editor;
@@ -178,7 +178,8 @@ public partial class Editor
     ///     Builds a <see cref="CellVisualLine" /> for a single word-wrap segment of a document line.
     ///     Used by the mouse-hit-testing path — only element geometry matters, not attributes.
     /// </summary>
-    private CellVisualLine BuildVisualLineForSegment (DocumentLine documentLine, int segmentStartOffset, string segmentText)
+    private CellVisualLine BuildVisualLineForSegment (DocumentLine documentLine, int segmentStartOffset,
+        string segmentText)
     {
         CellVisualLine visualLine = new (documentLine);
         var visualColumn = 0;

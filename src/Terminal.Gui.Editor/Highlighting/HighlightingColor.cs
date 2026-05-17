@@ -161,6 +161,30 @@ public class HighlightingColor : IFreezable, ICloneable, IEquatable<Highlighting
         }
     }
 
+    private VisualRole? _role;
+
+    /// <summary>
+    ///     Gets/sets the Terminal.Gui <see cref="VisualRole" /> this color maps to, if any.
+    ///     Populated at load time from the xshd <c>category=</c> attribute or the
+    ///     <see cref="XshdRoleMap" /> name table. When set and the active <see cref="Scheme" />
+    ///     explicitly defines that role, the colorizer uses the scheme's themed attribute;
+    ///     otherwise it keeps only this color's xshd-declared foreground over the editor's scheme
+    ///     background (the xshd background is not used).
+    /// </summary>
+    public VisualRole? Role
+    {
+        get => _role;
+        set
+        {
+            if (IsFrozen)
+            {
+                throw new InvalidOperationException ();
+            }
+
+            _role = value;
+        }
+    }
+
     internal bool IsEmptyForMerge => _bold == null && _italic == null && _underline == null
                                      && _strikethrough == null && _foreground == null && _background == null;
 
@@ -180,6 +204,7 @@ public class HighlightingColor : IFreezable, ICloneable, IEquatable<Highlighting
         return _name == other._name && _bold == other._bold
                                     && _italic == other._italic && _underline == other._underline &&
                                     _strikethrough == other._strikethrough
+                                    && _role == other._role
                                     && Equals (_foreground, other._foreground) &&
                                     Equals (_background, other._background);
     }
@@ -286,6 +311,7 @@ public class HighlightingColor : IFreezable, ICloneable, IEquatable<Highlighting
 
             hashCode += 1000000009 * _bold.GetHashCode ();
             hashCode += 1000000021 * _italic.GetHashCode ();
+            hashCode += 1000000093 * _role.GetHashCode ();
             if (_foreground != null)
             {
                 hashCode += 1000000033 * _foreground.GetHashCode ();
@@ -335,6 +361,11 @@ public class HighlightingColor : IFreezable, ICloneable, IEquatable<Highlighting
         if (color._strikethrough != null)
         {
             _strikethrough = color._strikethrough;
+        }
+
+        if (color._role != null)
+        {
+            _role = color._role;
         }
     }
 }

@@ -131,6 +131,29 @@ public int IndentationSize
 
 Do **not** introduce a separate `private int _indentationSize;` field. The initializer trails the close-brace as shown.
 
+**When an explicit backing field is unavoidable, declare it immediately above the property it backs — never in a field block at the top of the type.** The `field` keyword is the default and removes the question entirely; but some properties still need a real field (a lifted/forked file that preserves upstream style and does not use `field`; a field shared by several members; a field touched by `ref`/`out` or interlocked ops). In those cases the field/property pair stays visually together:
+
+```csharp
+private VisualRole? _role;
+
+/// <summary>...</summary>
+public VisualRole? Role
+{
+    get => _role;
+    set
+    {
+        if (IsFrozen)
+        {
+            throw new InvalidOperationException ();
+        }
+
+        _role = value;
+    }
+}
+```
+
+Fork-policy exception: do **not** reflow a lifted file's *existing* upstream field block to satisfy this — that churns the merge story (see the AvaloniaEdit fork policy). The rule binds *new* fields you add, even inside lifted files.
+
 > **ReSharper bug warning.** ReSharper / Rider's "Convert to auto-property" and "Use auto-property" inspections are unreliable around `field` and may rewrite intentional `field`-backed properties into broken auto-properties. The team-shared `.DotSettings` disables these inspections (`ConvertToAutoProperty`, `ConvertToAutoPropertyWhenPossible`, `ConvertToAutoPropertyWithPrivateSetter` set to `DO_NOT_SHOW`; `CSUseAutoProperty` cleanup step disabled). If you see the suggestion in your IDE, ignore it and check that your local Rider is using the team-shared settings. **`field` is not optional in this codebase.**
 
 For trivial getters with no setter logic, plain auto-properties are fine: `public TextDocument? Document { get; private set; }`.
@@ -163,6 +186,7 @@ private void ExtendCaretBy (int delta)
 - **No file longer than 1000 lines.** When a file approaches that, split — by partial class (`Editor.Drawing.cs`, `Editor.Mouse.cs`), by helper extraction, or by genuinely splitting the type. The cleanup hook does not enforce this; the reviewer does.
 - **C# 14 `extension` blocks**: prefer extension blocks over a static class full of `this`-prefixed extension methods when the extensions form a coherent group on a single receiver type.
 - **Namespace per folder.** `src/Terminal.Gui.Editor/Document/` ⇒ `Terminal.Gui.Document`; `src/Terminal.Gui.Editor/Rendering/` ⇒ `Terminal.Gui.Views.Rendering`. Don't put unrelated types in the same namespace just because they share a folder.
+- **No static members on `View`-derived types.** A class that derives from `Terminal.Gui.View` (e.g. `Editor`) must not declare `static` members — not fields, not properties, not events, not even "harmless" caches or lookup tables. Terminal.Gui's `Application` lifetime is per-instance (see "Testing tiers"); static state on a View is process-global, survives across `IApplication` instances, and silently couples otherwise-independent windows and parallel tests (the canonical cause of parallel-test hangs). Shared/lookup data lives in a dedicated non-View type (e.g. `XshdRoleMap`), exposed read-only (`private` + `FrozenDictionary`/`IReadOnlyXxx`), and is injected or queried — never hung off the View. `const` is the only exception (it is not state). This is a hard rule; a reviewer blocks on it.
 
 ### Testing convention
 

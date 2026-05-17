@@ -362,14 +362,6 @@ public class TedAppTests
     }
 
     [Fact]
-    public void Constructor_Defaults_UseThemeBackground_To_True ()
-    {
-        TedApp app = new ();
-
-        Assert.True (app.Editor.UseThemeBackground);
-    }
-
-    [Fact]
     public void Constructor_Defaults_AutoIndent_To_Enabled ()
     {
         TedApp app = new ();

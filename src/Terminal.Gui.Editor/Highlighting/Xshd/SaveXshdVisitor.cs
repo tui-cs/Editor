@@ -75,6 +75,11 @@ public sealed class SaveXshdVisitor : IXshdVisitor
             _writer.WriteAttributeString ("exampleText", color.ExampleText);
         }
 
+        if (color.Category != null)
+        {
+            _writer.WriteAttributeString ("category", color.Category);
+        }
+
         _writer.WriteEndElement ();
         return null;
     }
