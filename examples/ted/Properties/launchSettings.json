@@ -2,6 +2,7 @@
   "profiles": {
     "ted": {
       "commandName": "Project",
+      "commandLineArgs": "examples/ted/TedApp.cs",
       "workingDirectory": "../.."
     }
   }
