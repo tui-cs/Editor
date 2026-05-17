@@ -255,7 +255,7 @@ public partial class Editor
         SetNeedsDraw ();
     }
 
-    private bool? ColumnSelectByKeyboard (int rowDelta, int columnDelta)
+    private bool ColumnSelectByKeyboard (int rowDelta, int columnDelta)
     {
         if (_document is null)
         {

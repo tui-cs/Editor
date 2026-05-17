@@ -68,7 +68,6 @@ public partial class Editor
         }
 
         Key baseKey = key.NoCtrl.NoShift.NoAlt;
-        var pageDelta = Math.Max (1, Viewport.Height);
 
         if (baseKey == Key.CursorUp)
         {
@@ -97,6 +96,8 @@ public partial class Editor
 
             return true;
         }
+
+        var pageDelta = Math.Max (1, Viewport.Height);
 
         if (baseKey == Key.PageUp)
         {
