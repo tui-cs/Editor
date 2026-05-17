@@ -497,6 +497,12 @@ public partial class Editor
     /// </summary>
     private bool? CutToEndOfLine ()
     {
+        // Snapshot the kill-run flag for append decisions. When invoked via OnKeyDown, the flag
+        // was already snapshotted there and _lastCommandWasKill is false, making this a no-op.
+        // When invoked directly via InvokeCommand, this is the only snapshot site.
+        _previousCommandWasKill = _lastCommandWasKill;
+        _lastCommandWasKill = false;
+
         if (ReadOnly || _document is null)
         {
             return true;
@@ -536,7 +542,7 @@ public partial class Editor
 
         var killed = _document.GetText (start, length);
 
-        if (!WriteKillToClipboard (killed, append: _lastCommandWasKill, prepend: false))
+        if (!WriteKillToClipboard (killed, append: _previousCommandWasKill, prepend: false))
         {
             return true;
         }
@@ -558,6 +564,10 @@ public partial class Editor
     /// </summary>
     private bool? CutToStartOfLine ()
     {
+        // Snapshot the kill-run flag — see CutToEndOfLine for rationale.
+        _previousCommandWasKill = _lastCommandWasKill;
+        _lastCommandWasKill = false;
+
         if (ReadOnly || _document is null)
         {
             return true;
@@ -582,7 +592,7 @@ public partial class Editor
 
         var killed = _document.GetText (start, length);
 
-        if (!WriteKillToClipboard (killed, append: false, prepend: _lastCommandWasKill))
+        if (!WriteKillToClipboard (killed, append: false, prepend: _previousCommandWasKill))
         {
             return true;
         }

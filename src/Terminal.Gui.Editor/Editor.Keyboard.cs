@@ -7,14 +7,17 @@ public partial class Editor
 {
     /// <summary>
     ///     Intercepts every keystroke before dispatch so the kill-ring consecutive-kill flag is
-    ///     cleared. The kill commands (<see cref="Command.CutToEndOfLine" /> /
-    ///     <see cref="Command.CutToStartOfLine" />) re-set the flag after executing; every other
-    ///     command (and plain character insertion via <see cref="OnKeyDownNotHandled" />) leaves it
-    ///     cleared, which breaks the "consecutive kill → append" run.
+    ///     correctly tracked. Snapshots <c>_lastCommandWasKill</c> into <c>_previousCommandWasKill</c>
+    ///     (so the kill commands can read whether the preceding command was a kill for append/prepend
+    ///     decisions), then clears <c>_lastCommandWasKill</c>. The kill commands
+    ///     (<see cref="Command.CutToEndOfLine" /> / <see cref="Command.CutToStartOfLine" />) re-set
+    ///     <c>_lastCommandWasKill</c> after executing; every other command leaves it cleared, which
+    ///     breaks the "consecutive kill → append" run.
     /// </summary>
     /// <inheritdoc />
     protected override bool OnKeyDown (Key key)
     {
+        _previousCommandWasKill = _lastCommandWasKill;
         _lastCommandWasKill = false;
 
         return base.OnKeyDown (key);

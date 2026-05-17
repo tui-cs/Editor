@@ -49,8 +49,14 @@ public partial class Editor : View
 
     // Kill-ring: consecutive CutToEndOfLine / CutToStartOfLine appends to the clipboard instead
     // of replacing. Any non-kill command (including plain character insertion) breaks the run.
-    // Reset in OnKeyDown before dispatch; the kill commands re-set it after executing.
+    // _lastCommandWasKill is set to true by kill commands after executing.
+    // _previousCommandWasKill captures the flag's value before clearing, so the kill commands can
+    // read whether the *preceding* command was a kill.  Two snapshot sites cover both dispatch paths:
+    //   • OnKeyDown (keyboard dispatch): snapshots then clears before base.OnKeyDown.
+    //   • Each kill command entry (InvokeCommand dispatch): snapshots then clears inline.
+    // The second snapshot is a no-op when the first already ran (flag is already false).
     private bool _lastCommandWasKill;
+    private bool _previousCommandWasKill;
 
     // Incremental max-width tracking: avoids the O(N) all-lines walk that UpdateContentSize
     // used to do on every edit. _maxVisualWidth is the widest visual line seen; _maxWidthLineNumber
