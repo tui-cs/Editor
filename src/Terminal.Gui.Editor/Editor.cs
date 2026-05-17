@@ -167,7 +167,8 @@ public partial class Editor : View
     ///     Enter inserts a newline, vertical navigation moves across lines, and content height reflects the
     ///     full document. When <see langword="false" />, newline insertion is suppressed, vertical
     ///     navigation and scroll are constrained to a single row, <see cref="WordWrap" /> is forced off,
-    ///     and multi-caret operations are disabled. Selection and horizontal editing still work.
+    ///     and multi-caret operations are disabled. Existing newlines in the document are preserved (no
+    ///     data loss) and rendered as visible <c>⏎</c> glyphs. Selection and horizontal editing still work.
     /// </summary>
     public bool Multiline
     {
@@ -188,14 +189,6 @@ public partial class Editor : View
 
                 // Collapse additional carets — vertical multi-caret is a multi-line concept.
                 ClearAdditionalCarets ();
-
-                // Strip existing newlines so the document is guaranteed single-line.
-                if (_document is { LineCount: > 1 })
-                {
-                    string flat = _document.Text.ReplaceLineEndings (string.Empty);
-                    _document.Text = flat;
-                    CaretOffset = Math.Min (CaretOffset, _document.TextLength);
-                }
             }
 
             ClearVisualLineCaches ();
@@ -539,10 +532,19 @@ public partial class Editor : View
 
         if (!Multiline)
         {
-            // Single-line mode: one row, width from line 1 only.
-            var width = _document.LineCount > 0
-                ? GetOrBuildDefaultVisualLine (_document.GetLineByNumber (1)).VisualLength
-                : 0;
+            // Single-line mode: one row, width = sum of all line visual lengths + newline glyphs.
+            var width = 0;
+
+            for (var i = 1; i <= _document.LineCount; i++)
+            {
+                width += GetOrBuildDefaultVisualLine (_document.GetLineByNumber (i)).VisualLength;
+
+                if (i < _document.LineCount)
+                {
+                    width += 1; // newline glyph
+                }
+            }
+
             SetContentSize (new Size (width + 1, 1));
 
             return;
@@ -898,6 +900,11 @@ public partial class Editor : View
             return 0;
         }
 
+        if (!Multiline)
+        {
+            return GetFlatVisualColumn (line, caretOffset - line.Offset);
+        }
+
         if (!WordWrap)
         {
             return GetOrBuildDefaultVisualLine (line).GetVisualColumn (caretOffset - line.Offset);
@@ -930,12 +937,65 @@ public partial class Editor : View
     }
 
     /// <summary>
+    ///     Returns the visual column of an offset in a flattened single-line view. Sums the visual
+    ///     lengths of all preceding lines (plus 1-cell newline glyphs) and adds the column within
+    ///     the target line.
+    /// </summary>
+    private int GetFlatVisualColumn (DocumentLine targetLine, int offsetInLine)
+    {
+        var flatColumn = 0;
+
+        for (var i = 1; i < targetLine.LineNumber; i++)
+        {
+            flatColumn += GetOrBuildDefaultVisualLine (_document!.GetLineByNumber (i)).VisualLength;
+            flatColumn += 1; // newline glyph
+        }
+
+        flatColumn += GetOrBuildDefaultVisualLine (targetLine).GetVisualColumn (offsetInLine);
+
+        return flatColumn;
+    }
+
+    /// <summary>
+    ///     Returns the document offset for a given flat visual column in single-line mode.
+    ///     Inverse of <see cref="GetFlatVisualColumn" />.
+    /// </summary>
+    private int GetOffsetFromFlatVisualColumn (int flatColumn)
+    {
+        var remaining = flatColumn;
+
+        for (var i = 1; i <= _document!.LineCount; i++)
+        {
+            CellVisualLine visualLine = GetOrBuildDefaultVisualLine (_document.GetLineByNumber (i));
+            var lineWidth = visualLine.VisualLength;
+
+            if (i < _document.LineCount && remaining > lineWidth)
+            {
+                remaining -= lineWidth + 1; // +1 for newline glyph
+            }
+            else
+            {
+                DocumentLine line = _document.GetLineByNumber (i);
+
+                return line.Offset + visualLine.GetRelativeOffset (Math.Min (remaining, lineWidth));
+            }
+        }
+
+        return _document.TextLength;
+    }
+
+    /// <summary>
     ///     Returns the caret's position as an index into the visible-line list (i.e. the coordinate
     ///     system used by <c>Viewport.Y</c>). Falls back to <see cref="GetCaretLineIndex" /> when
     ///     no folding is active.
     /// </summary>
     private int GetCaretVisibleLineIndex ()
     {
+        if (!Multiline)
+        {
+            return 0;
+        }
+
         if (WordWrap)
         {
             return GetCaretWrapRow ();

@@ -15,7 +15,8 @@ editing intact.
 
 | Aspect | Behavior |
 |--------|----------|
-| **Newline insertion** | `Command.NewLine` (Enter) is a no-op; the document stays single-line. |
+| **Newline insertion** | `Command.NewLine` (Enter) is a no-op; prevents adding new newlines. |
+| **Newline display** | Existing newlines in the document are preserved (no data loss) and rendered as visible glyphs (`⏎`). |
 | **Word wrap** | Forced off; setting `WordWrap = true` is silently ignored. |
 | **Vertical navigation** | `Up`, `Down`, `PageUp`, `PageDown` and their `*Extend` (Shift) variants are no-ops. |
 | **Vertical scroll** | `ScrollUp` / `ScrollDown` are no-ops. Content height is always 1. |
@@ -38,6 +39,8 @@ Setting `Multiline` to `false`:
 1. Forces `WordWrap = false`.
 2. Clears any additional carets (`ClearAdditionalCarets`).
 3. Clears visual-line caches and recomputes content size (height = 1).
+4. Preserves existing document content (no data loss) — newlines are rendered as `⏎` glyphs.
+5. Home/End navigate to document start/end (since the visual representation is one row).
 
 ## Not in scope (this phase)
 

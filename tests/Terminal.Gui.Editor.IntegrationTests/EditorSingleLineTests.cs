@@ -198,19 +198,43 @@ public class EditorSingleLineTests
         fx.App.Clipboard!.SetClipboardData ("cd\nef\r\ngh");
         fx.Injector.InjectKey (Key.V.WithCtrl, Direct);
 
+        // Paste still strips newlines so new content stays on one logical line.
         Assert.Equal ("abcdefgh", fx.Top.Editor.Document!.Text);
         Assert.Equal (1, fx.Top.Editor.Document.LineCount);
     }
 
     [Fact]
-    public async Task SingleLine_Transition_Strips_Existing_Newlines ()
+    public async Task SingleLine_Transition_Preserves_Newlines ()
     {
         await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("line1\nline2\nline3"));
         Assert.Equal (3, fx.Top.Editor.Document!.LineCount);
 
         fx.Top.Editor.Multiline = false;
 
-        Assert.Equal ("line1line2line3", fx.Top.Editor.Document.Text);
-        Assert.Equal (1, fx.Top.Editor.Document.LineCount);
+        // Newlines are preserved — no data loss.
+        Assert.Equal ("line1\nline2\nline3", fx.Top.Editor.Document.Text);
+        Assert.Equal (3, fx.Top.Editor.Document.LineCount);
+
+        // Content size height is still 1 (single visual row).
+        fx.Render ();
+        Assert.Equal (1, fx.Top.Editor.GetContentSize ().Height);
+    }
+
+    [Fact]
+    public async Task SingleLine_Home_End_Navigate_To_Document_Bounds ()
+    {
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("ab\ncd\nef"));
+        fx.Top.Editor.Multiline = false;
+        fx.Top.Editor.SetFocus ();
+
+        // Place caret in the middle of line 2.
+        fx.Top.Editor.CaretOffset = 4; // 'c' on line 2
+
+        fx.Injector.InjectKey (Key.Home, Direct);
+        Assert.Equal (0, fx.Top.Editor.CaretOffset);
+
+        fx.Top.Editor.CaretOffset = 4;
+        fx.Injector.InjectKey (Key.End, Direct);
+        Assert.Equal (8, fx.Top.Editor.CaretOffset); // end of "ef"
     }
 }
