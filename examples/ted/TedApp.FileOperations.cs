@@ -1,3 +1,4 @@
+using System.Text;
 using Terminal.Gui.Document;
 using Terminal.Gui.Highlighting;
 using Terminal.Gui.Resources;
@@ -30,19 +31,71 @@ public sealed partial class TedApp
     /// <summary>Dialog hook used by <see cref="QuitFile" />. Tests can replace it to avoid interactive UI.</summary>
     public Func<SaveChangesChoice> ShowSaveChangesDialog { get; set; }
 
+    private bool _openReadWasSet;
+
+    private Func<string, string> _readAllText = File.ReadAllText;
+
     /// <summary>File read hook retained for source compatibility. Streaming opens use <see cref="OpenRead" />.</summary>
-    public Func<string, string> ReadAllText { get; set; } = File.ReadAllText;
+    public Func<string, string> ReadAllText
+    {
+        get => _readAllText;
+        set
+        {
+            _readAllText = value ?? throw new ArgumentNullException (nameof (value));
+
+            if (!_openReadWasSet)
+            {
+                _openRead = OpenReadFromReadAllText;
+            }
+        }
+    }
+
+    private Func<string, Stream> _openRead = File.OpenRead;
 
     /// <summary>File stream hook used by <see cref="OpenFile" />. Tests can replace it with an in-memory fake.</summary>
-    public Func<string, Stream> OpenRead { get; set; } = File.OpenRead;
+    public Func<string, Stream> OpenRead
+    {
+        get => _openRead;
+        set
+        {
+            _openRead = value ?? throw new ArgumentNullException (nameof (value));
+            _openReadWasSet = true;
+        }
+    }
+
+    private bool _createWriteWasSet;
+
+    private Action<string, string> _writeAllText = File.WriteAllText;
 
     /// <summary>
     ///     File write hook retained for source compatibility. Streaming saves use <see cref="CreateWrite" />.
     /// </summary>
-    public Action<string, string> WriteAllText { get; set; } = File.WriteAllText;
+    public Action<string, string> WriteAllText
+    {
+        get => _writeAllText;
+        set
+        {
+            _writeAllText = value ?? throw new ArgumentNullException (nameof (value));
+
+            if (!_createWriteWasSet)
+            {
+                _createWrite = CreateWriteFromWriteAllText;
+            }
+        }
+    }
+
+    private Func<string, Stream> _createWrite = path => File.Create (path);
 
     /// <summary>File stream hook used by <see cref="SaveFile" /> and <see cref="SaveFileAs" />.</summary>
-    public Func<string, Stream> CreateWrite { get; set; } = path => File.Create (path);
+    public Func<string, Stream> CreateWrite
+    {
+        get => _createWrite;
+        set
+        {
+            _createWrite = value ?? throw new ArgumentNullException (nameof (value));
+            _createWriteWasSet = true;
+        }
+    }
 
     /// <summary>The currently running background load, if any.</summary>
     public Task<bool>? CurrentLoadTask { get; private set; }
@@ -117,7 +170,18 @@ public sealed partial class TedApp
             return await SaveFileAsAsync (marshalToApp, cancellationToken);
         }
 
-        await SaveFileToAsync (CurrentFilePath, marshalToApp, cancellationToken);
+        try
+        {
+            await SaveFileToAsync (CurrentFilePath, marshalToApp, cancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+            return false;
+        }
+        catch (Exception ex) when (IsFileOperationException (ex))
+        {
+            return false;
+        }
 
         return true;
     }
@@ -347,6 +411,19 @@ public sealed partial class TedApp
 
             return false;
         }
+        catch (Exception ex) when (IsFileOperationException (ex))
+        {
+            if (statusOperationId is { } startedStatusOperationId)
+            {
+                CompleteStreamingStatus (startedStatusOperationId, "Load failed");
+            }
+            else
+            {
+                CompleteStreamingStatus ("Load failed");
+            }
+
+            return false;
+        }
     }
 
     /// <summary>
@@ -375,8 +452,20 @@ public sealed partial class TedApp
         bool marshalToApp = false,
         CancellationToken cancellationToken = default)
     {
+        try
+        {
+            await SaveFileToAsync (filePath, marshalToApp, cancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+            return false;
+        }
+        catch (Exception ex) when (IsFileOperationException (ex))
+        {
+            return false;
+        }
+
         CurrentFilePath = filePath;
-        await SaveFileToAsync (filePath, marshalToApp, cancellationToken);
         UpdateFileNameShortcut ();
         UpdatePreviewVisibility ();
 
@@ -385,28 +474,75 @@ public sealed partial class TedApp
 
     private async Task SaveFileToAsync (string filePath, bool marshalToApp, CancellationToken cancellationToken)
     {
-        await using Stream stream = CreateWrite (filePath);
-        var statusOperationId = BeginStreamingStatus (FormatStartingProgress ("Saving", null));
+        long? statusOperationId = null;
 
-        IProgress<TextDocumentProgress> progress =
-            CreateStreamingProgress (progress => ReportSaveProgress (statusOperationId, progress));
-        await Editor.SaveAsync (stream, progress, cancellationToken);
-        var fileSize = GetStreamLength (stream);
+        try
+        {
+            await using Stream stream = CreateWrite (filePath);
+            var startedStatusOperationId = BeginStreamingStatus (FormatStartingProgress ("Saving", null));
+            statusOperationId = startedStatusOperationId;
 
-        void MarkSaved ()
-        {
-            Editor.Document!.UndoStack.MarkAsOriginalFile ();
-            CompleteStreamingStatus (statusOperationId, FormatCompletedProgress ("Saved", fileSize));
-        }
+            IProgress<TextDocumentProgress> progress =
+                CreateStreamingProgress (progress => ReportSaveProgress (startedStatusOperationId, progress));
+            await Editor.SaveAsync (stream, progress, cancellationToken);
+            var fileSize = GetStreamLength (stream);
 
-        if (marshalToApp)
-        {
-            await InvokeOnAppAsync (MarkSaved);
+            void MarkSaved ()
+            {
+                Editor.Document!.UndoStack.MarkAsOriginalFile ();
+                CompleteStreamingStatus (startedStatusOperationId, FormatCompletedProgress ("Saved", fileSize));
+            }
+
+            if (marshalToApp)
+            {
+                await InvokeOnAppAsync (MarkSaved);
+            }
+            else
+            {
+                MarkSaved ();
+            }
         }
-        else
+        catch (OperationCanceledException)
         {
-            MarkSaved ();
+            if (statusOperationId is { } startedStatusOperationId)
+            {
+                CompleteStreamingStatus (startedStatusOperationId, "Save canceled");
+            }
+            else
+            {
+                CompleteStreamingStatus ("Save canceled");
+            }
+
+            throw;
         }
+        catch (Exception ex) when (IsFileOperationException (ex))
+        {
+            if (statusOperationId is { } startedStatusOperationId)
+            {
+                CompleteStreamingStatus (startedStatusOperationId, "Save failed");
+            }
+            else
+            {
+                CompleteStreamingStatus ("Save failed");
+            }
+
+            throw;
+        }
+    }
+
+    private Stream OpenReadFromReadAllText (string path)
+    {
+        return new MemoryStream (Encoding.UTF8.GetBytes (_readAllText (path)));
+    }
+
+    private Stream CreateWriteFromWriteAllText (string path)
+    {
+        return new WriteAllTextStream (path, _writeAllText);
+    }
+
+    private static bool IsFileOperationException (Exception ex)
+    {
+        return ex is IOException or UnauthorizedAccessException;
     }
 
     private void ApplyFileMetadata (string? filePath)
@@ -652,5 +788,45 @@ public sealed partial class TedApp
         var format = unitIndex == 0 ? "N0" : "N1";
 
         return $"{value.ToString (format)} {units[unitIndex]}";
+    }
+
+    private sealed class WriteAllTextStream : MemoryStream
+    {
+        private readonly string _path;
+        private readonly Action<string, string> _writeAllText;
+        private bool _hasWritten;
+
+        public WriteAllTextStream (string path, Action<string, string> writeAllText)
+        {
+            _path = path;
+            _writeAllText = writeAllText;
+        }
+
+        protected override void Dispose (bool disposing)
+        {
+            if (disposing)
+            {
+                WriteOnce ();
+            }
+
+            base.Dispose (disposing);
+        }
+
+        public override async ValueTask DisposeAsync ()
+        {
+            WriteOnce ();
+            await base.DisposeAsync ();
+        }
+
+        private void WriteOnce ()
+        {
+            if (_hasWritten)
+            {
+                return;
+            }
+
+            _hasWritten = true;
+            _writeAllText (_path, Encoding.UTF8.GetString (ToArray ()));
+        }
     }
 }

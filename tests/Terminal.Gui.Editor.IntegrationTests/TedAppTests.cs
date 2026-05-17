@@ -2,6 +2,7 @@
 
 using System.Collections.Immutable;
 using System.Drawing;
+using System.IO;
 using System.Text;
 using Ted;
 using Terminal.Gui.Configuration;
@@ -125,6 +126,7 @@ public class TedAppTests
     public async Task OpenFileAsync_Loads_Stream_On_Background_Thread ()
     {
         TedApp app = new (configPath: TedTestConfig.NewPath ());
+        var callerThreadId = Environment.CurrentManagedThreadId;
         GatedReadStream stream = new (Encoding.UTF8.GetBytes (new string ('x', 100_000)));
         app.ShowOpenDialog = () => "/tmp/ted-progress.txt";
         app.OpenRead = _ => stream;
@@ -142,8 +144,37 @@ public class TedAppTests
         stream.AllowRead.SetResult ();
 
         Assert.True (await openTask);
+        Assert.NotEqual (callerThreadId, stream.ReadThreadId);
         Assert.Equal ("Loaded 97.7 KiB", app.LoadSpinnerShortcut.Title);
         Assert.Equal ("Loaded 97.7 KiB", app.LoadSpinnerShortcut.HelpText);
+    }
+
+    [Fact]
+    public async Task OpenFileAsync_ReadFailure_HidesSpinner_AndShowsFailureStatus ()
+    {
+        TedApp app = new (configPath: TedTestConfig.NewPath ());
+        app.ShowOpenDialog = () => "/tmp/ted-open-fails.txt";
+        app.OpenRead = _ => new ThrowingReadStream ();
+
+        Assert.False (await app.OpenFileAsync (TestContext.Current.CancellationToken));
+
+        Assert.False (app.LoadStatusSpinner.Visible);
+        Assert.False (app.LoadStatusSpinner.AutoSpin);
+        Assert.Equal ("Load failed", app.LoadSpinnerShortcut.Title);
+        Assert.Equal ("Load failed", app.LoadSpinnerShortcut.HelpText);
+    }
+
+    [Fact]
+    public void OpenFile_UsesReadAllTextHook_WhenReplaced ()
+    {
+        TedApp app = new (configPath: TedTestConfig.NewPath ());
+        app.ShowOpenDialog = () => "/tmp/ted-legacy-open.txt";
+        app.ReadAllText = path => path == "/tmp/ted-legacy-open.txt" ? "legacy open" : string.Empty;
+
+        Assert.True (app.OpenFile ());
+
+        Assert.Equal ("legacy open", app.Editor.Document!.Text);
+        Assert.Equal ("/tmp/ted-legacy-open.txt", app.CurrentFilePath);
     }
 
     [Fact]
@@ -254,6 +285,62 @@ public class TedAppTests
 
         Assert.True (app.SaveFile ());
 
+        Assert.False (app.IsDocumentModified);
+    }
+
+    [Fact]
+    public async Task SaveFileAsync_WriteFailure_HidesSpinner_AndShowsFailureStatus ()
+    {
+        TedApp app = new (configPath: TedTestConfig.NewPath ());
+        app.OpenMissingFile ("/tmp/ted-save-fails.txt");
+        app.Editor.Document!.Text = "dirty";
+        app.CreateWrite = _ => new ThrowingWriteStream ();
+
+        Assert.False (await app.SaveFileAsync (TestContext.Current.CancellationToken));
+
+        Assert.False (app.LoadStatusSpinner.Visible);
+        Assert.False (app.LoadStatusSpinner.AutoSpin);
+        Assert.Equal ("Save failed", app.LoadSpinnerShortcut.Title);
+        Assert.Equal ("Save failed", app.LoadSpinnerShortcut.HelpText);
+        Assert.True (app.IsDocumentModified);
+    }
+
+    [Fact]
+    public async Task SaveFileAsync_Canceled_HidesSpinner_AndShowsCanceledStatus ()
+    {
+        TedApp app = new (configPath: TedTestConfig.NewPath ());
+        app.OpenMissingFile ("/tmp/ted-save-canceled.txt");
+        app.Editor.Document!.Text = "dirty";
+        using CancellationTokenSource cts = new ();
+        await cts.CancelAsync ();
+
+        Assert.False (await app.SaveFileAsync (cts.Token));
+
+        Assert.False (app.LoadStatusSpinner.Visible);
+        Assert.False (app.LoadStatusSpinner.AutoSpin);
+        Assert.Equal ("Save canceled", app.LoadSpinnerShortcut.Title);
+        Assert.Equal ("Save canceled", app.LoadSpinnerShortcut.HelpText);
+        Assert.True (app.IsDocumentModified);
+    }
+
+    [Fact]
+    public void SaveFile_UsesWriteAllTextHook_WhenReplaced ()
+    {
+        string? savedPath = null;
+        string? savedText = null;
+        TedApp app = new (configPath: TedTestConfig.NewPath ());
+        app.OpenMissingFile ("/tmp/ted-legacy-save.txt");
+        app.Editor.Document!.Text = "legacy save";
+        app.WriteAllText = (path, text) =>
+        {
+            savedPath = path;
+            savedText = text;
+        };
+
+        Assert.True (app.SaveFile ());
+
+        Assert.Equal ("/tmp/ted-legacy-save.txt", savedPath);
+        Assert.Equal ("legacy save", savedText);
         Assert.False (app.IsDocumentModified);
     }
 
@@ -711,6 +798,61 @@ public class TedAppTests
         {
             _capture (Encoding.UTF8.GetString (ToArray ()));
             await base.DisposeAsync ();
+        }
+    }
+
+    private sealed class ThrowingReadStream : Stream
+    {
+        public override bool CanRead => true;
+
+        public override bool CanSeek => false;
+
+        public override bool CanWrite => false;
+
+        public override long Length => 1;
+
+        public override long Position { get; set; }
+
+        public override void Flush ()
+        {
+        }
+
+        public override int Read (byte [] buffer, int offset, int count)
+        {
+            throw new IOException ("read failed");
+        }
+
+        public override ValueTask<int> ReadAsync (Memory<byte> buffer, CancellationToken cancellationToken = default)
+        {
+            throw new IOException ("read failed");
+        }
+
+        public override long Seek (long offset, SeekOrigin origin)
+        {
+            throw new NotSupportedException ();
+        }
+
+        public override void SetLength (long value)
+        {
+            throw new NotSupportedException ();
+        }
+
+        public override void Write (byte [] buffer, int offset, int count)
+        {
+            throw new NotSupportedException ();
+        }
+    }
+
+    private sealed class ThrowingWriteStream : MemoryStream
+    {
+        public override void Write (byte [] buffer, int offset, int count)
+        {
+            throw new IOException ("write failed");
+        }
+
+        public override ValueTask WriteAsync (ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken = default)
+        {
+            throw new IOException ("write failed");
         }
     }
 

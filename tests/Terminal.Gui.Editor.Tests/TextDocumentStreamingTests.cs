@@ -72,6 +72,33 @@ public class TextDocumentStreamingTests
         Assert.Equal ("alpha\r\nbeta", Encoding.UTF8.GetString (output.ToArray ()));
     }
 
+    [Fact]
+    public void SetOwnerThread_Documentation_Describes_NullOwner_FirstAccessClaim ()
+    {
+        string source = File.ReadAllText (LocateSource ("Document/TextDocument.cs"));
+
+        Assert.Contains ("first access", source, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string LocateSource (string relativePath)
+    {
+        DirectoryInfo? dir = new (AppContext.BaseDirectory);
+
+        while (dir is not null)
+        {
+            var candidate = Path.Combine (dir.FullName, "src", "Terminal.Gui.Editor", relativePath);
+
+            if (File.Exists (candidate))
+            {
+                return candidate;
+            }
+
+            dir = dir.Parent;
+        }
+
+        throw new FileNotFoundException ($"Could not locate {relativePath}.");
+    }
+
     private sealed class CapturingProgress : IProgress<TextDocumentProgress>
     {
         private readonly List<TextDocumentProgress> _reports;

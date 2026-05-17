@@ -259,8 +259,9 @@ namespace Terminal.Gui.Document
 		/// </summary>
 		/// <remarks>
 		/// <para>
-		/// The owner can be set to null, which means that no thread can access the document. But, if the document
-		/// has no owner thread, any thread may take ownership by calling <see cref="SetOwnerThread"/>.
+		/// The owner can be set to null, which means that the next thread to access the document takes ownership
+		/// on first access. If the document has no owner thread, any thread may also take ownership by calling
+		/// <see cref="SetOwnerThread"/>.
 		/// </para>
 		/// </remarks>
 		public void SetOwnerThread(Thread newOwner)
