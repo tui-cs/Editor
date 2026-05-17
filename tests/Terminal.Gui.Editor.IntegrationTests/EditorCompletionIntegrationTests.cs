@@ -100,7 +100,8 @@ public class EditorCompletionIntegrationTests
         fx.Injector.InjectKey (Key.Enter, Direct);
 
         // The text should NOT contain a newline near the end; it should have the accepted completion.
-        var lastChunk = editor.Document!.Text.Substring (editor.Document!.Text.Length - 15);
+        var text = editor.Document!.Text;
+        var lastChunk = text[^Math.Min (15, text.Length)..];
         Assert.DoesNotContain ("\n", lastChunk);
         Assert.False (editor.IsCompletionActive, "Completion should be dismissed after accept");
     }
