@@ -89,6 +89,14 @@ public class EditorKeyBindingConfigTests
         Assert.True (defaults.ContainsKey (Command.Replace));
         Assert.True (defaults.ContainsKey (Command.FindNext));
         Assert.True (defaults.ContainsKey (Command.FindPrevious));
+
+        // Word navigation
+        Assert.True (defaults.ContainsKey (Command.WordLeft));
+        Assert.True (defaults.ContainsKey (Command.WordRight));
+        Assert.True (defaults.ContainsKey (Command.WordLeftExtend));
+        Assert.True (defaults.ContainsKey (Command.WordRightExtend));
+        Assert.True (defaults.ContainsKey (Command.KillWordLeft));
+        Assert.True (defaults.ContainsKey (Command.KillWordRight));
     }
 
     /// <summary>
@@ -104,6 +112,24 @@ public class EditorKeyBindingConfigTests
         Assert.Contains (Key.X.WithCtrl, defaults[Command.Cut].GetCurrentPlatformKeys ());
         Assert.Contains (Key.C.WithCtrl, defaults[Command.Copy].GetCurrentPlatformKeys ());
         Assert.Contains (Key.V.WithCtrl, defaults[Command.Paste].GetCurrentPlatformKeys ());
+    }
+
+    /// <summary>
+    ///     Verifies that <see cref="Editor.DefaultKeyBindings" /> ships the correct default keys for
+    ///     word navigation (Ctrl+Left / Ctrl+Right and their Shift / Backspace / Delete variants).
+    /// </summary>
+    [Fact]
+    public void DefaultKeyBindings_WordNavigationKeys_AreCorrect ()
+    {
+        Assert.NotNull (Editor.DefaultKeyBindings);
+        Dictionary<Command, PlatformKeyBinding> defaults = Editor.DefaultKeyBindings!;
+
+        Assert.Contains (Key.CursorLeft.WithCtrl, defaults[Command.WordLeft].GetCurrentPlatformKeys ());
+        Assert.Contains (Key.CursorRight.WithCtrl, defaults[Command.WordRight].GetCurrentPlatformKeys ());
+        Assert.Contains (Key.CursorLeft.WithCtrl.WithShift, defaults[Command.WordLeftExtend].GetCurrentPlatformKeys ());
+        Assert.Contains (Key.CursorRight.WithCtrl.WithShift, defaults[Command.WordRightExtend].GetCurrentPlatformKeys ());
+        Assert.Contains (Key.Backspace.WithCtrl, defaults[Command.KillWordLeft].GetCurrentPlatformKeys ());
+        Assert.Contains (Key.Delete.WithCtrl, defaults[Command.KillWordRight].GetCurrentPlatformKeys ());
     }
 
     /// <summary>
