@@ -25,7 +25,7 @@ if (!string.IsNullOrWhiteSpace (requestedPath))
 {
     if (File.Exists (requestedPath))
     {
-        ted.SetDocument (File.ReadAllText (requestedPath), requestedPath);
+        await ted.OpenFileAsync (requestedPath);
     }
     else
     {

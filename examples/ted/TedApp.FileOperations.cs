@@ -13,8 +13,10 @@ public sealed partial class TedApp
     /// <summary>Minimum elapsed milliseconds between queued streaming status updates.</summary>
     private const int StreamingStatusMilliseconds = 100;
 
+    private readonly Lock _streamingStatusLock = new ();
     private long _lastStreamingStatusUnits;
     private DateTime _lastStreamingStatusUpdate = DateTime.MinValue;
+    private long _streamingStatusOperationId;
 
     /// <summary>The path currently associated with <see cref="Editor" />, or <see langword="null" /> for an untitled buffer.</summary>
     public string? CurrentFilePath { get; private set; }
@@ -73,6 +75,12 @@ public sealed partial class TedApp
         }
 
         return await OpenFileAsync (filePath, false, cancellationToken);
+    }
+
+    /// <summary>Asynchronously streams the specified file into the editor.</summary>
+    public Task<bool> OpenFileAsync (string filePath, CancellationToken cancellationToken = default)
+    {
+        return OpenFileAsync (filePath, false, cancellationToken);
     }
 
     /// <summary>Opens a CLI-requested missing file path as an empty, modified document bound to that path.</summary>
@@ -278,17 +286,19 @@ public sealed partial class TedApp
 
     private async Task<bool> OpenFileAsync (
         string filePath,
-        bool marshalToApp = false,
+        bool marshalToApp,
         CancellationToken cancellationToken = default)
     {
+        var statusOperationId = 0L;
+
         try
         {
             await using Stream stream = OpenRead (filePath);
             var fileSize = GetStreamLength (stream);
-            ResetStreamingStatusThrottle ();
-            SetLoadStatus (FormatStartingProgress ("Loading", fileSize), true);
+            statusOperationId = BeginStreamingStatus (FormatStartingProgress ("Loading", fileSize));
 
-            IProgress<TextDocumentProgress> progress = CreateStreamingProgress (ReportLoadProgress);
+            IProgress<TextDocumentProgress> progress =
+                CreateStreamingProgress (progress => ReportLoadProgress (statusOperationId, progress));
             Editor.Document?.SetOwnerThread (null);
             TextDocument document =
                 await Task.Run (
@@ -298,7 +308,7 @@ public sealed partial class TedApp
             void ApplyDocument ()
             {
                 ApplyLoadedDocument (document, filePath);
-                SetLoadStatus (FormatCompletedProgress ("Loaded", fileSize), false);
+                CompleteStreamingStatus (statusOperationId, FormatCompletedProgress ("Loaded", fileSize));
             }
 
             if (marshalToApp)
@@ -319,7 +329,14 @@ public sealed partial class TedApp
         }
         catch (OperationCanceledException)
         {
-            SetLoadStatus ("Load canceled", false);
+            if (statusOperationId == 0)
+            {
+                CompleteStreamingStatus ("Load canceled");
+            }
+            else
+            {
+                CompleteStreamingStatus (statusOperationId, "Load canceled");
+            }
 
             return false;
         }
@@ -352,17 +369,17 @@ public sealed partial class TedApp
     private async Task SaveFileToAsync (string filePath, bool marshalToApp, CancellationToken cancellationToken)
     {
         await using Stream stream = CreateWrite (filePath);
-        ResetStreamingStatusThrottle ();
-        SetLoadStatus (FormatStartingProgress ("Saving", null), true);
+        var statusOperationId = BeginStreamingStatus (FormatStartingProgress ("Saving", null));
 
-        IProgress<TextDocumentProgress> progress = CreateStreamingProgress (ReportSaveProgress);
+        IProgress<TextDocumentProgress> progress =
+            CreateStreamingProgress (progress => ReportSaveProgress (statusOperationId, progress));
         await Editor.SaveAsync (stream, progress, cancellationToken);
         var fileSize = GetStreamLength (stream);
 
         void MarkSaved ()
         {
             Editor.Document!.UndoStack.MarkAsOriginalFile ();
-            SetLoadStatus (FormatCompletedProgress ("Saved", fileSize), false);
+            CompleteStreamingStatus (statusOperationId, FormatCompletedProgress ("Saved", fileSize));
         }
 
         if (marshalToApp)
@@ -398,24 +415,24 @@ public sealed partial class TedApp
         Editor.SetNeedsDraw ();
     }
 
-    private void ReportLoadProgress (TextDocumentProgress progress)
+    private void ReportLoadProgress (long statusOperationId, TextDocumentProgress progress)
     {
-        if (!ShouldReportStreamingProgress (progress))
+        if (!ShouldReportStreamingProgress (statusOperationId, progress))
         {
             return;
         }
 
-        SetLoadStatus (FormatProgress ("Loading", progress), true);
+        SetLoadStatus (FormatProgress ("Loading", progress), true, statusOperationId);
     }
 
-    private void ReportSaveProgress (TextDocumentProgress progress)
+    private void ReportSaveProgress (long statusOperationId, TextDocumentProgress progress)
     {
-        if (!ShouldReportStreamingProgress (progress))
+        if (!ShouldReportStreamingProgress (statusOperationId, progress))
         {
             return;
         }
 
-        SetLoadStatus (FormatProgress ("Saving", progress), true);
+        SetLoadStatus (FormatProgress ("Saving", progress), true, statusOperationId);
     }
 
     private IProgress<TextDocumentProgress> CreateStreamingProgress (Action<TextDocumentProgress> handler)
@@ -425,13 +442,50 @@ public sealed partial class TedApp
             : new Progress<TextDocumentProgress> (handler);
     }
 
-    private void SetLoadStatus (string status, bool showSpinner)
+    private long BeginStreamingStatus (string status)
+    {
+        var statusOperationId = Interlocked.Increment (ref _streamingStatusOperationId);
+
+        ResetStreamingStatusThrottle ();
+        SetLoadStatus (status, true, statusOperationId);
+
+        return statusOperationId;
+    }
+
+    private void CompleteStreamingStatus (long statusOperationId, string status)
+    {
+        if (Interlocked.CompareExchange (
+                ref _streamingStatusOperationId,
+                statusOperationId,
+                statusOperationId)
+            != statusOperationId)
+        {
+            return;
+        }
+
+        var completionOperationId = Interlocked.Increment (ref _streamingStatusOperationId);
+        SetLoadStatus (status, false, completionOperationId);
+    }
+
+    private void CompleteStreamingStatus (string status)
+    {
+        var completionOperationId = Interlocked.Increment (ref _streamingStatusOperationId);
+        SetLoadStatus (status, false, completionOperationId);
+    }
+
+    private void SetLoadStatus (string status, bool showSpinner, long statusOperationId)
     {
         void Update ()
         {
+            if (Interlocked.Read (ref _streamingStatusOperationId) != statusOperationId)
+            {
+                return;
+            }
+
             // The status spinner is visible only while it is actively spinning.
             LoadStatusSpinner.Visible = showSpinner;
             LoadStatusSpinner.AutoSpin = showSpinner;
+            LoadSpinnerShortcut.Title = status;
             LoadSpinnerShortcut.HelpText = status;
             LoadStatusSpinner.SetNeedsDraw ();
             LoadSpinnerShortcut.SetNeedsDraw ();
@@ -449,12 +503,20 @@ public sealed partial class TedApp
 
     private void ResetStreamingStatusThrottle ()
     {
-        _lastStreamingStatusUpdate = DateTime.MinValue;
-        _lastStreamingStatusUnits = 0;
+        lock (_streamingStatusLock)
+        {
+            _lastStreamingStatusUpdate = DateTime.MinValue;
+            _lastStreamingStatusUnits = 0;
+        }
     }
 
-    private bool ShouldReportStreamingProgress (TextDocumentProgress progress)
+    private bool ShouldReportStreamingProgress (long statusOperationId, TextDocumentProgress progress)
     {
+        if (Interlocked.Read (ref _streamingStatusOperationId) != statusOperationId)
+        {
+            return false;
+        }
+
         var processedUnits = progress.BytesProcessed ?? progress.CharactersProcessed;
         var totalUnits = progress.TotalBytes ?? progress.TotalCharacters;
 
@@ -463,16 +525,19 @@ public sealed partial class TedApp
             return true;
         }
 
-        DateTime now = DateTime.UtcNow;
-
-        if (processedUnits - _lastStreamingStatusUnits < StreamingStatusInterval
-            && now - _lastStreamingStatusUpdate < TimeSpan.FromMilliseconds (StreamingStatusMilliseconds))
+        lock (_streamingStatusLock)
         {
-            return false;
-        }
+            DateTime now = DateTime.UtcNow;
 
-        _lastStreamingStatusUnits = processedUnits;
-        _lastStreamingStatusUpdate = now;
+            if (processedUnits - _lastStreamingStatusUnits < StreamingStatusInterval
+                && now - _lastStreamingStatusUpdate < TimeSpan.FromMilliseconds (StreamingStatusMilliseconds))
+            {
+                return false;
+            }
+
+            _lastStreamingStatusUnits = processedUnits;
+            _lastStreamingStatusUpdate = now;
+        }
 
         return true;
     }

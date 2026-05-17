@@ -111,6 +111,7 @@ public class TedAppTests
 
         Assert.True (await app.OpenFileAsync (TestContext.Current.CancellationToken));
 
+        Assert.Equal ("Loaded 97.7 KiB", app.LoadSpinnerShortcut.Title);
         Assert.Equal ("Loaded 97.7 KiB", app.LoadSpinnerShortcut.HelpText);
         Assert.Same (app.LoadStatusSpinner, app.LoadSpinnerShortcut.CommandView);
         Assert.False (app.LoadStatusSpinner.Visible);
@@ -136,12 +137,84 @@ public class TedAppTests
         Assert.False (openTask.IsCompleted);
         Assert.True (app.LoadStatusSpinner.Visible);
         Assert.True (app.LoadStatusSpinner.AutoSpin);
+        Assert.Equal ("Loading 0 B of 97.7 KiB", app.LoadSpinnerShortcut.Title);
         Assert.Equal ("Loading 0 B of 97.7 KiB", app.LoadSpinnerShortcut.HelpText);
 
         stream.AllowRead.SetResult ();
 
         Assert.True (await openTask);
+        Assert.Equal ("Loaded 97.7 KiB", app.LoadSpinnerShortcut.Title);
         Assert.Equal ("Loaded 97.7 KiB", app.LoadSpinnerShortcut.HelpText);
+    }
+
+    [Fact]
+    public async Task OpenFileAsync_ByPath_Updates_LoadStatusShortcut ()
+    {
+        var filePath = Path.Combine (Path.GetTempPath (), $"ted-progress-{Guid.NewGuid ():N}.cs");
+        await File.WriteAllTextAsync (filePath, new string ('x', 100_000), TestContext.Current.CancellationToken);
+
+        try
+        {
+            TedApp app = new ();
+
+            Assert.True (await app.OpenFileAsync (filePath, TestContext.Current.CancellationToken));
+
+            Assert.Equal ("Loaded 97.7 KiB", app.LoadSpinnerShortcut.Title);
+            Assert.Equal ("Loaded 97.7 KiB", app.LoadSpinnerShortcut.HelpText);
+            Assert.False (app.LoadStatusSpinner.Visible);
+            Assert.False (app.LoadStatusSpinner.AutoSpin);
+        }
+        finally
+        {
+            File.Delete (filePath);
+        }
+    }
+
+    [Fact]
+    public async Task StatusBar_Shows_Loaded_FileSize_After_StartupOpen ()
+    {
+        var filePath = Path.Combine (Path.GetTempPath (), $"ted-startup-{Guid.NewGuid ():N}.cs");
+        await File.WriteAllTextAsync (filePath, new string ('x', 100_000), TestContext.Current.CancellationToken);
+
+        try
+        {
+            await using AppFixture<TedApp> fx = new (() =>
+            {
+                TedApp app = new ();
+                app.OpenFileAsync (filePath).GetAwaiter ().GetResult ();
+
+                return app;
+            });
+
+            fx.Render ();
+
+            DriverAssert.ContentsContains (fx.Driver, "Loaded 97.7 KiB");
+        }
+        finally
+        {
+            File.Delete (filePath);
+        }
+    }
+
+    [Fact]
+    public async Task OpenFileAsync_LargeFile_DisablesAutomaticFolding ()
+    {
+        var filePath = Path.Combine (Path.GetTempPath (), $"ted-large-{Guid.NewGuid ():N}.cs");
+        await File.WriteAllTextAsync (filePath, new string ('x', 1_000_001), TestContext.Current.CancellationToken);
+
+        try
+        {
+            TedApp app = new ();
+
+            Assert.True (await app.OpenFileAsync (filePath, TestContext.Current.CancellationToken));
+
+            Assert.Null (app.Editor.FoldingManager);
+            Assert.Equal ("Loaded 976.6 KiB", app.LoadSpinnerShortcut.Title);
+        }
+        finally
+        {
+            File.Delete (filePath);
+        }
     }
 
     [Fact]
