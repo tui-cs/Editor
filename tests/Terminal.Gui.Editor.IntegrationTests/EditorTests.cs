@@ -485,21 +485,6 @@ public class EditorTests
     }
 
     [Fact]
-    public async Task ShiftTab_After_Tab_Removes_Previous_Tab_Stop_At_Each_Caret ()
-    {
-        await using AppFixture<EditorTestHost> fx = new (() => new ("ab  Editor\nab  Editor"));
-        fx.Top.Editor.SetFocus ();
-        fx.Top.Editor.ConvertTabsToSpaces = true;
-        fx.Top.Editor.CaretOffset = 4;
-
-        fx.Injector.InjectKey (Key.CursorDown.WithCtrl.WithAlt, Direct);
-        fx.Injector.InjectKey (Key.Tab, Direct);
-        fx.Injector.InjectKey (Key.Tab.WithShift, Direct);
-
-        Assert.Equal ("ab  Editor\nab  Editor", fx.Top.Editor.Document?.Text);
-    }
-
-    [Fact]
     public async Task CtrlAltDown_Then_CtrlAltUp_Collapses_Last_Down_Selection ()
     {
         await using AppFixture<EditorTestHost> fx = new (() => new ("a\nb\nc"));

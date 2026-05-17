@@ -1,6 +1,5 @@
 using System.Drawing;
 using Terminal.Gui.Document;
-using Terminal.Gui.Editor.Rendering;
 
 namespace Terminal.Gui.Editor;
 
@@ -601,19 +600,23 @@ public partial class Editor
     /// </summary>
     private bool MultiCaretUnindent ()
     {
-        HashSet<int> seenRemovalOffsets = [];
+        HashSet<int> seenLineOffsets = [];
         List<(int offset, int length)> removals = [];
 
         foreach (CaretEditInfo caret in GetAllCaretsDescending ())
         {
-            if (!TryGetUnindentRemovalAt (caret.Offset, out (int offset, int length) removal))
+            DocumentLine line = _document!.GetLineByOffset (caret.Offset);
+
+            if (!seenLineOffsets.Add (line.Offset))
             {
                 continue;
             }
 
-            if (seenRemovalOffsets.Add (removal.offset))
+            ISegment segment = TextUtilities.GetSingleIndentationSegment (_document, line.Offset, IndentationSize);
+
+            if (segment.Length > 0)
             {
-                removals.Add (removal);
+                removals.Add ((segment.Offset, segment.Length));
             }
         }
 
@@ -635,52 +638,13 @@ public partial class Editor
         return true;
     }
 
-    private bool TryGetUnindentRemovalAt (int caretOffset, out (int offset, int length) removal)
-    {
-        removal = default;
-
-        if (_document is null || caretOffset == 0)
-        {
-            return false;
-        }
-
-        DocumentLine line = _document.GetLineByOffset (caretOffset);
-        CellVisualLine visualLine = GetOrBuildDefaultVisualLine (line);
-        var logicalColumn = caretOffset - line.Offset;
-        var visualColumn = visualLine.GetVisualColumn (logicalColumn);
-
-        if (visualColumn <= 0)
-        {
-            return false;
-        }
-
-        var previousTabStop = visualColumn - 1;
-        previousTabStop -= previousTabStop % IndentationSize;
-
-        var removalStartOffset = line.Offset + visualLine.GetRelativeOffset (previousTabStop);
-
-        if (removalStartOffset >= caretOffset)
-        {
-            return false;
-        }
-
-        var removalLength = caretOffset - removalStartOffset;
-        var segmentText = _document.GetText (removalStartOffset, removalLength);
-
-        if (segmentText.Any (static c => c != ' ' && c != '\t'))
-        {
-            return false;
-        }
-
-        removal = (removalStartOffset, removalLength);
-
-        return true;
-    }
-
     private bool TryRemoveEdgeCaret (int direction)
     {
         var candidateIndex = -1;
         var candidateOffset = direction < 0 ? int.MaxValue : int.MinValue;
+        Func<int, int, bool> isBetter = direction < 0
+            ? static (offset, current) => offset < current
+            : static (offset, current) => offset > current;
 
         for (var i = 0; i < _additionalCarets.Count; i++)
         {
@@ -689,26 +653,11 @@ public partial class Editor
                 continue;
             }
 
-            if (direction < 0)
+            if (isBetter (anchor.Offset, candidateOffset))
             {
-                if (anchor.Offset >= candidateOffset)
-                {
-                    continue;
-                }
-
                 candidateOffset = anchor.Offset;
                 candidateIndex = i;
-
-                continue;
             }
-
-            if (anchor.Offset <= candidateOffset)
-            {
-                continue;
-            }
-
-            candidateOffset = anchor.Offset;
-            candidateIndex = i;
         }
 
         if (candidateIndex < 0)
