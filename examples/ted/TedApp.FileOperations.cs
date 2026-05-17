@@ -330,13 +330,13 @@ public sealed partial class TedApp
         }
         catch (OperationCanceledException)
         {
-            if (statusOperationId is not { } startedStatusOperationId)
+            if (statusOperationId is { } startedStatusOperationId)
             {
-                CompleteStreamingStatus ("Load canceled");
+                CompleteStreamingStatus (startedStatusOperationId, "Load canceled");
             }
             else
             {
-                CompleteStreamingStatus (startedStatusOperationId, "Load canceled");
+                CompleteStreamingStatus ("Load canceled");
             }
 
             return false;
@@ -457,6 +457,7 @@ public sealed partial class TedApp
     {
         var completionOperationId = statusOperationId + 1;
 
+        // A newer operation owns the status item; stale completions must not overwrite it.
         if (Interlocked.CompareExchange (
                 ref _streamingStatusOperationId,
                 completionOperationId,

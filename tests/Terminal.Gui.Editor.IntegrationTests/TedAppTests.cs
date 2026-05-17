@@ -109,6 +109,8 @@ public class TedAppTests
         app.ShowOpenDialog = () => "/tmp/ted-progress.txt";
         app.OpenRead = _ => new MemoryStream (Encoding.UTF8.GetBytes (new string ('x', 100_000)));
 
+        Assert.Equal (string.Empty, app.LoadSpinnerShortcut.Title);
+
         Assert.True (await app.OpenFileAsync (TestContext.Current.CancellationToken));
 
         Assert.Equal ("Loaded 97.7 KiB", app.LoadSpinnerShortcut.Title);
