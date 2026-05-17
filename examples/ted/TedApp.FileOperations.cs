@@ -35,7 +35,10 @@ public sealed partial class TedApp
 
     private Func<string, string> _readAllText = File.ReadAllText;
 
-    /// <summary>File read hook retained for source compatibility. Streaming opens use <see cref="OpenRead" />.</summary>
+    /// <summary>
+    ///     File read hook retained for source compatibility. Replacing this hook adapts opens by buffering the
+    ///     returned text as UTF-8; prefer <see cref="OpenRead" /> for streaming large files.
+    /// </summary>
     public Func<string, string> ReadAllText
     {
         get => _readAllText;
@@ -790,6 +793,10 @@ public sealed partial class TedApp
         return $"{value.ToString (format)} {units[unitIndex]}";
     }
 
+    /// <summary>
+    ///     Adapts streamed saves to the legacy <see cref="WriteAllText" /> hook by buffering bytes in memory and
+    ///     writing the final UTF-8 text on disposal.
+    /// </summary>
     private sealed class WriteAllTextStream : MemoryStream
     {
         private readonly string _path;
