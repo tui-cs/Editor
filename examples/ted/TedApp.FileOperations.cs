@@ -288,7 +288,7 @@ public sealed partial class TedApp
             ResetStreamingStatusThrottle ();
             SetLoadStatus (FormatStartingProgress ("Loading", fileSize), true);
 
-            IProgress<TextDocumentProgress> progress = new Progress<TextDocumentProgress> (ReportLoadProgress);
+            IProgress<TextDocumentProgress> progress = CreateStreamingProgress (ReportLoadProgress);
             Editor.Document?.SetOwnerThread (null);
             TextDocument document =
                 await Task.Run (
@@ -355,7 +355,7 @@ public sealed partial class TedApp
         ResetStreamingStatusThrottle ();
         SetLoadStatus (FormatStartingProgress ("Saving", null), true);
 
-        IProgress<TextDocumentProgress> progress = new Progress<TextDocumentProgress> (ReportSaveProgress);
+        IProgress<TextDocumentProgress> progress = CreateStreamingProgress (ReportSaveProgress);
         await Editor.SaveAsync (stream, progress, cancellationToken);
         var fileSize = GetStreamLength (stream);
 
@@ -416,6 +416,13 @@ public sealed partial class TedApp
         }
 
         SetLoadStatus (FormatProgress ("Saving", progress), true);
+    }
+
+    private IProgress<TextDocumentProgress> CreateStreamingProgress (Action<TextDocumentProgress> handler)
+    {
+        return App is null
+            ? new InlineProgress<TextDocumentProgress> (handler)
+            : new Progress<TextDocumentProgress> (handler);
     }
 
     private void SetLoadStatus (string status, bool showSpinner)
