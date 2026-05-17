@@ -50,12 +50,7 @@ public sealed partial class TedApp
     {
         var filePath = ShowOpenDialog ();
 
-        if (string.IsNullOrWhiteSpace (filePath))
-        {
-            return false;
-        }
-
-        return OpenFileAsync (filePath).GetAwaiter ().GetResult ();
+        return !string.IsNullOrWhiteSpace (filePath) && OpenFileAsync (filePath).GetAwaiter ().GetResult ();
     }
 
     /// <summary>Prompts for a file path, then asynchronously streams that file into the editor.</summary>
@@ -89,12 +84,7 @@ public sealed partial class TedApp
     /// <summary>Saves the editor text to the current file, or prompts for a path if the buffer is untitled.</summary>
     public bool SaveFile ()
     {
-        if (CurrentFilePath is null)
-        {
-            return SaveFileAs ();
-        }
-
-        return SaveFileAsync ().GetAwaiter ().GetResult ();
+        return CurrentFilePath is null ? SaveFileAs () : SaveFileAsync ().GetAwaiter ().GetResult ();
     }
 
     /// <summary>Asynchronously streams the editor text to the current file, or prompts for a path if untitled.</summary>
@@ -120,12 +110,7 @@ public sealed partial class TedApp
     {
         var filePath = ShowSaveDialog ();
 
-        if (string.IsNullOrWhiteSpace (filePath))
-        {
-            return false;
-        }
-
-        return SaveFileAsAsync (filePath).GetAwaiter ().GetResult ();
+        return !string.IsNullOrWhiteSpace (filePath) && SaveFileAsAsync (filePath).GetAwaiter ().GetResult ();
     }
 
     /// <summary>Prompts for a file path, then asynchronously streams the editor text to that path.</summary>
@@ -414,9 +399,7 @@ public sealed partial class TedApp
         {
             LoadStatusSpinner.Visible = showSpinner;
             LoadStatusSpinner.AutoSpin = showSpinner;
-            LoadSpinnerShortcut.SetNeedsDraw ();
-            LoadStatusShortcut.Title = status;
-            LoadStatusShortcut.SetNeedsDraw ();
+            LoadSpinnerShortcut.HelpText = status;
         }
 
         if (App is null)
