@@ -1,8 +1,10 @@
 // Codex - GPT-5
 
 using Terminal.Gui.Editor.IntegrationTests.Testing;
+using Terminal.Gui.Drivers;
 using Terminal.Gui.Input;
 using Terminal.Gui.Testing;
+using Ted;
 using Xunit;
 
 namespace Terminal.Gui.Editor.IntegrationTests;
@@ -143,5 +145,44 @@ public class EditorTabTests
 
         Assert.Equal ("alpha", fx.Top.Editor.Document!.Text);
         Assert.Equal (0, fx.Top.Editor.CaretOffset);
+    }
+
+    [Fact]
+    public async Task Ted_RawAnsi_Tab_After_ShiftTab_Reindents_Line_On_First_Keypress ()
+    {
+        await using AppFixture<TedApp> fx = new (() => new TedApp ());
+        fx.Top.Editor.SetFocus ();
+        fx.Top.Editor.Document!.Text = "hello world";
+        fx.Top.Editor.CaretOffset = 0;
+
+        InjectAnsi (fx, "\t");
+
+        Assert.Equal ("    hello world", fx.Top.Editor.Document.Text);
+        Assert.Equal (4, fx.Top.Editor.CaretOffset);
+
+        InjectAnsi (fx, "\u001b[Z");
+
+        Assert.Equal ("hello world", fx.Top.Editor.Document.Text);
+        Assert.Equal (0, fx.Top.Editor.CaretOffset);
+
+        InjectAnsi (fx, "\t");
+
+        Assert.Equal ("    hello world", fx.Top.Editor.Document.Text);
+        Assert.Equal (4, fx.Top.Editor.CaretOffset);
+    }
+
+    private static void InjectAnsi (AppFixture<TedApp> fx, string sequence)
+    {
+        if (fx.App.Driver!.GetInputProcessor () is not InputProcessorImpl<char> processor)
+        {
+            throw new InvalidOperationException ("ANSI input processor is required for raw ANSI input tests.");
+        }
+
+        foreach (var ch in sequence)
+        {
+            processor.InputQueue.Enqueue (ch);
+        }
+
+        processor.ProcessQueue ();
     }
 }
