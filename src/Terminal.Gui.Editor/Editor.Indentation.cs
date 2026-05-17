@@ -52,12 +52,21 @@ public partial class Editor
 
         if (ReadOnly)
         {
+            AnsiInputProcessorState.ClearPendingPrintableSuppression (App);
+
             return true;
         }
 
         if (HasMultipleCarets)
         {
-            return MultiCaretUnindent ();
+            var handled = MultiCaretUnindent ();
+
+            if (handled)
+            {
+                AnsiInputProcessorState.ClearPendingPrintableSuppression (App);
+            }
+
+            return handled;
         }
 
         List<DocumentLine> lines = HasSelection && SelectionSpansMultipleLines ()
@@ -78,6 +87,8 @@ public partial class Editor
 
         if (removals.Count == 0)
         {
+            AnsiInputProcessorState.ClearPendingPrintableSuppression (App);
+
             return true;
         }
 
@@ -101,6 +112,8 @@ public partial class Editor
                 AdjustOffsetAfterRemovals (selectionStart, removals),
                 AdjustOffsetAfterRemovals (selectionEnd, removals));
         }
+
+        AnsiInputProcessorState.ClearPendingPrintableSuppression (App);
 
         return true;
     }
