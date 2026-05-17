@@ -58,7 +58,7 @@ exposed today.
 
 ### 2. Overwrite / insert-replace mode → [#146](https://github.com/gui-cs/Editor/issues/146)
 
-**TextView**: `Used` flag + `Command.ToggleOverwrite` (Insert key), `Command.EnableOverwrite`,
+**TextView**: overwrite-mode state + `Command.ToggleOverwrite` (Insert key), `Command.EnableOverwrite`,
 `Command.DisableOverwrite`; a distinct caret rendering for overwrite; typing replaces the rune
 under the caret instead of inserting.
 
