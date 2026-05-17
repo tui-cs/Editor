@@ -10,11 +10,30 @@ namespace Terminal.Gui.Editor;
 public partial class Editor
 {
     /// <summary>
-    ///     Set to <see langword="true" /> when a Ctrl+Click press is handled so subsequent drag
-    ///     (PositionReport) events don't hijack the primary caret via <see cref="ExtendCaretTo" />.
-    ///     Cleared on mouse release.
+    ///     Which gesture the in-progress left-button drag belongs to. One state instead of a set
+    ///     of fighting "suppress…UntilRelease" booleans: the press classifies the gesture, every
+    ///     subsequent drag/release event dispatches on it. Reset to <see cref="DragMode.Select" />
+    ///     (the neutral default) on release.
     /// </summary>
-    private bool _suppressDragUntilRelease;
+    private enum DragMode
+    {
+        /// <summary>Plain or Shift drag: extend the primary selection to the drag point.</summary>
+        Select,
+
+        /// <summary>Ctrl+Click add-caret: swallow drag events so they don't move the primary.</summary>
+        AddCaret,
+
+        /// <summary>
+        ///     Alt drag: build a vertical column of carets from press row to drag row. Alt (not
+        ///     VS Code's Shift+Alt) because Windows Terminal reserves Shift+drag for its own
+        ///     forced/block text selection while an app has mouse mode on — see
+        ///     specs/decisions.md DEC-006 and gui-cs/Terminal.Gui#4888.
+        /// </summary>
+        ColumnCarets
+    }
+
+    private DragMode _dragMode;
+    private Point _columnDragAnchor;
 
     /// <inheritdoc />
     protected override bool OnMouseEvent (Mouse mouse)
@@ -45,26 +64,37 @@ public partial class Editor
             return true;
         }
 
-        // Drag: left button held while position changes — extend selection from the press point.
-        // Tested first because PositionReport+LeftButtonPressed also satisfies the plain-press check.
-        // Suppress when the press was a Ctrl+Click (multi-caret add) so the drag handler doesn't
-        // move the primary caret via ExtendCaretTo.
+        // Drag: left button held while position changes. Tested before the plain-press check
+        // because PositionReport+LeftButtonPressed also satisfies it.
         if (mouse.Flags.FastHasFlags (MouseFlags.LeftButtonPressed | MouseFlags.PositionReport))
         {
-            if (_suppressDragUntilRelease)
+            // A Ctrl-modified drag is never a primary move — it's part of a Ctrl+Click gesture.
+            // Some terminals emit PositionReport+Ctrl before the matching LeftButtonPressed+Ctrl;
+            // swallowing it here keeps the pre-press report from hijacking the primary caret.
+            if (mouse.Flags.HasFlag (MouseFlags.Ctrl))
             {
                 return true;
             }
 
-            var offset = MousePositionToOffset (pos);
+            switch (_dragMode)
+            {
+                case DragMode.ColumnCarets:
+                    SetVerticalCaretsFromViewRows (_columnDragAnchor.Y, pos.Y, _columnDragAnchor.X);
 
-            // Route through the selection helper so SelectionChanged fires only on real changes.
-            ExtendCaretTo (offset);
+                    return true;
 
-            return true;
+                case DragMode.AddCaret:
+                    return true;
+
+                default:
+                    // Route through the selection helper so SelectionChanged fires only on real changes.
+                    ExtendCaretTo (MousePositionToOffset (pos));
+
+                    return true;
+            }
         }
 
-        // Press: focus, place caret, optionally start a selection (shift) or clear it (plain).
+        // Press: focus, then classify the gesture by modifier.
         if (mouse.Flags.HasFlag (MouseFlags.LeftButtonPressed))
         {
             if (CanFocus && !HasFocus)
@@ -72,30 +102,39 @@ public partial class Editor
                 SetFocus ();
             }
 
-            var offset = MousePositionToOffset (pos);
             var ctrl = mouse.Flags.HasFlag (MouseFlags.Ctrl);
+            var alt = mouse.Flags.HasFlag (MouseFlags.Alt);
 
-            if (ctrl)
+            // Alt (not VS Code's Shift+Alt): Windows Terminal eats Shift+drag for its own
+            // forced/block selection while the app has mouse mode on, so Shift+Alt+drag never
+            // reaches the editor there. Alt+drag is forwarded. See DEC-006 / TG#4888.
+            if (alt)
             {
-                ToggleCaretAt (offset);
-                _suppressDragUntilRelease = true;
+                _dragMode = DragMode.ColumnCarets;
+                _columnDragAnchor = pos;
+                SetVerticalCaretsFromViewRows (pos.Y, pos.Y, pos.X);
+            }
+            else if (ctrl)
+            {
+                _dragMode = DragMode.AddCaret;
+                ToggleCaretAt (MousePositionToOffset (pos));
             }
             else if (shift)
             {
-                _suppressDragUntilRelease = false;
-                ExtendCaretTo (offset);
+                _dragMode = DragMode.Select;
+                ExtendCaretTo (MousePositionToOffset (pos));
             }
             else
             {
-                _suppressDragUntilRelease = false;
+                _dragMode = DragMode.Select;
                 ClearAdditionalCarets ();
                 ClearSelection ();
-                CaretOffset = offset;
+                CaretOffset = MousePositionToOffset (pos);
             }
 
             // Grab the mouse so subsequent drag/release events route here even if the cursor leaves
             // this view's bounds — TG's default routing only delivers events to the view under the
-            // pointer, which would break the drag-to-select gesture mid-stroke.
+            // pointer, which would break the drag gesture mid-stroke.
             App?.Mouse.GrabMouse (this);
 
             return true;
@@ -107,7 +146,7 @@ public partial class Editor
             return false;
         }
 
-        _suppressDragUntilRelease = false;
+        _dragMode = DragMode.Select;
         App?.Mouse.UngrabMouse ();
 
         return true;

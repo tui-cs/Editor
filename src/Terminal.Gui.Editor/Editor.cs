@@ -379,6 +379,11 @@ public partial class Editor : View
         _caretAnchor = _document is null ? null : CreateCaretAnchor (clamped);
         _lastKnownCaretOffset = clamped;
 
+        // The primary just moved. Re-establish the multi-caret invariant *before* the next edit
+        // applies: drop any additional caret that now coincides with the primary so a primary
+        // landing on an additional caret doesn't produce a duplicate insert.
+        NormalizeAdditionalCarets ();
+
         if (resetVirtualColumn)
         {
             _virtualCaretColumn = GetCaretColumn ();
@@ -442,6 +447,11 @@ public partial class Editor : View
         }
 
         RefreshSelectionAnchorMovement ();
+
+        // Document structure changed — re-establish the multi-caret invariant before the next
+        // edit (drop deleted / duplicate / primary-coinciding additional carets).
+        NormalizeAdditionalCarets ();
+
         EnsureCaretVisible ();
         SetNeedsDraw ();
     }
@@ -643,11 +653,16 @@ public partial class Editor : View
         var removedNewlines = removedText.Count (c => c == '\n');
         var lineDelta = insertedNewlines - removedNewlines;
 
-        RekeyCache (_defaultVisualLineCache, threshold, lineDelta, removedNewlines);
-        RekeyCache (_drawVisualLineCache, threshold, lineDelta, removedNewlines);
+        // Net character shift. Cached visual lines store *absolute* element offsets, so a
+        // same-line-count edit upstream (no newline added/removed) still leaves every
+        // downstream cached line stale even though its line *number* is unchanged.
+        var offsetDelta = (insertedText.Length - removedText.Length);
+
+        RekeyCache (_defaultVisualLineCache, threshold, lineDelta, removedNewlines, offsetDelta);
+        RekeyCache (_drawVisualLineCache, threshold, lineDelta, removedNewlines, offsetDelta);
 
         static void RekeyCache<TValue> (Dictionary<int, TValue> cache, int threshold, int lineDelta,
-            int removedNewlines)
+            int removedNewlines, int offsetDelta)
         {
             if (cache.Count == 0)
             {
@@ -671,16 +686,22 @@ public partial class Editor : View
                 }
                 else if (kvp.Key > invalidateEnd)
                 {
-                    if (lineDelta == 0)
-                    {
-                        // No newline change — downstream entries are still valid as-is.
-                    }
-                    else
+                    if (lineDelta != 0)
                     {
                         // Line numbers shifted — remove old key, re-add with shifted key.
                         (toRemove ??= []).Add (kvp.Key);
                         (toRekey ??= []).Add (kvp);
                     }
+                    else if (offsetDelta != 0)
+                    {
+                        // No newline change, but the edit shifted absolute offsets. The cached
+                        // visual line for this downstream line carries stale absolute element
+                        // offsets — drop it (correctness > a few cache hits). This is the defect
+                        // the "Tab twice with spaces" multi-caret scenario exposes.
+                        (toRemove ??= []).Add (kvp.Key);
+                    }
+
+                    // else: offsetDelta == 0 — pure in-place rewrite, downstream entries valid.
                 }
             }
 
@@ -775,7 +796,16 @@ public partial class Editor : View
 
     private int GetCaretColumn ()
     {
-        var caretOffset = CaretOffset;
+        return GetVisualColumnForOffset (CaretOffset);
+    }
+
+    /// <summary>
+    ///     Returns the visual (cell) column of an arbitrary document offset, accounting for tabs,
+    ///     double-width graphemes, and word-wrap segments. Single-caret and multi-caret vertical
+    ///     placement share this so the multi-caret path never re-derives column geometry.
+    /// </summary>
+    private int GetVisualColumnForOffset (int caretOffset)
+    {
         DocumentLine? line = _document?.GetLineByOffset (caretOffset);
 
         if (line is null)
@@ -879,15 +909,72 @@ public partial class Editor : View
         SetCaretOffset (line.Offset + seg.StartOffset + localOffset, false);
     }
 
+    /// <summary>
+    ///     Resolves the document offset <paramref name="delta" /> visual rows from
+    ///     <paramref name="startOffset" /> at the sticky <paramref name="targetVisualColumn" />,
+    ///     using the same wrap-map / visual-line primitives as single-caret vertical movement.
+    ///     Returns <see langword="false" /> (a no-op for the caller) when the move would cross the
+    ///     top or bottom document bound.
+    /// </summary>
+    private bool TryGetVerticalOffset (int startOffset, int delta, int targetVisualColumn, out int targetOffset)
+    {
+        targetOffset = startOffset;
+
+        if (_document is null)
+        {
+            return false;
+        }
+
+        if (WordWrap)
+        {
+            List<WrapMapEntry> map = GetWrapMap ();
+            var targetRow = GetWrapRowForOffset (startOffset) + delta;
+
+            if (targetRow < 0 || targetRow >= map.Count)
+            {
+                return false;
+            }
+
+            WrapMapEntry entry = map[targetRow];
+            DocumentLine wrapLine = _document.GetLineByNumber (entry.LineNumber);
+            var wrapText = _document.GetText (wrapLine);
+            IReadOnlyList<WrapSegment> wrapSegments =
+                WordWrapStrategy.ComputeSegments (wrapText, GetWrapColumn (), IndentationSize);
+            WrapSegment seg = wrapSegments[entry.SegmentIndex];
+            var segText = wrapText.Substring (seg.StartOffset, seg.Length);
+            var localOffset = ComputeRelativeOffsetDirect (segText, targetVisualColumn);
+            targetOffset = wrapLine.Offset + seg.StartOffset + localOffset;
+
+            return true;
+        }
+
+        var targetLineIndex = (_document.GetLineByOffset (startOffset).LineNumber - 1) + delta;
+
+        if (targetLineIndex < 0 || targetLineIndex > _document.LineCount - 1)
+        {
+            return false;
+        }
+
+        DocumentLine line = _document.GetLineByNumber (targetLineIndex + 1);
+        targetOffset = line.Offset + GetOrBuildDefaultVisualLine (line).GetRelativeOffset (targetVisualColumn);
+
+        return true;
+    }
+
     /// <summary>Returns the visual row in the wrap map for the current caret position.</summary>
     private int GetCaretWrapRow ()
+    {
+        return GetWrapRowForOffset (CaretOffset);
+    }
+
+    /// <summary>Returns the visual row in the wrap map for an arbitrary document offset.</summary>
+    private int GetWrapRowForOffset (int caretOffset)
     {
         if (_document is null)
         {
             return 0;
         }
 
-        var caretOffset = CaretOffset;
         DocumentLine line = _document.GetLineByOffset (caretOffset);
         var offsetInLine = caretOffset - line.Offset;
         var text = _document.GetText (line);
