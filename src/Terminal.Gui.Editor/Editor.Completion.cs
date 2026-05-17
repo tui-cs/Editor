@@ -42,6 +42,9 @@ public partial class Editor
     /// <summary>Whether the completion session is currently active (items are available).</summary>
     public bool IsCompletionActive => _completionItems.Count > 0;
 
+    /// <summary>Gets the zero-based index of the currently selected completion item.</summary>
+    internal int CompletionSelectedIndex => _completionSelectedIndex;
+
     /// <summary>
     ///     Extracts the word-prefix immediately before the caret (letters, digits, underscores)
     ///     for use as the completion filter string. Returns empty when the caret follows
@@ -115,14 +118,18 @@ public partial class Editor
 
             if (key == Key.CursorUp)
             {
-                SelectCompletionItem ((_completionSelectedIndex - 1 + _completionItems.Count) % _completionItems.Count);
+                var newIdx = (_completionSelectedIndex - 1 + _completionItems.Count) % _completionItems.Count;
+                _completionSelectedIndex = newIdx;
+                UpdateCompletionListSelection (newIdx);
 
                 return true;
             }
 
             if (key == Key.CursorDown)
             {
-                SelectCompletionItem ((_completionSelectedIndex + 1) % _completionItems.Count);
+                var newIdx = (_completionSelectedIndex + 1) % _completionItems.Count;
+                _completionSelectedIndex = newIdx;
+                UpdateCompletionListSelection (newIdx);
 
                 return true;
             }
@@ -253,6 +260,18 @@ public partial class Editor
         }
     }
 
+    /// <summary>Updates the visible ListView selection when the Popover is showing.</summary>
+    private void UpdateCompletionListSelection (int index)
+    {
+        if (_completionListView is null)
+        {
+            return;
+        }
+
+        _completionListView.SelectedItem = index;
+        _completionListView.SetNeedsDraw ();
+    }
+
     private void ShowCompletionPopup ()
     {
         if (_completionItems.Count == 0)
@@ -306,26 +325,6 @@ public partial class Editor
         // Disable keyboard dispatch so the Popover doesn't capture text input.
         // All navigation (Up/Down/Enter/Tab/Esc) is handled by HandleCompletionKey.
         _completionPopover.Enabled = false;
-    }
-
-    private void SelectCompletionItem (int index)
-    {
-        if (_completionItems.Count == 0)
-        {
-            return;
-        }
-
-        _completionSelectedIndex = index;
-
-        // If the popover and list are already visible, just update the selection in place.
-        if (_completionListView is not null && _completionPopover is { Visible: true })
-        {
-            _completionListView.SelectedItem = index;
-
-            return;
-        }
-
-        ShowCompletionPopup ();
     }
 
     /// <summary>
