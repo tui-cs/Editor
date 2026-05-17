@@ -1,4 +1,4 @@
-# Feature Specification: Vertical Multi-Caret (Ctrl+Alt+Up/Down, Shift+Alt+Drag)
+# Feature Specification: Vertical Multi-Caret (Ctrl+Alt+Up/Down, Alt+Drag)
 
 **Status**: Draft — supersedes the throwaway implementation in PR #125
 **Created**: 2026-05-15
@@ -7,18 +7,32 @@
 **Blocked by**: —
 **Reference (do not merge)**: [PR #125](https://github.com/gui-cs/Editor/pull/125) — copilot-authored prototype. The functionality is right in the simplest case; the implementation is hacky and the maintainer has documented multiple regressions on it (see § Reference behavior from PR #125 below). Use the test cases from that PR as the executable contract; re-implement the editor changes against this spec. **Note**: PR #125 used `Alt+Up/Down` and `Alt+drag`; this spec adopts the VS Code chords (`Ctrl+Alt+Up/Down`, `Shift+Alt+drag`). The tests must be ported with the new key combinations.
 
+> **Amendment 2026-05-16 (authoritative — supersedes the body below where they differ).** The
+> column-drag mouse modifier shipped as **`Alt` + LeftButton drag**, *not* VS Code's
+> `Shift+Alt`. Reason: Windows Terminal (and xterm-family terminals it emulates) reserves
+> `Shift`+drag as the user's *forced* text-selection override while an application has mouse
+> mode enabled, and `Alt` makes that a *block/rectangular* selection — so `Shift+Alt`+drag is
+> consumed by the terminal for its own rectangular select and never reaches the editor. `Alt`
+> alone is forwarded to the app. Everywhere this spec says `Shift+Alt`/`Shift+Alt+drag` for
+> *this editor's* gesture, read `Alt`/`Alt+drag`; references describing *VS Code's own*
+> behavior are left as-is and remain factually correct. Restoring user-configurable parity
+> (so a user could opt back into `Shift+Alt`, or any modifier) is tracked upstream by
+> [gui-cs/Terminal.Gui#4888](https://github.com/gui-cs/Terminal.Gui/issues/4888) — *"Extend
+> the configurable `KeyBindings` to `MouseBindings` (and combos)"*. See `specs/decisions.md`
+> DEC-006.
+
 ## Overview
 
 Extend the existing multi-caret machinery (`AdditionalCaretOffsets`, `HasMultipleCarets`, `ToggleCaretAt`, `ClearAdditionalCarets`) with two ergonomic ways to create a **vertically-aligned column of carets** anchored on the same visual column across consecutive lines:
 
 1. **Keyboard**: `Ctrl+Alt+Up` / `Ctrl+Alt+Down` extends the caret block one line above the topmost / below the bottommost caret, landing on the same sticky virtual column. Matches VS Code's `editor.action.insertCursorAbove` / `Below`.
-2. **Mouse**: `Shift+Alt + LeftButton drag` creates a column of carets spanning the anchor row → active row at the press column. Matches VS Code's column-select drag (this spec ships carets-only first; selection-per-row is a follow-up — see Out of Scope).
+2. **Mouse**: `Alt + LeftButton drag` creates a column of carets spanning the anchor row → active row at the press column. (VS Code uses `Shift+Alt` for its column-select drag; this editor uses `Alt` because a TUI runs inside a terminal that reserves `Shift`+drag — see the Amendment above. This spec ships carets-only first; selection-per-row is a follow-up — see Out of Scope.)
 
 Both flows produce a primary caret plus zero or more additional carets, all sharing the multi-caret edit pipeline (single `Document.OpenUpdateScope ()` → one undo step, R5).
 
 The feature also makes Tab work uniformly across all carets in the multi-caret system (an existing gap that vertical-caret usage exposes), and fixes interaction bugs that block the vertical-caret flow from being usable.
 
-**Terminal compatibility & platform defaults**: `Ctrl+Alt+Up/Down` and `Shift+Alt+mouse` rely on the terminal forwarding the modifier flags. Some Linux desktops grab `Ctrl+Alt+arrow` for workspace switching, and a few terminals don't distinguish `Ctrl+Alt+arrow` from `Ctrl+arrow` without the Kitty keyboard protocol. The fix is **not** an editor-specific fallback chord — it is to ship per-platform defaults the TG way: a `[ConfigurationProperty]` `DefaultKeyBindings` populated from a `PlatformKeyBinding` record (`All` / `Windows` / `Linux` / `Macos`), wholly overridable by the user through TG configuration (`View.ViewKeyBindings`). See TG's `docfx/docs/keyboard.md` for the binding-layer model (`Application.DefaultKeyBindings` → `View.DefaultKeyBindings` → per-view defaults; `Bind.AllPlus()` helper). See **Platform default keybindings** in Requirements.
+**Terminal compatibility & platform defaults**: `Ctrl+Alt+Up/Down` and `Alt+mouse` rely on the terminal forwarding the modifier flags. Some Linux desktops grab `Ctrl+Alt+arrow` for workspace switching, and a few terminals don't distinguish `Ctrl+Alt+arrow` from `Ctrl+arrow` without the Kitty keyboard protocol. The fix is **not** an editor-specific fallback chord — it is to ship per-platform defaults the TG way: a `[ConfigurationProperty]` `DefaultKeyBindings` populated from a `PlatformKeyBinding` record (`All` / `Windows` / `Linux` / `Macos`), wholly overridable by the user through TG configuration (`View.ViewKeyBindings`). See TG's `docfx/docs/keyboard.md` for the binding-layer model (`Application.DefaultKeyBindings` → `View.DefaultKeyBindings` → per-view defaults; `Bind.AllPlus()` helper). See **Platform default keybindings** in Requirements.
 
 ## User Scenarios
 
@@ -42,10 +56,10 @@ Symmetric to the previous scenario. **Given** carets at lines `n`, `n-1`, …, `
 
 **Given** `"a\tbcde\na\tbcde\na\tbcde"` with `IndentationSize` defaulting to 4 and the caret at offset 3 (visual column 5, after `a` + tab), **When** the user presses `Ctrl+Alt+Down` twice, **Then** additional carets land at offset 3 within each subsequent line (`"a\tbcde\n".Length + 3` and `"a\tbcde\na\tbcde\n".Length + 3`) — i.e. the visual column is preserved, accounting for tab expansion.
 
-### Scenario — Shift+Alt+Drag creates a vertical column of carets
+### Scenario — Alt+Drag creates a vertical column of carets
 
-**Given** the document `"abcd\nabcd\nabcd"`, **When** the user presses `Shift+Alt + LeftButton` at view position (1, 0) and drags to (1, 2), then releases,
-**Then** the primary caret is at offset 1; two additional carets exist at offsets 6 and 11; no selection is active. (Note: VS Code's `Shift+Alt+drag` *selects* a column; we emit carets only — see Out of Scope and Comparison.)
+**Given** the document `"abcd\nabcd\nabcd"`, **When** the user presses `Alt + LeftButton` at view position (1, 0) and drags to (1, 2), then releases,
+**Then** the primary caret is at offset 1; two additional carets exist at offsets 6 and 11; no selection is active. (Note: VS Code's `Shift+Alt+drag` *selects* a column; we emit carets only and use `Alt` not `Shift+Alt` — see the Amendment, Out of Scope, and Comparison.)
 
 ### Scenario — Esc dismisses the vertical block
 
@@ -90,8 +104,8 @@ Named requirements — every label is also a search anchor used by tests and cod
 - **Add caret above** — `Ctrl+Alt+CursorUp` (default; see *Platform default keybindings*) adds an additional caret one line above the topmost caret in the current caret block at the sticky visual column.
 - **Add caret below** — `Ctrl+Alt+CursorDown` does the same below the bottommost caret.
 - **Top/bottom bounds are no-ops** — `Ctrl+Alt+CursorUp` past line 1 and `Ctrl+Alt+CursorDown` past the last line do nothing (no throw, no change to existing carets).
-- **Column-drag press** — `Shift+Alt + LeftButtonPressed` followed by `PositionReport+Shift+Alt` drag events build a column of carets at the press column from anchor row to active row, replacing any prior selection/multi-caret state. The first row (anchor) is the primary; the other rows are additional. `LeftButtonReleased` ends the drag without altering the state already built. Plain `Shift+LeftButton` (no Alt) continues to extend selection per the existing mouse handler; the Alt modifier is what switches the drag into column-of-carets mode.
-- **Column-drag tracks live** — extending the `Shift+Alt`-drag downward adds carets; dragging back up removes the ones below the new active row. The end state must be identical to having pressed once at the final position, modulo event timestamps.
+- **Column-drag press** — `Alt + LeftButtonPressed` followed by `PositionReport+Alt` drag events build a column of carets at the press column from anchor row to active row, replacing any prior selection/multi-caret state. The first row (anchor) is the primary; the other rows are additional. `LeftButtonReleased` ends the drag without altering the state already built. Plain `Shift+LeftButton` (no Alt) continues to extend selection per the existing mouse handler; the `Alt` modifier is what switches the drag into column-of-carets mode. (`Alt`, not `Shift+Alt` — see the Amendment.)
+- **Column-drag tracks live** — extending the `Alt`-drag downward adds carets; dragging back up removes the ones below the new active row. The end state must be identical to having pressed once at the final position, modulo event timestamps.
 - **Visual column, not char offset** — vertical-column placement uses **cell width**, not raw character offset. Tabs, double-width graphemes, and wrap segments are measured via the same primitives the rendering pipeline uses (`CellVisualLine.GetVisualColumn` / `.GetRelativeOffset`).
 - **Sticky column through short lines** — when a line is too short to host the sticky visual column, the caret on that line lands at end-of-line; the sticky column is preserved so that later vertical moves through longer lines restore it (matches the existing single-caret virtual-column behavior).
 - **Wrap-aware vertical** — when `WordWrap == true`, "above" and "below" mean the previous/next wrap row, not the previous/next document line. Sticky visual column is preserved across wrap segments using the same `WrapMapEntry` machinery the single caret uses.
@@ -107,7 +121,7 @@ Named requirements — every label is also a search anchor used by tests and cod
 - **Ctrl+Click reorder defense** — a `Ctrl+LeftButton` press that follows a vertical-caret block toggles a caret at the click position. `PositionReport+Ctrl` events that arrive *before* the matching `LeftButtonPressed+Ctrl` must not move the primary caret. Reuse the same drag-suppression discipline already in place for `Ctrl+Click`, extended to cover the "report-before-press" reorder.
 - **Primary caret stays visible** — the primary caret is always drawn after the additional carets are cleared. `UpdateCursor ()` reports its position; no code path leaves the terminal cursor hidden or pointed at a stale offset after dismissing multi-caret.
 - **Cache invalidation on offset shift** — internal `DocumentLine` / `CellVisualLine` caches keyed by line number are invalidated for *all* lines whose element offsets shift, not only lines whose line *number* changes. A multi-caret edit that inserts on three lines but adds no newlines must still invalidate any downstream cached line whose absolute offsets moved.
-- **ted demonstrates the feature** — `examples/ted` works end-to-end: `Ctrl+Alt+Up`, `Ctrl+Alt+Down`, `Shift+Alt+Drag`, Tab in vertical mode, Esc to exit. No new ted UI affordance is required (the keybindings are discoverable; existing status bar / help text gets a one-line update — see § Files in Scope).
+- **ted demonstrates the feature** — `examples/ted` works end-to-end: `Ctrl+Alt+Up`, `Ctrl+Alt+Down`, `Alt+Drag`, Tab in vertical mode, Esc to exit. No new ted UI affordance is required (the keybindings are discoverable; existing status bar / help text gets a one-line update — see § Files in Scope).
 - **Platform default keybindings** — the feature declares an `AddCommand` entry and binds it through a `[ConfigurationProperty]` `DefaultKeyBindings` populated from a `PlatformKeyBinding` record, *not* a hard-coded `if (key == ...)` in `OnKeyDownNotHandled`. Per-platform defaults:
   - `Windows` / `Linux`: `Ctrl+Alt+CursorUp` / `Ctrl+Alt+CursorDown` (VS Code parity).
   - `Macos`: the chord that the common macOS terminals (Terminal.app, iTerm2) actually deliver to a TUI process. macOS GUI VS Code uses `Cmd+Opt+Up/Down`, but terminal emulators typically intercept `Cmd` and may not forward `Ctrl+Alt+arrow` cleanly — the exact macOS string is settled at wiring time against a real terminal (see Open Decisions). Use `Bind.AllPlus()` to layer the shared and per-OS keys.
@@ -117,23 +131,23 @@ Named requirements — every label is also a search anchor used by tests and cod
 
 - `src/Terminal.Gui.Editor/Editor.MultiCaret.cs` — new private helpers (`AddCaretVertically`, `AddAdditionalCaretAt`, `NormalizeAdditionalCarets`, `TryGetVerticalOffset`, `GetVisualColumnForOffset`, `SetVerticalCaretsFromViewRows`, `MultiCaretInsertTab`). Replace the corresponding helpers in PR #125 with versions that share infrastructure with the single-caret Up/Down logic rather than re-deriving wrap maps and visual columns.
 - `src/Terminal.Gui.Editor/Editor.Keyboard.cs` — declare the add-caret-above/below command via `AddCommand` and bind it through a `[ConfigurationProperty]` `DefaultKeyBindings` built from a `PlatformKeyBinding` record (`Windows`/`Linux` → `Ctrl+Alt+CursorUp/Down`; `Macos` → TBD-against-real-terminal). No inline if-chain in `OnKeyDownNotHandled`. Esc handler routes through `ClearAdditionalCarets ()` which is responsible for sticky-column refresh. Follow the binding-layer model documented in TG `docfx/docs/keyboard.md`.
-- `src/Terminal.Gui.Editor/Editor.Mouse.cs` — `Shift+Alt`-drag press/drag/release state machine. Factor the existing Ctrl+Click drag-suppression into a small state enum so Ctrl, Shift+Alt, and plain drags don't fight via three orthogonal booleans. Plain `Shift+LeftButton` extend-selection path is preserved; the Alt bit on the mouse event is what dispatches to the column-of-carets branch.
+- `src/Terminal.Gui.Editor/Editor.Mouse.cs` — `Alt`-drag press/drag/release state machine. Factor the existing Ctrl+Click drag-suppression into a small state enum so Ctrl, Alt, and plain drags don't fight via three orthogonal booleans. Plain `Shift+LeftButton` extend-selection path is preserved; the `Alt` bit on the mouse event is what dispatches to the column-of-carets branch.
 - `src/Terminal.Gui.Editor/Editor.Indentation.cs` — Tab/Shift-Tab fall through to `MultiCaretInsertTab` / `MultiCaretUnindent` when `HasMultipleCarets`.
 - `src/Terminal.Gui.Editor/Editor.cs` — `OnDocumentChanged` runs `NormalizeAdditionalCarets`; `SetCaretOffset` runs `NormalizeAdditionalCarets` *after* the offset is committed; visual-line cache invalidation key set includes lines whose absolute offsets shifted, gated only by `lineDelta == 0 && offsetDelta != 0`.
-- `examples/ted/MainWindow.cs` (or wherever help text lives) — one-line update mentioning `Ctrl+Alt+Up/Down` and `Shift+Alt+Drag` in the existing key-help string. Mention the VS Code parity. No new menu items, no new dialogs.
+- `examples/ted/MainWindow.cs` (or wherever help text lives) — one-line update mentioning `Ctrl+Alt+Up/Down` and `Alt+Drag` in the existing key-help string. Mention the VS Code parity. No new menu items, no new dialogs.
 - `tests/Terminal.Gui.Editor.IntegrationTests/EditorTests.cs` — keyboard scenario tests.
 - `tests/Terminal.Gui.Editor.IntegrationTests/EditorMouseTests.cs` — mouse scenario tests.
-- `specs/public-api.md` — append note that `Ctrl+Alt+CursorUp` / `Ctrl+Alt+CursorDown` create vertical carets and `Shift+Alt+Drag` creates a vertical column (R8).
+- `specs/public-api.md` — append note that `Ctrl+Alt+CursorUp` / `Ctrl+Alt+CursorDown` create vertical carets and `Alt+Drag` creates a vertical column (R8).
 - `specs/decisions.md` — record the VS Code keybinding choice ("match VS Code chords for vertical multi-caret") as a resolved decision.
 
 ## Tests
 
-The PR #125 test set is the executable contract for behavior — but the key combinations in those tests must be rewritten from `Alt` to `Ctrl+Alt` (keys) and `Alt` to `Shift+Alt` (mouse). Re-create these in the new branch, with new names, and require them to be failing-first before the implementation lands:
+The PR #125 test set is the executable contract for behavior — but the key combinations in those tests must be rewritten from `Alt` to `Ctrl+Alt` (keys); the mouse drag stays on `Alt` (the modifier is unchanged from PR #125 for the mouse — see the Amendment; only the keyboard chords move to `Ctrl+Alt`). Re-create these in the new branch, with new names, and require them to be failing-first before the implementation lands:
 
 - `CtrlAltDown_Adds_Vertically_Aligned_Carets` (*Ctrl+Alt+Down adds a caret on the line below*)
 - `CtrlAltDown_Preserves_Exact_Column_On_Next_Long_Line_After_Short_Line` (*Sticky virtual column survives a short intervening line*)
 - `CtrlAltDown_Preserves_Column_With_Tabs` (*Sticky virtual column with tabs*)
-- `ShiftAltDrag_Adds_Vertically_Aligned_Carets` (*Shift+Alt+Drag creates a vertical column of carets*)
+- `AltDrag_Adds_Vertically_Aligned_Carets` (*Alt+Drag creates a vertical column of carets*)
 - `Esc_Dismisses_MultiCaret_And_Down_Can_Move_Past_Previous_Block` (*Esc dismisses the vertical block*)
 - `Esc_After_Moving_Within_MultiCaret_Allows_Moving_Below_Last_Former_Multi` (*Esc after moving inside the block*)
 - `Vertical_MultiCaret_Does_Not_Duplicate_When_Primary_Moves_Onto_Additional` (*Down through additional caret does not duplicate*)
@@ -147,7 +161,7 @@ Also add a tightly-scoped unit test (`Terminal.Gui.Editor.Tests`) for the visual
 ## Definition of Done
 
 - [ ] All tests above land **failing first** on a tip-of-`develop` baseline, then pass after the implementation.
-- [ ] No new boolean flag in `Editor.Mouse.cs` — the Ctrl/Shift+Alt/plain-drag interaction is expressed as a single state, not three booleans that have to be cleared on every branch.
+- [ ] No new boolean flag in `Editor.Mouse.cs` — the Ctrl/Alt/plain-drag interaction is expressed as a single state, not three booleans that have to be cleared on every branch.
 - [ ] `AddAdditionalCaretAt` and `NormalizeAdditionalCarets` are the only paths that mutate `_additionalCarets`. `ToggleCaretAt` is rewritten in terms of them.
 - [ ] `Editor.cs` change to visual-line cache invalidation is exercised by a unit test (not just observed through the *Tab twice* scenario).
 - [ ] `examples/ted` demonstrates the feature; help text mentions the keybindings.
@@ -156,7 +170,7 @@ Also add a tightly-scoped unit test (`Terminal.Gui.Editor.Tests`) for the visual
 
 ## Out of Scope
 
-- **Column / box selection** (i.e. `Shift+Alt+Drag` producing a *selection per row* the way VS Code does, rather than carets only). This is the natural follow-up. Per-caret selection in the existing multi-caret pipeline already works; column-extend during drag needs a new code path that extends each caret's selection anchor as the drag widens/narrows. Ship the carets-only flow first.
+- **Column / box selection** (i.e. `Alt+Drag` producing a *selection per row* the way VS Code's `Shift+Alt+drag` does, rather than carets only). This is the natural follow-up. Per-caret selection in the existing multi-caret pipeline already works; column-extend during drag needs a new code path that extends each caret's selection anchor as the drag widens/narrows. Ship the carets-only flow first.
 - **Find/replace across multi-caret selections**. Already excluded by multi-caret spec.
 - **Reflowing the vertical block under WordWrap toggling**. If the user toggles `WordWrap` while a vertical block is live, the block is dismissed. This spec does not introduce reflow semantics.
 - **A ted UI menu / dialog**. The keybindings ship discoverable via help text only.
@@ -178,7 +192,7 @@ Cross-walk of every user-facing behavior against the two reference editors. Wher
 |---|---|---|---|
 | Add caret above / below | `Ctrl+Alt+Up` / `Ctrl+Alt+Down` (Win/Linux); `Cmd+Opt+Up/Down` (Mac) | `Alt+Shift+Up` / `Alt+Shift+Down` (`Edit.InsertCaretAbove` / `Below`) | **Match VS Code**: `Ctrl+Alt+Up` / `Ctrl+Alt+Down` |
 | Add caret at click | `Alt+Click` | `Alt+Click` (multi-cursor placement) | `Ctrl+Click` (existing — see multi-caret spec and *Alt+Click alias* open decision below) |
-| Column / box selection by drag | `Shift+Alt + drag` produces a *selection per row* (column select) | `Shift+Alt + drag` produces a column / box selection | **Match modifier, not semantics**: `Shift+Alt + drag` produces *carets per row, no selection* (column-select variant is out of scope for this iteration) |
+| Column / box selection by drag | `Shift+Alt + drag` produces a *selection per row* (column select) | `Shift+Alt + drag` produces a column / box selection | **`Alt + drag` produces *carets per row, no selection***. Modifier is `Alt` (not `Shift+Alt`) because the terminal reserves `Shift`+drag (Amendment / DEC-006 / TG#4888); column-select semantics out of scope this iteration |
 | Esc collapses to primary caret | Yes | Yes | Match (*Esc dismisses the vertical block* scenario) |
 | Sticky desired column through short lines | Yes | Yes | Match (*Sticky virtual column survives a short intervening line* scenario / *Sticky column through short lines* requirement) |
 | Tab inserts at every caret, single undo | Yes | Yes | Match (*Tab inserts at every caret* / *Tab keeps the column aligned* requirements) |
@@ -188,7 +202,7 @@ Cross-walk of every user-facing behavior against the two reference editors. Wher
 
 ### Intentional divergences (and why)
 
-1. **`Shift+Alt+drag` produces carets only, not a column selection.** VS Code's `Shift+Alt+drag` creates a *selection per row* — typing replaces a column of text. This spec ships only the carets-per-row variant first. The full column-select is the natural follow-up; per-caret selection already works in the pipeline, but extend-during-drag is a new code path. **User-visible consequence**: to "replace" a column, the user must `Shift+Alt`-drag, then `Shift+Right`/`Left` to grow each caret's selection, then type. Document this in ted help.
+1. **`Alt+drag` produces carets only, not a column selection — and uses `Alt`, not VS Code's `Shift+Alt`.** Two divergences here: (a) VS Code's `Shift+Alt+drag` creates a *selection per row* (typing replaces a column of text); this spec ships only the carets-per-row variant first — the full column-select is the natural follow-up; per-caret selection already works in the pipeline, but extend-during-drag is a new code path. (b) The modifier is `Alt`, not `Shift+Alt`, because the terminal eats `Shift`+drag (see the Amendment; configurable parity tracked by gui-cs/Terminal.Gui#4888). **User-visible consequence**: to "replace" a column, the user must `Alt`-drag, then `Shift+Right`/`Left` to grow each caret's selection, then type. Document this in ted help.
 
 2. **`Ctrl+Click` vs `Alt+Click` for "add caret at click".** Existing multi-caret on `develop` uses `Ctrl+Click`. VS Code and VS use `Alt+Click`. Changing the existing binding is out of scope for this spec — flagged as the *Alt+Click alias* open decision below.
 
@@ -196,7 +210,7 @@ Cross-walk of every user-facing behavior against the two reference editors. Wher
 
 ### Behaviors we match deliberately
 
-- **Keybinding chords** (`Ctrl+Alt+Up/Down`, `Shift+Alt+drag` modifier) — match VS Code so users coming from VS Code or `code-insiders` keep their muscle memory.
+- **Keyboard chords** (`Ctrl+Alt+Up/Down`) — match VS Code so users coming from VS Code or `code-insiders` keep their muscle memory. (The mouse column-drag modifier is `Alt`, not VS Code's `Shift+Alt` — a deliberate terminal-compat divergence; see the Amendment.)
 - **Sticky desired column through short lines and tab-expanded columns** — both reference editors track visual column, not character offset.
 - **Tab at every caret, one undo step** — both editors.
 - **Esc dismisses the block, leaves the primary caret in place, allows continued navigation past where the block was** — both editors.
@@ -216,7 +230,7 @@ Cross-walk of every user-facing behavior against the two reference editors. Wher
 
 These were open in earlier drafts of this spec and are now resolved.
 
-- **Keybinding choice for the new chords.** Resolved 2026-05-15: match VS Code. `Ctrl+Alt+Up`/`Down` for add-caret-above/below; `Shift+Alt + drag` modifier for the column-drag. Cross-link to `specs/decisions.md` when that entry is written.
+- **Keybinding choice for the new chords.** Resolved 2026-05-15: match VS Code for the keyboard — `Ctrl+Alt+Up`/`Down` for add-caret-above/below. **Amended 2026-05-16**: the column-drag mouse modifier is `Alt` (not VS Code's `Shift+Alt`) because Windows Terminal consumes `Shift`+drag for its own forced/block selection while an app has mouse mode on (see the Amendment near the top). Configurable modifier parity is tracked by [gui-cs/Terminal.Gui#4888](https://github.com/gui-cs/Terminal.Gui/issues/4888). Recorded in `specs/decisions.md` DEC-006.
 - **No editor-specific fallback chord.** Resolved 2026-05-15: do **not** ship a second built-in chord for environments that grab `Ctrl+Alt+arrow`. Keys are fully adjustable through TG keybindings; instead pre-ship per-platform defaults via a `[ConfigurationProperty]` `DefaultKeyBindings` + `PlatformKeyBinding` (the TG-standard mechanism, per `docfx/docs/keyboard.md`). Users in hostile terminal/WM environments override through `View.ViewKeyBindings` config like any other binding.
 
 ## Notes

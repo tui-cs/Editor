@@ -23,7 +23,12 @@ public partial class Editor
         /// <summary>Ctrl+Click add-caret: swallow drag events so they don't move the primary.</summary>
         AddCaret,
 
-        /// <summary>Shift+Alt drag: build a vertical column of carets from press row to drag row.</summary>
+        /// <summary>
+        ///     Alt drag: build a vertical column of carets from press row to drag row. Alt (not
+        ///     VS Code's Shift+Alt) because Windows Terminal reserves Shift+drag for its own
+        ///     forced/block text selection while an app has mouse mode on — see
+        ///     specs/decisions.md DEC-006 and gui-cs/Terminal.Gui#4888.
+        /// </summary>
         ColumnCarets
     }
 
@@ -100,7 +105,10 @@ public partial class Editor
             var ctrl = mouse.Flags.HasFlag (MouseFlags.Ctrl);
             var alt = mouse.Flags.HasFlag (MouseFlags.Alt);
 
-            if (shift && alt)
+            // Alt (not VS Code's Shift+Alt): Windows Terminal eats Shift+drag for its own
+            // forced/block selection while the app has mouse mode on, so Shift+Alt+drag never
+            // reaches the editor there. Alt+drag is forwarded. See DEC-006 / TG#4888.
+            if (alt)
             {
                 _dragMode = DragMode.ColumnCarets;
                 _columnDragAnchor = pos;

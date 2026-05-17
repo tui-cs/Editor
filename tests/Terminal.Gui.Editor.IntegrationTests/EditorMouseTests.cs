@@ -450,12 +450,14 @@ public class EditorMouseTests
     }
 
     // ---------------------------------------------------------------------------------------------
-    // Vertical multi-caret mouse gestures (specs/vertical-multi-caret/spec.md). Ported from PR #125,
-    // re-keyed to the VS Code modifier: Shift+Alt + LeftButton drag builds a column of carets.
+    // Vertical multi-caret mouse gestures (specs/vertical-multi-caret/spec.md). Ported from PR #125.
+    // Alt + LeftButton drag builds a column of carets — Alt, not VS Code's Shift+Alt, because
+    // Windows Terminal reserves Shift+drag for its own forced/block text selection while an app
+    // has mouse mode on (DEC-006; configurable Shift+Alt parity tracked by gui-cs/Terminal.Gui#4888).
     // ---------------------------------------------------------------------------------------------
 
     [Fact]
-    public async Task ShiftAltDrag_Adds_Vertically_Aligned_Carets ()
+    public async Task AltDrag_Adds_Vertically_Aligned_Carets ()
     {
         await using AppFixture<EditorTestHost> fx = new (() => new ("abcd\nabcd\nabcd"));
         fx.Top.Editor.SetFocus ();
@@ -464,7 +466,7 @@ public class EditorMouseTests
             new ()
             {
                 ScreenPosition = new (1, 0),
-                Flags = MouseFlags.LeftButtonPressed | MouseFlags.Shift | MouseFlags.Alt,
+                Flags = MouseFlags.LeftButtonPressed | MouseFlags.Alt,
                 Timestamp = BaseTime
             },
             Direct);
@@ -473,7 +475,7 @@ public class EditorMouseTests
             new ()
             {
                 ScreenPosition = new (1, 2),
-                Flags = MouseFlags.LeftButtonPressed | MouseFlags.PositionReport | MouseFlags.Shift | MouseFlags.Alt,
+                Flags = MouseFlags.LeftButtonPressed | MouseFlags.PositionReport | MouseFlags.Alt,
                 Timestamp = BaseTime.AddMilliseconds (20)
             },
             Direct);

@@ -9,7 +9,7 @@ Place multiple carets in the document and type, delete, or press Enter at all of
 | **Ctrl+Click** | Toggle an additional caret at the clicked position. Click an existing additional caret to remove it. |
 | **Ctrl+Alt+↑** | Add a caret on the line above the topmost caret, at the sticky visual column (VS Code parity). |
 | **Ctrl+Alt+↓** | Add a caret on the line below the bottommost caret, at the sticky visual column (VS Code parity). |
-| **Shift+Alt + drag** | Build a vertical column of carets from the press row through the drag row at the press column (carets only). |
+| **Alt + drag** | Build a vertical column of carets from the press row through the drag row at the press column (carets only). |
 | **Escape** | Collapse back to the primary caret (clears all additional carets). |
 
 `Ctrl+Alt+↑/↓` track a *sticky visual column*: a short or tab-indented intervening line doesn't lose the column — the next long-enough line restores it. The chords are configurable per platform via `Editor.DefaultKeyBindings`; a terminal or window manager that grabs `Ctrl+Alt+arrow` is handled by remapping in config, not a separate built-in chord.
@@ -51,5 +51,6 @@ Additional carets are backed by `TextAnchor` instances, so they track insertions
 
 - Selection is not yet per-caret; only the primary caret carries a selection.
 - Find/Replace operates on the primary caret only.
-- `Shift+Alt`+drag produces a column of *carets*, not a column *selection*. To replace a column, drag to place the carets, then `Shift+→`/`←` to grow each caret's selection, then type. Per-row column selection during the drag is the planned follow-up.
+- `Alt`+drag produces a column of *carets*, not a column *selection*. To replace a column, drag to place the carets, then `Shift+→`/`←` to grow each caret's selection, then type. Per-row column selection during the drag is the planned follow-up.
+- The column-drag modifier is `Alt`, not VS Code's `Shift+Alt`: terminals reserve `Shift`+drag for their own forced/block text selection while an app reads the mouse, so `Shift+Alt`+drag never reaches the editor. Making the mouse modifier user-configurable (to opt back into `Shift+Alt`) is tracked by [gui-cs/Terminal.Gui#4888](https://github.com/gui-cs/Terminal.Gui/issues/4888).
 - Toggling Word Wrap while a vertical block is live dismisses the block.

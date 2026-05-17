@@ -28,7 +28,7 @@ public class Editor : View
     public void ClearAdditionalCarets ();                         // multi-caret (Esc collapse)
     // vertical-multi-caret adds NO new public API: Ctrl+Alt+CursorUp / Ctrl+Alt+CursorDown
     //   create a vertically-aligned column of carets at the sticky visual column, and
-    //   Shift+Alt + LeftButton drag builds a column of carets (carets only). Both reuse the
+    //   Alt + LeftButton drag builds a column of carets (carets only). Both reuse the
     //   existing AdditionalCaretOffsets / HasMultipleCarets / ClearAdditionalCarets surface and
     //   are bound through the configurable Editor.DefaultKeyBindings ([ConfigurationProperty]).
 
@@ -113,4 +113,4 @@ public interface IOverlayRenderer
 | 2026-05-11 | Caret and selection storage migrated to TextAnchor-backed tracking | caret-anchors |
 | 2026-05-11 | ReadOnly property landed on Editor | read-only |
 | 2026-05-12 | `ISearchStrategy?` `SearchStrategy { get; set; }` landed on Editor; string-based FindNext/FindPrevious/ReplaceNext/ReplaceAll overloads retained as convenience wrappers | find-and-replace |
-| 2026-05-16 | Vertical multi-caret keybindings (`Ctrl+Alt+CursorUp/Down`, `Shift+Alt+Drag`) added via `Editor.DefaultKeyBindings`; no new public Editor API (R8) | vertical-multi-caret |
+| 2026-05-16 | Vertical multi-caret keybindings (`Ctrl+Alt+CursorUp/Down`, `Alt+Drag`) added via `Editor.DefaultKeyBindings`; no new public Editor API (R8) | vertical-multi-caret |

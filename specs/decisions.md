@@ -108,13 +108,15 @@ Decisions are recorded here when an open question from the plan is resolved. Eac
 
 ---
 
-### DEC-006: Vertical multi-caret keybindings (VS Code parity, no fallback chord)
+### DEC-006: Vertical multi-caret keybindings (VS Code keyboard parity; `Alt`+drag mouse modifier)
 
-**Decision**: Vertical multi-caret uses the VS Code chords — `Ctrl+Alt+CursorUp` / `Ctrl+Alt+CursorDown` for add-caret-above/below and `Shift+Alt + LeftButton` drag for the column-of-carets gesture (carets only; per-row selection is a follow-up). The keys ship as a `[ConfigurationProperty]` `PlatformKeyBinding` entry in `Editor.DefaultKeyBindings`; there is **no** editor-specific fallback chord. Users whose terminal/WM grabs the chord override it through `View.ViewKeyBindings` config like any other binding. Because TG's `Command` enum (consumed via the pinned `Terminal.Gui` package) has no vertical-multi-caret slot, the two commands are registered as Editor-local `Command` ids (`(Command) 1001` / `1002`) via `AddCommand` and bound through the same configurable path as every other Editor binding — not an inline `if` in `OnKeyDownNotHandled`.
+**Decision**: Add-caret-above/below use the VS Code keyboard chords `Ctrl+Alt+CursorUp` / `Ctrl+Alt+CursorDown`, shipped as a `[ConfigurationProperty]` `PlatformKeyBinding` entry in `Editor.DefaultKeyBindings` with **no** editor-specific fallback chord (a terminal/WM that grabs the chord is handled by user override via `View.ViewKeyBindings`). Because TG's `Command` enum (consumed via the pinned `Terminal.Gui` package) has no vertical-multi-caret slot, the two commands are registered as Editor-local `Command` ids (`(Command) 1001` / `1002`) via `AddCommand` and bound through the same configurable path — not an inline `if` in `OnKeyDownNotHandled`.
 
-**Rationale**: Matches `specs/vertical-multi-caret/spec.md` Resolved Decisions (2026-05-15). VS Code parity preserves muscle memory; the TG-standard `[ConfigurationProperty]` + `PlatformKeyBinding` mechanism makes the chord fully user-overridable without bespoke editor knobs. Upstream follow-up: TG should reserve a documented view-local `Command` range so consumers don't pick magic ints — filed as a TG issue per Constitution tenet "This Is TG" (workarounds require a great TG issue).
+The column-of-carets mouse gesture uses **`Alt` + LeftButton drag**, **not** VS Code's `Shift+Alt`. Windows Terminal — and the xterm family it emulates — reserves `Shift`+drag as the user's *forced* text-selection override while an application has mouse mode enabled, and `Alt` turns that into a *block/rectangular* selection ([MS docs](https://learn.microsoft.com/en-us/windows/terminal/customize-settings/interaction); cf. microsoft/terminal#9608). So `Shift+Alt`+drag is swallowed by the terminal's own rectangular-select and never reaches the editor; `Alt`+drag is forwarded. The mouse modifier is currently **not** user-configurable (unlike the keybindings) — that gap, and restoring optional `Shift+Alt` parity, is tracked upstream by [gui-cs/Terminal.Gui#4888](https://github.com/gui-cs/Terminal.Gui/issues/4888) (*"Extend the configurable `KeyBindings` to `MouseBindings` (and combos)"*), to be prioritized.
 
-**Date**: 2026-05-16
+**Rationale**: Keyboard parity preserves muscle memory and is fully user-overridable via the TG-standard `[ConfigurationProperty]` + `PlatformKeyBinding` mechanism. For the *mouse* modifier, terminal reality wins over GUI-editor parity: a TUI lives inside a terminal emulator, so a gesture the terminal eats is simply unusable — and unlike a key, the mouse modifier has no config override yet. `Alt`+drag is terminal-safe today; full configurable parity follows once TG#4888 lands. Upstream follow-up also noted: TG should reserve a documented view-local `Command` range so consumers don't pick magic ints (Constitution "This Is TG": workarounds require a great TG issue).
+
+**Date**: 2026-05-16 (mouse-modifier amendment same day, after Windows Terminal validation)
 
 ---
 
@@ -122,6 +124,6 @@ Decisions are recorded here when an open question from the plan is resolved. Eac
 
 **Decision**: `Editor.ClearAdditionalCarets ()` remains `public` (resolves spec Open Decision "ClearAdditionalCarets visibility").
 
-**Rationale**: It is already shipped multi-caret API documented in `specs/public-api.md`, and `Editor` itself is a `src/` consumer (Esc handler, plain-click handler, the `Shift+Alt` column-drag reset). R9 requires a `src/`/`examples/` consumer (tests don't count) — that bar is met, so demoting to `internal` would be a gratuitous breaking change to documented surface.
+**Rationale**: It is already shipped multi-caret API documented in `specs/public-api.md`, and `Editor` itself is a `src/` consumer (Esc handler, plain-click handler, the `Alt` column-drag reset). R9 requires a `src/`/`examples/` consumer (tests don't count) — that bar is met, so demoting to `internal` would be a gratuitous breaking change to documented surface.
 
 **Date**: 2026-05-16
