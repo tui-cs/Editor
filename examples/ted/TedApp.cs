@@ -139,6 +139,8 @@ public sealed partial class TedApp : Window
             new ([
                 new Shortcut { Title = "Language", CommandView = LanguageShortcut },
                 new Shortcut { Title = "Theme", CommandView = ThemeDropDown },
+                OverwriteShortcut = new Shortcut (Key.Empty, "INS", null)
+                    { MouseHighlightStates = MouseState.None },
                 LocShortcut = new Shortcut (Key.Empty, FormatLoc (1, 1), null)
                     { MouseHighlightStates = MouseState.None }
             ])
@@ -264,6 +266,7 @@ public sealed partial class TedApp : Window
         // Editor.CaretChanged covers both user-driven movement and document edits that shift the
         // caret (insert/remove). Initial render seeds the value before any movement happens.
         Editor.CaretChanged += (_, _) => UpdateLocShortcut ();
+        Editor.OverwriteModeChanged += (_, _) => UpdateOverwriteShortcut ();
         Editor.FindRequested += (_, _) => ShowFindReplaceDialog (false);
         Editor.ReplaceRequested += (_, _) => ShowFindReplaceDialog (true);
         UpdateLocShortcut ();
@@ -292,6 +295,12 @@ public sealed partial class TedApp : Window
     ///     and document edits that shift the caret).
     /// </summary>
     public Shortcut LocShortcut { get; }
+
+    /// <summary>
+    ///     The status-bar shortcut that shows whether the editor is in insert (INS) or overwrite (OVR)
+    ///     mode. Updated whenever <see cref="Editor.OverwriteModeChanged" /> fires.
+    /// </summary>
+    public Shortcut OverwriteShortcut { get; }
 
     /// <summary>
     ///     Resolves the key shortcut for <paramref name="command" /> by asking the <see cref="Editor" />'s
@@ -380,6 +389,12 @@ public sealed partial class TedApp : Window
         }
 
         LocShortcut.SetNeedsDraw ();
+    }
+
+    private void UpdateOverwriteShortcut ()
+    {
+        OverwriteShortcut.Title = Editor.OverwriteMode ? "OVR" : "INS";
+        OverwriteShortcut.SetNeedsDraw ();
     }
 
     private static string FormatLoc (int line, int column)

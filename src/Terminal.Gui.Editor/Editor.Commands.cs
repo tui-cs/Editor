@@ -52,7 +52,8 @@ public partial class Editor
         [Command.WordLeftExtend] = Bind.All (Key.CursorLeft.WithCtrl.WithShift),
         [Command.WordRightExtend] = Bind.All (Key.CursorRight.WithCtrl.WithShift),
         [Command.KillWordLeft] = Bind.All (Key.Backspace.WithCtrl),
-        [Command.KillWordRight] = Bind.All (Key.Delete.WithCtrl)
+        [Command.KillWordRight] = Bind.All (Key.Delete.WithCtrl),
+        [Command.ToggleOverwrite] = Bind.All (Key.InsertChar)
     };
 
     private void CreateCommandsAndBindings ()
@@ -251,6 +252,26 @@ public partial class Editor
             return true;
         });
 
+        // Overwrite mode
+        AddCommand (Command.ToggleOverwrite, () =>
+        {
+            OverwriteMode = !OverwriteMode;
+
+            return true;
+        });
+        AddCommand (Command.EnableOverwrite, () =>
+        {
+            OverwriteMode = true;
+
+            return true;
+        });
+        AddCommand (Command.DisableOverwrite, () =>
+        {
+            OverwriteMode = false;
+
+            return true;
+        });
+
         ApplyKeyBindings (View.DefaultKeyBindings, DefaultKeyBindings);
 
         // Reclaim Tab / Shift+Tab from the framework's default focus-cycling bindings so our
@@ -362,12 +383,53 @@ public partial class Editor
         {
             ReplaceSelection (text);
         }
+        else if (OverwriteMode && _document is not null)
+        {
+            OverwriteAtCaret (text);
+        }
         else
         {
             _document!.Insert (CaretOffset, text);
         }
 
         return true;
+    }
+
+    /// <summary>
+    ///     Overwrites the grapheme at the caret with <paramref name="text" />. If the caret is at
+    ///     line-end, falls back to a plain insert so the newline is not consumed.
+    /// </summary>
+    private void OverwriteAtCaret (string text)
+    {
+        OverwriteAtOffset (CaretOffset, text);
+    }
+
+    /// <summary>
+    ///     Overwrites the grapheme at the given <paramref name="offset" /> with <paramref name="text" />.
+    ///     If the offset is at line-end, falls back to a plain insert so the newline is not consumed.
+    /// </summary>
+    private void OverwriteAtOffset (int offset, string text)
+    {
+        DocumentLine line = _document!.GetLineByOffset (offset);
+        var lineEnd = line.Offset + line.Length;
+
+        if (offset >= lineEnd)
+        {
+            // At or past end-of-line content — just insert.
+            _document.Insert (offset, text);
+
+            return;
+        }
+
+        // Determine the length of the grapheme cluster under the caret so wide runes are
+        // replaced atomically. StringInfo.GetNextTextElementLength gives cluster length in chars.
+        var remaining = _document.GetText (offset, lineEnd - offset);
+        var graphemeLength = System.Globalization.StringInfo.GetNextTextElementLength (remaining);
+
+        // Use RemoveAndInsert so that the caret anchor (AfterInsertion) moves past the
+        // inserted text. The default same-length Replace uses CharacterReplace mode which
+        // does not move anchors at all.
+        _document.Replace (offset, graphemeLength, text, OffsetChangeMappingType.RemoveAndInsert);
     }
 
     private bool? DeleteLeft ()

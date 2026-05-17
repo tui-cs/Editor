@@ -47,6 +47,10 @@ public partial class Editor
         {
             ReplaceSelection (rune.ToString ());
         }
+        else if (OverwriteMode && _document is not null)
+        {
+            OverwriteAtCaret (rune.ToString ());
+        }
         else
         {
             _document!.Insert (CaretOffset, rune.ToString ());

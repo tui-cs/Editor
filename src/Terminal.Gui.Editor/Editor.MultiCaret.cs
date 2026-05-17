@@ -309,6 +309,10 @@ public partial class Editor
                     {
                         ReplaceSelection (text);
                     }
+                    else if (OverwriteMode)
+                    {
+                        OverwriteAtCaret (text);
+                    }
                     else
                     {
                         _document.Insert (CaretOffset, text);
@@ -329,7 +333,14 @@ public partial class Editor
                         }
                     }
 
-                    _document.Insert (caret.Offset, text);
+                    if (OverwriteMode)
+                    {
+                        OverwriteAtOffset (caret.Offset, text);
+                    }
+                    else
+                    {
+                        _document.Insert (caret.Offset, text);
+                    }
                 }
             }
         }
