@@ -1,5 +1,6 @@
 // Copilot - claude-sonnet-4
 
+using Terminal.Gui.Document.Folding;
 using Terminal.Gui.Drivers;
 using Terminal.Gui.Editor.IntegrationTests.Testing;
 using Terminal.Gui.Input;
@@ -271,14 +272,14 @@ public class EditorSingleLineTests
         fx.Top.Editor.SetFocus ();
 
         // Install a FoldingManager so we can fold lines.
-        fx.Top.Editor.FoldingManager = new Terminal.Gui.Document.Folding.FoldingManager (fx.Top.Editor.Document!);
+        fx.Top.Editor.FoldingManager = new FoldingManager (fx.Top.Editor.Document!);
         fx.Render ();
 
         // Full flat width: "ab" (2) + ⏎ (1) + "cd" (2) + ⏎ (1) + "ef" (2) = 8 plus +1 for caret-past-end = 9
         Assert.Equal (9, fx.Top.Editor.GetContentSize ().Width);
 
         // CreateFolding spanning from start of "ab" to end of "cd\n" hides line 2.
-        Terminal.Gui.Document.Folding.FoldingSection fold = fx.Top.Editor.FoldingManager!.CreateFolding (
+        FoldingSection fold = fx.Top.Editor.FoldingManager!.CreateFolding (
             0, fx.Top.Editor.Document!.GetLineByNumber (2).EndOffset);
         fold.IsFolded = true;
 
@@ -286,8 +287,7 @@ public class EditorSingleLineTests
         fx.Top.Editor.SetNeedsDraw ();
         fx.Render ();
 
-        // After folding, line 2 is hidden. Content width should be smaller than unfolded.
-        // BUG (before fix): UpdateContentSize iterates all physical lines, so width stays at 9.
+        // After folding, UpdateContentSize skips hidden lines, reducing the width.
         int widthAfterFold = fx.Top.Editor.GetContentSize ().Width;
         Assert.True (widthAfterFold < 9,
             $"Content width after fold should decrease from 9, was {widthAfterFold}");
