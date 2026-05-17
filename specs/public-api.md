@@ -57,8 +57,9 @@ public class Editor : View
     // --- Search ---
     public ISearchStrategy? SearchStrategy { get; set; }          // find-and-replace (needs search + rendering-pipeline ✅)
 
-    // --- Completion (post-MLP) ---
-    public IEditorCompletionProvider? CompletionProvider { get; set; } // post-MLP
+    // --- Completion ---
+    public IEditorCompletionProvider? CompletionProvider { get; set; } // completion ✅
+    public bool IsCompletionActive { get; }                           // completion ✅
 }
 ```
 
@@ -103,6 +104,25 @@ public interface IOverlayRenderer
 }
 ```
 
+## Completion Types (completion — landed)
+
+```csharp
+namespace Terminal.Gui.Editor.Completion;
+
+public sealed class CompletionItem
+{
+    public required string Label { get; init; }
+    public string? InsertText { get; init; }
+    public string? Detail { get; init; }
+}
+
+public interface IEditorCompletionProvider
+{
+    IReadOnlyList<CompletionItem> GetCompletions (TextDocument document, int caretOffset, string prefix);
+    bool ShouldTrigger (Key key);
+}
+```
+
 ## Change Log
 
 | Date | Change | Feature |
@@ -114,3 +134,4 @@ public interface IOverlayRenderer
 | 2026-05-11 | ReadOnly property landed on Editor | read-only |
 | 2026-05-12 | `ISearchStrategy?` `SearchStrategy { get; set; }` landed on Editor; string-based FindNext/FindPrevious/ReplaceNext/ReplaceAll overloads retained as convenience wrappers | find-and-replace |
 | 2026-05-16 | Vertical multi-caret keybindings (`Ctrl+Alt+CursorUp/Down`, `Alt+Drag`) added via `Editor.DefaultKeyBindings`; no new public Editor API (R8) | vertical-multi-caret |
+| 2026-05-17 | `IEditorCompletionProvider?` `CompletionProvider` + `bool IsCompletionActive` landed; `CompletionItem` record; `PopoverMenu`-based popup; DEC-009 resolves OPEN-002 | completion |

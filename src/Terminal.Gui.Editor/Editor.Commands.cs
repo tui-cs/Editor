@@ -179,7 +179,7 @@ public partial class Editor
         });
         AddCommand (Command.DeleteCharLeft, () =>
         {
-            bool? result = MultiCaretDeleteLeft ();
+            var result = MultiCaretDeleteLeft ();
             NotifyCompletionAfterInsert ();
 
             return result;

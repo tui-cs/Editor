@@ -56,6 +56,16 @@ Decisions are recorded here when an open question from the plan is resolved. Eac
 
 ---
 
+### DEC-009: Completion item shape & provider interface
+
+**Decision**: Use a fresh LSP-flavored `IEditorCompletionProvider` interface and `CompletionItem` type (`Terminal.Gui.Editor.Completion` namespace), **not** Terminal.Gui's existing `IAutocomplete` / `PopupAutocomplete`.
+
+**Rationale**: TG's `IAutocomplete` is tightly coupled to `TextView` (it assumes its own `PopupAutocomplete` rendering, owns selection state, and embeds key-handling that conflicts with `Editor`'s command architecture). A clean provider interface — `GetCompletions(document, caretOffset, prefix)` + `ShouldTrigger(key)` — keeps the completion *data* separate from the *UI*. `CompletionItem` follows the LSP shape (Label, InsertText, Detail) rather than reusing `IAutocomplete`'s string list, which simplifies future LSP integration. The popup uses TG-native `PopoverMenu` anchored at the caret, consistent with how `Editor` already handles its context menu. Accept applies inside a single `RunUpdate` scope so the entire replacement is one undo step.
+
+**Date**: 2026-05-17
+
+---
+
 ## Open
 
 ### OPEN-001: Independent `Terminal.Gui.Editor` NuGet from day one
@@ -66,11 +76,9 @@ Decisions are recorded here when an open question from the plan is resolved. Eac
 
 ---
 
-### OPEN-002: Completion item shape
+### OPEN-002: Completion item shape → DEC-009
 
-**Question**: Reuse Terminal.Gui's `IAutocomplete`-style types vs. a fresh LSP-flavored `IEditorCompletionProvider`?
-
-**Affected features**: Post-MLP.
+Resolved — see DEC-009.
 
 ---
 

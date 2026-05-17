@@ -1,7 +1,6 @@
 // CoPilot - gpt-4.1
 
 using Terminal.Gui.Document;
-using Terminal.Gui.Editor;
 using Terminal.Gui.Editor.Completion;
 using Terminal.Gui.Input;
 using Xunit;

@@ -9,8 +9,8 @@ namespace Terminal.Gui.Editor;
 public partial class Editor
 {
     private IReadOnlyList<CompletionItem> _completionItems = [];
-    private int _completionPrefixStart;
     private PopoverMenu? _completionPopup;
+    private int _completionPrefixStart;
     private int _completionSelectedIndex;
 
     /// <summary>
@@ -235,7 +235,7 @@ public partial class Editor
         Point caretScreen = GetCaretScreenPosition ();
 
         // Build menu items from the completion items.
-        var menuItems = new MenuItem[_completionItems.Count];
+        MenuItem[] menuItems = new MenuItem[_completionItems.Count];
 
         for (var i = 0; i < _completionItems.Count; i++)
         {
@@ -244,10 +244,11 @@ public partial class Editor
             menuItems[i] = new MenuItem { Title = label };
         }
 
-        // Dispose previous popup if any — create fresh each time so the Root is rebuilt.
+        // Hide and dispose previous popup if any — create fresh each time so the Root is rebuilt.
         if (_completionPopup is not null)
         {
             _completionPopup.Visible = false;
+            _completionPopup.Dispose ();
         }
 
         _completionPopup = new PopoverMenu (menuItems)
