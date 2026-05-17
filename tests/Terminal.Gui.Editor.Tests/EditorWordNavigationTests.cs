@@ -138,7 +138,7 @@ public class EditorWordNavigationTests
 
         Assert.True (editor.HasSelection);
         Assert.Equal (0, editor.SelectionStart);
-        Assert.True (editor.SelectionEnd > 0);
+        Assert.Equal (6, editor.SelectionEnd); // start of "world"
     }
 
     // ── KillWordLeft (Ctrl+Backspace) ────────────────────────────────────
