@@ -133,7 +133,7 @@ public class EditorCompletionIntegrationTests
         // Enter to accept.
         fx.Injector.InjectKey (Key.Enter, Direct);
 
-        // The accepted text should be the second match (alphabetically: "help" comes after "hello").
+        // The accepted text should be the second match as returned by the provider.
         Assert.EndsWith ("help", editor.Document!.Text.TrimEnd ());
         Assert.False (editor.IsCompletionActive, "Completion should be dismissed after accept");
     }

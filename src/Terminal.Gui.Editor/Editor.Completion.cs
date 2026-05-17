@@ -260,7 +260,7 @@ public partial class Editor
         }
     }
 
-    /// <summary>Updates the visible ListView selection when the Popover is showing.</summary>
+    /// <summary>Updates the visible ListView selection if the list view exists.</summary>
     private void UpdateCompletionListSelection (int index)
     {
         if (_completionListView is null)
