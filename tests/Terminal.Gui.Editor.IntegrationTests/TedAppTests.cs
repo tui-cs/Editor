@@ -817,7 +817,7 @@ public class TedAppTests
         {
         }
 
-        public override int Read (byte [] buffer, int offset, int count)
+        public override int Read (byte[] buffer, int offset, int count)
         {
             throw new IOException ("read failed");
         }
@@ -837,7 +837,7 @@ public class TedAppTests
             throw new NotSupportedException ();
         }
 
-        public override void Write (byte [] buffer, int offset, int count)
+        public override void Write (byte[] buffer, int offset, int count)
         {
             throw new NotSupportedException ();
         }
@@ -845,7 +845,7 @@ public class TedAppTests
 
     private sealed class ThrowingWriteStream : MemoryStream
     {
-        public override void Write (byte [] buffer, int offset, int count)
+        public override void Write (byte[] buffer, int offset, int count)
         {
             throw new IOException ("write failed");
         }
