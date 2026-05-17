@@ -20,11 +20,15 @@ public partial class Editor
     ///     Process-wide static. Do not mutate from parallel tests — see Terminal.Gui's same convention
     ///     on <see cref="Terminal.Gui.Views.TextField.DefaultKeyBindings" />.
     /// </remarks>
-    // TG's Command enum (consumed via the pinned Terminal.Gui package) has no
-    // vertical-multi-caret slot. We register Editor-local Command ids and bind them through the
-    // same configurable DefaultKeyBindings path as every other Editor binding — there is no
-    // inline if-chain in OnKeyDownNotHandled. Upstream follow-up (TG should reserve a view-local
-    // Command range) is recorded in specs/decisions.md.
+    // TEMPORARY WORKAROUND — tracked by gui-cs/Terminal.Gui#5318.
+    // TG's Command enum (consumed via the pinned Terminal.Gui package) has no multi-caret
+    // member, and the configurable keybinding surface is keyed by Command, so there is no
+    // sanctioned way to register these without a Command value. Casting magic ints is a hack
+    // (config serializes the key as a bare number; collision risk if TG renumbers). The correct
+    // fix is upstream: add Command.InsertCaretAbove / .InsertCaretBelow to TG. Once TG#5318
+    // ships and Directory.Build.props bumps $(TerminalGuiVersion), replace these casts with the
+    // real enum members and delete this block. Bespoke command values are not an acceptable end
+    // state. See specs/decisions.md DEC-006.
     private const Command InsertCaretAbove = (Command)1001;
     private const Command InsertCaretBelow = (Command)1002;
 
