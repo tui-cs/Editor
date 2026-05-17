@@ -100,13 +100,15 @@ Decisions are recorded here when an open question from the plan is resolved. Eac
 
 ---
 
-### OPEN-006: Single-line / embeddable-input mode (→ DEC-008 on resolution)
+### DEC-008: Single-line / embeddable-input mode (resolves former OPEN-006)
 
-**Question**: Does `Editor` add a single-line / fixed-height input mode (`Multiline`, `EnterKeyAddsLine` raising `Accepting`, `TabKeyAddsTab` focus traversal) so it can be embedded as a code-aware text field in dialogs/forms — or is single-line input explicitly ceded to `Terminal.Gui.TextView`?
+**Decision**: **Yes** — `Editor` adds a single-line / fixed-height input mode: `Multiline` (default `true`), `EnterKeyAddsLine` (default `true`; when `false`, Enter raises `Accepting` instead of inserting a newline), `TabKeyAddsTab` (default `true`; when `false`, Tab traverses focus). Defaults preserve today's multi-line behavior exactly. Tracked in [#147](https://github.com/gui-cs/Editor/issues/147).
 
-**Tension**: directly opposes the CLAUDE.md non-goal *"Source/API compatibility with `TextView` — `Editor` ships beside it, not as a replacement."* A single-line field is the canonical `TextView` use case. Counter-pull: a syntax-highlighted single-/few-line expression or REPL input is a real product want `TextView` serves poorly.
+**Rationale**: The earlier "tension" rested on the CLAUDE.md non-goal *"`Editor` ships beside `TextView`, not as a replacement."* Maintainer direction (2026-05-17): `Editor` **will** functionally replace `TextView` — just **not** in a source/API- or UI-compatible way. For *feature* purposes that dissolves the tension: a code-aware single-/few-line input (highlighted expression field, REPL line) is a capability `TextView` serves and `Editor` must therefore serve. The behavior is mostly binding-shaped (Enter/Tab semantics + an `Accepting` event + a height/scroll constraint), so the cost is low and the defaults are non-breaking.
 
-**Affected features**: see [`textview-parity-gap/spec.md`](textview-parity-gap/spec.md) Gap 3. Spec only follows a "yes."
+**Affected features**: see [`textview-parity-gap/spec.md`](textview-parity-gap/spec.md) Gap 3 (#147). Note: this "functionally replaces `TextView`" framing also reclassifies `IDesignable` (#151) from non-goal to a tracked gap and keeps single-line Enter/Tab as a real feature (not mere rebinding).
+
+**Date**: 2026-05-17
 
 ---
 

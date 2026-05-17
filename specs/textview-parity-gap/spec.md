@@ -1,6 +1,6 @@
 # Feature Survey: Terminal.Gui `TextView` capabilities `Editor` lacks
 
-**Status**: Proposed — survey + dispositions; no implementation scheduled
+**Status**: Tracked — every gap below has a filed Editor issue (#145–#151); implementation is post-beta
 **Created**: 2026-05-17
 **Last updated**: 2026-05-17
 **Source**: `gui-cs/Terminal.Gui` `develop` (TextView split across `Terminal.Gui/Views/TextInput/TextView/TextView.*.cs`), compared against `Editor` at `develop` post-beta-feature-merge.
@@ -13,10 +13,16 @@ trivially reproduce with `Editor`'s existing public API. Pure `TextView` helper 
 developer can already build on `Editor.Document` / commands / the rendering pipeline are
 deliberately excluded (see § Excluded).
 
-This is the input to deciding what (if anything) gets its own `specs/<name>/spec.md`. It does not
-itself schedule work. Per the project non-goal *"Source/API compatibility with `TextView` —
-`Editor` ships beside it, not as a replacement"* (CLAUDE.md), some of these are genuine product
-gaps and some are intentional divergences; each row says which.
+**Direction (authoritative).** `Editor` **will** functionally replace `Terminal.Gui.TextView` —
+just **not** in a source/API- or UI-compatible way (it ships its own surface; consumers migrate
+deliberately, they do not recompile). This supersedes the older "ships beside `TextView`, not as a
+replacement" framing for *feature* purposes: a capability `TextView` has and real editor users
+expect is a **gap to close**, not an intentional divergence, unless it is a `TextView`
+implementation quirk the rendering pipeline already replaces (see § Excluded). In particular this
+**resolves the prior single-line-mode tension** — single-line / embeddable-input is now a target.
+
+Each gap below is filed as an Editor issue and linked. This doc remains the survey + rationale;
+the issues carry the schedulable work.
 
 ## Already at parity (verified — not gaps)
 
@@ -30,9 +36,9 @@ scrolling, and (beyond `TextView`) folding, multi-caret, and vertical multi-care
 
 ## Gaps (significant; not trivially replicable)
 
-Ordered roughly by product value.
+Ordered roughly by product value. Every gap is a tracked Editor issue.
 
-### 1. In-editor completion / autocomplete popup
+### 1. In-editor completion / autocomplete popup → [#145](https://github.com/gui-cs/Editor/issues/145)
 
 **TextView**: `Autocomplete` (`IAutocomplete` / `PopupAutocomplete`, `TextViewAutocomplete`) —
 a suggestion dropdown anchored at the caret, with insert/delete-back/set-cursor hooks and
@@ -50,7 +56,7 @@ exposed today.
 `PopoverMenu` (already used elsewhere in the codebase) rather than lifting AvaloniaEdit's
 `CodeCompletion/` (an explicit non-goal). Becomes `specs/completion/spec.md`.
 
-### 2. Overwrite / insert-replace mode
+### 2. Overwrite / insert-replace mode → [#146](https://github.com/gui-cs/Editor/issues/146)
 
 **TextView**: `Used` flag + `Command.ToggleOverwrite` (Insert key), `Command.EnableOverwrite`,
 `Command.DisableOverwrite`; a distinct caret rendering for overwrite; typing replaces the rune
@@ -67,7 +73,7 @@ defines these `Command` members), Insert-key default binding via the existing
 `[ConfigurationProperty] Editor.DefaultKeyBindings`, a block/underline caret variant, and ted
 status-bar indicator. Becomes `specs/overwrite-mode/spec.md`.
 
-### 3. Single-line / embeddable-input mode
+### 3. Single-line / embeddable-input mode → [#147](https://github.com/gui-cs/Editor/issues/147)
 
 **TextView**: `Multiline` (false ⇒ single-line field; disables word-wrap, constrains
 navigation), `EnterKeyAddsLine` (false ⇒ Enter raises `Accepting` instead of inserting a
@@ -79,17 +85,16 @@ dialogs and forms.
 dropped into a dialog as a single-line code field.
 
 **Replicable by a consumer?** No — these change core key semantics and the layout/scroll
-contract; not reachable via current API.
+contract; not reachable via current API. Most of the behavior is binding-shaped, though
+(Enter/Tab semantics + an `Accepting` event + a height/scroll constraint).
 
-**Disposition**: **Decision required before spec.** This is the sharpest tension with the
-*"`Editor` ships beside `TextView`, not as a replacement"* non-goal: a single-line mode is exactly
-the `TextView` use case `Editor` deliberately did not target. But a *code-aware single-line/few-line
-input* (syntax-highlighted expression field, REPL line) is a real product want that `TextView`
-serves poorly. **Decision required** — `decisions.md` **OPEN-006** (→ `DEC-008` on resolution):
-does `Editor` add `Multiline` / `EnterKeyAddsLine` (`Accepting`) / `TabKeyAddsTab`, or is
-single-line input explicitly ceded to `TextView`? Spec only follows a "yes."
+**Disposition**: **Target — tension resolved.** Because `Editor` functionally replaces
+`TextView`, a code-aware single-/few-line input (highlighted expression field, REPL line) is in
+scope, **not** ceded to `TextView`. `decisions.md` **DEC-008** (resolving former OPEN-006) decides "yes".
+Add `Multiline` / `EnterKeyAddsLine` (raises `Accepting`) / `TabKeyAddsTab`; defaults preserve
+today's multi-line behavior exactly. Becomes `specs/single-line-mode/spec.md`.
 
-### 4. Emacs kill-ring (kill-to-EOL / kill-to-BOL with append)
+### 4. Emacs kill-ring (kill-to-EOL / kill-to-BOL with append) → [#148](https://github.com/gui-cs/Editor/issues/148)
 
 **TextView**: `Command.CutToEndOfLine` (Ctrl+K), `Command.CutToStartOfLine`; consecutive kills
 **append** to the clipboard (kill-ring semantics), and the Emacs nav defaults (Ctrl+B/F/N/P)
@@ -107,7 +112,7 @@ append-on-repeat) is **not** replicable: it needs new commands and consecutive-c
 collides with nothing today, but keep the no-surprise default and let users bind via config).
 Becomes `specs/kill-ring/spec.md`. Lower priority — power-user feature.
 
-### 5. Built-in editing context menu
+### 5. Built-in editing context menu → [#149](https://github.com/gui-cs/Editor/issues/149)
 
 **TextView**: `ContextMenu` (a `PopoverMenu`) on right-click / `Command.Context`, exposing the
 standard Cut/Copy/Paste/Select-All/Undo set.
@@ -116,15 +121,15 @@ standard Cut/Copy/Paste/Select-All/Undo set.
 
 **Replicable by a consumer?** Borderline. A consumer *can* build a `PopoverMenu` and route it to
 `Editor`'s commands — but a sensible **default** edit menu is a product affordance users expect
-out of the box, and shipping it (and keeping it in sync with read-only / selection state) is more
-than a one-liner.
+out of the box (and `Editor` replaces `TextView`, which ships one), and keeping it in sync with
+read-only / selection / undo state is more than a one-liner.
 
 **Disposition**: **Spec it small, or fold into the overwrite/input work.** A default
 `ContextMenu` populated from the existing command set, suppressed under `ReadOnly` for mutating
 items, opt-out via a property. Could be one section of `specs/overwrite-mode/spec.md` or its own
 `specs/context-menu/spec.md`.
 
-### 6. Control-level file Load/Save (incl. stream / large-file)
+### 6. Large-file streaming load/save → [#150](https://github.com/gui-cs/Editor/issues/150)
 
 **TextView**: `Load(string path)`, `Load(Stream)`, `Load(List<Cell>…)`, `CloseFile()` — the
 control owns file/stream loading (the `Stream` overload matters for large files).
@@ -132,14 +137,33 @@ control owns file/stream loading (the `Stream` overload matters for large files)
 **Editor**: file I/O lives in `examples/ted`; no Load/Save on the control.
 
 **Replicable by a consumer?** The naive case (`File.ReadAllText` → `Document.Text`) is trivial
-helper territory and is **excluded**. The *streaming / large-file* path is not trivial and is
-already a recognized open question — `decisions.md` **OPEN-003** ("`LoadAsync(Stream)` /
-`SaveAsync` on `Editor` vs. on the document").
+helper territory and stays **excluded**. The *streaming / large-file* path is not trivial — it
+needs a non-allocating load over the rope and an async placement decision (`decisions.md`
+**OPEN-003**: `LoadAsync(Stream)` / `SaveAsync` on `Editor` vs. on the document). The beta bar
+already requires large-file responsiveness (10 MB < 200 ms initial render).
 
-**Disposition**: **No new spec — resolve OPEN-003.** Tracked. The trivial path stays a consumer
-concern; the async/streaming placement is the only real decision and it already has a slot.
+**Disposition**: **Resolve OPEN-003, then spec it.** Streaming load/save at the decided layer
+(rope-backed `TextDocument` / `RopeTextSource` is the natural seam); DEC-001 line-ending
+preservation across the round trip. Becomes `specs/file-io/spec.md`.
 
-## Excluded (intentional — `TextView` helpers a consumer can already do, or non-goals)
+### 7. Design-time support (`EnableForDesign` / `IDesignable`) → [#151](https://github.com/gui-cs/Editor/issues/151)
+
+**TextView**: implements TG's `IDesignable` — `EnableForDesign()` seeds representative sample
+content so the control previews meaningfully in the designer / UI Catalog.
+
+**Editor**: does not implement `IDesignable`; renders empty in TG design tooling.
+
+**Replicable by a consumer?** No — `IDesignable` is discovered by TG tooling on the type itself;
+a consumer cannot add it externally. (Previously listed under Excluded as "not an editing
+capability"; **reclassified as a gap** because `Editor` replaces `TextView` and must participate
+in the same tooling `TextView` does.)
+
+**Disposition**: **Spec it small.** Implement the current TG `IDesignable` contract; seed a few
+lines of highlighted sample code (exercise highlighting / line numbers / a fold / wrap). Inert at
+runtime; **no `static` members on the `View`-derived type** (CLAUDE.md hard rule) — sample data
+off-View. Folds into a small spec or rides along with another small item.
+
+## Excluded (intentional — `TextView` helpers a consumer can already do, or pipeline-replaced quirks)
 
 - **`InsertText(string)` / `GetCurrentLine` / `GetLine` / `GetAllLines` / `Lines` /
   `CurrentRow`/`CurrentColumn`/`InsertionPoint`** — all expressible via `Editor.Document`
@@ -155,23 +179,26 @@ concern; the async/streaming placement is the only real decision and it already 
   TextView-unique feature.
 - **Emacs *navigation* defaults (Ctrl+B/F/N/P), dynamic Enter/Tab when multi-line** — pure key
   rebinding, already possible through the configurable `Editor.DefaultKeyBindings`. (The
-  kill-ring *edit* behavior is the non-replicable part — see Gap 4.)
-- **`EnableForDesign()` / `IDesignable`** — designer tooling, not an editing capability; out of
-  scope for the editor feature set.
+  kill-ring *edit* behavior is the non-replicable part — see Gap 4. The single-line Enter/Tab
+  *semantic switch* is Gap 3, not mere rebinding.)
+- **Naive whole-file `Load`** (`File.ReadAllText` → `Document.Text`) — trivial consumer code.
+  (The *streaming* path is Gap 6.)
 - **`UnwrappedCursorPositionChanged` / `WordWrapManager` internals** — `Editor`'s wrap pipeline
   (`WordWrapStrategy` + `WrapMapEntry`) already provides display↔model mapping; the event is a
   thin convenience a consumer can derive from `CaretChanged` + the wrap map.
 
 ## Recommended dispositions (summary)
 
-| Gap | Disposition | New artifact |
-|-----|-------------|--------------|
-| 1. Autocomplete | Post-beta; resolve OPEN-002 first | `specs/completion/spec.md` |
-| 2. Overwrite mode | Beta-adjacent, small | `specs/overwrite-mode/spec.md` |
-| 3. Single-line/input mode | **Decision first** (OPEN-006 → DEC-008) — tension with non-goal | decision, then maybe spec |
-| 4. Kill-ring | Post-beta, optional | `specs/kill-ring/spec.md` |
-| 5. Context menu | Small; standalone or folded into #2 | `specs/context-menu/spec.md` (or §) |
-| 6. File Load/Save | No new spec — resolve OPEN-003 | `decisions.md` OPEN-003 |
+| Gap | Issue | Disposition | New artifact |
+|-----|-------|-------------|--------------|
+| 1. Autocomplete | [#145](https://github.com/gui-cs/Editor/issues/145) | Post-beta; resolve OPEN-002 first | `specs/completion/spec.md` |
+| 2. Overwrite mode | [#146](https://github.com/gui-cs/Editor/issues/146) | Beta-adjacent, small | `specs/overwrite-mode/spec.md` |
+| 3. Single-line/input mode | [#147](https://github.com/gui-cs/Editor/issues/147) | Target — DEC-008 decided "yes" (former OPEN-006) | `specs/single-line-mode/spec.md` |
+| 4. Kill-ring | [#148](https://github.com/gui-cs/Editor/issues/148) | Post-beta, optional | `specs/kill-ring/spec.md` |
+| 5. Context menu | [#149](https://github.com/gui-cs/Editor/issues/149) | Small; standalone or folded into #2 | `specs/context-menu/spec.md` (or §) |
+| 6. Large-file streaming | [#150](https://github.com/gui-cs/Editor/issues/150) | Resolve OPEN-003, then spec | `specs/file-io/spec.md` |
+| 7. Design-time (`IDesignable`) | [#151](https://github.com/gui-cs/Editor/issues/151) | Small | small spec / ride-along |
 
 None of these are beta blockers (all four beta features merged — see `specs/plan.md`). They are
-post-beta candidates and one open decision. The plan's "Open follow-ups" links here.
+post-beta work toward `Editor` fully replacing `TextView` functionally. The plan's "Open
+follow-ups" links here.

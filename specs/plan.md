@@ -63,18 +63,18 @@ No feature work is left. The remaining beta gate is external coordination, decis
 
 | Item | Status | Tracking | Notes |
 |------|--------|----------|-------|
-| Terminal.Gui `[Obsolete]` TextView | External | [Terminal.Gui#5303](https://github.com/gui-cs/Terminal.Gui/issues/5303) | TG-side. Lands in the TG release alongside our beta; don't block our cut on theirs. |
-| `gui-cs/clet edit` ships against beta | Pending | — | External-consumer smoke test (Beta DoD). |
-| Open decisions OPEN-001…005 | Pending | `decisions.md` | OPEN-005 (`HighlightingColor` mapping) effectively settled by syntax-theme — confirm and move to Resolved. Others still open. |
+| Terminal.Gui `[Obsolete]` TextView |  ✅ Done | | [Terminal.Gui#5303](https://github.com/gui-cs/Terminal.Gui/issues/5303) | TG-side. Lands in the TG release alongside our beta; don't block our cut on theirs. |
+| `gui-cs/clet edit` ships against beta |  ✅ Done | | — | External-consumer smoke test (Beta DoD). |
+| Open decisions OPEN-001…005 |  ✅ Done | | `decisions.md` | OPEN-005 (`HighlightingColor` mapping) settled by syntax-theme  |
 | Verification pass | Pending | Beta DoD | Cross-platform build, all test projects green, `Editor.Tests` ≥90%, perf gate within 3× baseline. |
-| `develop` → `main` + `v*` tag cut | Pending | release.yml | The merge-to-main + tag is the beta. |
+| `develop` → `main` + `v*` tag cut |  ✅ Done | | release.yml | The merge-to-main + tag is the beta. |
 | [textmate-grammars](textmate-grammars/spec.md) | Post-beta | — | Ships in the release **after** beta. Builds on `syntax-colorizer`. |
 
 **Open follow-ups (post-beta candidates, not beta blockers):**
 
 - **Multi-select PR** — `Alt+Drag` producing a *selection per row* (column/box select), not just carets; render additional-caret selections. The natural successor to vertical-multi-caret. Tracked by issue #139 and open PR #142. Per commit `494261d`, this PR **must** restore multi-caret `Tab`/`Shift+Tab` selection-preservation parity with the single-caret `IndentSelectedLines` path.
 - Open bugs/PRs awaiting review: #144/#143 (Editor cursor-style preservation on `UpdateCursor`), #141/#140 (swallowed Tab after raw ANSI Shift+Tab in ted).
-- **TextView parity gaps** — survey of `Terminal.Gui.TextView` capabilities `Editor` lacks (autocomplete, overwrite mode, single-line/input mode, kill-ring, context menu) with per-gap dispositions: [`textview-parity-gap/spec.md`](textview-parity-gap/spec.md). All post-beta; single-line mode needs decision OPEN-006 first.
+- **TextView parity gaps** — `Editor` will functionally replace `Terminal.Gui.TextView` (not API/UI-compatible). Survey + per-gap dispositions in [`textview-parity-gap/spec.md`](textview-parity-gap/spec.md); all seven gaps filed as issues #145–#151: autocomplete (#145), overwrite mode (#146), single-line/input mode (#147, decided — DEC-008), kill-ring (#148), context menu (#149), large-file streaming (#150), `IDesignable` (#151). All post-beta.
 
 ### Subsumed / archived
 
