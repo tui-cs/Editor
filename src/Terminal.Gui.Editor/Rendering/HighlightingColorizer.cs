@@ -24,24 +24,35 @@ namespace Terminal.Gui.Editor.Rendering;
 public sealed class HighlightingColorizer : IVisualLineTransformer
 {
     private readonly Attribute _defaultAttribute;
-    private readonly bool _useThemeBackground;
+    private readonly Func<VisualRole, Attribute>? _getRoleAttribute;
+    private readonly Func<VisualRole, bool>? _isRoleExplicitlySet;
 
     /// <summary>Creates a new <see cref="HighlightingColorizer" />.</summary>
     /// <param name="highlighter">The document highlighter that produces per-line color information.</param>
     /// <param name="defaultAttribute">
-    ///     The editor's normal attribute, used as a fallback when a highlighting color does not
-    ///     specify foreground or background.
+    ///     The editor's normal attribute, used as the background for highlighted tokens and as the
+    ///     fallback when a highlighting color specifies no foreground.
     /// </param>
-    /// <param name="useThemeBackground">
-    ///     When <see langword="true" />, highlighted background colors are preserved. When
-    ///     <see langword="false" />, only the foreground is taken from the highlighting color
-    ///     and the background falls back to <paramref name="defaultAttribute" />.
+    /// <param name="getRoleAttribute">
+    ///     Resolves a <see cref="VisualRole" /> against the editor's active TG scheme (typically
+    ///     <c>role =&gt; GetAttributeForRole (role)</c>). When <see langword="null" />, role-based
+    ///     theming is disabled and colors fall back to their xshd-declared foreground.
     /// </param>
-    public HighlightingColorizer (IHighlighter highlighter, Attribute defaultAttribute, bool useThemeBackground)
+    /// <param name="isRoleExplicitlySet">
+    ///     Reports whether the active scheme explicitly defines a <see cref="VisualRole" /> (as
+    ///     opposed to deriving it). A role is only themed when explicitly set; otherwise the
+    ///     xshd-declared color is preserved so stylized themes keep their look.
+    /// </param>
+    public HighlightingColorizer (
+        IHighlighter highlighter,
+        Attribute defaultAttribute,
+        Func<VisualRole, Attribute>? getRoleAttribute = null,
+        Func<VisualRole, bool>? isRoleExplicitlySet = null)
     {
         Highlighter = highlighter ?? throw new ArgumentNullException (nameof (highlighter));
         _defaultAttribute = defaultAttribute;
-        _useThemeBackground = useThemeBackground;
+        _getRoleAttribute = getRoleAttribute;
+        _isRoleExplicitlySet = isRoleExplicitlySet;
     }
 
     /// <summary>Gets the underlying highlighter.</summary>
@@ -82,14 +93,14 @@ public sealed class HighlightingColorizer : IVisualLineTransformer
     }
 
     /// <summary>Updates the default attribute (e.g. when the editor's color scheme changes).</summary>
-    public HighlightingColorizer WithDefaultAttribute (Attribute defaultAttribute, bool useThemeBackground)
+    public HighlightingColorizer WithDefaultAttribute (Attribute defaultAttribute)
     {
-        if (_defaultAttribute == defaultAttribute && _useThemeBackground == useThemeBackground)
+        if (_defaultAttribute == defaultAttribute)
         {
             return this;
         }
 
-        return new HighlightingColorizer (Highlighter, defaultAttribute, useThemeBackground);
+        return new HighlightingColorizer (Highlighter, defaultAttribute, _getRoleAttribute, _isRoleExplicitlySet);
     }
 
     /// <summary>
@@ -128,7 +139,13 @@ public sealed class HighlightingColorizer : IVisualLineTransformer
         return ToAttribute (bestColor);
     }
 
-    /// <summary>Converts a <see cref="HighlightingColor" /> to a Terminal.Gui <see cref="Attribute" />.</summary>
+    /// <summary>
+    ///     Converts a <see cref="HighlightingColor" /> to a Terminal.Gui <see cref="Attribute" />.
+    ///     Resolution order: (1) if the color maps to a <see cref="VisualRole" /> the active scheme
+    ///     explicitly themes, use the scheme's attribute (keeping the editor background when the
+    ///     role leaves it unset); (2) otherwise the xshd-declared foreground over the editor
+    ///     background; (3) otherwise the editor's default attribute.
+    /// </summary>
     private Attribute ToAttribute (HighlightingColor? color)
     {
         if (color is null)
@@ -136,11 +153,18 @@ public sealed class HighlightingColorizer : IVisualLineTransformer
             return _defaultAttribute;
         }
 
-        Color fg = color.Foreground?.Color ?? _defaultAttribute.Foreground;
-        Color bg = _useThemeBackground
-            ? color.Background?.Color ?? _defaultAttribute.Background
-            : _defaultAttribute.Background;
+        if (color.Role is { } role
+            && _getRoleAttribute is { } getRole
+            && _isRoleExplicitlySet?.Invoke (role) == true)
+        {
+            Attribute themed = getRole (role);
+            Color background = themed.Background == Color.None ? _defaultAttribute.Background : themed.Background;
 
-        return new Attribute (fg, bg);
+            return new Attribute (themed.Foreground, background, themed.Style);
+        }
+
+        Color fg = color.Foreground?.Color ?? _defaultAttribute.Foreground;
+
+        return new Attribute (fg, _defaultAttribute.Background);
     }
 }

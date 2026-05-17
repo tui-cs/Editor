@@ -161,6 +161,15 @@ public class HighlightingColor : IFreezable, ICloneable, IEquatable<Highlighting
         }
     }
 
+    /// <summary>
+    ///     Gets/sets the Terminal.Gui <see cref="VisualRole" /> this color maps to, if any.
+    ///     Populated at load time from the xshd <c>category=</c> attribute or the
+    ///     <see cref="XshdRoleMap" /> name table. When set and the active <see cref="Scheme" />
+    ///     explicitly defines that role, the colorizer uses the scheme's themed attribute instead
+    ///     of this color's hardcoded foreground; otherwise this color is used unchanged.
+    /// </summary>
+    public VisualRole? Role { get; set; }
+
     internal bool IsEmptyForMerge => _bold == null && _italic == null && _underline == null
                                      && _strikethrough == null && _foreground == null && _background == null;
 
@@ -335,6 +344,11 @@ public class HighlightingColor : IFreezable, ICloneable, IEquatable<Highlighting
         if (color._strikethrough != null)
         {
             _strikethrough = color._strikethrough;
+        }
+
+        if (color.Role != null)
+        {
+            Role = color.Role;
         }
     }
 }

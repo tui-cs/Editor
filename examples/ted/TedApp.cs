@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using Terminal.Gui.App;
 using Terminal.Gui.Configuration;
 using Terminal.Gui.Document;
@@ -96,14 +97,6 @@ public sealed partial class TedApp : Window
                 : null;
         };
 
-        CheckBox useThemeBackgroundCheckBox = new ()
-        {
-            AllowCheckStateNone = false,
-            CanFocus = false,
-            Text = "Use _Theme Background",
-            Value = Editor.UseThemeBackground ? CheckState.Checked : CheckState.UnChecked
-        };
-
         CheckBox wordWrapCheckBox = new ()
         {
             AllowCheckStateNone = false,
@@ -118,6 +111,8 @@ public sealed partial class TedApp : Window
         };
 
         LanguageShortcut = new Shortcut (Key.Empty, "Plain Text", null) { MouseHighlightStates = MouseState.None };
+
+        ThemeShortcut = new Shortcut (Key.Empty, ThemeManager.Theme, CycleTheme);
 
         IndentationSizeUpDown = new NumericUpDown<int>
         {
@@ -153,6 +148,7 @@ public sealed partial class TedApp : Window
         StatusBar statusBar =
             new ([
                 new Shortcut { Title = "Language", CommandView = LanguageShortcut },
+                new Shortcut { Title = "Theme", CommandView = ThemeShortcut },
                 new Shortcut
                     { Text = "Indent", CommandView = IndentationSizeUpDown, MouseHighlightStates = MouseState.None },
                 new Shortcut { CommandView = ShowTabsCheckBox },
@@ -239,15 +235,6 @@ public sealed partial class TedApp : Window
                 },
                 new MenuItem
                 {
-                    Action = () =>
-                    {
-                        Editor.UseThemeBackground = useThemeBackgroundCheckBox.Value == CheckState.Checked;
-                    },
-                    CommandView = useThemeBackgroundCheckBox,
-                    HelpText = "Use theme background for highlighted text"
-                },
-                new MenuItem
-                {
                     CommandView = wordWrapCheckBox,
                     HelpText = "Soft-wrap long lines at viewport edge"
                 }
@@ -280,6 +267,9 @@ public sealed partial class TedApp : Window
 
     /// <summary>The status-bar shortcut that displays the current syntax-highlighting language name.</summary>
     public Shortcut LanguageShortcut { get; }
+
+    /// <summary>The status-bar shortcut that cycles <see cref="ThemeManager.Theme" /> on click.</summary>
+    public Shortcut ThemeShortcut { get; }
 
     /// <summary>The indentation-size selector shown in the status bar.</summary>
     public NumericUpDown<int> IndentationSizeUpDown { get; }
@@ -356,6 +346,22 @@ public sealed partial class TedApp : Window
     {
         _fileNameShortcut.Title = CurrentFilePath ?? "<untitled>";
         _fileNameShortcut.SetNeedsDraw ();
+    }
+
+    private void CycleTheme ()
+    {
+        ImmutableList<string> names = ThemeManager.GetThemeNames ();
+
+        if (names.Count == 0)
+        {
+            return;
+        }
+
+        var index = names.IndexOf (ThemeManager.Theme);
+        var next = names[(index + 1) % names.Count];
+        ThemeManager.Theme = next;
+        ThemeShortcut.Title = next;
+        ThemeShortcut.SetNeedsDraw ();
     }
 
     private void UpdateLocShortcut ()

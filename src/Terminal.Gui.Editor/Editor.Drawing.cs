@@ -31,42 +31,11 @@ public partial class Editor
         // Ensure the colorizer sees the current attribute (scheme may have changed since install).
         EnsureColorizerAttribute (normal);
 
-        FillViewportBackground (viewport, normal);
         DrawVisibleLines (viewport, normal, selected);
         SetAttribute (normal);
         UpdateCursor ();
 
         return true;
-    }
-
-    /// <summary>
-    ///     When <see cref="UseThemeBackground" /> is <see langword="true" /> and a highlighting
-    ///     definition has a default background color, fills the viewport with that background
-    ///     so empty cells match per-token backgrounds.
-    /// </summary>
-    private void FillViewportBackground (Rectangle viewport, Attribute normal)
-    {
-        if (!UseThemeBackground)
-        {
-            return;
-        }
-
-        Color? themeBg = _highlighter?.DefaultTextColor?.Background?.Color;
-
-        if (themeBg is not { } bg)
-        {
-            return;
-        }
-
-        Attribute fillAttr = new (normal.Foreground, bg);
-        SetAttribute (fillAttr);
-
-        var spaces = new string (' ', viewport.Width);
-
-        for (var row = 0; row < viewport.Height; row++)
-        {
-            AddStr (0, row, spaces);
-        }
     }
 
     private void DrawVisibleLines (Rectangle viewport, Attribute normal, Attribute selected)
@@ -306,7 +275,7 @@ public partial class Editor
             return;
         }
 
-        HighlightingColorizer replacement = _highlightingColorizer.WithDefaultAttribute (normal, UseThemeBackground);
+        HighlightingColorizer replacement = _highlightingColorizer.WithDefaultAttribute (normal);
 
         if (ReferenceEquals (replacement, _highlightingColorizer))
         {

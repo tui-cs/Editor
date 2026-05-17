@@ -1,4 +1,6 @@
 using System.Drawing;
+using Terminal.Gui.App;
+using Terminal.Gui.Configuration;
 using Terminal.Gui.Document;
 using Terminal.Gui.Document.Folding;
 using Terminal.Gui.Drawing;
@@ -74,6 +76,17 @@ public partial class Editor : View
         CreateCommandsAndBindings ();
         OverlayRenderers.Add (new Rendering.MultiCaretRenderer (this));
         Document = new TextDocument ();
+        ThemeManager.ThemeChanged += OnThemeChanged;
+    }
+
+    /// <summary>
+    ///     Re-renders with the new TG theme's attributes when <see cref="ThemeManager.Theme" />
+    ///     changes. Visual-line caches bake in resolved attributes, so they are dropped.
+    /// </summary>
+    private void OnThemeChanged (object? sender, EventArgs<string> e)
+    {
+        ClearVisualLineCaches ();
+        SetNeedsDraw ();
     }
 
     /// <summary>The backing <see cref="TextDocument" />. Setting this rewires change handlers and clamps the caret.</summary>
@@ -220,29 +233,6 @@ public partial class Editor : View
     ///     Set to <see langword="null" /> to disable auto-indent on Enter.
     /// </summary>
     public IIndentationStrategy? IndentationStrategy { get; set; } = new DefaultIndentationStrategy ();
-
-    /// <summary>
-    ///     When <see langword="true" /> (the default), syntax-highlighted tokens keep both their
-    ///     foreground and background from the syntax highlighting theme (e.g. Dark Plus's
-    ///     <c>#1E1E1E</c> background). Set to <see langword="false" /> to override the
-    ///     highlighter's background with the TG scheme's <see cref="VisualRole.Normal" />
-    ///     background, matching the active application theme.
-    /// </summary>
-    public bool UseThemeBackground
-    {
-        get;
-        set
-        {
-            if (field == value)
-            {
-                return;
-            }
-
-            field = value;
-            ClearVisualLineCaches ();
-            SetNeedsDraw ();
-        }
-    } = true;
 
     /// <summary>Whether tab characters render with a visible glyph in their first cell.</summary>
     public bool ShowTabs
@@ -407,6 +397,11 @@ public partial class Editor : View
     /// <inheritdoc />
     protected override void Dispose (bool disposing)
     {
+        if (disposing)
+        {
+            ThemeManager.ThemeChanged -= OnThemeChanged;
+        }
+
         if (disposing && _document is not null)
         {
             // Without this the document keeps the editor alive via the Changed subscription whenever
@@ -622,7 +617,11 @@ public partial class Editor : View
 
         _highlighter = new DocumentHighlighter (_document, HighlightingDefinition);
         Attribute normal = HasFocus ? GetAttributeForRole (VisualRole.Normal) : Attribute.Default;
-        _highlightingColorizer = new HighlightingColorizer (_highlighter, normal, UseThemeBackground);
+        _highlightingColorizer = new HighlightingColorizer (
+            _highlighter,
+            normal,
+            GetAttributeForRole,
+            role => GetScheme ().TryGetExplicitlySetAttributeForRole (role, out _));
         LineTransformers.Insert (0, _highlightingColorizer);
     }
 
@@ -1014,8 +1013,7 @@ public partial class Editor : View
             styledSegments,
             selectionStart,
             selectionEnd,
-            LineTransformers,
-            UseThemeBackground);
+            LineTransformers);
 
         return _visualLineBuilder.Build (line, context);
     }

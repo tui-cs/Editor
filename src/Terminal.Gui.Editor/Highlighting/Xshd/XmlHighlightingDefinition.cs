@@ -281,6 +281,7 @@ internal sealed class XmlHighlightingDefinition : IHighlightingDefinition
             c.Strikethrough = color.Strikethrough;
             c.Italic = color.Italic;
             c.Bold = color.Bold;
+            c.Role = XshdRoleMap.ResolveRole (color.Name, color.Category);
             return c;
         }
 

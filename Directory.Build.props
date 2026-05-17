@@ -26,7 +26,16 @@
     <RepositoryType>git</RepositoryType>
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
 
-    <!-- Pinned Terminal.Gui version. CI / release workflows can override via -p:TerminalGuiVersion=<x>. -->
+    <!--
+      Pinned Terminal.Gui version. CI / release workflows can override via -p:TerminalGuiVersion=<x>.
+
+      TODO(gui-cs/Editor#132): the syntax-theme work (PR #134) consumes the code-token
+      VisualRoles added in gui-cs/Terminal.Gui#5313 (PR for TG issue #5311). That TG change is
+      not yet on a published develop pre-release, so this value must be bumped to the first
+      `2.1.1-develop.<n>` build that contains #5313 before PR #134 leaves draft / CI can go green.
+      Local verification until then: build TG from the #5313 branch and pass
+      -p:TerminalGuiVersion=<that GitVersion> to dotnet build/run.
+    -->
     <TerminalGuiVersion Condition="'$(TerminalGuiVersion)' == ''">2.1.1-develop.59</TerminalGuiVersion>
   </PropertyGroup>
 

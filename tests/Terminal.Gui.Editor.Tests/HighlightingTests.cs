@@ -3,6 +3,7 @@
 using Terminal.Gui.Document;
 using Terminal.Gui.Drawing;
 using Terminal.Gui.Highlighting;
+using Terminal.Gui.Highlighting.Xshd;
 using Terminal.Gui.Editor.Rendering;
 using Xunit;
 using Attribute = Terminal.Gui.Drawing.Attribute;
@@ -163,7 +164,7 @@ public class HighlightingTests
         using DocumentHighlighter highlighter = new (doc, csharp);
 
         Attribute defaultAttr = new (Color.White, Color.Black);
-        HighlightingColorizer colorizer = new (highlighter, defaultAttr, true);
+        HighlightingColorizer colorizer = new (highlighter, defaultAttr);
 
         // Build a visual line.
         VisualLineBuilder builder = new ();
@@ -206,7 +207,7 @@ public class HighlightingTests
         using DocumentHighlighter highlighter = new (doc, csharp);
 
         Attribute defaultAttr = new (Color.White, Color.Black);
-        HighlightingColorizer colorizer = new (highlighter, defaultAttr, true);
+        HighlightingColorizer colorizer = new (highlighter, defaultAttr);
 
         VisualLineBuilder builder = new ();
         DocumentLine line = doc.GetLineByNumber (1);
@@ -222,14 +223,21 @@ public class HighlightingTests
     }
 
     [Fact]
-    public void Colorizer_UseThemeBackground_False_Uses_Default_Background ()
+    public void Colorizer_Uses_Scheme_Code_Role_When_Theme_Defines_It ()
     {
         TextDocument doc = new ("public");
         IHighlightingDefinition csharp = HighlightingManager.Instance.GetDefinition ("C#")!;
         using DocumentHighlighter highlighter = new (doc, csharp);
 
         Attribute defaultAttr = new (Color.White, Color.Black);
-        HighlightingColorizer colorizer = new (highlighter, defaultAttr, false);
+        var themedKeyword = new Attribute (Color.Magenta, Color.Black);
+
+        // Scheme explicitly themes CodeKeyword; xshd "Keyword" maps to it via XshdRoleMap.
+        HighlightingColorizer colorizer = new (
+            highlighter,
+            defaultAttr,
+            role => role == VisualRole.CodeKeyword ? themedKeyword : defaultAttr,
+            role => role == VisualRole.CodeKeyword);
 
         VisualLineBuilder builder = new ();
         DocumentLine line = doc.GetLineByNumber (1);
@@ -239,11 +247,82 @@ public class HighlightingTests
         CellVisualLine visualLine = builder.Build (line, context);
         colorizer.Transform (visualLine);
 
-        // Background should always be the default (Black), regardless of highlighting.
-        foreach (CellVisualLineElement element in visualLine.Elements)
-        {
-            Assert.Equal (Color.Black, element.Attribute.Background);
-        }
+        // "public" is a keyword → themed CodeKeyword foreground from the scheme.
+        Assert.Equal (themedKeyword.Foreground, visualLine.Elements[0].Attribute.Foreground);
+    }
+
+    [Fact]
+    public void Colorizer_Falls_Back_To_Xshd_When_Theme_Does_Not_Override ()
+    {
+        TextDocument doc = new ("public");
+        IHighlightingDefinition csharp = HighlightingManager.Instance.GetDefinition ("C#")!;
+        using DocumentHighlighter highlighter = new (doc, csharp);
+
+        Attribute defaultAttr = new (Color.White, Color.Black);
+        var sentinel = new Attribute (Color.Magenta, Color.Black);
+
+        // Scheme leaves CodeKeyword unset (isRoleExplicitlySet → false): use xshd's color,
+        // and the editor (scheme) background — never the sentinel themed attribute.
+        HighlightingColorizer colorizer = new (
+            highlighter,
+            defaultAttr,
+            _ => sentinel,
+            _ => false);
+
+        VisualLineBuilder builder = new ();
+        DocumentLine line = doc.GetLineByNumber (1);
+        VisualLineBuildContext context = new (
+            doc, 4, false, defaultAttr, defaultAttr, null, 0, 0, []);
+
+        CellVisualLine visualLine = builder.Build (line, context);
+        colorizer.Transform (visualLine);
+
+        Attribute keyword = visualLine.Elements[0].Attribute;
+        Assert.NotEqual (sentinel.Foreground, keyword.Foreground);
+        Assert.Equal (defaultAttr.Background, keyword.Background);
+    }
+
+    [Fact]
+    public void XshdRoleMap_Has_Coverage_For_Common_Names ()
+    {
+        Assert.Equal (VisualRole.CodeKeyword, XshdRoleMap.TryGetRole ("Keyword"));
+        Assert.Equal (VisualRole.CodeComment, XshdRoleMap.TryGetRole ("Comment"));
+        Assert.Equal (VisualRole.CodeString, XshdRoleMap.TryGetRole ("String"));
+        Assert.Equal (VisualRole.CodeNumber, XshdRoleMap.TryGetRole ("Number"));
+        Assert.Equal (VisualRole.CodeConstant, XshdRoleMap.TryGetRole ("Bool"));
+        Assert.Equal (VisualRole.CodePunctuation, XshdRoleMap.TryGetRole ("Punctuation"));
+
+        // Unmapped names (markdown / one-offs) fall through.
+        Assert.Null (XshdRoleMap.TryGetRole ("Heading"));
+        Assert.Null (XshdRoleMap.TryGetRole ("DefinitelyNotAColor"));
+
+        // category= wins over the name table; garbage category falls back to the table.
+        Assert.Equal (VisualRole.CodeKeyword, XshdRoleMap.ResolveRole ("StringInterpolation", "CodeKeyword"));
+        Assert.Equal (VisualRole.CodeString, XshdRoleMap.ResolveRole ("StringInterpolation", null));
+        Assert.Equal (VisualRole.CodeComment, XshdRoleMap.ResolveRole ("Comment", "not-a-role"));
+        Assert.Null (XshdRoleMap.ResolveRole (null, "not-a-role"));
+    }
+
+    [Fact]
+    public void Category_Attribute_Overrides_Table ()
+    {
+        const string xshd = """
+                            <?xml version="1.0"?>
+                            <SyntaxDefinition name="CatTest" xmlns="http://icsharpcode.net/sharpdevelop/syntaxdefinition/2008">
+                              <Color name="StringInterpolation" category="CodeKeyword" foreground="Red" />
+                              <Color name="Comment" foreground="Green" />
+                              <RuleSet />
+                            </SyntaxDefinition>
+                            """;
+
+        using System.Xml.XmlReader reader = System.Xml.XmlReader.Create (new StringReader (xshd));
+        IHighlightingDefinition def = HighlightingLoader.Load (reader, null!);
+
+        // category="CodeKeyword" overrides XshdRoleMap's StringInterpolation → CodeString.
+        Assert.Equal (VisualRole.CodeKeyword, def.GetNamedColor ("StringInterpolation").Role);
+
+        // No category → built-in table maps Comment → CodeComment.
+        Assert.Equal (VisualRole.CodeComment, def.GetNamedColor ("Comment").Role);
     }
 
     [Fact]
@@ -254,9 +333,9 @@ public class HighlightingTests
         using DocumentHighlighter highlighter = new (doc, csharp);
 
         Attribute defaultAttr = new (Color.White, Color.Black);
-        HighlightingColorizer colorizer = new (highlighter, defaultAttr, true);
+        HighlightingColorizer colorizer = new (highlighter, defaultAttr);
 
-        HighlightingColorizer updated = colorizer.WithDefaultAttribute (defaultAttr, true);
+        HighlightingColorizer updated = colorizer.WithDefaultAttribute (defaultAttr);
 
         Assert.Same (colorizer, updated);
     }
