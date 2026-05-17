@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using System.Collections.ObjectModel;
 using Terminal.Gui.App;
 using Terminal.Gui.Configuration;
 using Terminal.Gui.Document;
@@ -109,7 +110,24 @@ public sealed partial class TedApp : Window
         };
 
         LanguageShortcut = new Shortcut (Key.Empty, "Plain Text", null) { MouseHighlightStates = MouseState.None };
-        ThemeShortcut = new Shortcut (Key.Empty, ThemeManager.Theme, CycleTheme);
+        ImmutableList<string> themeNames = ThemeManager.GetThemeNames ();
+
+        ThemeDropDown = new DropDownList
+        {
+            Source = new ListWrapper<string> (new ObservableCollection<string> (themeNames)),
+            Text = ThemeManager.Theme,
+            ReadOnly = true
+        };
+
+        ThemeDropDown.ValueChanged += (_, _) =>
+        {
+            var selected = ThemeDropDown.Text;
+
+            if (!string.IsNullOrEmpty (selected) && selected != ThemeManager.Theme)
+            {
+                ThemeManager.Theme = selected;
+            }
+        };
         ShowTabsCheckBox.Value = Editor.ShowTabs ? CheckState.Checked : CheckState.UnChecked;
         PreviewCheckBox.ValueChanged += (_, e) =>
         {
@@ -120,7 +138,7 @@ public sealed partial class TedApp : Window
         StatusBar statusBar =
             new ([
                 new Shortcut { Title = "Language", CommandView = LanguageShortcut },
-                new Shortcut { Title = "Theme", CommandView = ThemeShortcut },
+                new Shortcut { Title = "Theme", CommandView = ThemeDropDown },
                 LocShortcut = new Shortcut (Key.Empty, FormatLoc (1, 1), null)
                     { MouseHighlightStates = MouseState.None }
             ])
@@ -257,8 +275,8 @@ public sealed partial class TedApp : Window
     /// <summary>The status-bar shortcut that displays the current syntax-highlighting language name.</summary>
     public Shortcut LanguageShortcut { get; }
 
-    /// <summary>The status-bar shortcut that cycles <see cref="ThemeManager.Theme" /> on click.</summary>
-    public Shortcut ThemeShortcut { get; }
+    /// <summary>The status-bar dropdown that selects <see cref="ThemeManager.Theme" />.</summary>
+    public DropDownList ThemeDropDown { get; }
 
     /// <summary>The settings checkbox state for visible tab glyphs.</summary>
     public CheckBox ShowTabsCheckBox { get; } = new ()
@@ -339,21 +357,6 @@ public sealed partial class TedApp : Window
         _fileNameShortcut.SetNeedsDraw ();
     }
 
-    private void CycleTheme ()
-    {
-        ImmutableList<string> names = ThemeManager.GetThemeNames ();
-
-        if (names.Count == 0)
-        {
-            return;
-        }
-
-        var index = names.IndexOf (ThemeManager.Theme);
-        var next = names[(index + 1) % names.Count];
-        ThemeManager.Theme = next;
-        ThemeShortcut.Title = next;
-        ThemeShortcut.SetNeedsDraw ();
-    }
 
     private void UpdateLocShortcut ()
     {

@@ -1,7 +1,9 @@
 // Claude - claude-opus-4-7
 
+using System.Collections.Immutable;
 using System.Drawing;
 using Ted;
+using Terminal.Gui.Configuration;
 using Terminal.Gui.Editor.IntegrationTests.Testing;
 using Terminal.Gui.Input;
 using Terminal.Gui.Text.Indentation;
@@ -522,5 +524,49 @@ public class TedAppTests
         DriverAssert.ContentsContains (fx.Driver, "Find...");
         DriverAssert.ContentsContains (fx.Driver, "Replace...");
         DriverAssert.ContentsContains (fx.Driver, "Select all");
+    }
+
+    [Fact]
+    public async Task ThemeDropDown_Initially_Shows_Current_Theme ()
+    {
+        await using AppFixture<TedApp> fx = new (() => new TedApp ());
+
+        Assert.Equal (ThemeManager.Theme, fx.Top.ThemeDropDown.Text);
+    }
+
+    [Fact]
+    public async Task ThemeDropDown_Source_Contains_All_Available_Themes ()
+    {
+        await using AppFixture<TedApp> fx = new (() => new TedApp ());
+
+        ImmutableList<string> expected = ThemeManager.GetThemeNames ();
+        Assert.True (expected.Count > 0, "ThemeManager should expose at least one theme.");
+
+        var actual = fx.Top.ThemeDropDown.Source!.ToList ()
+            .Cast<string> ()
+            .ToList ();
+
+        Assert.Equal (expected, actual);
+    }
+
+    [Fact]
+    public async Task ThemeDropDown_Selection_Changes_Active_Theme ()
+    {
+        await using AppFixture<TedApp> fx = new (() => new TedApp ());
+
+        ImmutableList<string> names = ThemeManager.GetThemeNames ();
+
+        if (names.Count < 2)
+        {
+            return;
+        }
+
+        // Pick a theme that differs from the current one.
+        var original = ThemeManager.Theme;
+        var target = names.First (n => n != original);
+
+        fx.Top.ThemeDropDown.Text = target;
+
+        Assert.Equal (target, ThemeManager.Theme);
     }
 }
