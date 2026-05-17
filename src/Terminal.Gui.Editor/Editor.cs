@@ -367,6 +367,30 @@ public partial class Editor : View
         }
     }
 
+    /// <summary>
+    ///     Gets or sets whether the editor is in overwrite mode. When <see langword="true" />, typed
+    ///     characters replace the grapheme under the caret instead of inserting before it. At line-end
+    ///     or when a selection is active, the insertion still inserts. Defaults to <see langword="false" />.
+    /// </summary>
+    public bool OverwriteMode
+    {
+        get;
+        set
+        {
+            if (field == value)
+            {
+                return;
+            }
+
+            field = value;
+            SetNeedsDraw ();
+            OverwriteModeChanged?.Invoke (this, EventArgs.Empty);
+        }
+    }
+
+    /// <summary>Raised whenever <see cref="OverwriteMode" /> changes.</summary>
+    public event EventHandler? OverwriteModeChanged;
+
     /// <summary>Raised whenever <see cref="CaretOffset" /> changes.</summary>
     public event EventHandler? CaretChanged;
 

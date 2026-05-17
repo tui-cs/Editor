@@ -362,10 +362,12 @@ public partial class Editor
         }
 
         Point screen = ViewportToScreen (new Point (col, row));
+        CursorStyle style = OverwriteMode ? CursorStyle.SteadyBlock :
+            Cursor.Style == CursorStyle.Hidden ? CursorStyle.Default : Cursor.Style;
         Cursor = Cursor with
         {
             Position = screen,
-            Style = Cursor.Style == CursorStyle.Hidden ? CursorStyle.Default : Cursor.Style
+            Style = style
         };
     }
 }

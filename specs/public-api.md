@@ -1,6 +1,6 @@
 # Editor Public API Target
 
-**Updated**: 2026-05-10
+**Updated**: 2026-05-17
 
 The MLP shape, AvaloniaEdit-aligned. This is the target surface for the alpha release. Where current properties differ, the notes column says what to rename/add. New properties added to `Editor` require updating this document before merge (rule R8).
 
@@ -36,6 +36,8 @@ public class Editor : View
     public bool ShowLineNumbers { get; set; }                     // exists
     public bool WordWrap { get; set; }                            // word-wrap-toggle (needs word-wrap)
     public bool ReadOnly { get; set; }                            // exists (read-only ✅)
+    public bool OverwriteMode { get; set; }                       // exists (overwrite-mode ✅)
+    public event EventHandler? OverwriteModeChanged;              // exists (overwrite-mode ✅)
 
     // --- Indentation (tab-handling ✅ + auto-indent) ---
     public int IndentationSize { get; set; } = 4;                 // exists (codex merge)
@@ -59,6 +61,9 @@ public class Editor : View
 
     // --- Completion (post-MLP) ---
     public IEditorCompletionProvider? CompletionProvider { get; set; } // post-MLP
+
+    // --- Design-time support ---
+    public bool EnableForDesign ();                               // IDesignable (design-time ✅)
 }
 ```
 
@@ -114,3 +119,4 @@ public interface IOverlayRenderer
 | 2026-05-11 | ReadOnly property landed on Editor | read-only |
 | 2026-05-12 | `ISearchStrategy?` `SearchStrategy { get; set; }` landed on Editor; string-based FindNext/FindPrevious/ReplaceNext/ReplaceAll overloads retained as convenience wrappers | find-and-replace |
 | 2026-05-16 | Vertical multi-caret keybindings (`Ctrl+Alt+CursorUp/Down`, `Alt+Drag`) added via `Editor.DefaultKeyBindings`; no new public Editor API (R8) | vertical-multi-caret |
+| 2026-05-17 | `Editor` implements `IDesignable`; `EnableForDesign()` seeds C# sample code with syntax highlighting and line numbers | design-time |
