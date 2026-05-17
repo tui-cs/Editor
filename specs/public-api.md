@@ -36,6 +36,8 @@ public class Editor : View
     public bool ShowLineNumbers { get; set; }                     // exists
     public bool WordWrap { get; set; }                            // word-wrap-toggle (needs word-wrap)
     public bool ReadOnly { get; set; }                            // exists (read-only ✅)
+    public bool OverwriteMode { get; set; }                       // exists (overwrite-mode ✅)
+    public event EventHandler? OverwriteModeChanged;              // exists (overwrite-mode ✅)
 
     // --- Indentation (tab-handling ✅ + auto-indent) ---
     public int IndentationSize { get; set; } = 4;                 // exists (codex merge)
