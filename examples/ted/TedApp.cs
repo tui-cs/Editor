@@ -146,7 +146,12 @@ public sealed partial class TedApp : Window
             new ([
                 new Shortcut { Title = "Language", CommandView = LanguageShortcut },
                 new Shortcut { Title = "Theme", CommandView = ThemeDropDown },
-                LoadSpinnerShortcut = new Shortcut { CommandView = LoadStatusSpinner, Title = string.Empty,  MouseHighlightStates = MouseState.None },
+                LoadSpinnerShortcut = new Shortcut
+                {
+                    CommandView = LoadStatusSpinner,
+                    Title = string.Empty,
+                    MouseHighlightStates = MouseState.None
+                },
                 LocShortcut = new Shortcut (Key.Empty, FormatLoc (1, 1), null)
                     { MouseHighlightStates = MouseState.None }
             ])

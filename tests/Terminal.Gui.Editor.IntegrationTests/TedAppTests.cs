@@ -111,11 +111,37 @@ public class TedAppTests
 
         Assert.True (await app.OpenFileAsync (TestContext.Current.CancellationToken));
 
-        Assert.Equal ("Loaded", app.LoadSpinnerShortcut.HelpText);
+        Assert.Equal ("Loaded 97.7 KiB", app.LoadSpinnerShortcut.HelpText);
         Assert.Same (app.LoadStatusSpinner, app.LoadSpinnerShortcut.CommandView);
         Assert.False (app.LoadStatusSpinner.Visible);
         Assert.False (app.LoadStatusSpinner.AutoSpin);
         Assert.Equal (100_000, app.Editor.Document!.TextLength);
+    }
+
+    [Fact]
+    public async Task OpenFileAsync_Loads_Stream_On_Background_Thread ()
+    {
+        TedApp app = new ();
+        GatedReadStream stream = new (Encoding.UTF8.GetBytes (new string ('x', 100_000)));
+        var callerThreadId = Environment.CurrentManagedThreadId;
+
+        app.ShowOpenDialog = () => "/tmp/ted-progress.txt";
+        app.OpenRead = _ => stream;
+
+        Task<bool> openTask = app.OpenFileAsync (TestContext.Current.CancellationToken);
+
+        await stream.ReadStarted.Task.WaitAsync (TestContext.Current.CancellationToken);
+
+        Assert.NotEqual (callerThreadId, stream.ReadThreadId);
+        Assert.False (openTask.IsCompleted);
+        Assert.True (app.LoadStatusSpinner.Visible);
+        Assert.True (app.LoadStatusSpinner.AutoSpin);
+        Assert.Equal ("Loading 0 B of 97.7 KiB", app.LoadSpinnerShortcut.HelpText);
+
+        stream.AllowRead.SetResult ();
+
+        Assert.True (await openTask);
+        Assert.Equal ("Loaded 97.7 KiB", app.LoadSpinnerShortcut.HelpText);
     }
 
     [Fact]
@@ -614,6 +640,35 @@ public class TedAppTests
         {
             _capture (Encoding.UTF8.GetString (ToArray ()));
             await base.DisposeAsync ();
+        }
+    }
+
+    private sealed class GatedReadStream : MemoryStream
+    {
+        public GatedReadStream (byte[] buffer)
+            : base (buffer)
+        {
+        }
+
+        public TaskCompletionSource AllowRead { get; } = new (TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public TaskCompletionSource ReadStarted { get; } = new (TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public int ReadThreadId { get; private set; }
+
+        public override ValueTask<int> ReadAsync (Memory<byte> buffer, CancellationToken cancellationToken = default)
+        {
+            ReadThreadId = Environment.CurrentManagedThreadId;
+            ReadStarted.TrySetResult ();
+
+            return new ValueTask<int> (ReadAfterGateAsync (buffer, cancellationToken));
+        }
+
+        private async Task<int> ReadAfterGateAsync (Memory<byte> buffer, CancellationToken cancellationToken)
+        {
+            await AllowRead.Task.WaitAsync (cancellationToken);
+
+            return await base.ReadAsync (buffer, cancellationToken);
         }
     }
 }

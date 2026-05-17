@@ -7,6 +7,11 @@ namespace Ted;
 
 public sealed partial class TedApp
 {
+    private const long StreamingStatusInterval = 256 * 1024;
+    private const int StreamingStatusMilliseconds = 100;
+    private long _lastStreamingStatusUnits;
+    private DateTime _lastStreamingStatusUpdate = DateTime.MinValue;
+
     /// <summary>The path currently associated with <see cref="Editor" />, or <see langword="null" /> for an untitled buffer.</summary>
     public string? CurrentFilePath { get; private set; }
 
@@ -274,18 +279,22 @@ public sealed partial class TedApp
     {
         try
         {
-            SetLoadStatus ("Loading...", true);
-
             await using Stream stream = OpenRead (filePath);
+            var fileSize = GetStreamLength (stream);
+            ResetStreamingStatusThrottle ();
+            SetLoadStatus (FormatStartingProgress ("Loading", fileSize), true);
+
             IProgress<TextDocumentProgress> progress = new Progress<TextDocumentProgress> (ReportLoadProgress);
             Editor.Document?.SetOwnerThread (null);
             TextDocument document =
-                await TextDocument.LoadAsync (stream, progress: progress, cancellationToken: cancellationToken);
+                await Task.Run (
+                    () => TextDocument.LoadAsync (stream, progress: progress, cancellationToken: cancellationToken),
+                    cancellationToken);
 
             void ApplyDocument ()
             {
                 ApplyLoadedDocument (document, filePath);
-                SetLoadStatus ("Loaded", false);
+                SetLoadStatus (FormatCompletedProgress ("Loaded", fileSize), false);
             }
 
             if (marshalToApp)
@@ -338,16 +347,18 @@ public sealed partial class TedApp
 
     private async Task SaveFileToAsync (string filePath, bool marshalToApp, CancellationToken cancellationToken)
     {
-        SetLoadStatus ("Saving...", true);
-
         await using Stream stream = CreateWrite (filePath);
+        ResetStreamingStatusThrottle ();
+        SetLoadStatus (FormatStartingProgress ("Saving", null), true);
+
         IProgress<TextDocumentProgress> progress = new Progress<TextDocumentProgress> (ReportSaveProgress);
         await Editor.SaveAsync (stream, progress, cancellationToken);
+        var fileSize = GetStreamLength (stream);
 
         void MarkSaved ()
         {
             Editor.Document!.UndoStack.MarkAsOriginalFile ();
-            SetLoadStatus ("Saved", false);
+            SetLoadStatus (FormatCompletedProgress ("Saved", fileSize), false);
         }
 
         if (marshalToApp)
@@ -385,11 +396,21 @@ public sealed partial class TedApp
 
     private void ReportLoadProgress (TextDocumentProgress progress)
     {
+        if (!ShouldReportStreamingProgress (progress))
+        {
+            return;
+        }
+
         SetLoadStatus (FormatProgress ("Loading", progress), true);
     }
 
     private void ReportSaveProgress (TextDocumentProgress progress)
     {
+        if (!ShouldReportStreamingProgress (progress))
+        {
+            return;
+        }
+
         SetLoadStatus (FormatProgress ("Saving", progress), true);
     }
 
@@ -397,9 +418,12 @@ public sealed partial class TedApp
     {
         void Update ()
         {
+            // The status spinner is visible only while it is actively spinning.
             LoadStatusSpinner.Visible = showSpinner;
             LoadStatusSpinner.AutoSpin = showSpinner;
             LoadSpinnerShortcut.HelpText = status;
+            LoadStatusSpinner.SetNeedsDraw ();
+            LoadSpinnerShortcut.SetNeedsDraw ();
         }
 
         if (App is null)
@@ -410,6 +434,36 @@ public sealed partial class TedApp
         }
 
         App.Invoke (Update);
+    }
+
+    private void ResetStreamingStatusThrottle ()
+    {
+        _lastStreamingStatusUpdate = DateTime.MinValue;
+        _lastStreamingStatusUnits = 0;
+    }
+
+    private bool ShouldReportStreamingProgress (TextDocumentProgress progress)
+    {
+        var units = progress.BytesProcessed ?? progress.CharactersProcessed;
+        var totalUnits = progress.TotalBytes ?? progress.TotalCharacters;
+
+        if (totalUnits == units)
+        {
+            return true;
+        }
+
+        DateTime now = DateTime.UtcNow;
+
+        if (units - _lastStreamingStatusUnits < StreamingStatusInterval
+            && now - _lastStreamingStatusUpdate < TimeSpan.FromMilliseconds (StreamingStatusMilliseconds))
+        {
+            return false;
+        }
+
+        _lastStreamingStatusUnits = units;
+        _lastStreamingStatusUpdate = now;
+
+        return true;
     }
 
     private Task InvokeOnAppAsync (Action action)
@@ -440,8 +494,62 @@ public sealed partial class TedApp
 
     private static string FormatProgress (string verb, TextDocumentProgress progress)
     {
-        return progress.Fraction is { } fraction
-            ? $"{verb} {fraction:P0}"
-            : $"{verb} {progress.CharactersProcessed:N0} chars";
+        var processed = progress.BytesProcessed is { } bytesProcessed
+            ? FormatByteCount (bytesProcessed)
+            : $"{progress.CharactersProcessed:N0} chars";
+
+        var total = progress.TotalBytes is { } totalBytes
+            ? FormatByteCount (totalBytes)
+            : progress.TotalCharacters is { } totalCharacters
+                ? $"{totalCharacters:N0} chars"
+                : null;
+
+        if (total is not null && progress.Fraction is { } fraction)
+        {
+            return $"{verb} {processed} of {total} ({fraction:P0})";
+        }
+
+        return $"{verb} {processed}";
+    }
+
+    private static string FormatStartingProgress (string verb, long? totalBytes)
+    {
+        return totalBytes is { } bytes
+            ? $"{verb} 0 B of {FormatByteCount (bytes)}"
+            : $"{verb} 0 B";
+    }
+
+    private static string FormatCompletedProgress (string verb, long? totalBytes)
+    {
+        return totalBytes is { } bytes
+            ? $"{verb} {FormatByteCount (bytes)}"
+            : verb;
+    }
+
+    private static long? GetStreamLength (Stream stream)
+    {
+        if (!stream.CanSeek)
+        {
+            return null;
+        }
+
+        return stream.Length;
+    }
+
+    private static string FormatByteCount (long bytes)
+    {
+        string[] units = ["B", "KiB", "MiB", "GiB", "TiB"];
+        double value = bytes;
+        var unitIndex = 0;
+
+        while (value >= 1024 && unitIndex < units.Length - 1)
+        {
+            value /= 1024;
+            unitIndex++;
+        }
+
+        return unitIndex == 0
+            ? $"{bytes:N0} {units[unitIndex]}"
+            : $"{value:N1} {units[unitIndex]}";
     }
 }
