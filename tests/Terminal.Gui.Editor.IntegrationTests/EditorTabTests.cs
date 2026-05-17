@@ -173,7 +173,7 @@ public class EditorTabTests
 
     private static void InjectAnsi (AppFixture<TedApp> fx, string sequence)
     {
-        if (fx.App.Driver!.GetInputProcessor () is not InputProcessorImpl<char> processor)
+        if (fx.App.Driver!.GetInputProcessor () is not AnsiInputProcessor processor)
         {
             throw new InvalidOperationException ("ANSI input processor is required for raw ANSI input tests.");
         }
