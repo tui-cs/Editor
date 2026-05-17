@@ -187,6 +187,8 @@ public partial class Editor
             }
         }
 
+        ApplyAdditionalCaretSelections (visualLine, selected);
+
         return visualLine;
     }
 
@@ -363,5 +365,24 @@ public partial class Editor
 
         Point screen = ViewportToScreen (new Point (col, row));
         Cursor = new Cursor { Position = screen, Style = CursorStyle.BlinkingBar };
+    }
+
+    private void ApplyAdditionalCaretSelections (CellVisualLine visualLine, Attribute selected)
+    {
+        if (!HasAdditionalCaretSelections ())
+        {
+            return;
+        }
+
+        foreach ((int start, int end) selection in AdditionalCaretSelectionRanges ())
+        {
+            foreach (CellVisualLineElement element in visualLine.Elements)
+            {
+                if (element.DocumentOffset < selection.end && element.DocumentEndOffset > selection.start)
+                {
+                    element.Attribute = selected;
+                }
+            }
+        }
     }
 }

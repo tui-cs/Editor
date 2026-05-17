@@ -498,6 +498,50 @@ public class EditorMouseTests
     }
 
     [Fact]
+    public async Task AltDrag_With_Horizontal_Extent_Replaces_Column_On_Type ()
+    {
+        await using AppFixture<EditorTestHost> fx = new (() => new ("abcd\nabcd\nabcd"));
+        fx.Top.Editor.SetFocus ();
+
+        InjectAltDrag (fx, new (1, 0), new (3, 2));
+
+        Assert.True (fx.Top.Editor.HasSelection);
+        Assert.True (fx.Top.Editor.HasMultipleCarets);
+
+        fx.Injector.InjectKey (Key.X, Direct);
+
+        Assert.Equal ("axd\naxd\naxd", fx.Top.Editor.Document!.Text);
+    }
+
+    [Fact]
+    public async Task AltDrag_Reversed_Column_Replaces_Leftward_Range_On_Type ()
+    {
+        await using AppFixture<EditorTestHost> fx = new (() => new ("abcd\nabcd\nabcd"));
+        fx.Top.Editor.SetFocus ();
+
+        InjectAltDrag (fx, new (3, 0), new (1, 2));
+
+        Assert.True (fx.Top.Editor.HasSelection);
+        Assert.Equal (1, fx.Top.Editor.CaretOffset);
+
+        fx.Injector.InjectKey (Key.X, Direct);
+
+        Assert.Equal ("axd\naxd\naxd", fx.Top.Editor.Document!.Text);
+    }
+
+    [Fact]
+    public async Task AltDrag_Column_Selection_Clamps_Short_Lines_Without_Padding ()
+    {
+        await using AppFixture<EditorTestHost> fx = new (() => new ("abcd\na\nabcd"));
+        fx.Top.Editor.SetFocus ();
+
+        InjectAltDrag (fx, new (1, 0), new (4, 2));
+        fx.Injector.InjectKey (Key.X, Direct);
+
+        Assert.Equal ("ax\nax\nax", fx.Top.Editor.Document!.Text);
+    }
+
+    [Fact]
     public async Task CtrlClick_After_VerticalCarets_Uses_Click_Position_When_PositionReport_Arrives_First ()
     {
         await using AppFixture<EditorTestHost> fx = new (() => new ("abcd\nabcd\nabcd\nabcd"));
@@ -538,6 +582,36 @@ public class EditorMouseTests
     {
         fx.Injector.InjectMouse (
             new () { ScreenPosition = pos, Flags = MouseFlags.LeftButtonPressed, Timestamp = BaseTime },
+            Direct);
+    }
+
+    private static void InjectAltDrag (AppFixture<EditorTestHost> fx, Point press, Point drag)
+    {
+        fx.Injector.InjectMouse (
+            new ()
+            {
+                ScreenPosition = press,
+                Flags = MouseFlags.LeftButtonPressed | MouseFlags.Alt,
+                Timestamp = BaseTime
+            },
+            Direct);
+
+        fx.Injector.InjectMouse (
+            new ()
+            {
+                ScreenPosition = drag,
+                Flags = MouseFlags.LeftButtonPressed | MouseFlags.PositionReport | MouseFlags.Alt,
+                Timestamp = BaseTime.AddMilliseconds (20)
+            },
+            Direct);
+
+        fx.Injector.InjectMouse (
+            new ()
+            {
+                ScreenPosition = drag,
+                Flags = MouseFlags.LeftButtonReleased,
+                Timestamp = BaseTime.AddMilliseconds (40)
+            },
             Direct);
     }
 }

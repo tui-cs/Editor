@@ -375,6 +375,22 @@ public class EditorTests
     }
 
     [Fact]
+    public async Task CtrlShiftAlt_ColumnSelect_Extends_Right_And_Down_Then_Replaces_Column ()
+    {
+        await using AppFixture<EditorTestHost> fx = new (() => new ("abcd\nabcd\nabcd"));
+        fx.Top.Editor.SetFocus ();
+        fx.Top.Editor.CaretOffset = 1;
+
+        fx.Injector.InjectKey (Key.CursorRight.WithCtrl.WithShift.WithAlt, Direct);
+        fx.Injector.InjectKey (Key.CursorRight.WithCtrl.WithShift.WithAlt, Direct);
+        fx.Injector.InjectKey (Key.CursorDown.WithCtrl.WithShift.WithAlt, Direct);
+        fx.Injector.InjectKey (Key.CursorDown.WithCtrl.WithShift.WithAlt, Direct);
+        fx.Injector.InjectKey (Key.X, Direct);
+
+        Assert.Equal ("axd\naxd\naxd", fx.Top.Editor.Document!.Text);
+    }
+
+    [Fact]
     public async Task Esc_Dismisses_MultiCaret_And_Down_Can_Move_Past_Previous_Block ()
     {
         await using AppFixture<EditorTestHost> fx = new (() => new ("abcd\nabcd\nabcd\nabcd"));

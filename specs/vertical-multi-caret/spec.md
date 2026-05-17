@@ -26,7 +26,8 @@
 Extend the existing multi-caret machinery (`AdditionalCaretOffsets`, `HasMultipleCarets`, `ToggleCaretAt`, `ClearAdditionalCarets`) with two ergonomic ways to create a **vertically-aligned column of carets** anchored on the same visual column across consecutive lines:
 
 1. **Keyboard**: `Ctrl+Alt+Up` / `Ctrl+Alt+Down` extends the caret block one line above the topmost / below the bottommost caret, landing on the same sticky virtual column. Matches VS Code's `editor.action.insertCursorAbove` / `Below`.
-2. **Mouse**: `Alt + LeftButton drag` creates a column of carets spanning the anchor row → active row at the press column. (VS Code uses `Shift+Alt` for its column-select drag; this editor uses `Alt` because a TUI runs inside a terminal that reserves `Shift`+drag — see the Amendment above. This spec ships carets-only first; selection-per-row is a follow-up — see Out of Scope.)
+2. **Mouse**: `Alt + LeftButton drag` creates a column spanning the anchor row → active row. Zero horizontal extent creates carets; horizontal extent creates one selection per row. (VS Code uses `Shift+Alt` for its column-select drag; this editor uses `Alt` because a TUI runs inside a terminal that reserves `Shift`+drag — see the Amendment above.)
+3. **Keyboard column-select**: `Ctrl+Shift+Alt+Arrow` and `Ctrl+Shift+Alt+PgUp/PgDn` create or extend a column selection, matching VS Code behavior when the terminal delivers the chord.
 
 Both flows produce a primary caret plus zero or more additional carets, all sharing the multi-caret edit pipeline (single `Document.OpenUpdateScope ()` → one undo step, R5).
 
@@ -174,12 +175,11 @@ Also add a tightly-scoped unit test (`Terminal.Gui.Editor.Tests`) for the visual
 
 ## Out of Scope
 
-- **Column / box selection** (i.e. `Alt+Drag` producing a *selection per row* the way VS Code's `Shift+Alt+drag` does, rather than carets only). This is the natural follow-up — **the "multi-select" PR**. Per-caret selection in the existing multi-caret pipeline already works; column-extend during drag needs a new code path that extends each caret's selection anchor as the drag widens/narrows. Ship the carets-only flow first.
-  - **Required of that PR — selection-preservation parity (carried forward from PR #133):** multi-caret `Tab` / `Shift+Tab` block-indent currently calls `ClearAdditionalCaretSelections ()` and collapses the **primary** selection after the edit, whereas the single-caret `IndentSelectedLines` path preserves it. That is cosmetic only while carets are point-only; once this PR makes per-row *selections* a first-class column primitive, surviving a block-indent becomes load-bearing. The multi-select PR **must** restore parity: multi-caret `Tab` / `Shift+Tab` preserves the primary selection **and** every per-caret selection across the block-indent (mirror `IndentSelectedLines`' `SetSelectionRangePreservingDirection` behavior per caret), with a regression test alongside `EditorMultiCaretIndentTests`.
 - **Find/replace across multi-caret selections**. Already excluded by multi-caret spec.
 - **Reflowing the vertical block under WordWrap toggling**. If the user toggles `WordWrap` while a vertical block is live, the block is dismissed. This spec does not introduce reflow semantics.
 - **A ted UI menu / dialog**. The keybindings ship discoverable via help text only.
 - **Changing the existing `Ctrl+Click` add-caret-at-click binding to `Alt+Click`** to match VS Code / VS. Tracked as the *Alt+Click alias* open decision below.
+- **Sticky Column Selection Mode** (VS Code's modal toggle with menu/status indicator) and multi-cursor paste distribution are separate follow-ups.
 
 ## Reference behavior from PR #125
 
@@ -197,7 +197,8 @@ Cross-walk of every user-facing behavior against the two reference editors. Wher
 |---|---|---|---|
 | Add caret above / below | `Ctrl+Alt+Up` / `Ctrl+Alt+Down` (Win/Linux); `Cmd+Opt+Up/Down` (Mac) | `Alt+Shift+Up` / `Alt+Shift+Down` (`Edit.InsertCaretAbove` / `Below`) | **Match VS Code**: `Ctrl+Alt+Up` / `Ctrl+Alt+Down` |
 | Add caret at click | `Alt+Click` | `Alt+Click` (multi-cursor placement) | `Ctrl+Click` (existing — see multi-caret spec and *Alt+Click alias* open decision below) |
-| Column / box selection by drag | `Shift+Alt + drag` produces a *selection per row* (column select) | `Shift+Alt + drag` produces a column / box selection | **`Alt + drag` produces *carets per row, no selection***. Modifier is `Alt` (not `Shift+Alt`) because the terminal reserves `Shift`+drag (Amendment / DEC-006 / TG#4888); column-select semantics out of scope this iteration |
+| Column / box selection by drag | `Shift+Alt + drag` produces a *selection per row* (column select) | `Shift+Alt + drag` produces a column / box selection | **Match behavior**: ranged `Alt + drag` produces a selection per row; zero-width `Alt + drag` produces carets. Modifier differs (D1) because the terminal reserves `Shift`+drag. |
+| Keyboard column-select | `Ctrl+Shift+Alt+Arrow` / `PgUp` / `PgDn` | Supported | **Match behavior**: `Ctrl+Shift+Alt+Arrow` / `PgUp` / `PgDn` create/extend a column selection when the terminal delivers the chord (D3 withdrawn). |
 | Esc collapses to primary caret | Yes | Yes | Match (*Esc dismisses the vertical block* scenario) |
 | Sticky desired column through short lines | Yes | Yes | Match (*Sticky virtual column survives a short intervening line* scenario / *Sticky column through short lines* requirement) |
 | Tab inserts at every caret, single undo | Yes | Yes | Match (*Tab inserts at every caret* / *Tab keeps the column aligned* requirements) |
@@ -207,11 +208,13 @@ Cross-walk of every user-facing behavior against the two reference editors. Wher
 
 ### Intentional divergences (and why)
 
-1. **`Alt+drag` produces carets only, not a column selection — and uses `Alt`, not VS Code's `Shift+Alt`.** Two divergences here: (a) VS Code's `Shift+Alt+drag` creates a *selection per row* (typing replaces a column of text); this spec ships only the carets-per-row variant first — the full column-select is the natural follow-up; per-caret selection already works in the pipeline, but extend-during-drag is a new code path. (b) The modifier is `Alt`, not `Shift+Alt`, because the terminal eats `Shift`+drag (see the Amendment; configurable parity tracked by gui-cs/Terminal.Gui#4888). **User-visible consequence**: to "replace" a column, the user must `Alt`-drag, then `Shift+Right`/`Left` to grow each caret's selection, then type. Document this in ted help.
-
-2. **`Ctrl+Click` vs `Alt+Click` for "add caret at click".** Existing multi-caret on `develop` uses `Ctrl+Click`. VS Code and VS use `Alt+Click`. Changing the existing binding is out of scope for this spec — flagged as the *Alt+Click alias* open decision below.
-
-3. **WordWrap toggle dismisses the block.** Both reference editors preserve carets through a wrap toggle. We dismiss because the carets' wrap-row positions are no longer well-defined under the new wrap state and we don't want to silently snap them to surprising offsets. Could revisit post-beta.
+| # | Behavior | VS Code | This editor | Why | Category |
+|---|---|---|---|---|---|
+| **D1** | Start column/box select (mouse) | `Shift+Alt`+drag | **`Alt`+drag** | Windows Terminal / xterm-family terminals reserve `Shift`+drag for terminal-side forced/block selection while an app has mouse mode on, so `Shift+Alt`+drag never reaches the editor; `Alt`+drag is forwarded. | Terminal incompatibility — DEC-006; configurable parity tracked by gui-cs/Terminal.Gui#4888 |
+| **D2** | Add caret at click | `Alt`+Click | **`Ctrl`+Click** (existing) | Pre-existing Editor binding; `Alt` is now the column-drag modifier, so a future `Alt`+Click alias needs drag-threshold disambiguation. | Terminal incompatibility knock-on + binding history |
+| ~~**D3**~~ | Keyboard column-select (`Ctrl+Shift+Alt+Arrow` / `PgUp`/`PgDn`) | Supported | **WITHDRAWN — not a deviation; in scope, matches VS Code** | TG's Kitty keyboard protocol support can deliver the four-modifier chord. Legacy terminals that do not negotiate it share the same environmental limitation as other advanced chords. | Not a deviation |
+| **D4** | Column Selection Mode (sticky toggle, menu/status UI) | Supported | **Out of scope** | A persistent modal input state is larger than the drag/keyboard gestures and not required for column-edit parity. | Scope |
+| **D5** | Multi-cursor clipboard paste distribution | `"spread"` by default | **Deferred** | Clipboard distribution is orthogonal to creating/rendering column selections; typing and one-line paste replacement are covered here. | Scope — separate follow-up |
 
 ### Behaviors we match deliberately
 

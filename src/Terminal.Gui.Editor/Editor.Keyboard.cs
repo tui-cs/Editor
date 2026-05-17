@@ -13,6 +13,11 @@ public partial class Editor
     /// <inheritdoc />
     protected override bool OnKeyDownNotHandled (Key key)
     {
+        if (TryHandleKeyboardColumnSelect (key))
+        {
+            return true;
+        }
+
         if (key == Key.Esc && HasMultipleCarets)
         {
             ClearAdditionalCarets ();
@@ -53,5 +58,60 @@ public partial class Editor
         }
 
         return true;
+    }
+
+    private bool TryHandleKeyboardColumnSelect (Key key)
+    {
+        if (!key.IsCtrl || !key.IsShift || !key.IsAlt)
+        {
+            return false;
+        }
+
+        Key baseKey = key.NoCtrl.NoShift.NoAlt;
+        var pageDelta = Math.Max (1, Viewport.Height);
+
+        if (baseKey == Key.CursorUp)
+        {
+            ColumnSelectByKeyboard (-1, 0);
+
+            return true;
+        }
+
+        if (baseKey == Key.CursorDown)
+        {
+            ColumnSelectByKeyboard (1, 0);
+
+            return true;
+        }
+
+        if (baseKey == Key.CursorLeft)
+        {
+            ColumnSelectByKeyboard (0, -1);
+
+            return true;
+        }
+
+        if (baseKey == Key.CursorRight)
+        {
+            ColumnSelectByKeyboard (0, 1);
+
+            return true;
+        }
+
+        if (baseKey == Key.PageUp)
+        {
+            ColumnSelectByKeyboard (-pageDelta, 0);
+
+            return true;
+        }
+
+        if (baseKey == Key.PageDown)
+        {
+            ColumnSelectByKeyboard (pageDelta, 0);
+
+            return true;
+        }
+
+        return false;
     }
 }

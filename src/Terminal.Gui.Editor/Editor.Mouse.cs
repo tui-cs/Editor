@@ -79,7 +79,7 @@ public partial class Editor
             switch (_dragMode)
             {
                 case DragMode.ColumnCarets:
-                    SetVerticalCaretsFromViewRows (_columnDragAnchor.Y, pos.Y, _columnDragAnchor.X);
+                    SetVerticalCaretsFromViewRows (_columnDragAnchor.Y, pos.Y, _columnDragAnchor.X, pos.X);
 
                     return true;
 
@@ -112,7 +112,7 @@ public partial class Editor
             {
                 _dragMode = DragMode.ColumnCarets;
                 _columnDragAnchor = pos;
-                SetVerticalCaretsFromViewRows (pos.Y, pos.Y, pos.X);
+                SetVerticalCaretsFromViewRows (pos.Y, pos.Y, pos.X, pos.X);
             }
             else if (ctrl)
             {
