@@ -16,7 +16,7 @@ public partial class Editor : IDesignable
     {
         Document = new TextDocument (EditorDesignData.SampleCSharpCode);
         HighlightingDefinition = HighlightingManager.Instance.GetDefinition ("C#");
-        GutterOptions = GutterOptions.LineNumbers;
+        GutterOptions = GutterOptions.LineNumbers | GutterOptions.Folding;
 
         return true;
     }
