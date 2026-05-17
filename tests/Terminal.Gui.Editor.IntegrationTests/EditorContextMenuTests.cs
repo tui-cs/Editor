@@ -196,37 +196,43 @@ public class EditorContextMenuTests
     }
 
     [Fact]
-    public async Task ContextMenu_SelectAll_Action_Invokes_Command ()
+    public async Task ContextMenu_Items_Use_Declarative_Binding ()
+    {
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("hello world"));
+
+        PopoverMenu? menu = fx.Top.Editor.ContextMenu;
+        Assert.NotNull (menu);
+
+        // Verify that each MenuItem uses declarative binding (TargetView targets the Editor, no Action)
+        foreach (View child in menu.Root!.SubViews)
+        {
+            if (child is not MenuItem menuItem)
+            {
+                continue;
+            }
+
+            Assert.Equal (fx.Top.Editor, menuItem.TargetView);
+            Assert.Null (menuItem.Action);
+        }
+    }
+
+    [Fact]
+    public async Task ContextMenu_SelectAll_Routes_Via_CommandView ()
     {
         await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("hello world"));
         fx.Top.Editor.SetFocus ();
         Assert.False (fx.Top.Editor.HasSelection);
 
-        // Find the Select All menu item and invoke its Action directly
-        PopoverMenu? menu = fx.Top.Editor.ContextMenu;
-        Assert.NotNull (menu);
-
-        MenuItem? selectAllItem = null;
-
-        foreach (View child in menu.Root!.SubViews)
-        {
-            if (child is MenuItem { Command: Command.SelectAll } item)
-            {
-                selectAllItem = item;
-            }
-        }
-
-        Assert.NotNull (selectAllItem);
-        Assert.NotNull (selectAllItem.Action);
-
-        selectAllItem.Action ();
+        // Invoke SelectAll on the Editor via InvokeCommand — this is the same path the framework
+        // takes when the user clicks the declaratively-bound MenuItem.
+        fx.Top.Editor.InvokeCommand (Command.SelectAll);
 
         Assert.True (fx.Top.Editor.HasSelection, "Select All should select all text");
         Assert.Equal ("hello world", fx.Top.Editor.SelectedText);
     }
 
     [Fact]
-    public async Task ContextMenu_Undo_Action_Invokes_Command ()
+    public async Task ContextMenu_Undo_Routes_Via_CommandView ()
     {
         await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("hello"));
         fx.Top.Editor.SetFocus ();
@@ -235,24 +241,9 @@ public class EditorContextMenuTests
         fx.Top.Editor.Document!.Insert (5, "X");
         Assert.Equal ("helloX", fx.Top.Editor.Document.Text);
 
-        // Find the Undo menu item and invoke its Action
-        PopoverMenu? menu = fx.Top.Editor.ContextMenu;
-        Assert.NotNull (menu);
-
-        MenuItem? undoItem = null;
-
-        foreach (View child in menu.Root!.SubViews)
-        {
-            if (child is MenuItem { Command: Command.Undo } item)
-            {
-                undoItem = item;
-            }
-        }
-
-        Assert.NotNull (undoItem);
-        Assert.NotNull (undoItem.Action);
-
-        undoItem.Action ();
+        // Invoke Undo on the Editor via InvokeCommand — this is the same path the framework
+        // takes when the user clicks the declaratively-bound MenuItem.
+        fx.Top.Editor.InvokeCommand (Command.Undo);
 
         Assert.Equal ("hello", fx.Top.Editor.Document.Text);
     }

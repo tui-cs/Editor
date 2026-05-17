@@ -13,47 +13,19 @@ public sealed partial class TedApp
             new MenuItem ("_Find...", "Find text in the current document", Find),
             new MenuItem ("_Replace...", "Find and replace text in the current document", Replace),
             new Line (),
-            new MenuItem { Command = Command.Undo, Action = Undo, Key = KeyFor (Command.Undo) },
-            new MenuItem { Command = Command.Redo, Action = Redo, Key = KeyFor (Command.Redo) },
+            new MenuItem (Editor, Command.Undo) { Key = KeyFor (Command.Undo) },
+            new MenuItem (Editor, Command.Redo) { Key = KeyFor (Command.Redo) },
             new Line (),
-            new MenuItem
-            {
-                Command = Command.Cut, Action = () => Editor.InvokeCommand (Command.Cut), Key = KeyFor (Command.Cut)
-            },
-            new MenuItem
-            {
-                Command = Command.Copy, Action = () => Editor.InvokeCommand (Command.Copy), Key = KeyFor (Command.Copy)
-            },
-            new MenuItem
-            {
-                Command = Command.Paste, Action = () => Editor.InvokeCommand (Command.Paste),
-                Key = KeyFor (Command.Paste)
-            },
-            new MenuItem { Command = Command.SelectAll, Action = SelectAll, Key = KeyFor (Command.SelectAll) }
+            new MenuItem (Editor, Command.Cut) { Key = KeyFor (Command.Cut) },
+            new MenuItem (Editor, Command.Copy) { Key = KeyFor (Command.Copy) },
+            new MenuItem (Editor, Command.Paste) { Key = KeyFor (Command.Paste) },
+            new MenuItem (Editor, Command.SelectAll) { Key = KeyFor (Command.SelectAll) }
         ];
     }
 
     private void Find () { ShowFindReplaceDialog (false); }
 
     private void Replace () { ShowFindReplaceDialog (true); }
-
-    private void SelectAll () { Editor.SelectAll (); }
-
-    private void Undo ()
-    {
-        if (!Editor.ReadOnly)
-        {
-            Editor.Document?.UndoStack.Undo ();
-        }
-    }
-
-    private void Redo ()
-    {
-        if (!Editor.ReadOnly)
-        {
-            Editor.Document?.UndoStack.Redo ();
-        }
-    }
 
     private void ShowFindReplaceDialog (bool selectReplaceTab)
     {
