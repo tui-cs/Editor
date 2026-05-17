@@ -21,6 +21,8 @@ namespace Ted;
 /// </summary>
 public sealed partial class TedApp : Window
 {
+    private const int MaximumAutomaticFoldingDocumentLength = 1_000_000;
+
     private readonly BraceFoldingStrategy _braceFoldingStrategy;
     private readonly Shortcut _fileNameShortcut;
     private readonly MenuItem _previewMarkdownMenuItem;
@@ -468,6 +470,13 @@ public sealed partial class TedApp : Window
             return;
         }
 
+        if (Editor.Document.TextLength > MaximumAutomaticFoldingDocumentLength)
+        {
+            Editor.FoldingManager = null;
+
+            return;
+        }
+
         FoldingManager fm = new (Editor.Document);
         Editor.FoldingManager = fm;
         _braceFoldingStrategy.UpdateFoldings (fm, Editor.Document);
@@ -476,9 +485,18 @@ public sealed partial class TedApp : Window
 
     private void UpdateFoldings ()
     {
-        if (Editor.FoldingManager is not null && Editor.Document is not null)
+        if (Editor.FoldingManager is null || Editor.Document is null)
         {
-            _braceFoldingStrategy.UpdateFoldings (Editor.FoldingManager, Editor.Document);
+            return;
         }
+
+        if (Editor.Document.TextLength > MaximumAutomaticFoldingDocumentLength)
+        {
+            Editor.FoldingManager = null;
+
+            return;
+        }
+
+        _braceFoldingStrategy.UpdateFoldings (Editor.FoldingManager, Editor.Document);
     }
 }
