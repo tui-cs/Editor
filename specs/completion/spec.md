@@ -10,8 +10,8 @@
 
 In-editor autocomplete popup for `Editor`, providing caret-anchored, filter-as-you-type completion
 suggestions. Consumers implement `IEditorCompletionProvider` and assign it to `Editor.CompletionProvider`.
-The popup renders via TG-native `PopoverMenu`, keys are intercepted ahead of the editor, and accepted
-suggestions apply as a single undo step.
+The popup renders via a TG-native `Popover<ListView, CompletionItem?>` (a `ListView` inside a `Popover`),
+keys are intercepted ahead of the editor, and accepted suggestions apply as a single undo step.
 
 ## Public API
 
@@ -70,7 +70,7 @@ or the provider returning zero items — all dismiss the popup.
 ## Positioning
 
 The popup is anchored at the caret's screen position via `ViewportToScreen`, placed one row below the caret.
-Uses `PopoverMenu.MakeVisible(screenPosition)`.
+Uses `Popover.MakeVisible(screenPosition)`.
 
 ## ted demo
 
@@ -85,5 +85,5 @@ current prefix. Triggered by `Ctrl+Space`. Wired via `Editor.CompletionProvider 
 ## Design decisions
 
 - **DEC-009**: Fresh LSP-flavored provider, not TG's `IAutocomplete` (see `specs/decisions.md`).
-- **PopoverMenu**: TG-native vehicle (explicit non-goal: AvaloniaEdit `CodeCompletion/` lift).
+- **Popover + ListView**: TG-native `Popover<ListView, CompletionItem?>` (explicit non-goal: AvaloniaEdit `CodeCompletion/` lift).
 - **Synchronous provider**: `GetCompletions` is synchronous; providers should pre-index for speed.

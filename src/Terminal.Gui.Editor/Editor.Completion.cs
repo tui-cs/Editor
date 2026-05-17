@@ -1,4 +1,6 @@
+using System.Collections.ObjectModel;
 using System.Drawing;
+using Terminal.Gui.App;
 using Terminal.Gui.Editor.Completion;
 using Terminal.Gui.Input;
 using Terminal.Gui.ViewBase;
@@ -9,7 +11,8 @@ namespace Terminal.Gui.Editor;
 public partial class Editor
 {
     private IReadOnlyList<CompletionItem> _completionItems = [];
-    private PopoverMenu? _completionPopup;
+    private ListView? _completionListView;
+    private Popover<ListView, CompletionItem?>? _completionPopover;
     private int _completionPrefixStart;
     private int _completionSelectedIndex;
 
@@ -184,7 +187,10 @@ public partial class Editor
     /// <summary>Hides the completion popup if it is visible.</summary>
     internal void DismissCompletion ()
     {
-        _completionPopup?.Visible = false;
+        if (_completionPopover is not null)
+        {
+            _completionPopover.Visible = false;
+        }
 
         _completionItems = [];
     }
@@ -229,31 +235,50 @@ public partial class Editor
 
     private void ShowCompletionPopup ()
     {
+        if (_completionItems.Count == 0)
+        {
+            return;
+        }
+
         Point caretScreen = GetCaretScreenPosition ();
 
-        // Build menu items from the completion items.
-        MenuItem[] menuItems = new MenuItem[_completionItems.Count];
+        // Build the label list for the ListView.
+        ObservableCollection<string> labels = new (_completionItems.Select (i => i.Label));
 
-        for (var i = 0; i < _completionItems.Count; i++)
+        // Dispose previous popover if any — create fresh each time so the list is rebuilt.
+        if (_completionPopover is not null)
         {
-            CompletionItem item = _completionItems[i];
-            menuItems[i] = new MenuItem { Title = item.Label };
+            _completionPopover.Visible = false;
+            _completionPopover.Dispose ();
         }
 
-        // Hide and dispose previous popup if any — create fresh each time so the Root is rebuilt.
-        if (_completionPopup is not null)
-        {
-            _completionPopup.Visible = false;
-            _completionPopup.Dispose ();
-        }
+        // Cap visible height at 10 items to avoid oversized popups.
+        var visibleCount = Math.Min (_completionItems.Count, 10);
 
-        _completionPopup = new PopoverMenu (menuItems)
+        _completionListView = new ListView
         {
-            Target = new WeakReference<View> (this)
+            Source = new ListWrapper<string> (labels),
+            Width = _completionItems.Max (i => i.Label.Length) + 2,
+            Height = visibleCount
+        };
+        _completionListView.SelectedItem = _completionSelectedIndex;
+
+        _completionPopover = new Popover<ListView, CompletionItem?> (_completionListView)
+        {
+            Target = new WeakReference<View> (this),
+            ResultExtractor = lv =>
+            {
+                if (lv.SelectedItem is not { } index || index < 0 || index >= _completionItems.Count)
+                {
+                    return null;
+                }
+
+                return _completionItems[index];
+            }
         };
 
         // Position the popup just below the caret.
-        _completionPopup.MakeVisible (new Point (caretScreen.X, caretScreen.Y + 1));
+        _completionPopover.MakeVisible (new Point (caretScreen.X, caretScreen.Y + 1));
     }
 
     private void SelectCompletionItem (int index)
@@ -264,6 +289,15 @@ public partial class Editor
         }
 
         _completionSelectedIndex = index;
+
+        // If the popover and list are already visible, just update the selection in place.
+        if (_completionListView is not null && _completionPopover is { Visible: true })
+        {
+            _completionListView.SelectedItem = index;
+
+            return;
+        }
+
         ShowCompletionPopup ();
     }
 
