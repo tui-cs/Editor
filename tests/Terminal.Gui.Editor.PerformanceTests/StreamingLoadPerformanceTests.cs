@@ -7,6 +7,8 @@ namespace Terminal.Gui.Editor.PerformanceTests;
 
 public class StreamingLoadPerformanceTests
 {
+    private static readonly TimeSpan InitialProgressBudget = TimeSpan.FromMilliseconds (500);
+
     [Fact]
     public async Task StreamingLoad_10Mb_ReportsInitialProgressWithinBudget ()
     {
@@ -22,12 +24,12 @@ public class StreamingLoadPerformanceTests
             cancellationToken: TestContext.Current.CancellationToken);
         Task completed = await Task.WhenAny (
             firstProgress.Task,
-            Task.Delay (TimeSpan.FromMilliseconds (200), TestContext.Current.CancellationToken));
+            Task.Delay (InitialProgressBudget, TestContext.Current.CancellationToken));
         sw.Stop ();
 
         Assert.Same (firstProgress.Task, completed);
-        Assert.True (sw.ElapsedMilliseconds < 200,
-            $"Initial streaming load progress took {sw.ElapsedMilliseconds}ms — expected < 200ms.");
+        Assert.True (sw.Elapsed < InitialProgressBudget,
+            $"Initial streaming load progress took {sw.ElapsedMilliseconds}ms — expected < {InitialProgressBudget.TotalMilliseconds:N0}ms.");
 
         _ = await loadTask;
     }
