@@ -1,5 +1,6 @@
 // CoPilot - gpt-5.4
 
+using System.Runtime.CompilerServices;
 using System.Text;
 using Terminal.Gui.Document;
 using Xunit;
@@ -80,20 +81,16 @@ public class TextDocumentStreamingTests
         Assert.Contains ("first access", source, StringComparison.OrdinalIgnoreCase);
     }
 
-    private static string LocateSource (string relativePath)
+    private static string LocateSource (string relativePath, [CallerFilePath] string testFilePath = "")
     {
-        DirectoryInfo? dir = new (AppContext.BaseDirectory);
+        var testDirectory = Path.GetDirectoryName (testFilePath)
+                            ?? throw new InvalidOperationException ("Caller file path was not provided.");
+        var candidate = Path.GetFullPath (
+            Path.Combine (testDirectory, "..", "..", "src", "Terminal.Gui.Editor", relativePath));
 
-        while (dir is not null)
+        if (File.Exists (candidate))
         {
-            var candidate = Path.Combine (dir.FullName, "src", "Terminal.Gui.Editor", relativePath);
-
-            if (File.Exists (candidate))
-            {
-                return candidate;
-            }
-
-            dir = dir.Parent;
+            return candidate;
         }
 
         throw new FileNotFoundException ($"Could not locate {relativePath}.");

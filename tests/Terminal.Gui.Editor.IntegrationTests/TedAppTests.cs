@@ -126,7 +126,7 @@ public class TedAppTests
     public async Task OpenFileAsync_Loads_Stream_On_Background_Thread ()
     {
         TedApp app = new (configPath: TedTestConfig.NewPath ());
-        var callerThreadId = Environment.CurrentManagedThreadId;
+        var testThreadId = Environment.CurrentManagedThreadId;
         GatedReadStream stream = new (Encoding.UTF8.GetBytes (new string ('x', 100_000)));
         app.ShowOpenDialog = () => "/tmp/ted-progress.txt";
         app.OpenRead = _ => stream;
@@ -144,7 +144,7 @@ public class TedAppTests
         stream.AllowRead.SetResult ();
 
         Assert.True (await openTask);
-        Assert.NotEqual (callerThreadId, stream.ReadThreadId);
+        Assert.NotEqual (testThreadId, stream.ReadThreadId);
         Assert.Equal ("Loaded 97.7 KiB", app.LoadSpinnerShortcut.Title);
         Assert.Equal ("Loaded 97.7 KiB", app.LoadSpinnerShortcut.HelpText);
     }
