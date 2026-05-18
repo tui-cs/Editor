@@ -36,6 +36,20 @@ Decisions are recorded here when an open question from the plan is resolved. Eac
 
 ---
 
+### DEC-009: Streaming file I/O placement (resolves former OPEN-003)
+
+**Decision**: Streaming `LoadAsync (Stream)` / `SaveAsync (Stream)` lives on `TextDocument`, with `Editor`
+delegating to the document layer for control-level convenience.
+
+**Rationale**: The rope-backed document is the streaming seam: it can append decoded chunks without
+materializing the whole file as one `string`, preserve detected encoding/BOM metadata, and write snapshots
+back out in chunks. `Editor` still exposes `LoadAsync` / `SaveAsync` so control consumers and `ted` do not
+need to know the document construction details.
+
+**Date**: 2026-05-17
+
+---
+
 ### DEC-003: Tab handling architecture
 
 **Decision**: Tab handling (tab-handling) requires the visual-line pipeline (rendering-pipeline). The codex branch implemented both together. `TabElement` renders tabs through the pipeline, not via inline char-by-char expansion.
@@ -79,14 +93,6 @@ Decisions are recorded here when an open question from the plan is resolved. Eac
 ### OPEN-002: Completion item shape → DEC-009
 
 Resolved — see DEC-009.
-
----
-
-### OPEN-003: Async I/O placement
-
-**Question**: `LoadAsync (Stream)` / `SaveAsync` on `Editor` vs. on the document?
-
-**Affected features**: File I/O, large-file performance.
 
 ---
 
