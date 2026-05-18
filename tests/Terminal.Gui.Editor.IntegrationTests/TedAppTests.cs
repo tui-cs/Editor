@@ -308,19 +308,28 @@ public class TedAppTests
     [Fact]
     public async Task SaveFileAsync_Canceled_HidesSpinner_AndShowsCanceledStatus ()
     {
-        TedApp app = new (configPath: TedTestConfig.NewPath ());
-        app.OpenMissingFile ("/tmp/ted-save-canceled.txt");
-        app.Editor.Document!.Text = "dirty";
-        using CancellationTokenSource cts = new ();
-        await cts.CancelAsync ();
+        var filePath = Path.Combine (Path.GetTempPath (), $"ted-save-canceled-{Guid.NewGuid ():N}.txt");
 
-        Assert.False (await app.SaveFileAsync (cts.Token));
+        try
+        {
+            TedApp app = new (configPath: TedTestConfig.NewPath ());
+            app.OpenMissingFile (filePath);
+            app.Editor.Document!.Text = "dirty";
+            using CancellationTokenSource cts = new ();
+            await cts.CancelAsync ();
 
-        Assert.False (app.LoadStatusSpinner.Visible);
-        Assert.False (app.LoadStatusSpinner.AutoSpin);
-        Assert.Equal ("Save canceled", app.LoadSpinnerShortcut.Title);
-        Assert.Equal ("Save canceled", app.LoadSpinnerShortcut.HelpText);
-        Assert.True (app.IsDocumentModified);
+            Assert.False (await app.SaveFileAsync (cts.Token));
+
+            Assert.False (app.LoadStatusSpinner.Visible);
+            Assert.False (app.LoadStatusSpinner.AutoSpin);
+            Assert.Equal ("Save canceled", app.LoadSpinnerShortcut.Title);
+            Assert.Equal ("Save canceled", app.LoadSpinnerShortcut.HelpText);
+            Assert.True (app.IsDocumentModified);
+        }
+        finally
+        {
+            DeleteIfExists (filePath);
+        }
     }
 
     [Fact]
