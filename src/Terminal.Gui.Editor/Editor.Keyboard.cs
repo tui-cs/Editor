@@ -67,6 +67,18 @@ public partial class Editor
             return false;
         }
 
+        return InsertTypedText (rune.ToString ());
+    }
+
+    /// <summary>
+    ///     The single canonical "type text at the caret" path: honors read-only,
+    ///     multi-caret, selection, and overwrite mode, then refreshes the completion
+    ///     popup. Shared by <see cref="OnKeyDownNotHandled" /> and the completion popup
+    ///     key handler so the two never drift — the completion path previously skipped
+    ///     the multi-caret branch and inserted at a single caret only.
+    /// </summary>
+    private bool InsertTypedText (string text)
+    {
         if (ReadOnly)
         {
             return true;
@@ -74,27 +86,41 @@ public partial class Editor
 
         if (HasMultipleCarets)
         {
-            MultiCaretInsert (rune.ToString ());
+            MultiCaretInsert (text);
 
             return true;
         }
 
         if (HasSelection)
         {
-            ReplaceSelection (rune.ToString ());
+            ReplaceSelection (text);
         }
         else if (OverwriteMode && _document is not null)
         {
-            OverwriteAtCaret (rune.ToString ());
+            OverwriteAtCaret (text);
         }
         else
         {
-            _document!.Insert (CaretOffset, rune.ToString ());
+            _document!.Insert (CaretOffset, text);
         }
 
-        // After inserting a character, notify the completion system so it can open / filter.
+        // After inserting, notify the completion system so it can open / filter.
         NotifyCompletionAfterInsert ();
 
         return true;
+    }
+
+    /// <summary>
+    ///     Canonical delete-left: deletes the selection or the grapheme before the
+    ///     caret(s) (multi-caret aware) and refreshes completion. Shared by the
+    ///     <see cref="Command.DeleteCharLeft" /> binding and the completion popup key
+    ///     handler so Backspace behaves identically with or without the popup open.
+    /// </summary>
+    private bool? DeleteCharLeftAndRefresh ()
+    {
+        var result = MultiCaretDeleteLeft ();
+        NotifyCompletionAfterInsert ();
+
+        return result;
     }
 }

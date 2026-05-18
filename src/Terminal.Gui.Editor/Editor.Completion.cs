@@ -125,43 +125,18 @@ public partial class Editor
                 return true;
             }
 
-            // Character keys: insert directly into the document while the popup is open,
-            // then refresh the completion list. 
+            // Printable keys and Backspace edit through the same canonical path the
+            // editor uses without the popup open (multi-caret / selection / overwrite
+            // aware), then re-filter. The popup is focused, so these never reach
+            // OnKeyDownNotHandled on their own — they must be handled here.
             if (key is { IsCtrl: false, IsAlt: false, AsRune: { } rune } && !Rune.IsControl (rune))
             {
-                if (_document is null || ReadOnly)
-                {
-                    return true;
-                }
-
-                if (HasSelection)
-                {
-                    ReplaceSelection (rune.ToString ());
-                }
-                else if (OverwriteMode)
-                {
-                    OverwriteAtCaret (rune.ToString ());
-                }
-                else
-                {
-                    _document.Insert (CaretOffset, rune.ToString ());
-                }
-
-                // Refresh the completion list with the updated prefix.
-                NotifyCompletionAfterInsert ();
-
-                return true;
+                return InsertTypedText (rune.ToString ());
             }
 
-            // Backspace: delete the character before the caret and refresh.
-            if (key == Key.Backspace)
+            if (KeyMatches (Command.DeleteCharLeft))
             {
-                if (_document is not null && !ReadOnly && CaretOffset > 0)
-                {
-                    _document.Remove (CaretOffset - 1, 1);
-                }
-
-                NotifyCompletionAfterInsert ();
+                DeleteCharLeftAndRefresh ();
 
                 return true;
             }

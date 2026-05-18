@@ -179,6 +179,52 @@ public class EditorCompletionTests
         Assert.True (editor.IsCompletionActive, "Completion should still be active after 'usi' (matches 'using')");
     }
 
+    // Regression for #4: the popup key handler used to insert at a single caret only,
+    // bypassing multi-caret. It now routes through the canonical InsertTypedText, so a
+    // typed char while the popup is open is applied at every caret.
+    [Fact]
+    public void Typing_While_Completion_Active_And_MultiCaret_Inserts_At_All_Carets ()
+    {
+        Editor editor = new ()
+        {
+            Document = new TextDocument ("us\nus"),
+            CompletionProvider = new MultiWordCompletionProvider ("using", "unsafe")
+        };
+        editor.CaretOffset = 2; // end of first "us"
+
+        editor.NotifyCompletionAfterInsert ();
+        Assert.True (editor.IsCompletionActive);
+
+        editor.ToggleCaretAt (5); // additional caret at end of second "us"
+        Assert.True (editor.HasMultipleCarets);
+
+        Assert.True (editor.HandleCompletionKey (new Key ('i')));
+        Assert.Equal ("usi\nusi", editor.Document!.Text);
+    }
+
+    // Regression for #4: the popup key handler used to delete a single char at the
+    // primary caret only. Backspace now routes through the canonical DeleteCharLeft,
+    // so it deletes before every caret.
+    [Fact]
+    public void Backspace_While_Completion_Active_And_MultiCaret_Deletes_At_All_Carets ()
+    {
+        Editor editor = new ()
+        {
+            Document = new TextDocument ("ab\nab"),
+            CompletionProvider = new StubCompletionProvider ("abc")
+        };
+        editor.CaretOffset = 2; // end of first "ab"
+
+        editor.NotifyCompletionAfterInsert ();
+        Assert.True (editor.IsCompletionActive);
+
+        editor.ToggleCaretAt (5); // additional caret at end of second "ab"
+        Assert.True (editor.HasMultipleCarets);
+
+        Assert.True (editor.HandleCompletionKey (Key.Backspace));
+        Assert.Equal ("a\na", editor.Document!.Text);
+    }
+
     // Up/Down navigation and end-of-list cycling are covered below. Still untested:
     // PageUp/PageDown/Home/End within the list, and mouse selection.
 

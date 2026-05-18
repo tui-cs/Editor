@@ -183,13 +183,7 @@ public partial class Editor
 
             return MultiCaretNewLine ();
         });
-        AddCommand (Command.DeleteCharLeft, () =>
-        {
-            var result = MultiCaretDeleteLeft ();
-            NotifyCompletionAfterInsert ();
-
-            return result;
-        });
+        AddCommand (Command.DeleteCharLeft, DeleteCharLeftAndRefresh);
         AddCommand (Command.DeleteCharRight, () =>
         {
             DismissCompletion ();
