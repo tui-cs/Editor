@@ -689,6 +689,46 @@ public class EditorCompletionTests
         Assert.False (editor.IsCompletionActive);
     }
 
+    // #13a: InsertText is real (AcceptCompletion inserts TextToInsert => InsertText ??
+    // Label) but no test exercised the InsertText-differs-from-Label path. A descriptive
+    // label must not be what lands in the document.
+    [Fact]
+    public void AcceptCompletion_Inserts_InsertText_Not_Label_When_They_Differ ()
+    {
+        Editor editor = new ()
+        {
+            Document = new TextDocument ("Wr"),
+            CompletionProvider = new DistinctInsertTextProvider ()
+        };
+        editor.CaretOffset = 2; // after "Wr"
+
+        editor.NotifyCompletionAfterInsert ();
+        Assert.True (editor.IsCompletionActive);
+
+        editor.AcceptCompletion ();
+
+        Assert.Equal ("WriteLine", editor.Document!.Text);
+    }
+
+    /// <summary>Provider whose single item has a descriptive Label distinct from InsertText.</summary>
+    private sealed class DistinctInsertTextProvider : IEditorCompletionProvider
+    {
+        public IReadOnlyList<CompletionItem> GetCompletions (TextDocument document, int caretOffset, string prefix)
+        {
+            if (string.IsNullOrEmpty (prefix))
+            {
+                return [];
+            }
+
+            return [new CompletionItem { Label = "WriteLine — write a line", InsertText = "WriteLine" }];
+        }
+
+        public bool ShouldTrigger (Key key)
+        {
+            return key == Key.Space.WithCtrl;
+        }
+    }
+
     /// <summary>Stub provider that always returns a single hard-coded item.</summary>
     private sealed class StubCompletionProvider (string word) : IEditorCompletionProvider
     {

@@ -22,7 +22,6 @@ public sealed class CompletionItem
 {
     public required string Label { get; init; }
     public string? InsertText { get; init; }   // defaults to Label
-    public string? Detail { get; init; }
 }
 
 public interface IEditorCompletionProvider

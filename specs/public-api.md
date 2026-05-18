@@ -127,7 +127,6 @@ public sealed class CompletionItem
 {
     public required string Label { get; init; }
     public string? InsertText { get; init; }
-    public string? Detail { get; init; }
 }
 
 public interface IEditorCompletionProvider

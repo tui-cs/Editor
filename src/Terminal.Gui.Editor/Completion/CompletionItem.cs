@@ -2,8 +2,8 @@ namespace Terminal.Gui.Editor.Completion;
 
 /// <summary>
 ///     A single completion suggestion returned by an <see cref="IEditorCompletionProvider" />.
-///     Modelled after the LSP <c>CompletionItem</c> shape — label + insertText + optional detail —
-///     but kept minimal for the terminal context.
+///     Modelled after the LSP <c>CompletionItem</c> shape — label + insertText — but kept
+///     minimal for the terminal context.
 /// </summary>
 public sealed class CompletionItem
 {
@@ -18,12 +18,6 @@ public sealed class CompletionItem
     ///     <see cref="Label" /> is inserted instead.
     /// </summary>
     public string? InsertText { get; init; }
-
-    /// <summary>
-    ///     An optional secondary description shown alongside the label (e.g. a type signature or
-    ///     source module).
-    /// </summary>
-    public string? Detail { get; init; }
 
     /// <summary>The text that will actually be inserted: <see cref="InsertText" /> ?? <see cref="Label" />.</summary>
     internal string TextToInsert => InsertText ?? Label;
