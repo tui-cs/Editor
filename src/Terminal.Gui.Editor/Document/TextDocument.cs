@@ -25,8 +25,10 @@ using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.IO;
+using System.Text;
 using Terminal.Gui.Document.Utils;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace Terminal.Gui.Document
 {
@@ -89,6 +91,119 @@ namespace Terminal.Gui.Document
         {
         }
 
+#nullable enable
+        private Encoding _encoding = new UTF8Encoding (false);
+
+        /// <summary>
+        /// Gets or sets the encoding detected during streaming load and used by streaming save.
+        /// </summary>
+        public Encoding Encoding
+        {
+            get => _encoding;
+            set => _encoding = value ?? throw new ArgumentNullException (nameof (value));
+        }
+
+        /// <summary>
+        /// Streams text from <paramref name="stream"/> in decoded chunks, invoking (and awaiting)
+        /// <paramref name="onChunk"/> for each chunk in order as it is read. Awaiting the callback throttles the
+        /// reader to the consumer's cadence (natural backpressure) and lets a UI consumer apply each chunk
+        /// progressively without ever materializing the whole file as a single string. This method does not create
+        /// or mutate a <see cref="TextDocument"/> and has no UI-thread affinity — the consumer decides where and how
+        /// each chunk is applied. See <c>Editor.LoadAsync</c> for the progressive editor consumer.
+        /// </summary>
+        /// <param name="stream">The source stream.</param>
+        /// <param name="encoding">Fallback encoding used when no BOM is detected. Defaults to UTF-8 (no BOM).</param>
+        /// <param name="onChunk">
+        /// Invoked and awaited for every decoded chunk, in order. The supplied memory is only valid for the duration
+        /// of the call; copy it if it must outlive the returned <see cref="ValueTask"/>.
+        /// </param>
+        /// <param name="onEncodingDetected">Invoked once with the encoding the <see cref="StreamReader"/> resolved.</param>
+        /// <param name="progress">Optional progress sink, reported after each applied chunk.</param>
+        /// <param name="cancellationToken">Observed between chunks.</param>
+        public static async Task StreamAsync (
+            Stream stream,
+            Encoding? encoding,
+            Func<ReadOnlyMemory<char>, CancellationToken, ValueTask> onChunk,
+            Action<Encoding>? onEncodingDetected = null,
+            IProgress<TextDocumentProgress>? progress = null,
+            CancellationToken cancellationToken = default)
+        {
+            ArgumentNullException.ThrowIfNull (stream);
+            ArgumentNullException.ThrowIfNull (onChunk);
+
+            const int bufferSize = 32 * 1024;
+            Encoding fallbackEncoding = encoding ?? new UTF8Encoding (false);
+            long? totalBytes = stream.CanSeek ? stream.Length : null;
+            char[] buffer = new char[bufferSize];
+            long charactersRead = 0;
+            var encodingReported = false;
+
+            using StreamReader reader = new (
+                stream, fallbackEncoding, detectEncodingFromByteOrderMarks: true, bufferSize, leaveOpen: true);
+
+            while (true)
+            {
+                cancellationToken.ThrowIfCancellationRequested ();
+                int read = await reader.ReadAsync (buffer.AsMemory (0, buffer.Length), cancellationToken)
+                                       .ConfigureAwait (false);
+
+                if (!encodingReported)
+                {
+                    // CurrentEncoding is only resolved after the first read consumes (or rules out) a BOM.
+                    encodingReported = true;
+                    onEncodingDetected?.Invoke (reader.CurrentEncoding);
+                }
+
+                if (read == 0)
+                {
+                    break;
+                }
+
+                await onChunk (buffer.AsMemory (0, read), cancellationToken).ConfigureAwait (false);
+                charactersRead += read;
+                progress?.Report (new TextDocumentProgress (charactersRead, null,
+                    stream.CanSeek ? stream.Position : null, totalBytes));
+            }
+        }
+
+        /// <summary>
+        /// Streams text from <paramref name="stream"/> into a new <see cref="TextDocument"/> without materializing the
+        /// entire document as a single string. The whole stream is consumed before the document is returned, so this
+        /// is <b>not</b> progressive; UI consumers that want incremental rendering should use
+        /// <see cref="StreamAsync"/> (see <c>Editor.LoadAsync</c>).
+        /// </summary>
+        public static async Task<TextDocument> LoadAsync (Stream stream, Encoding? encoding = null,
+            IProgress<TextDocumentProgress>? progress = null, CancellationToken cancellationToken = default)
+        {
+            ArgumentNullException.ThrowIfNull (stream);
+
+            Rope<char> rope = new ();
+            Encoding detected = encoding ?? new UTF8Encoding (false);
+
+            await StreamAsync (
+                stream,
+                encoding,
+                (chunk, _) =>
+                {
+                    rope.AddRange (chunk.ToArray (), 0, chunk.Length);
+
+                    return ValueTask.CompletedTask;
+                },
+                enc => detected = enc,
+                progress,
+                cancellationToken).ConfigureAwait (false);
+
+            TextDocument document = new (rope)
+            {
+                Encoding = detected
+            };
+            document.UndoStack.MarkAsOriginalFile ();
+            document.SetOwnerThread (null);
+
+            return document;
+        }
+#nullable disable
+
         // gets the text from a text source, directly retrieving the underlying rope where possible
         private static IEnumerable<char> GetTextFromTextSource(ITextSource textSource)
         {
@@ -144,8 +259,9 @@ namespace Terminal.Gui.Document
 		/// </summary>
 		/// <remarks>
 		/// <para>
-		/// The owner can be set to null, which means that no thread can access the document. But, if the document
-		/// has no owner thread, any thread may take ownership by calling <see cref="SetOwnerThread"/>.
+		/// The owner can be set to null, which means that the next thread to access the document takes ownership
+		/// on first access. If the document has no owner thread, any thread may also take ownership by calling
+		/// <see cref="SetOwnerThread"/>.
 		/// </para>
 		/// </remarks>
 		public void SetOwnerThread(Thread newOwner)
@@ -162,6 +278,13 @@ namespace Terminal.Gui.Document
 
         private void VerifyAccess()
         {
+            if (ownerThread == null)
+            {
+                SetOwnerThread (Thread.CurrentThread);
+
+                return;
+            }
+
             if(Thread.CurrentThread != ownerThread)
             {
                 throw new InvalidOperationException("Call from invalid thread.");
@@ -246,6 +369,49 @@ namespace Terminal.Gui.Document
                 Replace(0, _rope.Length, value);
             }
         }
+
+#nullable enable
+        /// <summary>
+        /// Streams the document to <paramref name="stream"/> using <see cref="Encoding"/> without materializing the
+        /// entire document as a single string.
+        /// </summary>
+        public async Task SaveAsync (Stream stream, IProgress<TextDocumentProgress>? progress = null,
+            CancellationToken cancellationToken = default)
+        {
+            VerifyAccess ();
+
+            ArgumentNullException.ThrowIfNull (stream);
+
+            const int bufferSize = 32 * 1024;
+            ITextSource snapshot = CreateSnapshot ();
+            SetOwnerThread (null);
+            char[] buffer = new char[bufferSize];
+            long charactersWritten = 0;
+            long totalCharacters = snapshot.TextLength;
+
+            using (TextReader reader = snapshot.CreateReader ())
+            using (StreamWriter writer = new (stream, Encoding, bufferSize, leaveOpen: true))
+            {
+                while (true)
+                {
+                    cancellationToken.ThrowIfCancellationRequested ();
+                    int read = await reader.ReadAsync (buffer.AsMemory (0, buffer.Length), cancellationToken)
+                                           .ConfigureAwait (false);
+
+                    if (read == 0)
+                    {
+                        break;
+                    }
+
+                    await writer.WriteAsync (buffer.AsMemory (0, read), cancellationToken).ConfigureAwait (false);
+                    charactersWritten += read;
+                    progress?.Report (new TextDocumentProgress (charactersWritten, totalCharacters));
+                }
+
+                await writer.FlushAsync (cancellationToken).ConfigureAwait (false);
+            }
+        }
+#nullable disable
 
         /// <summary>
         /// This event is called after a group of changes is completed.

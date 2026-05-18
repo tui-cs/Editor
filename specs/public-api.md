@@ -12,6 +12,15 @@ public class Editor : View
     // --- Document ---
     public TextDocument Document { get; set; }                    // exists
     public event EventHandler<DocumentChangeEventArgs>? DocumentChanged; // exists
+    public Task LoadAsync (
+        Stream stream,
+        Encoding? encoding = null,
+        IProgress<TextDocumentProgress>? progress = null,
+        CancellationToken cancellationToken = default);           // file-io
+    public Task SaveAsync (
+        Stream stream,
+        IProgress<TextDocumentProgress>? progress = null,
+        CancellationToken cancellationToken = default);           // file-io
 
     // --- Caret ---
     public int CaretOffset { get; set; }                          // exists; backed by TextAnchor (caret-anchors ✅)
@@ -108,6 +117,35 @@ public interface IOverlayRenderer
 }
 ```
 
+## Document File I/O (file-io)
+
+```csharp
+namespace Terminal.Gui.Document;
+
+public sealed class TextDocument
+{
+    public Encoding Encoding { get; set; }
+    public static Task<TextDocument> LoadAsync (
+        Stream stream,
+        Encoding? encoding = null,
+        IProgress<TextDocumentProgress>? progress = null,
+        CancellationToken cancellationToken = default);
+    public Task SaveAsync (
+        Stream stream,
+        IProgress<TextDocumentProgress>? progress = null,
+        CancellationToken cancellationToken = default);
+}
+
+public readonly record struct TextDocumentProgress (
+    long CharactersProcessed,
+    long? TotalCharacters = null,
+    long? BytesProcessed = null,
+    long? TotalBytes = null)
+{
+    public double? Fraction { get; }
+}
+```
+
 ## Change Log
 
 | Date | Change | Feature |
@@ -119,4 +157,5 @@ public interface IOverlayRenderer
 | 2026-05-11 | ReadOnly property landed on Editor | read-only |
 | 2026-05-12 | `ISearchStrategy?` `SearchStrategy { get; set; }` landed on Editor; string-based FindNext/FindPrevious/ReplaceNext/ReplaceAll overloads retained as convenience wrappers | find-and-replace |
 | 2026-05-16 | Vertical multi-caret keybindings (`Ctrl+Alt+CursorUp/Down`, `Alt+Drag`) added via `Editor.DefaultKeyBindings`; no new public Editor API (R8) | vertical-multi-caret |
+| 2026-05-17 | Streaming `TextDocument.LoadAsync` / `TextDocument.SaveAsync`, `TextDocumentProgress`, `TextDocument.Encoding`, and delegating `Editor.LoadAsync` / `Editor.SaveAsync` landed | file-io |
 | 2026-05-17 | `Editor` implements `IDesignable`; `EnableForDesign()` seeds C# sample code with syntax highlighting and line numbers | design-time |
