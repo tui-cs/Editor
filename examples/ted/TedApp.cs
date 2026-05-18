@@ -21,13 +21,26 @@ namespace Ted;
 /// </summary>
 public sealed partial class TedApp : Window
 {
+    private const int MaximumAutomaticFoldingDocumentLength = 1_000_000;
+
     private readonly BraceFoldingStrategy _braceFoldingStrategy;
     private readonly Shortcut _fileNameShortcut;
     private readonly MenuItem _previewMarkdownMenuItem;
 
+    // Per-instance config path. Defaults to the real ~/.tui location; tests inject a temp path so they
+    // never touch the developer's real config (and stay parallel-safe — no env/static mutation).
+    private readonly string _configPath;
+
     /// <summary>Initializes a new <see cref="TedApp" />.</summary>
-    public TedApp (bool readOnly = false)
+    /// <param name="readOnly">Opens the editor read-only.</param>
+    /// <param name="configPath">
+    ///     Overrides where view settings persist. <see langword="null" /> uses
+    ///     <see cref="EditorSettings.GetConfigPath" /> (the real <c>~/.tui/ted.config.json</c>).
+    /// </param>
+    public TedApp (bool readOnly = false, string? configPath = null)
     {
+        _configPath = configPath ?? EditorSettings.GetConfigPath ();
+
         Title = "ted — Terminal.Gui.Editor demo";
         BorderStyle = LineStyle.None;
 
@@ -134,11 +147,24 @@ public sealed partial class TedApp : Window
             ToggleMarkdownPreview ();
             _previewMarkdownMenuItem.Title = ToggleTitle (e.NewValue == CheckState.Checked, "_Preview Markdown");
         };
+        LoadStatusSpinner = new SpinnerView
+        {
+            Style = new SpinnerStyle.Aesthetic (),
+            Width = 8,
+            AutoSpin = false,
+            Visible = false
+        };
 
         StatusBar statusBar =
             new ([
                 new Shortcut { Title = "Language", CommandView = LanguageShortcut },
                 new Shortcut { Title = "Theme", CommandView = ThemeDropDown },
+                LoadSpinnerShortcut = new Shortcut
+                {
+                    CommandView = LoadStatusSpinner,
+                    Title = string.Empty,
+                    MouseHighlightStates = MouseState.None
+                },
                 OverwriteShortcut = new Shortcut (Key.Empty, "INS", null)
                     { MouseHighlightStates = MouseState.None },
                 LocShortcut = new Shortcut (Key.Empty, FormatLoc (1, 1), null)
@@ -264,6 +290,12 @@ public sealed partial class TedApp : Window
 
     /// <summary>The status-bar dropdown that selects <see cref="ThemeManager.Theme" />.</summary>
     public DropDownList ThemeDropDown { get; }
+
+    /// <summary>The spinner view shown while streaming file load/save is running.</summary>
+    public SpinnerView LoadStatusSpinner { get; }
+
+    /// <summary>The status-bar shortcut that hosts <see cref="LoadStatusSpinner" />.</summary>
+    public Shortcut LoadSpinnerShortcut { get; }
 
     /// <summary>The settings checkbox state for visible tab glyphs.</summary>
     public CheckBox ShowTabsCheckBox { get; } = new ()
@@ -400,7 +432,7 @@ public sealed partial class TedApp : Window
         EditorSettings.IndentSize = Editor.IndentationSize;
         EditorSettings.ConvertTabsToSpaces = Editor.ConvertTabsToSpaces;
         EditorSettings.AutoIndent = Editor.IndentationStrategy is not null;
-        EditorSettings.Save ();
+        EditorSettings.Save (_configPath);
     }
 
     private void ShowSettingsDialog ()
@@ -433,6 +465,13 @@ public sealed partial class TedApp : Window
             return;
         }
 
+        if (Editor.Document.TextLength > MaximumAutomaticFoldingDocumentLength)
+        {
+            Editor.FoldingManager = null;
+
+            return;
+        }
+
         FoldingManager fm = new (Editor.Document);
         Editor.FoldingManager = fm;
         _braceFoldingStrategy.UpdateFoldings (fm, Editor.Document);
@@ -441,9 +480,18 @@ public sealed partial class TedApp : Window
 
     private void UpdateFoldings ()
     {
-        if (Editor.FoldingManager is not null && Editor.Document is not null)
+        if (Editor.FoldingManager is null || Editor.Document is null)
         {
-            _braceFoldingStrategy.UpdateFoldings (Editor.FoldingManager, Editor.Document);
+            return;
         }
+
+        if (Editor.Document.TextLength > MaximumAutomaticFoldingDocumentLength)
+        {
+            Editor.FoldingManager = null;
+
+            return;
+        }
+
+        _braceFoldingStrategy.UpdateFoldings (Editor.FoldingManager, Editor.Document);
     }
 }

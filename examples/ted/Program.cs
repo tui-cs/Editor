@@ -23,13 +23,15 @@ using TedApp ted = new (readOnly);
 
 if (!string.IsNullOrWhiteSpace (requestedPath))
 {
+    // Defer onto the app loop so the window renders first, then the file streams in progressively
+    // instead of blocking the UI until the whole file is read.
     if (File.Exists (requestedPath))
     {
-        ted.SetDocument (File.ReadAllText (requestedPath), requestedPath);
+        app.Invoke (() => ted.BeginOpenFile (requestedPath));
     }
     else
     {
-        ted.OpenMissingFile (requestedPath);
+        app.Invoke (() => ted.OpenMissingFile (requestedPath));
     }
 }
 
