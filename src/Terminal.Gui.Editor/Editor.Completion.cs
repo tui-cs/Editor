@@ -4,6 +4,7 @@ using System.Text;
 using Terminal.Gui.App;
 using Terminal.Gui.Editor.Completion;
 using Terminal.Gui.Input;
+using Terminal.Gui.Text;
 using Terminal.Gui.ViewBase;
 using Terminal.Gui.Views;
 
@@ -373,7 +374,8 @@ public partial class Editor
         _completionListView = new ListView
         {
             Source = new ListWrapper<string> (labels),
-            Width = _completionItems.Max (i => i.Label.Length) + 2,
+            // Width in display columns, not char count — wide/CJK graphemes are 2 cells.
+            Width = _completionItems.Max (i => Math.Max (0, i.Label.GetColumns ())) + 2,
             Height = visibleCount,
             TabStop = TabBehavior.NoStop
         };

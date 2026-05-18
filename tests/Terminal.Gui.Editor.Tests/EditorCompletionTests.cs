@@ -619,6 +619,39 @@ public class EditorCompletionTests
         Assert.Equal (before, editor.Document!.Text);
     }
 
+    // Regression for #6: popup width is measured in display columns, not char count.
+    // "你好世界" is 4 chars but 8 cells (East-Asian-wide). The buggy Label.Length math
+    // sized the popup to ~6; column-aware sizing must be >= 8.
+    [Fact]
+    public void Popup_Width_Accounts_For_Wide_Characters ()
+    {
+        using IApplication app = Application.Create ();
+        app.Init (DriverRegistry.Names.ANSI);
+        Runnable top = new ();
+
+        Editor editor = new ()
+        {
+            Width = Dim.Fill (),
+            Height = Dim.Fill (),
+            Document = new TextDocument ("你"),
+            CompletionProvider = new StubCompletionProvider ("你好世界")
+        };
+        top.Add (editor);
+        app.Begin (top);
+
+        editor.CaretOffset = 1; // after "你" — prefix is "你"
+        editor.NotifyCompletionAfterInsert ();
+        Assert.True (editor.IsCompletionActive);
+
+        app.LayoutAndDraw (true);
+        var popover = (View)app.Popovers!.GetActivePopover ()!;
+
+        // 4 wide chars = 8 display columns. Char-count math would yield ~6 (< 8).
+        Assert.True (
+            popover.Frame.Width >= 8,
+            $"Popup width {popover.Frame.Width} should be >= the 8 display columns of \"你好世界\"");
+    }
+
     /// <summary>Stub provider that always returns a single hard-coded item.</summary>
     private sealed class StubCompletionProvider (string word) : IEditorCompletionProvider
     {
