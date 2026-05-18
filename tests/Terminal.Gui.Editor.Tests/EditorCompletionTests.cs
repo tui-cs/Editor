@@ -177,8 +177,8 @@ public class EditorCompletionTests
         Assert.True (editor.IsCompletionActive, "Completion should still be active after 'usi' (matches 'using')");
     }
 
-    // TODO: All Navigation keys (cursor up/down/pageup/down/etc...) need testing.
-    // TODO: In VS, these all cycle within the list instead of clamping at the ends. We should test that behavior too.
+    // Up/Down navigation and end-of-list cycling are covered below. Still untested:
+    // PageUp/PageDown/Home/End within the list, and mouse selection.
 
     [Fact]
     public void ArrowKeys_Navigate_Completion_Selection ()
@@ -303,6 +303,43 @@ public class EditorCompletionTests
 
         Assert.False (editor.IsCompletionActive);
         Assert.Equal (expectedCaret, editor.CaretOffset);
+    }
+
+    // Regression (user-reported): type "te", Esc, Enter produced "Ted" instead of "te\n".
+    // Terminal.Gui auto-hides the popover on Esc but never tells the Editor, so
+    // IsCompletionActive stayed true and the next Enter accepted. The popover's
+    // VisibleChanged handler must tear the session down on auto-hide.
+    [Fact]
+    public void Esc_AutoHides_Popover_So_Following_Enter_Newlines_Not_Accepts ()
+    {
+        using IApplication app = Application.Create ();
+        app.Init (DriverRegistry.Names.ANSI);
+        Runnable top = new ();
+
+        Editor editor = new ()
+        {
+            Document = new TextDocument ("te"),
+            CompletionProvider = new MultiWordCompletionProvider ("Ted", "TedApp")
+        };
+        top.Add (editor);
+        app.Begin (top);
+
+        editor.CaretOffset = 2;
+
+        editor.NotifyCompletionAfterInsert ();
+        Assert.True (editor.IsCompletionActive);
+
+        // Esc: TG auto-hides the popover → VisibleChanged → session torn down.
+        app.InjectKey (Key.Esc);
+        Assert.False (editor.IsCompletionActive);
+
+        // Enter must newline, not resurrect the dead completion.
+        app.InjectKey (Key.Enter);
+
+        Assert.StartsWith ("te", editor.Document!.Text);
+        Assert.Contains ("\n", editor.Document!.Text);
+        Assert.DoesNotContain ("Ted", editor.Document!.Text);
+        Assert.False (editor.IsCompletionActive);
     }
 
     // Enter (the key bound to Command.NewLine) and Tab (Command.InsertTab) are the default

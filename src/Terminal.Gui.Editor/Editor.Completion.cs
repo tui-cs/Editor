@@ -185,10 +185,10 @@ public partial class Editor
     }
 
     /// <summary>
-    ///     Handles mouse events for the completion popup. When the popup is visible
-    ///     (rendered as a <c>Popover</c> with <c>Enabled = false</c>), mouse clicks
-    ///     in the popup area are detected by the Editor and mapped to completion items.
-    ///     Single-click on an item accepts the completion.
+    ///     Handles mouse events for the completion popup: a single click inside the popup
+    ///     area selects and accepts the clicked item; a click outside dismisses the popup.
+    ///     The hit-test maps screen Y to an item index and does not account for a scrolled
+    ///     list (only the first <see cref="ShowCompletionPopup" /> page is addressable).
     /// </summary>
     internal bool HandleCompletionMouse (Mouse mouse)
     {
@@ -293,18 +293,50 @@ public partial class Editor
         ShowCompletionPopup ();
     }
 
-    /// <summary>Hides the completion popup if it is visible.</summary>
+    /// <summary>Tears down the completion session: disposes the popup and clears the item list.</summary>
     internal void DismissCompletion ()
     {
-        if (_completionPopover is not null)
+        DisposeCompletionPopover ();
+        _completionItems = [];
+    }
+
+    /// <summary>
+    ///     Disposes the popover and its ListView (if any) without clearing
+    ///     <see cref="_completionItems" /> — used both to dismiss and to swap in a fresh popup.
+    /// </summary>
+    /// <remarks>
+    ///     Null-out-then-dispose order plus unsubscribing first makes this reentrant-safe:
+    ///     disposing the popover flips <c>Visible</c>, but the handler is already detached and
+    ///     the field already <see langword="null" />, so re-entry is a no-op.
+    /// </remarks>
+    private void DisposeCompletionPopover ()
+    {
+        Popover<ListView, CompletionItem?>? popover = _completionPopover;
+        _completionPopover = null;
+        _completionListView = null;
+
+        if (popover is null)
         {
-            _completionPopover.Visible = false;
-            _completionPopover.Dispose ();
-            _completionPopover = null;
-            _completionListView = null;
+            return;
         }
 
-        _completionItems = [];
+        popover.VisibleChanged -= OnCompletionPopoverVisibleChanged;
+        popover.Visible = false;
+        popover.Dispose ();
+    }
+
+    /// <summary>
+    ///     Terminal.Gui auto-hides the popover on Esc, a click outside it, focus change, or
+    ///     another popover opening — it just flips <c>Visible</c> and never tells the Editor.
+    ///     Without this, <see cref="IsCompletionActive" /> would stay <see langword="true" />
+    ///     and a subsequent Enter/click would fire a phantom <see cref="AcceptCompletion" />.
+    /// </summary>
+    private void OnCompletionPopoverVisibleChanged (object? sender, EventArgs e)
+    {
+        if (_completionPopover is { Visible: false })
+        {
+            DismissCompletion ();
+        }
     }
 
     /// <summary>
@@ -352,14 +384,9 @@ public partial class Editor
             return;
         }
 
-        // Dispose previous popover if any — create fresh each time so the list is rebuilt.
-        if (_completionPopover is not null)
-        {
-            _completionPopover.Visible = false;
-            _completionPopover.Dispose ();
-            _completionPopover = null;
-            _completionListView = null;
-        }
+        // Drop the previous popover (if any) — a fresh one is built each time so the
+        // list rebuilds. Reentrant-safe so the VisibleChanged teardown can't NRE here.
+        DisposeCompletionPopover ();
 
         // Build the label list for the ListView.
         ObservableCollection<string> labels = new (_completionItems.Select (i => i.Label));
@@ -374,11 +401,12 @@ public partial class Editor
             Height = visibleCount,
             TabStop = TabBehavior.NoStop
         };
-        // Disable ListView's internal navigation handling since we're managing selection and accept keys at the Editor level.
+        // The ListView owns no accept/dismiss semantics: HandleCompletionKey resolves
+        // accept (Enter/Tab) and dismiss (Esc/Left/Right) at the Editor level, while the
+        // focused ListView's own Up/Down move the selection. Binding Space->Accept here
+        // would silently re-introduce the "this is a test." accept-on-space bug. Disable
+        // type-ahead so a stray letter can't hijack the list instead of reaching the editor.
         _completionListView.KeystrokeNavigator = null;
-        _completionListView.KeyBindings.Add (Key.Tab, Command.Accept);
-        _completionListView.KeyBindings.Remove (Key.Space);
-        _completionListView.KeyBindings.Add (Key.Space, Command.Accept);
         _completionListView.SelectedItem = _completionSelectedIndex;
 
         IReadOnlyList<CompletionItem> capturedItems = _completionItems;
@@ -398,17 +426,22 @@ public partial class Editor
             TabStop = TabBehavior.NoStop
         };
 
+        // Tear the session down when TG auto-hides the popover (Esc / click-outside /
+        // focus change), so IsCompletionActive can't go stale and trigger a phantom accept.
+        _completionPopover.VisibleChanged += OnCompletionPopoverVisibleChanged;
+
         // Position the popup just below the caret.
         Point caretScreen = GetCaretScreenPosition ();
         _completionPopover.MakeVisible (new Point (caretScreen.X, caretScreen.Y + 1));
 
-        // While the LV has focus, track selection changes to update the selected index,
-        // but accept on Enter/Tab/Space (handled in HandleCompletionKey).
+        // The focused ListView's Up/Down move its selection; mirror that into
+        // _completionSelectedIndex so AcceptCompletion inserts the right item.
+        // Accept/dismiss keys are resolved separately in HandleCompletionKey.
         _completionListView.ValueChanged += (_, args) =>
         {
             if (args.NewValue is not null)
             {
-               _completionSelectedIndex = args.NewValue.Value;
+                _completionSelectedIndex = args.NewValue.Value;
             }
         };
     }

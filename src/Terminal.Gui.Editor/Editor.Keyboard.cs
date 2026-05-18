@@ -1,4 +1,5 @@
 using System.Text;
+using Terminal.Gui.App;
 using Terminal.Gui.Input;
 
 namespace Terminal.Gui.Editor;
@@ -6,9 +7,10 @@ namespace Terminal.Gui.Editor;
 public partial class Editor
 {
     /// <summary>
-    ///     Runs before command bindings. When completion is active, intercepts navigation and
-    ///     accept/dismiss keys (Enter, Tab, arrows, Esc) so they don't trigger the normal
-    ///     editor command bindings. Also checks provider-specific trigger keys (e.g. Ctrl+Space).
+    ///     Runs before command bindings. When completion is active, intercepts accept
+    ///     (Enter/Tab) and dismiss (Esc/Left/Right) keys so they don't trigger the normal
+    ///     editor command bindings; Up/Down are left to the focused popup ListView. Also
+    ///     checks provider-specific trigger keys (e.g. Ctrl+Space).
     ///     Additionally, tracks the kill-ring consecutive-kill flag: snapshots
     ///     <c>_lastCommandWasKill</c> into <c>_previousCommandWasKill</c>, then clears
     ///     <c>_lastCommandWasKill</c>. The kill commands re-set it after executing.
@@ -42,7 +44,12 @@ public partial class Editor
     /// <inheritdoc />
     protected override bool OnKeyDownNotHandled (Key key)
     {
-        if (KeyBindings.GetFirstFromCommands (Command.Quit) is { } boundKey && key == boundKey && HasMultipleCarets)
+        // Esc clears a multi-caret block. Resolve the key from the application's
+        // Command.Quit binding — the Editor itself binds no Quit, so the earlier
+        // Editor-scoped KeyBindings.GetFirstFromCommands(Command.Quit) lookup resolved
+        // to null and the clear never ran (regressed multi-caret Esc in 7ad560e). This
+        // tracks the same key Terminal.Gui uses framework-wide for escape/cancel.
+        if (key == Application.GetDefaultKey (Command.Quit) && HasMultipleCarets)
         {
             ClearAdditionalCarets ();
 
