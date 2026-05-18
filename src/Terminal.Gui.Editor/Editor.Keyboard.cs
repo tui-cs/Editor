@@ -42,7 +42,7 @@ public partial class Editor
     /// <inheritdoc />
     protected override bool OnKeyDownNotHandled (Key key)
     {
-        if (key == Key.Esc && HasMultipleCarets)
+        if (KeyBindings.GetFirstFromCommands (Command.Quit) is { } boundKey && key == boundKey && HasMultipleCarets)
         {
             ClearAdditionalCarets ();
 

@@ -273,11 +273,12 @@ public class EditorCompletionTests
         Assert.True (editor.IsCompletionActive);
     }
 
-    // TODO: This should be querying the Editor key bindings for the relevant keys instead of hardcoding them here.
+    // Enter (the key bound to Command.NewLine) and Tab (Command.InsertTab) are the default
+    // accept keys. SPACE is deliberately NOT one — see
+    // Space_While_Completion_Active_Inserts_Space_And_Dismisses.
     [Theory]
     [InlineData (KeyCode.Enter)]
     [InlineData (KeyCode.Tab)]
-    [InlineData (KeyCode.Space)]
     public void ValidAcceptKeys_Accept_Completion (KeyCode acceptKey)
     {
         using IApplication app = Application.Create ();
@@ -309,6 +310,37 @@ public class EditorCompletionTests
         Assert.False (editor.IsCompletionActive);
 
         Assert.Equal ("help", editor.Document!.Text);
+    }
+
+    // Regression guard for the "this is a test." → "this IsDefaulta test." bug: SPACE must
+    // not accept the selected item. It is an ordinary printable — it inserts a space, the
+    // now-empty prefix dismisses the popup, and the typed text is left intact.
+    [Fact]
+    public void Space_While_Completion_Active_Inserts_Space_And_Dismisses ()
+    {
+        using IApplication app = Application.Create ();
+        app.Init (DriverRegistry.Names.ANSI);
+        Runnable top = new ();
+
+        // "he" matches "hello" and "help" — two items, "hello" preselected.
+        Editor editor = new ()
+        {
+            Document = new TextDocument ("he"),
+            CompletionProvider = new MultiWordCompletionProvider ("hello", "help")
+        };
+        top.Add (editor);
+        app.Begin (top);
+
+        editor.CaretOffset = 2;
+
+        editor.NotifyCompletionAfterInsert ();
+        Assert.True (editor.IsCompletionActive);
+
+        app.InjectKey (Key.Space);
+
+        // SPACE inserted literally, popup gone, no completion text applied.
+        Assert.False (editor.IsCompletionActive);
+        Assert.Equal ("he ", editor.Document!.Text);
     }
 
     [Fact]

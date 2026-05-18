@@ -104,16 +104,19 @@ public partial class Editor
         // An active popup gets first crack at navigation keys.
         if (IsCompletionActive)
         {
-            // TODO: This should be querying the Editor key bindings for the relevant keys instead of hardcoding them here.
-            if (key == Key.Esc || key == Key.CursorLeft || key == Key.CursorRight || key == Key.CursorUp || key == Key.CursorDown)
+            // Esc (whatever is bound to Command.Quit) or an arrow key dismisses the popup.
+            // TODO: query the bindings for the cursor keys too instead of hardcoding them.
+            if (KeyMatches (Command.Quit) || key == Key.CursorLeft || key == Key.CursorRight || key == Key.CursorUp || key == Key.CursorDown)
             {
                 DismissCompletion ();
 
                 return false;
             }
 
-            // TODO: This should be querying the Editor key bindings for the relevant keys instead of hardcoding them here.
-            if (key == Key.Enter || key == Key.Tab || key == Key.Space)
+            // Accept on the keys bound to NewLine (Enter) / InsertTab (Tab). SPACE is
+            // deliberately NOT an accept key: it falls through, inserts a space, and the
+            // now-empty prefix dismisses the popup (so "this is a test." stays intact).
+            if (KeyMatches (Command.NewLine) || KeyMatches (Command.InsertTab))
             {
                 AcceptCompletion ();
 
@@ -124,24 +127,26 @@ public partial class Editor
             // then refresh the completion list. 
             if (key is { IsCtrl: false, IsAlt: false, AsRune: { } rune } && !Rune.IsControl (rune))
             {
-                if (_document is not null && !ReadOnly)
+                if (_document is null || ReadOnly)
                 {
-                    if (HasSelection)
-                    {
-                        ReplaceSelection (rune.ToString ());
-                    }
-                    else if (OverwriteMode)
-                    {
-                        OverwriteAtCaret (rune.ToString ());
-                    }
-                    else
-                    {
-                        _document.Insert (CaretOffset, rune.ToString ());
-                    }
-
-                    // Refresh the completion list with the updated prefix.
-                    NotifyCompletionAfterInsert ();
+                    return true;
                 }
+
+                if (HasSelection)
+                {
+                    ReplaceSelection (rune.ToString ());
+                }
+                else if (OverwriteMode)
+                {
+                    OverwriteAtCaret (rune.ToString ());
+                }
+                else
+                {
+                    _document.Insert (CaretOffset, rune.ToString ());
+                }
+
+                // Refresh the completion list with the updated prefix.
+                NotifyCompletionAfterInsert ();
 
                 return true;
             }
@@ -170,6 +175,12 @@ public partial class Editor
 
         return true;
 
+        // Resolve a key against the Editor's own bindings instead of hardcoding literals,
+        // so completion follows any rebinding of these commands.
+        bool KeyMatches (Command command)
+        {
+            return KeyBindings.GetFirstFromCommands (command) is { } bound && key == bound;
+        }
     }
 
     /// <summary>
