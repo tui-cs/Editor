@@ -447,7 +447,17 @@ public partial class Editor
             }
         };
 
-        _completionListView.Accepted += (_, _) => AcceptCompletion ();
+        // Accepted fires on BOTH Enter and mouse-click. Acceptance itself is driven
+        // explicitly — HandleCompletionKey for Enter/Tab, HandleCompletionMouse for a
+        // click — so this only syncs the selected index (like ValueChanged above).
+        // Calling AcceptCompletion here double-handled Enter and leaked a trailing newline.
+        _completionListView.Accepted += (_, args) =>
+        {
+            if (args.Context?.Value is int idx)
+            {
+                CompletionSelectedIndex = idx;
+            }
+        };
     }
 
     /// <summary>

@@ -1,11 +1,13 @@
 // CoPilot - gpt-4.1
 
+using System.Drawing;
 using Terminal.Gui.App;
 using Terminal.Gui.Document;
 using Terminal.Gui.Drivers;
 using Terminal.Gui.Editor.Completion;
 using Terminal.Gui.Input;
 using Terminal.Gui.Testing;
+using Terminal.Gui.ViewBase;
 using Terminal.Gui.Views;
 using Xunit;
 
@@ -481,6 +483,94 @@ public class EditorCompletionTests
 
         editor.NotifyCompletionAfterInsert ();
         Assert.False (editor.IsCompletionActive);
+    }
+
+    // Missing-coverage regression: clicking an item in the popover must select+accept that
+    // item. Nothing exercised HandleCompletionMouse before, so its hit-test could (and did)
+    // break silently.
+    [Fact]
+    public void SingleClick_On_Popover_Item_Accepts_That_Item ()
+    {
+        using IApplication app = Application.Create ();
+        app.Init (DriverRegistry.Names.ANSI);
+        Runnable top = new ();
+
+        // "he" → [hello, help, helm]. We click index 1 ("help").
+        Editor editor = new ()
+        {
+            Width = Dim.Fill (),
+            Height = Dim.Fill (),
+            Document = new TextDocument ("he"),
+            CompletionProvider = new MultiWordCompletionProvider ("hello", "help", "helm")
+        };
+        top.Add (editor);
+        app.Begin (top);
+
+        editor.CaretOffset = 2;
+        editor.NotifyCompletionAfterInsert ();
+        Assert.True (editor.IsCompletionActive);
+
+        // Lay the popover out so its screen Frame is valid before we hit-test against it.
+        app.LayoutAndDraw (true);
+        var popover = (View)app.Popovers!.GetActivePopover ()!;
+        Rectangle frame = popover.Frame;
+
+        // HandleCompletionMouse maps clickedIdx = ScreenPosition.Y - Frame.Y, so Frame.Y + 1
+        // is the second item.
+        app.InjectMouse (
+            new Mouse
+            {
+                ScreenPosition = new Point (frame.X, frame.Y + 1),
+                Flags = MouseFlags.LeftButtonClicked,
+                Timestamp = new DateTime (2025, 1, 1, 12, 0, 0)
+            });
+
+        Assert.False (editor.IsCompletionActive);
+        Assert.Equal ("help", editor.Document!.Text);
+    }
+
+    // Bug-2 regression (user-reported: clicking elsewhere inserted "TedApp" at the click).
+    // Terminal.Gui hides an active popover on a mouse PRESS outside it (the press →
+    // release → click cycle), so this injects a real LeftButtonPressed clear of the
+    // popover frame and asserts the popup is gone with nothing accepted/inserted.
+    [Fact]
+    public void Click_Outside_Popover_Dismisses_And_Inserts_Nothing ()
+    {
+        using IApplication app = Application.Create ();
+        app.Init (DriverRegistry.Names.ANSI);
+        Runnable top = new ();
+
+        Editor editor = new ()
+        {
+            Width = Dim.Fill (),
+            Height = Dim.Fill (),
+            Document = new TextDocument ("he"),
+            CompletionProvider = new MultiWordCompletionProvider ("hello", "help", "helm")
+        };
+        top.Add (editor);
+        app.Begin (top);
+
+        editor.CaretOffset = 2;
+        editor.NotifyCompletionAfterInsert ();
+        Assert.True (editor.IsCompletionActive);
+
+        app.LayoutAndDraw (true);
+        var popover = (View)app.Popovers!.GetActivePopover ()!;
+        Rectangle frame = popover.Frame;
+
+        var before = editor.Document!.Text;
+
+        // Press well clear of the popover (column 0 is left of it; a few rows below).
+        app.InjectMouse (
+            new Mouse
+            {
+                ScreenPosition = new Point (0, frame.Bottom + 3),
+                Flags = MouseFlags.LeftButtonPressed,
+                Timestamp = new DateTime (2025, 1, 1, 12, 0, 0)
+            });
+
+        Assert.False (editor.IsCompletionActive);
+        Assert.Equal (before, editor.Document!.Text);
     }
 
     /// <summary>Stub provider that always returns a single hard-coded item.</summary>
