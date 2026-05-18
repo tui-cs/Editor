@@ -47,6 +47,24 @@ public partial class Editor : View
     private HighlightingColorizer? _highlightingColorizer;
     private int _lastKnownCaretOffset;
 
+    // Kill-ring: consecutive CutToEndOfLine / CutToStartOfLine appends to the clipboard instead
+    // of replacing. Any non-kill command (including plain character insertion) breaks the run.
+    //
+    // _lastCommandWasKill is set to true by kill commands after executing.
+    // _previousCommandWasKill is set by OnKeyDown (keyboard path) — it snapshots _lastCommandWasKill
+    // before clearing it, so the dispatched kill command can read whether the preceding command was
+    // a kill for append/prepend decisions.
+    //
+    // Keyboard path: OnKeyDown snapshots _lastCommandWasKill → _previousCommandWasKill, clears
+    //   _lastCommandWasKill, then dispatches.  Kill commands read _previousCommandWasKill.
+    // InvokeCommand path (programmatic): OnKeyDown is bypassed.  Kill commands fall back to
+    //   _lastCommandWasKill directly.  Note: non-kill commands invoked via InvokeCommand do NOT
+    //   clear _lastCommandWasKill, so a sequence like InvokeCommand(Kill) → InvokeCommand(Right) →
+    //   InvokeCommand(Kill) will incorrectly append.  This is a known limitation of the
+    //   programmatic path; keyboard dispatch (the primary use case) is unaffected.
+    private bool _lastCommandWasKill;
+    private bool _previousCommandWasKill;
+
     // Incremental max-width tracking: avoids the O(N) all-lines walk that UpdateContentSize
     // used to do on every edit. _maxVisualWidth is the widest visual line seen; _maxWidthLineNumber
     // tracks which line holds it so we can detect when that line is edited. _maxWidthDirty forces
@@ -54,6 +72,18 @@ public partial class Editor : View
     private int _maxVisualWidth;
     private bool _maxWidthDirty = true;
     private int _maxWidthLineNumber;
+
+    // Above this document size the horizontal extent is estimated from each line's character count
+    // (O(1) per line) instead of building + syntax-highlighting a CellVisualLine for every line.
+    // Building every line on load is what made a 10 MiB open take ~10 s; the model layer alone
+    // loads in ~0.2 s. Smaller documents keep the exact computation (tab/wide-glyph precise).
+    private const int MaxWidthEstimateThresholdBytes = 256 * 1024;
+
+    // Set by the draw path when a rendered line turned out wider than the running max (e.g. an
+    // estimated large doc whose visible tab-indented line expands past the char-length estimate).
+    // OnDrawingContent reconciles the content size once after the draw, so the horizontal scrollbar
+    // grows as wider lines scroll into view — matching VS Code's "estimate, then refine" model.
+    private bool _maxWidthGrewDuringDraw;
 
     /// <summary>
     ///     Sticky column for vertical caret moves. Tracks the column the user *intends* to be in,
@@ -76,6 +106,7 @@ public partial class Editor : View
         CreateCommandsAndBindings ();
         OverlayRenderers.Add (new MultiCaretRenderer (this));
         Document = new TextDocument ();
+        InitializeDefaultContextMenu ();
         ThemeManager.ThemeChanged += OnThemeChanged;
     }
 
@@ -437,7 +468,8 @@ public partial class Editor : View
             // external code retains the TextDocument (test fixtures, future shared docs across panes,
             // etc.). The Document setter unsubscribes on swap; this covers View-teardown.
             _document.Changed -= OnDocumentChanged;
-            _lastKnownCaretOffset = CaretOffset;
+            // Dispose can run after document ownership moved; _lastKnownCaretOffset is maintained
+            // during caret movement and document changes, so avoid reading CaretOffset here.
             _caretAnchor = null;
             _selectionAnchor = null;
             _additionalCarets.Clear ();
@@ -507,6 +539,25 @@ public partial class Editor : View
         SetContentSize (new Size (_maxVisualWidth + 1, Math.Max (1, visibleLines)));
     }
 
+    /// <summary>
+    ///     Per-line horizontal extent used for the content width / horizontal scrollbar. For documents
+    ///     below <see cref="MaxWidthEstimateThresholdBytes" /> this is the exact visual width (builds the
+    ///     line, tab/wide-glyph precise). For larger documents it is the line's character count — O(1),
+    ///     no build, no syntax-highlight — so opening a multi-MB file does not build + highlight every
+    ///     line just to size a scrollbar. The estimate can be short for tab-indented / wide-glyph lines;
+    ///     the draw path refines <see cref="_maxVisualWidth" /> exactly for lines it actually renders, so
+    ///     visible content always has a correct extent and the scrollbar grows on scroll.
+    /// </summary>
+    private int MeasureLineWidth (DocumentLine line)
+    {
+        if (_document is { } document && document.TextLength >= MaxWidthEstimateThresholdBytes)
+        {
+            return line.Length;
+        }
+
+        return GetOrBuildDefaultVisualLine (line).VisualLength;
+    }
+
     /// <summary>Full O(N) recompute — only called on Document swap, IndentationSize change, etc.</summary>
     private void RecomputeMaxWidth ()
     {
@@ -522,7 +573,7 @@ public partial class Editor : View
 
         foreach (DocumentLine line in _document.Lines)
         {
-            var width = GetOrBuildDefaultVisualLine (line).VisualLength;
+            var width = MeasureLineWidth (line);
 
             if (width > _maxVisualWidth)
             {
@@ -568,7 +619,7 @@ public partial class Editor : View
             for (var lineNum = firstAffected.LineNumber; lineNum <= scanEnd; lineNum++)
             {
                 DocumentLine line = _document.GetLineByNumber (lineNum);
-                var width = GetOrBuildDefaultVisualLine (line).VisualLength;
+                var width = MeasureLineWidth (line);
 
                 if (width >= newMax)
                 {
@@ -599,7 +650,7 @@ public partial class Editor : View
         for (var lineNum = firstAffected.LineNumber; lineNum <= endLine; lineNum++)
         {
             DocumentLine line = _document.GetLineByNumber (lineNum);
-            var width = GetOrBuildDefaultVisualLine (line).VisualLength;
+            var width = MeasureLineWidth (line);
 
             if (width > _maxVisualWidth)
             {
@@ -680,7 +731,7 @@ public partial class Editor : View
         // Net character shift. Cached visual lines store *absolute* element offsets, so a
         // same-line-count edit upstream (no newline added/removed) still leaves every
         // downstream cached line stale even though its line *number* is unchanged.
-        var offsetDelta = (insertedText.Length - removedText.Length);
+        var offsetDelta = insertedText.Length - removedText.Length;
 
         RekeyCache (_defaultVisualLineCache, threshold, lineDelta, removedNewlines, offsetDelta);
         RekeyCache (_drawVisualLineCache, threshold, lineDelta, removedNewlines, offsetDelta);
@@ -972,7 +1023,7 @@ public partial class Editor : View
             return true;
         }
 
-        var targetLineIndex = (_document.GetLineByOffset (startOffset).LineNumber - 1) + delta;
+        var targetLineIndex = _document.GetLineByOffset (startOffset).LineNumber - 1 + delta;
 
         if (targetLineIndex < 0 || targetLineIndex > _document.LineCount - 1)
         {

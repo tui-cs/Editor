@@ -2,14 +2,14 @@
 
 using System.Collections.Immutable;
 using System.Drawing;
+using System.IO;
+using System.Text;
 using Ted;
 using Terminal.Gui.Configuration;
 using Terminal.Gui.Editor.IntegrationTests.Testing;
 using Terminal.Gui.Input;
-using Terminal.Gui.Text.Indentation;
 using Terminal.Gui.Testing;
-using Terminal.Gui.Editor;
-using Terminal.Gui.Views;
+using Terminal.Gui.Text.Indentation;
 using Xunit;
 
 namespace Terminal.Gui.Editor.IntegrationTests;
@@ -31,9 +31,9 @@ public class TedAppTests
     [Fact]
     public void NewFile_ClearsEditor_AndCurrentFilePath ()
     {
-        TedApp app = new ();
+        TedApp app = new (configPath: TedTestConfig.NewPath ());
         app.ShowOpenDialog = () => "/tmp/ted-open.txt";
-        app.ReadAllText = _ => "opened";
+        app.OpenRead = _ => new MemoryStream (Encoding.UTF8.GetBytes ("opened"));
 
         Assert.True (app.OpenFile ());
         app.Editor.SelectAll ();
@@ -49,9 +49,9 @@ public class TedAppTests
     [Fact]
     public void OpenFile_Canceled_DoesNotChangeEditor ()
     {
-        TedApp app = new ();
+        TedApp app = new (configPath: TedTestConfig.NewPath ());
         app.ShowOpenDialog = () => null;
-        app.ReadAllText = _ => throw new InvalidOperationException ("Canceled open should not read.");
+        app.OpenRead = _ => throw new InvalidOperationException ("Canceled open should not read.");
 
         Assert.False (app.OpenFile ());
 
@@ -67,7 +67,7 @@ public class TedAppTests
 
         try
         {
-            TedApp app = new ();
+            TedApp app = new (configPath: TedTestConfig.NewPath ());
             app.ShowOpenDialog = () => filePath;
 
             Assert.True (app.OpenFile ());
@@ -90,7 +90,7 @@ public class TedAppTests
 
         try
         {
-            TedApp app = new ();
+            TedApp app = new (configPath: TedTestConfig.NewPath ());
             app.OpenMissingFile (filePath);
 
             Assert.Equal (filePath, app.CurrentFilePath);
@@ -104,6 +104,150 @@ public class TedAppTests
     }
 
     [Fact]
+    public async Task OpenFileAsync_Updates_LoadStatusShortcut ()
+    {
+        TedApp app = new (configPath: TedTestConfig.NewPath ());
+        app.ShowOpenDialog = () => "/tmp/ted-progress.txt";
+        app.OpenRead = _ => new MemoryStream (Encoding.UTF8.GetBytes (new string ('x', 100_000)));
+
+        Assert.Equal (string.Empty, app.LoadSpinnerShortcut.Title);
+
+        Assert.True (await app.OpenFileAsync (TestContext.Current.CancellationToken));
+
+        Assert.Equal ("Loaded 97.7 KiB", app.LoadSpinnerShortcut.Title);
+        Assert.Equal ("Loaded 97.7 KiB", app.LoadSpinnerShortcut.HelpText);
+        Assert.Same (app.LoadStatusSpinner, app.LoadSpinnerShortcut.CommandView);
+        Assert.False (app.LoadStatusSpinner.Visible);
+        Assert.False (app.LoadStatusSpinner.AutoSpin);
+        Assert.Equal (100_000, app.Editor.Document!.TextLength);
+    }
+
+    [Fact]
+    public async Task OpenFileAsync_Loads_Stream_On_Background_Thread ()
+    {
+        TedApp app = new (configPath: TedTestConfig.NewPath ());
+        var testThreadId = Environment.CurrentManagedThreadId;
+        GatedReadStream stream = new (Encoding.UTF8.GetBytes (new string ('x', 100_000)));
+        app.ShowOpenDialog = () => "/tmp/ted-progress.txt";
+        app.OpenRead = _ => stream;
+
+        Task<bool> openTask = app.OpenFileAsync (TestContext.Current.CancellationToken);
+
+        await stream.ReadStarted.Task.WaitAsync (TestContext.Current.CancellationToken);
+
+        Assert.False (openTask.IsCompleted);
+        Assert.True (app.LoadStatusSpinner.Visible);
+        Assert.True (app.LoadStatusSpinner.AutoSpin);
+        Assert.Equal ("Loading 0 B of 97.7 KiB", app.LoadSpinnerShortcut.Title);
+        Assert.Equal ("Loading 0 B of 97.7 KiB", app.LoadSpinnerShortcut.HelpText);
+
+        stream.AllowRead.SetResult ();
+
+        Assert.True (await openTask);
+        Assert.NotEqual (testThreadId, stream.ReadThreadId);
+        Assert.Equal ("Loaded 97.7 KiB", app.LoadSpinnerShortcut.Title);
+        Assert.Equal ("Loaded 97.7 KiB", app.LoadSpinnerShortcut.HelpText);
+    }
+
+    [Fact]
+    public async Task OpenFileAsync_ReadFailure_HidesSpinner_AndShowsFailureStatus ()
+    {
+        TedApp app = new (configPath: TedTestConfig.NewPath ());
+        app.ShowOpenDialog = () => "/tmp/ted-open-fails.txt";
+        app.OpenRead = _ => new ThrowingReadStream ();
+
+        Assert.False (await app.OpenFileAsync (TestContext.Current.CancellationToken));
+
+        Assert.False (app.LoadStatusSpinner.Visible);
+        Assert.False (app.LoadStatusSpinner.AutoSpin);
+        Assert.Equal ("Load failed", app.LoadSpinnerShortcut.Title);
+        Assert.Equal ("Load failed", app.LoadSpinnerShortcut.HelpText);
+    }
+
+    [Fact]
+    public void OpenFile_UsesReadAllTextHook_WhenReplaced ()
+    {
+        TedApp app = new (configPath: TedTestConfig.NewPath ());
+        app.ShowOpenDialog = () => "/tmp/ted-legacy-open.txt";
+        app.ReadAllText = path => path == "/tmp/ted-legacy-open.txt" ? "legacy open" : string.Empty;
+
+        Assert.True (app.OpenFile ());
+
+        Assert.Equal ("legacy open", app.Editor.Document!.Text);
+        Assert.Equal ("/tmp/ted-legacy-open.txt", app.CurrentFilePath);
+    }
+
+    [Fact]
+    public async Task OpenFileAsync_ByPath_Updates_LoadStatusShortcut ()
+    {
+        TedApp app = new (configPath: TedTestConfig.NewPath ());
+        GatedReadStream stream = new (Encoding.UTF8.GetBytes (new string ('x', 100_000)));
+        app.OpenRead = _ => stream;
+
+        Task<bool> openTask = app.OpenFileAsync ("/tmp/ted-progress.cs", TestContext.Current.CancellationToken);
+
+        await stream.ReadStarted.Task.WaitAsync (TestContext.Current.CancellationToken);
+
+        Assert.Equal ("Loading 0 B of 97.7 KiB", app.LoadSpinnerShortcut.Title);
+        Assert.Equal ("Loading 0 B of 97.7 KiB", app.LoadSpinnerShortcut.HelpText);
+
+        stream.AllowRead.SetResult ();
+
+        Assert.True (await openTask);
+        Assert.Equal ("Loaded 97.7 KiB", app.LoadSpinnerShortcut.Title);
+        Assert.Equal ("Loaded 97.7 KiB", app.LoadSpinnerShortcut.HelpText);
+        Assert.False (app.LoadStatusSpinner.Visible);
+        Assert.False (app.LoadStatusSpinner.AutoSpin);
+    }
+
+    [Fact]
+    public async Task StatusBar_Shows_Loaded_FileSize_After_StartupOpen ()
+    {
+        var filePath = Path.Combine (Path.GetTempPath (), $"ted-startup-{Guid.NewGuid ():N}.cs");
+        await File.WriteAllTextAsync (filePath, new string ('x', 100_000), TestContext.Current.CancellationToken);
+
+        try
+        {
+            await using AppFixture<TedApp> fx = new (() =>
+            {
+                TedApp app = new (configPath: TedTestConfig.NewPath ());
+                app.OpenFileAsync (filePath).GetAwaiter ().GetResult ();
+
+                return app;
+            });
+
+            fx.Render ();
+
+            DriverAssert.ContentsContains (fx.Driver, "Loaded 97.7 KiB");
+        }
+        finally
+        {
+            File.Delete (filePath);
+        }
+    }
+
+    [Fact]
+    public async Task OpenFileAsync_LargeFile_DisablesAutomaticFolding ()
+    {
+        var filePath = Path.Combine (Path.GetTempPath (), $"ted-large-{Guid.NewGuid ():N}.cs");
+        await File.WriteAllTextAsync (filePath, new string ('x', 1_000_001), TestContext.Current.CancellationToken);
+
+        try
+        {
+            TedApp app = new (configPath: TedTestConfig.NewPath ());
+
+            Assert.True (await app.OpenFileAsync (filePath, TestContext.Current.CancellationToken));
+
+            Assert.Null (app.Editor.FoldingManager);
+            Assert.Equal ("Loaded 976.6 KiB", app.LoadSpinnerShortcut.Title);
+        }
+        finally
+        {
+            File.Delete (filePath);
+        }
+    }
+
+    [Fact]
     public void SaveFile_WritesCurrentEditorText_ToCurrentPath ()
     {
         var filePath = Path.Combine (Path.GetTempPath (), $"ted-save-{Guid.NewGuid ():N}.txt");
@@ -111,7 +255,7 @@ public class TedAppTests
 
         try
         {
-            TedApp app = new ();
+            TedApp app = new (configPath: TedTestConfig.NewPath ());
             app.ShowOpenDialog = () => filePath;
             Assert.True (app.OpenFile ());
             app.Editor.Document!.Text = "after";
@@ -130,17 +274,82 @@ public class TedAppTests
     [Fact]
     public void SaveFile_MarksDocumentUnmodified ()
     {
-        TedApp app = new ();
+        TedApp app = new (configPath: TedTestConfig.NewPath ());
         app.ShowOpenDialog = () => "/tmp/ted-save.txt";
-        app.ReadAllText = _ => "before";
+        app.OpenRead = _ => new MemoryStream (Encoding.UTF8.GetBytes ("before"));
         Assert.True (app.OpenFile ());
         app.Editor.Document!.Text = "after";
-        app.WriteAllText = (_, _) => { };
+        app.CreateWrite = _ => new MemoryStream ();
 
         Assert.True (app.IsDocumentModified);
 
         Assert.True (app.SaveFile ());
 
+        Assert.False (app.IsDocumentModified);
+    }
+
+    [Fact]
+    public async Task SaveFileAsync_WriteFailure_HidesSpinner_AndShowsFailureStatus ()
+    {
+        TedApp app = new (configPath: TedTestConfig.NewPath ());
+        app.OpenMissingFile ("/tmp/ted-save-fails.txt");
+        app.Editor.Document!.Text = "dirty";
+        app.CreateWrite = _ => new ThrowingWriteStream ();
+
+        Assert.False (await app.SaveFileAsync (TestContext.Current.CancellationToken));
+
+        Assert.False (app.LoadStatusSpinner.Visible);
+        Assert.False (app.LoadStatusSpinner.AutoSpin);
+        Assert.Equal ("Save failed", app.LoadSpinnerShortcut.Title);
+        Assert.Equal ("Save failed", app.LoadSpinnerShortcut.HelpText);
+        Assert.True (app.IsDocumentModified);
+    }
+
+    [Fact]
+    public async Task SaveFileAsync_Canceled_HidesSpinner_AndShowsCanceledStatus ()
+    {
+        var filePath = Path.Combine (Path.GetTempPath (), $"ted-save-canceled-{Guid.NewGuid ():N}.txt");
+
+        try
+        {
+            TedApp app = new (configPath: TedTestConfig.NewPath ());
+            app.OpenMissingFile (filePath);
+            app.Editor.Document!.Text = "dirty";
+            using CancellationTokenSource cts = new ();
+            await cts.CancelAsync ();
+
+            Assert.False (await app.SaveFileAsync (cts.Token));
+
+            Assert.False (app.LoadStatusSpinner.Visible);
+            Assert.False (app.LoadStatusSpinner.AutoSpin);
+            Assert.Equal ("Save canceled", app.LoadSpinnerShortcut.Title);
+            Assert.Equal ("Save canceled", app.LoadSpinnerShortcut.HelpText);
+            Assert.True (app.IsDocumentModified);
+        }
+        finally
+        {
+            DeleteIfExists (filePath);
+        }
+    }
+
+    [Fact]
+    public void SaveFile_UsesWriteAllTextHook_WhenReplaced ()
+    {
+        string? savedPath = null;
+        string? savedText = null;
+        TedApp app = new (configPath: TedTestConfig.NewPath ());
+        app.OpenMissingFile ("/tmp/ted-legacy-save.txt");
+        app.Editor.Document!.Text = "legacy save";
+        app.WriteAllText = (path, text) =>
+        {
+            savedPath = path;
+            savedText = text;
+        };
+
+        Assert.True (app.SaveFile ());
+
+        Assert.Equal ("/tmp/ted-legacy-save.txt", savedPath);
+        Assert.Equal ("legacy save", savedText);
         Assert.False (app.IsDocumentModified);
     }
 
@@ -152,7 +361,7 @@ public class TedAppTests
 
         try
         {
-            TedApp app = new ();
+            TedApp app = new (configPath: TedTestConfig.NewPath ());
             app.ShowOpenDialog = () => filePath;
 
             Assert.True (app.OpenFile ());
@@ -170,9 +379,14 @@ public class TedAppTests
     public void SaveFileAs_Canceled_DoesNotWrite ()
     {
         var wrote = false;
-        TedApp app = new ();
+        TedApp app = new (configPath: TedTestConfig.NewPath ());
         app.ShowSaveDialog = () => " ";
-        app.WriteAllText = (_, _) => wrote = true;
+        app.CreateWrite = _ =>
+        {
+            wrote = true;
+
+            return new MemoryStream ();
+        };
 
         Assert.False (app.SaveFileAs ());
 
@@ -187,7 +401,7 @@ public class TedAppTests
 
         try
         {
-            TedApp app = new ();
+            TedApp app = new (configPath: TedTestConfig.NewPath ());
             app.ShowSaveDialog = () => filePath;
             app.Editor.Document!.Text = "save as";
 
@@ -206,7 +420,7 @@ public class TedAppTests
     public void QuitFile_ModifiedDocument_CancelChoice_DoesNotQuit ()
     {
         var prompted = false;
-        TedApp app = new ();
+        TedApp app = new (configPath: TedTestConfig.NewPath ());
         app.Editor.Document!.Text = "dirty";
         app.ShowSaveChangesDialog = () =>
         {
@@ -224,18 +438,19 @@ public class TedAppTests
     [Fact]
     public async Task QuitFile_ModifiedDocument_SaveChoice_SavesBeforeQuitting ()
     {
-        await using AppFixture<TedApp> fx = new (() => new TedApp ());
+        await using AppFixture<TedApp> fx = new (() => new TedApp (configPath: TedTestConfig.NewPath ()));
         string? savedPath = null;
         string? savedText = null;
         fx.Top.ShowOpenDialog = () => "/tmp/ted-save-on-quit.txt";
-        fx.Top.ReadAllText = _ => "before";
+        fx.Top.OpenRead = _ => new MemoryStream (Encoding.UTF8.GetBytes ("before"));
         Assert.True (fx.Top.OpenFile ());
         fx.Top.Editor.Document!.Text = "after";
         fx.Top.ShowSaveChangesDialog = () => SaveChangesChoice.Save;
-        fx.Top.WriteAllText = (path, text) =>
+        fx.Top.CreateWrite = path =>
         {
             savedPath = path;
-            savedText = text;
+
+            return new CapturingWriteStream (text => savedText = text);
         };
 
         Assert.True (fx.Top.QuitFile ());
@@ -253,7 +468,7 @@ public class TedAppTests
 
         try
         {
-            TedApp app = new ();
+            TedApp app = new (configPath: TedTestConfig.NewPath ());
             app.OpenMissingFile (filePath);
             app.ShowSaveChangesDialog = () => SaveChangesChoice.Discard;
 
@@ -274,7 +489,7 @@ public class TedAppTests
 
         try
         {
-            TedApp app = new ();
+            TedApp app = new (configPath: TedTestConfig.NewPath ());
             app.OpenMissingFile (filePath);
             app.ShowSaveChangesDialog = () => SaveChangesChoice.Save;
 
@@ -293,7 +508,7 @@ public class TedAppTests
     [Fact]
     public async Task Renders_FileMenu_Header ()
     {
-        await using AppFixture<TedApp> fx = new (() => new TedApp ());
+        await using AppFixture<TedApp> fx = new (() => new TedApp (configPath: TedTestConfig.NewPath ()));
 
         DriverAssert.ContentsContains (fx.Driver, "File");
     }
@@ -301,7 +516,7 @@ public class TedAppTests
     [Fact]
     public async Task Renders_OptionsMenu_Header ()
     {
-        await using AppFixture<TedApp> fx = new (() => new TedApp ());
+        await using AppFixture<TedApp> fx = new (() => new TedApp (configPath: TedTestConfig.NewPath ()));
 
         DriverAssert.ContentsContains (fx.Driver, "Options");
     }
@@ -309,7 +524,7 @@ public class TedAppTests
     [Fact]
     public async Task Renders_ViewMenu_Header ()
     {
-        await using AppFixture<TedApp> fx = new (() => new TedApp ());
+        await using AppFixture<TedApp> fx = new (() => new TedApp (configPath: TedTestConfig.NewPath ()));
 
         DriverAssert.ContentsContains (fx.Driver, "View");
     }
@@ -317,7 +532,7 @@ public class TedAppTests
     [Fact]
     public async Task Constructor_Defaults_To_Plain_Text_Highlighting ()
     {
-        await using AppFixture<TedApp> fx = new (() => new TedApp ());
+        await using AppFixture<TedApp> fx = new (() => new TedApp (configPath: TedTestConfig.NewPath ()));
 
         Assert.Null (fx.Top.Editor.HighlightingDefinition);
         Assert.Equal ("Plain Text", fx.Top.LanguageShortcut.Title);
@@ -330,7 +545,7 @@ public class TedAppTests
 
         try
         {
-            await using AppFixture<TedApp> fx = new (() => new TedApp ());
+            await using AppFixture<TedApp> fx = new (() => new TedApp (configPath: TedTestConfig.NewPath ()));
             fx.Top.OpenMissingFile (tempXmlFilePath);
 
             Assert.NotNull (fx.Top.Editor.HighlightingDefinition);
@@ -346,7 +561,7 @@ public class TedAppTests
     [Fact]
     public async Task OptionsMenu_Contains_Settings_Item ()
     {
-        await using AppFixture<TedApp> fx = new (() => new TedApp ());
+        await using AppFixture<TedApp> fx = new (() => new TedApp (configPath: TedTestConfig.NewPath ()));
 
         InputInjectionOptions options = new () { Mode = InputInjectionMode.Direct };
         fx.Injector.InjectKey (Key.O.WithAlt, options);
@@ -366,7 +581,7 @@ public class TedAppTests
     [Fact]
     public void Constructor_Defaults_AutoIndent_To_Enabled ()
     {
-        TedApp app = new ();
+        TedApp app = new (configPath: TedTestConfig.NewPath ());
 
         Assert.IsType<DefaultIndentationStrategy> (app.Editor.IndentationStrategy);
     }
@@ -374,7 +589,7 @@ public class TedAppTests
     [Fact]
     public async Task Loc_StatusBar_Shortcut_Initially_Shows_Line_1_Column_1 ()
     {
-        await using AppFixture<TedApp> fx = new (() => new TedApp ());
+        await using AppFixture<TedApp> fx = new (() => new TedApp (configPath: TedTestConfig.NewPath ()));
 
         Assert.Equal ("Ln 1, Col 1", fx.Top.LocShortcut.Title);
     }
@@ -384,7 +599,7 @@ public class TedAppTests
     {
         await using AppFixture<TedApp> fx = new (() =>
         {
-            TedApp app = new ();
+            TedApp app = new (configPath: TedTestConfig.NewPath ());
             app.Editor.Document!.Text = "alpha\nbeta\ngamma";
 
             return app;
@@ -401,7 +616,7 @@ public class TedAppTests
     {
         await using AppFixture<TedApp> fx = new (() =>
         {
-            TedApp app = new ();
+            TedApp app = new (configPath: TedTestConfig.NewPath ());
             app.Editor.Document!.Text = "abc";
 
             return app;
@@ -418,7 +633,7 @@ public class TedAppTests
     [Fact]
     public async Task FileMenu_OpensViaKeyboard_AltF ()
     {
-        await using AppFixture<TedApp> fx = new (() => new TedApp ());
+        await using AppFixture<TedApp> fx = new (() => new TedApp (configPath: TedTestConfig.NewPath ()));
 
         // The "Open..." menu item is unique to the dropdown — the StatusBar shortcut is just "Open".
         DriverAssert.ContentsDoesNotContain (fx.Driver, "Open...");
@@ -433,7 +648,7 @@ public class TedAppTests
     [Fact]
     public async Task ViewMenu_TogglesLineNumbers_ViaKeyboard ()
     {
-        await using AppFixture<TedApp> fx = new (() => new TedApp ());
+        await using AppFixture<TedApp> fx = new (() => new TedApp (configPath: TedTestConfig.NewPath ()));
         Assert.True (fx.Top.Editor.GutterOptions.HasFlag (GutterOptions.LineNumbers));
 
         InputInjectionOptions options = new () { Mode = InputInjectionMode.Direct };
@@ -463,7 +678,7 @@ public class TedAppTests
     [Fact]
     public async Task FileMenu_OpensViaMouse_ClickOnHeader ()
     {
-        await using AppFixture<TedApp> fx = new (() => new TedApp ());
+        await using AppFixture<TedApp> fx = new (() => new TedApp (configPath: TedTestConfig.NewPath ()));
 
         DriverAssert.ContentsDoesNotContain (fx.Driver, "Open...");
 
@@ -488,7 +703,7 @@ public class TedAppTests
     [Fact]
     public async Task EditMenu_OpensViaKeyboard_AltE_Contains_Find_And_Replace ()
     {
-        await using AppFixture<TedApp> fx = new (() => new TedApp ());
+        await using AppFixture<TedApp> fx = new (() => new TedApp (configPath: TedTestConfig.NewPath ()));
 
         DriverAssert.ContentsDoesNotContain (fx.Driver, "Find...");
         DriverAssert.ContentsDoesNotContain (fx.Driver, "Replace...");
@@ -504,10 +719,9 @@ public class TedAppTests
     [Fact]
     public async Task Editor_RightClick_Opens_Edit_Context_Menu ()
     {
-        await using AppFixture<TedApp> fx = new (() => new TedApp ());
+        await using AppFixture<TedApp> fx = new (() => new TedApp (configPath: TedTestConfig.NewPath ()));
 
-        DriverAssert.ContentsDoesNotContain (fx.Driver, "Find...");
-        DriverAssert.ContentsDoesNotContain (fx.Driver, "Replace...");
+        DriverAssert.ContentsDoesNotContain (fx.Driver, "Select all");
 
         InputInjectionOptions options = new () { Mode = InputInjectionMode.Direct };
 
@@ -521,15 +735,15 @@ public class TedAppTests
             options);
         fx.Render ();
 
-        DriverAssert.ContentsContains (fx.Driver, "Find...");
-        DriverAssert.ContentsContains (fx.Driver, "Replace...");
+        DriverAssert.ContentsContains (fx.Driver, "Undo");
+        DriverAssert.ContentsContains (fx.Driver, "Redo");
         DriverAssert.ContentsContains (fx.Driver, "Select all");
     }
 
     [Fact]
     public async Task ThemeDropDown_Initially_Shows_Current_Theme ()
     {
-        await using AppFixture<TedApp> fx = new (() => new TedApp ());
+        await using AppFixture<TedApp> fx = new (() => new TedApp (configPath: TedTestConfig.NewPath ()));
 
         Assert.Equal (ThemeManager.Theme, fx.Top.ThemeDropDown.Text);
     }
@@ -537,12 +751,12 @@ public class TedAppTests
     [Fact]
     public async Task ThemeDropDown_Source_Contains_All_Available_Themes ()
     {
-        await using AppFixture<TedApp> fx = new (() => new TedApp ());
+        await using AppFixture<TedApp> fx = new (() => new TedApp (configPath: TedTestConfig.NewPath ()));
 
         ImmutableList<string> expected = ThemeManager.GetThemeNames ();
         Assert.True (expected.Count > 0, "ThemeManager should expose at least one theme.");
 
-        var actual = fx.Top.ThemeDropDown.Source!.ToList ()
+        List<string> actual = fx.Top.ThemeDropDown.Source!.ToList ()
             .Cast<string> ()
             .ToList ();
 
@@ -552,7 +766,7 @@ public class TedAppTests
     [Fact]
     public async Task ThemeDropDown_Selection_Changes_Active_Theme ()
     {
-        await using AppFixture<TedApp> fx = new (() => new TedApp ());
+        await using AppFixture<TedApp> fx = new (() => new TedApp (configPath: TedTestConfig.NewPath ()));
 
         ImmutableList<string> names = ThemeManager.GetThemeNames ();
 
@@ -568,5 +782,116 @@ public class TedAppTests
         fx.Top.ThemeDropDown.Text = target;
 
         Assert.Equal (target, ThemeManager.Theme);
+    }
+
+    private sealed class CapturingWriteStream : MemoryStream
+    {
+        private readonly Action<string> _capture;
+
+        public CapturingWriteStream (Action<string> capture)
+        {
+            _capture = capture;
+        }
+
+        protected override void Dispose (bool disposing)
+        {
+            if (disposing)
+            {
+                _capture (Encoding.UTF8.GetString (ToArray ()));
+            }
+
+            base.Dispose (disposing);
+        }
+
+        public override async ValueTask DisposeAsync ()
+        {
+            _capture (Encoding.UTF8.GetString (ToArray ()));
+            await base.DisposeAsync ();
+        }
+    }
+
+    private sealed class ThrowingReadStream : Stream
+    {
+        public override bool CanRead => true;
+
+        public override bool CanSeek => false;
+
+        public override bool CanWrite => false;
+
+        public override long Length => 1;
+
+        public override long Position { get; set; }
+
+        public override void Flush ()
+        {
+        }
+
+        public override int Read (byte[] buffer, int offset, int count)
+        {
+            throw new IOException ("read failed");
+        }
+
+        public override ValueTask<int> ReadAsync (Memory<byte> buffer, CancellationToken cancellationToken = default)
+        {
+            throw new IOException ("read failed");
+        }
+
+        public override long Seek (long offset, SeekOrigin origin)
+        {
+            throw new NotSupportedException ();
+        }
+
+        public override void SetLength (long value)
+        {
+            throw new NotSupportedException ();
+        }
+
+        public override void Write (byte[] buffer, int offset, int count)
+        {
+            throw new NotSupportedException ();
+        }
+    }
+
+    private sealed class ThrowingWriteStream : MemoryStream
+    {
+        public override void Write (byte[] buffer, int offset, int count)
+        {
+            throw new IOException ("write failed");
+        }
+
+        public override ValueTask WriteAsync (ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken = default)
+        {
+            throw new IOException ("write failed");
+        }
+    }
+
+    /// <summary>Gates async reads and captures the reading thread ID for background-load tests.</summary>
+    private sealed class GatedReadStream : MemoryStream
+    {
+        public GatedReadStream (byte[] buffer)
+            : base (buffer)
+        {
+        }
+
+        public TaskCompletionSource AllowRead { get; } = new (TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public TaskCompletionSource ReadStarted { get; } = new (TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public int ReadThreadId { get; private set; }
+
+        public override ValueTask<int> ReadAsync (Memory<byte> buffer, CancellationToken cancellationToken = default)
+        {
+            ReadThreadId = Environment.CurrentManagedThreadId;
+            ReadStarted.TrySetResult ();
+
+            return new ValueTask<int> (ReadAfterGateAsync (buffer, cancellationToken));
+        }
+
+        private async Task<int> ReadAfterGateAsync (Memory<byte> buffer, CancellationToken cancellationToken)
+        {
+            await AllowRead.Task.WaitAsync (cancellationToken);
+
+            return await base.ReadAsync (buffer, cancellationToken);
+        }
     }
 }

@@ -171,6 +171,11 @@ public partial class Editor
             return true;
         });
 
+        // Kill-ring — Emacs-style line-boundary kill; unbound by default (no entry in
+        // DefaultKeyBindings). Users opt in via Editor.DefaultKeyBindings config.
+        AddCommand (Command.CutToEndOfLine, CutToEndOfLine);
+        AddCommand (Command.CutToStartOfLine, CutToStartOfLine);
+
         // Editing — selection-aware (multi-caret aware)
         AddCommand (Command.NewLine, MultiCaretNewLine);
         AddCommand (Command.DeleteCharLeft, MultiCaretDeleteLeft);
@@ -261,6 +266,19 @@ public partial class Editor
         AddCommand (Command.DisableOverwrite, () =>
         {
             OverwriteMode = false;
+
+            return true;
+        });
+
+        // Context menu — return false when suppressed so the command can bubble.
+        AddCommand (Command.Context, () =>
+        {
+            if (ContextMenu is null)
+            {
+                return false;
+            }
+
+            ShowContextMenu ();
 
             return true;
         });
@@ -485,6 +503,145 @@ public partial class Editor
         return true;
     }
 
+    /// <summary>
+    ///     Kill from caret to end of line. If the caret is already at EOL, kills the line delimiter
+    ///     (joining the next line). Places killed text on the clipboard; if the immediately preceding
+    ///     command was also a kill (consecutive kill), appends instead of replacing.
+    /// </summary>
+    private bool? CutToEndOfLine ()
+    {
+        // For keyboard dispatch, _previousCommandWasKill was set by OnKeyDown.
+        // For InvokeCommand dispatch, fall back to _lastCommandWasKill (OnKeyDown was not called).
+        bool consecutiveKill = _previousCommandWasKill || _lastCommandWasKill;
+        _lastCommandWasKill = false;
+
+        if (ReadOnly || _document is null)
+        {
+            return true;
+        }
+
+        if (HasSelection)
+        {
+            ReplaceSelection (string.Empty);
+
+            return true;
+        }
+
+        DocumentLine line = _document.GetLineByOffset (CaretOffset);
+        var lineEnd = line.Offset + line.Length;
+
+        int start;
+        int length;
+
+        if (CaretOffset < lineEnd)
+        {
+            // Kill from caret to end of line text (not the delimiter).
+            start = CaretOffset;
+            length = lineEnd - CaretOffset;
+        }
+        else if (line.DelimiterLength > 0)
+        {
+            // Caret is at EOL — kill the line delimiter (join with next line).
+            start = lineEnd;
+            length = line.DelimiterLength;
+        }
+        else
+        {
+            // Last line, caret at end — nothing to kill.
+
+            return true;
+        }
+
+        var killed = _document.GetText (start, length);
+
+        if (!WriteKillToClipboard (killed, append: consecutiveKill, prepend: false))
+        {
+            return true;
+        }
+
+        using (_document.RunUpdate ())
+        {
+            _document.Remove (start, length);
+        }
+
+        _lastCommandWasKill = true;
+
+        return true;
+    }
+
+    /// <summary>
+    ///     Kill from line start to caret. Places killed text on the clipboard; if the immediately
+    ///     preceding command was also a kill, prepends instead of replacing (so the clipboard
+    ///     accumulates text in document order).
+    /// </summary>
+    private bool? CutToStartOfLine ()
+    {
+        // See CutToEndOfLine for rationale on the dual-path flag check.
+        bool consecutiveKill = _previousCommandWasKill || _lastCommandWasKill;
+        _lastCommandWasKill = false;
+
+        if (ReadOnly || _document is null)
+        {
+            return true;
+        }
+
+        if (HasSelection)
+        {
+            ReplaceSelection (string.Empty);
+
+            return true;
+        }
+
+        DocumentLine line = _document.GetLineByOffset (CaretOffset);
+        var start = line.Offset;
+        var length = CaretOffset - start;
+
+        if (length == 0)
+        {
+            // Already at BOL — nothing to kill.
+            return true;
+        }
+
+        var killed = _document.GetText (start, length);
+
+        if (!WriteKillToClipboard (killed, append: false, prepend: consecutiveKill))
+        {
+            return true;
+        }
+
+        using (_document.RunUpdate ())
+        {
+            _document.Remove (start, length);
+        }
+
+        _lastCommandWasKill = true;
+
+        return true;
+    }
+
+    /// <summary>
+    ///     Writes killed text to the clipboard. When <paramref name="append" /> or
+    ///     <paramref name="prepend" /> is <see langword="true" />, reads the current clipboard
+    ///     content and concatenates rather than replacing.
+    /// </summary>
+    /// <returns><see langword="true" /> if the clipboard write succeeded; <see langword="false" /> otherwise.</returns>
+    private bool WriteKillToClipboard (string killed, bool append, bool prepend)
+    {
+        IClipboard? clipboard = App?.Clipboard;
+
+        if (clipboard is null)
+        {
+            return false;
+        }
+
+        if ((append || prepend) && clipboard.TryGetClipboardData (out var existing))
+        {
+            killed = prepend ? killed + existing : existing + killed;
+        }
+
+        return clipboard.TrySetClipboardData (killed);
+    }
+
     private bool? InvokeFindRequested ()
     {
         FindRequested?.Invoke (this, EventArgs.Empty);
@@ -537,10 +694,7 @@ public partial class Editor
             }
         }
 
-        if (fold is not null)
-        {
-            fold.IsFolded = !fold.IsFolded;
-        }
+        fold?.IsFolded = !fold.IsFolded;
 
         return true;
     }

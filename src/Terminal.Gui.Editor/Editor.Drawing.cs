@@ -31,6 +31,16 @@ public partial class Editor
         EnsureColorizerAttribute (normal);
 
         DrawVisibleLines (viewport, normal, selected);
+
+        if (_maxWidthGrewDuringDraw)
+        {
+            // A rendered line was wider than the estimate; resize content (cheap — not _maxWidthDirty)
+            // so the horizontal scrollbar reflects what's now on screen. Monotonic: once the widest
+            // visible line is measured this stops firing, so no draw/layout loop.
+            _maxWidthGrewDuringDraw = false;
+            UpdateContentSize ();
+        }
+
         SetAttribute (normal);
         UpdateCursor ();
 
@@ -312,6 +322,16 @@ public partial class Editor
         // i.e. plain-text scrolling without a highlighter. The caret-path cache is separate so the
         // two don't thrash each other's entries (they use different attribute sets).
         CellVisualLine visualLine = GetOrBuildDrawVisualLine (line, segments, normal, selected, selStart, selEnd);
+
+        // A line we actually render gives us its exact width for free. If the running max was an
+        // estimate (large document) and this visible line is wider, grow the extent — reconciled
+        // once after the draw in OnDrawingContent so the horizontal scrollbar tracks visible content.
+        if (!WordWrap && visualLine.VisualLength > _maxVisualWidth)
+        {
+            _maxVisualWidth = visualLine.VisualLength;
+            _maxWidthLineNumber = line.LineNumber;
+            _maxWidthGrewDuringDraw = true;
+        }
 
         foreach (IBackgroundRenderer renderer in BackgroundRenderers)
         {
