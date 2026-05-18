@@ -273,6 +273,38 @@ public class EditorCompletionTests
         Assert.True (editor.IsCompletionActive);
     }
 
+    // Horizontal caret movement dismisses the popup — unlike Up/Down, which the focused
+    // popup ListView consumes to move the selection. The key still falls through, so the
+    // caret moves too (HandleCompletionKey returns false after dismissing).
+    [Theory]
+    [InlineData (KeyCode.CursorLeft, 1)]
+    [InlineData (KeyCode.CursorRight, 3)]
+    public void Arrow_Left_Or_Right_While_Completion_Active_Dismisses_And_Moves_Caret (KeyCode navKey, int expectedCaret)
+    {
+        using IApplication app = Application.Create ();
+        app.Init (DriverRegistry.Names.ANSI);
+        Runnable top = new ();
+
+        // Caret after "he"; the trailing 'x' gives CursorRight room to move.
+        Editor editor = new ()
+        {
+            Document = new TextDocument ("hex"),
+            CompletionProvider = new MultiWordCompletionProvider ("hello", "help")
+        };
+        top.Add (editor);
+        app.Begin (top);
+
+        editor.CaretOffset = 2;
+
+        editor.NotifyCompletionAfterInsert ();
+        Assert.True (editor.IsCompletionActive);
+
+        app.InjectKey (navKey);
+
+        Assert.False (editor.IsCompletionActive);
+        Assert.Equal (expectedCaret, editor.CaretOffset);
+    }
+
     // Enter (the key bound to Command.NewLine) and Tab (Command.InsertTab) are the default
     // accept keys. SPACE is deliberately NOT one — see
     // Space_While_Completion_Active_Inserts_Space_And_Dismisses.

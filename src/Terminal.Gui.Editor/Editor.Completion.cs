@@ -104,9 +104,10 @@ public partial class Editor
         // An active popup gets first crack at navigation keys.
         if (IsCompletionActive)
         {
-            // Esc (whatever is bound to Command.Quit) or an arrow key dismisses the popup.
-            // TODO: query the bindings for the cursor keys too instead of hardcoding them.
-            if (KeyMatches (Command.Quit) || key == Key.CursorLeft || key == Key.CursorRight || key == Key.CursorUp || key == Key.CursorDown)
+            // Esc (Command.Quit) or a horizontal caret move (Left/Right) dismisses the popup.
+            // Up/Down are intentionally absent: the focused popup ListView consumes them to
+            // move the selection, so they never reach here.
+            if (KeyMatches (Command.Quit) || KeyMatches (Command.Left) || KeyMatches (Command.Right))
             {
                 DismissCompletion ();
 
@@ -344,17 +345,6 @@ public partial class Editor
         }
     }
 
-    /// <summary>Updates the visible ListView selection if the list view exists.</summary>
-    private void UpdateCompletionListSelection (int index)
-    {
-        if (_completionListView is null)
-        {
-            return;
-        }
-
-        _completionListView.SelectedItem = index;
-    }
-
     private void ShowCompletionPopup ()
     {
         if (_completionItems.Count == 0)
@@ -412,19 +402,13 @@ public partial class Editor
         Point caretScreen = GetCaretScreenPosition ();
         _completionPopover.MakeVisible (new Point (caretScreen.X, caretScreen.Y + 1));
 
-        _completionListView.ValueChanged += (sender, args) =>
+        // While the LV has focus, track selection changes to update the selected index,
+        // but accept on Enter/Tab/Space (handled in HandleCompletionKey).
+        _completionListView.ValueChanged += (_, args) =>
         {
             if (args.NewValue is not null)
             {
-                _completionSelectedIndex = args.NewValue.Value;
-            }
-        };
-
-        _completionPopover.Accepted += (sender, args) =>
-        {
-            if (args.Context?.Value is int value)
-            {
-                _completionSelectedIndex = value;
+               _completionSelectedIndex = args.NewValue.Value;
             }
         };
     }

@@ -85,6 +85,7 @@ public partial class Editor
                 case DragMode.AddCaret:
                     return true;
 
+                case DragMode.Select:
                 default:
                     // Route through the selection helper so SelectionChanged fires only on real changes.
                     ExtendCaretTo (MousePositionToOffset (pos));
