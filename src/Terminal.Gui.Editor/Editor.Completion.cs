@@ -15,7 +15,6 @@ public partial class Editor
     private ListView? _completionListView;
     private Popover<ListView, CompletionItem?>? _completionPopover;
     private int _completionPrefixStart;
-    private int _completionSelectedIndex;
 
     /// <summary>
     ///     Gets or sets the completion provider that supplies suggestions for the in-editor
@@ -44,7 +43,7 @@ public partial class Editor
     public bool IsCompletionActive => _completionItems.Count > 0;
 
     /// <summary>Gets the zero-based index of the currently selected completion item.</summary>
-    internal int CompletionSelectedIndex => _completionSelectedIndex;
+    internal int CompletionSelectedIndex { get; private set; }
 
     /// <summary>
     ///     Extracts the word-prefix immediately before the caret (letters, digits, underscores)
@@ -104,10 +103,12 @@ public partial class Editor
         // An active popup gets first crack at navigation keys.
         if (IsCompletionActive)
         {
-            // Esc (Command.Quit) or a horizontal caret move (Left/Right) dismisses the popup.
-            // Up/Down are intentionally absent: the focused popup ListView consumes them to
-            // move the selection, so they never reach here.
-            if (KeyMatches (Command.Quit) || KeyMatches (Command.Left) || KeyMatches (Command.Right))
+            // Esc (the application's Command.Quit key — the Editor binds no Quit, so this
+            // must come from the app, not the Editor-scoped KeyMatches) or a horizontal
+            // caret move (Left/Right) dismisses the popup. Up/Down are intentionally absent:
+            // the focused popup ListView consumes them to move the selection.
+            if (key == Application.GetDefaultKey (Command.Quit) || KeyMatches (Command.Left) ||
+                KeyMatches (Command.Right))
             {
                 DismissCompletion ();
 
@@ -225,7 +226,7 @@ public partial class Editor
             return false;
         }
 
-        _completionSelectedIndex = clickedIdx;
+        CompletionSelectedIndex = clickedIdx;
         AcceptCompletion ();
 
         return true;
@@ -263,7 +264,7 @@ public partial class Editor
 
         _completionPrefixStart = prefixStart;
         _completionItems = items;
-        _completionSelectedIndex = 0;
+        CompletionSelectedIndex = 0;
         ShowCompletionPopup ();
     }
 
@@ -289,7 +290,7 @@ public partial class Editor
 
         _completionPrefixStart = prefixStart;
         _completionItems = items;
-        _completionSelectedIndex = 0;
+        CompletionSelectedIndex = 0;
         ShowCompletionPopup ();
     }
 
@@ -350,14 +351,14 @@ public partial class Editor
             return;
         }
 
-        if (_completionSelectedIndex < 0 || _completionSelectedIndex >= _completionItems.Count)
+        if (CompletionSelectedIndex < 0 || CompletionSelectedIndex >= _completionItems.Count)
         {
             DismissCompletion ();
 
             return;
         }
 
-        CompletionItem selected = _completionItems[_completionSelectedIndex];
+        CompletionItem selected = _completionItems[CompletionSelectedIndex];
         var insertText = selected.TextToInsert;
         var replaceLength = CaretOffset - _completionPrefixStart;
 
@@ -407,7 +408,8 @@ public partial class Editor
         // would silently re-introduce the "this is a test." accept-on-space bug. Disable
         // type-ahead so a stray letter can't hijack the list instead of reaching the editor.
         _completionListView.KeystrokeNavigator = null;
-        _completionListView.SelectedItem = _completionSelectedIndex;
+        _completionListView.MouseBindings.ReplaceCommands (MouseFlags.LeftButtonClicked, Command.Accept);
+        _completionListView.SelectedItem = CompletionSelectedIndex;
 
         IReadOnlyList<CompletionItem> capturedItems = _completionItems;
 
@@ -441,9 +443,11 @@ public partial class Editor
         {
             if (args.NewValue is not null)
             {
-                _completionSelectedIndex = args.NewValue.Value;
+                CompletionSelectedIndex = args.NewValue.Value;
             }
         };
+
+        _completionListView.Accepted += (_, _) => AcceptCompletion ();
     }
 
     /// <summary>
