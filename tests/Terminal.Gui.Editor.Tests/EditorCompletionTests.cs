@@ -1,8 +1,12 @@
 // CoPilot - gpt-4.1
 
+using Terminal.Gui.App;
 using Terminal.Gui.Document;
+using Terminal.Gui.Drivers;
 using Terminal.Gui.Editor.Completion;
 using Terminal.Gui.Input;
+using Terminal.Gui.Testing;
+using Terminal.Gui.Views;
 using Xunit;
 
 namespace Terminal.Gui.Editor.Tests;
@@ -173,15 +177,25 @@ public class EditorCompletionTests
         Assert.True (editor.IsCompletionActive, "Completion should still be active after 'usi' (matches 'using')");
     }
 
+    // TODO: All Navigation keys (cursor up/down/pageup/down/etc...) need testing.
+    // TODO: In VS, these all cycle within the list instead of clamping at the ends. We should test that behavior too.
+
     [Fact]
     public void ArrowKeys_Navigate_Completion_Selection ()
     {
+        using IApplication app = Application.Create ();
+        app.Init (DriverRegistry.Names.ANSI);
+        Runnable top = new ();
+
         // "he" matches "hello" and "help" — two items.
         Editor editor = new ()
         {
             Document = new TextDocument ("he"),
             CompletionProvider = new MultiWordCompletionProvider ("hello", "help", "world")
         };
+        top.Add (editor);
+        app.Begin (top);
+
         editor.CaretOffset = 2;
 
         editor.NotifyCompletionAfterInsert ();
@@ -189,7 +203,7 @@ public class EditorCompletionTests
         Assert.Equal (0, editor.CompletionSelectedIndex);
 
         // Down arrow should move to index 1.
-        Assert.True (editor.HandleCompletionKey (Key.CursorDown));
+        app.InjectKey (Key.CursorDown);
         Assert.Equal (1, editor.CompletionSelectedIndex);
 
         // Accept the completion — should insert the second item ("help").
@@ -198,21 +212,28 @@ public class EditorCompletionTests
     }
 
     [Fact]
-    public void ArrowUp_Wraps_To_Last_Item ()
+    public void ArrowUp_At_First_Item_Wraps_To_Last_Item ()
     {
+        using IApplication app = Application.Create ();
+        app.Init (DriverRegistry.Names.ANSI);
+        Runnable top = new ();
+
         // "he" matches "hello" and "help" — two items.
         Editor editor = new ()
         {
             Document = new TextDocument ("he"),
             CompletionProvider = new MultiWordCompletionProvider ("hello", "help")
         };
+        top.Add (editor);
+        app.Begin (top);
+
         editor.CaretOffset = 2;
 
         editor.NotifyCompletionAfterInsert ();
         Assert.True (editor.IsCompletionActive);
 
         // Up from index 0 should wrap to last item (index 1 = "help").
-        Assert.True (editor.HandleCompletionKey (Key.CursorUp));
+        app.InjectKey (Key.CursorUp);
         Assert.Equal (1, editor.CompletionSelectedIndex);
 
         editor.AcceptCompletion ();
@@ -220,27 +241,74 @@ public class EditorCompletionTests
     }
 
     [Fact]
-    public void ArrowDown_Wraps_To_First_Item ()
+    public void ArrowDown_At_Last_Item_Cycles_To_Top ()
     {
+        using IApplication app = Application.Create ();
+        app.Init (DriverRegistry.Names.ANSI);
+        Runnable top = new ();
+
         // "he" matches "hello" and "help" — two items.
         Editor editor = new ()
         {
             Document = new TextDocument ("he"),
             CompletionProvider = new MultiWordCompletionProvider ("hello", "help")
         };
+        top.Add (editor);
+        app.Begin (top);
+
+        editor.CaretOffset = 2;
+
+        editor.NotifyCompletionAfterInsert ();
+        Assert.NotNull (app.Popovers?.GetActivePopover ());
+        Assert.True (editor.IsCompletionActive);
+        Assert.Equal (0, editor.CompletionSelectedIndex);
+
+        // Down to index 1, then down again cycles to 0.
+        app.InjectKey (Key.CursorDown);
+        Assert.Equal (1, editor.CompletionSelectedIndex);
+
+        app.InjectKey (Key.CursorDown);
+        Assert.Equal (0, editor.CompletionSelectedIndex);
+
+        Assert.True (editor.IsCompletionActive);
+    }
+
+    // TODO: This should be querying the Editor key bindings for the relevant keys instead of hardcoding them here.
+    [Theory]
+    [InlineData (KeyCode.Enter)]
+    [InlineData (KeyCode.Tab)]
+    [InlineData (KeyCode.Space)]
+    public void ValidAcceptKeys_Accept_Completion (KeyCode acceptKey)
+    {
+        using IApplication app = Application.Create ();
+        app.Init (DriverRegistry.Names.ANSI);
+        Runnable top = new ();
+
+        // "he" matches "hello" and "help" — two items.
+        Editor editor = new ()
+        {
+            Document = new TextDocument ("he"),
+            CompletionProvider = new MultiWordCompletionProvider ("hello", "help")
+        };
+        top.Add (editor);
+        app.Begin (top);
+
         editor.CaretOffset = 2;
 
         editor.NotifyCompletionAfterInsert ();
         Assert.True (editor.IsCompletionActive);
-
-        // Down to index 1, then down again wraps to 0.
-        Assert.True (editor.HandleCompletionKey (Key.CursorDown));
-        Assert.Equal (1, editor.CompletionSelectedIndex);
-        Assert.True (editor.HandleCompletionKey (Key.CursorDown));
         Assert.Equal (0, editor.CompletionSelectedIndex);
 
-        editor.AcceptCompletion ();
-        Assert.Equal ("hello", editor.Document!.Text);
+        // Down to index 1
+        app.InjectKey (Key.CursorDown);
+        Assert.Equal (1, editor.CompletionSelectedIndex);
+
+        app.InjectKey (acceptKey);
+        Assert.Equal (1, editor.CompletionSelectedIndex);
+
+        Assert.False (editor.IsCompletionActive);
+
+        Assert.Equal ("help", editor.Document!.Text);
     }
 
     [Fact]
@@ -315,15 +383,8 @@ public class EditorCompletionTests
     }
 
     /// <summary>Stub provider that always returns a single hard-coded item.</summary>
-    private sealed class StubCompletionProvider : IEditorCompletionProvider
+    private sealed class StubCompletionProvider (string word) : IEditorCompletionProvider
     {
-        private readonly string _word;
-
-        public StubCompletionProvider (string word)
-        {
-            _word = word;
-        }
-
         public IReadOnlyList<CompletionItem> GetCompletions (TextDocument document, int caretOffset, string prefix)
         {
             if (string.IsNullOrEmpty (prefix))
@@ -331,8 +392,8 @@ public class EditorCompletionTests
                 return [];
             }
 
-            return _word.StartsWith (prefix, StringComparison.OrdinalIgnoreCase)
-                ? [new CompletionItem { Label = _word }]
+            return word.StartsWith (prefix, StringComparison.OrdinalIgnoreCase)
+                ? [new CompletionItem { Label = word }]
                 : [];
         }
 
@@ -357,15 +418,8 @@ public class EditorCompletionTests
     }
 
     /// <summary>Provider that returns all words starting with the given prefix.</summary>
-    private sealed class MultiWordCompletionProvider : IEditorCompletionProvider
+    private sealed class MultiWordCompletionProvider (params string[] words) : IEditorCompletionProvider
     {
-        private readonly string[] _words;
-
-        public MultiWordCompletionProvider (params string[] words)
-        {
-            _words = words;
-        }
-
         public IReadOnlyList<CompletionItem> GetCompletions (TextDocument document, int caretOffset, string prefix)
         {
             if (string.IsNullOrEmpty (prefix))
@@ -373,7 +427,7 @@ public class EditorCompletionTests
                 return [];
             }
 
-            return _words
+            return words
                 .Where (w => w.StartsWith (prefix, StringComparison.OrdinalIgnoreCase))
                 .Select (w => new CompletionItem { Label = w })
                 .ToList ();

@@ -91,17 +91,9 @@ public partial class Editor
 
     /// <summary>
     ///     Called before normal key dispatch. Returns <see langword="true" /> when the completion
-    ///     popup consumed the key (navigation / accept / dismiss / character insert). This runs
+    ///     popup consumed the key (navigation / accept / dismiss). This runs
     ///     in <see cref="OnKeyDown" />, which fires before command bindings.
     /// </summary>
-    /// <remarks>
-    ///     The Popover is set to <c>Enabled = false</c> after <see cref="IPopoverView.MakeVisible" />
-    ///     so that it functions as a visual-only overlay — the Editor retains keyboard focus and
-    ///     all keyboard events flow through this method. This mirrors how
-    ///     <c>PopupAutocomplete.ProcessKey</c> in Terminal.Gui works: the host control intercepts
-    ///     keys and routes navigation / accept / dismiss / character insertion to the autocomplete
-    ///     system. Mouse interaction is handled by <see cref="HandleCompletionMouse" />.
-    /// </remarks>
     internal bool HandleCompletionKey (Key key)
     {
         if (CompletionProvider is null)
@@ -112,44 +104,25 @@ public partial class Editor
         // An active popup gets first crack at navigation keys.
         if (IsCompletionActive)
         {
-            if (key == Key.Esc)
+            // TODO: This should be querying the Editor key bindings for the relevant keys instead of hardcoding them here.
+            if (key == Key.Esc || key == Key.CursorLeft || key == Key.CursorRight || key == Key.CursorUp || key == Key.CursorDown)
             {
                 DismissCompletion ();
 
-                return true;
+                return false;
             }
 
-            if (key == Key.Enter || key == Key.Tab)
+            // TODO: This should be querying the Editor key bindings for the relevant keys instead of hardcoding them here.
+            if (key == Key.Enter || key == Key.Tab || key == Key.Space)
             {
                 AcceptCompletion ();
 
                 return true;
             }
 
-            if (key == Key.CursorUp)
-            {
-                var newIdx = (_completionSelectedIndex - 1 + _completionItems.Count) % _completionItems.Count;
-                _completionSelectedIndex = newIdx;
-                UpdateCompletionListSelection (newIdx);
-
-                return true;
-            }
-
-            if (key == Key.CursorDown)
-            {
-                var newIdx = (_completionSelectedIndex + 1) % _completionItems.Count;
-                _completionSelectedIndex = newIdx;
-                UpdateCompletionListSelection (newIdx);
-
-                return true;
-            }
-
             // Character keys: insert directly into the document while the popup is open,
-            // then refresh the completion list. We handle this here (rather than letting it
-            // fall through to OnKeyDownNotHandled) because the Popover is Enabled = false
-            // and this is the only place that processes keyboard input during a completion
-            // session.
-            if (!key.IsCtrl && !key.IsAlt && key.AsRune is { } rune && !Rune.IsControl (rune))
+            // then refresh the completion list. 
+            if (key is { IsCtrl: false, IsAlt: false, AsRune: { } rune } && !Rune.IsControl (rune))
             {
                 if (_document is not null && !ReadOnly)
                 {
@@ -188,14 +161,15 @@ public partial class Editor
         }
 
         // Check provider-specific triggers (e.g. Ctrl+Space).
-        if (CompletionProvider.ShouldTrigger (key))
+        if (!CompletionProvider.ShouldTrigger (key))
         {
-            ShowCompletion ();
-
-            return true;
+            return false;
         }
 
-        return false;
+        ShowCompletion ();
+
+        return true;
+
     }
 
     /// <summary>
@@ -368,8 +342,6 @@ public partial class Editor
         }
 
         _completionListView.SelectedItem = index;
-        _completionListView.SetNeedsDraw ();
-        _completionPopover?.SetNeedsDraw ();
     }
 
     private void ShowCompletionPopup ()
@@ -398,8 +370,14 @@ public partial class Editor
         {
             Source = new ListWrapper<string> (labels),
             Width = _completionItems.Max (i => i.Label.Length) + 2,
-            Height = visibleCount
+            Height = visibleCount,
+            TabStop = TabBehavior.NoStop
         };
+        // Disable ListView's internal navigation handling since we're managing selection and accept keys at the Editor level.
+        _completionListView.KeystrokeNavigator = null;
+        _completionListView.KeyBindings.Add (Key.Tab, Command.Accept);
+        _completionListView.KeyBindings.Remove (Key.Space);
+        _completionListView.KeyBindings.Add (Key.Space, Command.Accept);
         _completionListView.SelectedItem = _completionSelectedIndex;
 
         IReadOnlyList<CompletionItem> capturedItems = _completionItems;
@@ -415,19 +393,29 @@ public partial class Editor
                 }
 
                 return capturedItems[idx];
-            }
+            },
+            TabStop = TabBehavior.NoStop
         };
 
         // Position the popup just below the caret.
         Point caretScreen = GetCaretScreenPosition ();
         _completionPopover.MakeVisible (new Point (caretScreen.X, caretScreen.Y + 1));
 
-        // Disable the Popover so it acts as a visual-only overlay. All keyboard events
-        // flow to the Editor via HandleCompletionKey (the Editor retains focus). Mouse
-        // clicks in the popup area are handled by HandleCompletionMouse called from
-        // OnMouseEvent. This follows the PopupAutocomplete pattern from Terminal.Gui:
-        // the host control owns all input dispatch, the popup just renders.
-        _completionPopover.Enabled = false;
+        _completionListView.ValueChanged += (sender, args) =>
+        {
+            if (args.NewValue is not null)
+            {
+                _completionSelectedIndex = args.NewValue.Value;
+            }
+        };
+
+        _completionPopover.Accepted += (sender, args) =>
+        {
+            if (args.Context?.Value is int value)
+            {
+                _completionSelectedIndex = value;
+            }
+        };
     }
 
     /// <summary>
