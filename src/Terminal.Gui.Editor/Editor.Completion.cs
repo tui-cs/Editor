@@ -221,6 +221,9 @@ public partial class Editor
 
         var prefix = GetCompletionPrefix (out var prefixStart);
 
+        // Filter-as-you-type: an empty prefix means the caret moved off the word
+        // (e.g. Backspace past it), so close instead of re-querying for everything.
+        // This is the one intentional difference from ShowCompletion.
         if (prefix.Length == 0)
         {
             DismissCompletion ();
@@ -228,20 +231,7 @@ public partial class Editor
             return;
         }
 
-        IReadOnlyList<CompletionItem> items =
-            CompletionProvider.GetCompletions (_document!, CaretOffset, prefix);
-
-        if (items.Count == 0)
-        {
-            DismissCompletion ();
-
-            return;
-        }
-
-        _completionPrefixStart = prefixStart;
-        _completionItems = items;
-        CompletionSelectedIndex = 0;
-        ShowCompletionPopup ();
+        QueryAndShowCompletion (prefix, prefixStart);
     }
 
     /// <summary>Opens the completion popup, querying the provider for items.</summary>
@@ -252,10 +242,23 @@ public partial class Editor
             return;
         }
 
+        // Explicit trigger (e.g. Ctrl+Space): query even on an empty prefix so a
+        // provider can offer a full list — unlike the filter-as-you-type path.
         var prefix = GetCompletionPrefix (out var prefixStart);
 
+        QueryAndShowCompletion (prefix, prefixStart);
+    }
+
+    /// <summary>
+    ///     Shared body of <see cref="NotifyCompletionAfterInsert" /> and
+    ///     <see cref="ShowCompletion" />: query the provider, dismiss if it returns
+    ///     nothing, otherwise capture state and (re)show the popup. Callers guard
+    ///     <see cref="CompletionProvider" /> / <see cref="_document" /> first.
+    /// </summary>
+    private void QueryAndShowCompletion (string prefix, int prefixStart)
+    {
         IReadOnlyList<CompletionItem> items =
-            CompletionProvider.GetCompletions (_document, CaretOffset, prefix);
+            CompletionProvider!.GetCompletions (_document!, CaretOffset, prefix);
 
         if (items.Count == 0)
         {

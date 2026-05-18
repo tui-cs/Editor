@@ -652,6 +652,43 @@ public class EditorCompletionTests
             $"Popup width {popover.Frame.Width} should be >= the 8 display columns of \"你好世界\"");
     }
 
+    // #10: ShowCompletion and NotifyCompletionAfterInsert share a body but must keep one
+    // intentional asymmetry — explicit ShowCompletion queries the provider even on an
+    // empty prefix (provider may offer a full list); filter-as-you-type
+    // NotifyCompletionAfterInsert closes on empty prefix without querying. These two
+    // tests prevent a future "simplification" from collapsing that difference.
+    [Fact]
+    public void ShowCompletion_With_Empty_Prefix_Still_Queries_Provider ()
+    {
+        Editor editor = new ()
+        {
+            Document = new TextDocument ("x "),
+            CompletionProvider = new AlwaysCompletionProvider ()
+        };
+        editor.CaretOffset = 2; // after the space → empty prefix
+
+        Assert.Equal (string.Empty, editor.GetCompletionPrefix ());
+
+        editor.ShowCompletion ();
+
+        Assert.True (editor.IsCompletionActive);
+    }
+
+    [Fact]
+    public void NotifyCompletionAfterInsert_With_Empty_Prefix_Dismisses ()
+    {
+        Editor editor = new ()
+        {
+            Document = new TextDocument ("x "),
+            CompletionProvider = new AlwaysCompletionProvider ()
+        };
+        editor.CaretOffset = 2; // after the space → empty prefix
+
+        editor.NotifyCompletionAfterInsert ();
+
+        Assert.False (editor.IsCompletionActive);
+    }
+
     /// <summary>Stub provider that always returns a single hard-coded item.</summary>
     private sealed class StubCompletionProvider (string word) : IEditorCompletionProvider
     {
@@ -684,6 +721,20 @@ public class EditorCompletionTests
         public bool ShouldTrigger (Key key)
         {
             return false;
+        }
+    }
+
+    /// <summary>Provider that returns one item regardless of prefix (including empty).</summary>
+    private sealed class AlwaysCompletionProvider : IEditorCompletionProvider
+    {
+        public IReadOnlyList<CompletionItem> GetCompletions (TextDocument document, int caretOffset, string prefix)
+        {
+            return [new CompletionItem { Label = "always" }];
+        }
+
+        public bool ShouldTrigger (Key key)
+        {
+            return key == Key.Space.WithCtrl;
         }
     }
 
