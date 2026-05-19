@@ -28,6 +28,7 @@ public class FoldingManager
 {
     private readonly TextSegmentCollection<FoldingSection> _foldings;
     private bool _isFirstUpdate = true;
+    private bool _suppressFoldingChanged;
 
     #region Constructor
 
@@ -50,12 +51,27 @@ public class FoldingManager
 
     private void OnDocumentChanged (object? sender, DocumentChangeEventArgs e)
     {
-        if (!HasFoldedSections () && IsLineStructurePreservingChange (e))
+        var lineStructurePreservingChange = IsLineStructurePreservingChange (e);
+        var hasFoldedSections = HasFoldedSections ();
+
+        if (!hasFoldedSections && lineStructurePreservingChange)
         {
+            _suppressFoldingChanged = true;
+
+            try
+            {
+                _foldings.UpdateOffsets (e);
+            }
+            finally
+            {
+                _suppressFoldingChanged = false;
+            }
+
             return;
         }
 
         _foldings.UpdateOffsets (e);
+
         var newEndOffset = e.Offset + e.InsertionLength;
         // extend end offset to the end of the line (including delimiter)
         DocumentLine endLine = Document.GetLineByOffset (newEndOffset);
@@ -331,6 +347,11 @@ public class FoldingManager
 
     internal void RaiseFoldingChanged ()
     {
+        if (_suppressFoldingChanged)
+        {
+            return;
+        }
+
         FoldingChanged?.Invoke (this, EventArgs.Empty);
     }
 
