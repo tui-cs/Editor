@@ -16,6 +16,13 @@ public partial class Editor
     /// <inheritdoc />
     protected override bool OnMouseEvent (Mouse mouse)
     {
+        // Completion popup click takes priority — when the popup is visible and the
+        // user clicks in its area, accept the clicked item.
+        if (HandleCompletionMouse (mouse))
+        {
+            return true;
+        }
+
         if (_document is null)
         {
             return false;
@@ -78,6 +85,7 @@ public partial class Editor
                 case DragMode.AddCaret:
                     return true;
 
+                case DragMode.Select:
                 default:
                     // Route through the selection helper so SelectionChanged fires only on real changes.
                     ExtendCaretTo (MousePositionToOffset (pos));
