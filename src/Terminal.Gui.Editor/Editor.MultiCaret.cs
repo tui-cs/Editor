@@ -911,6 +911,12 @@ public partial class Editor
         {
             caret.SelectionAnchor = null;
         }
+
+        // An edit that collapses per-caret selections also ends the in-flight keyboard
+        // column-select gesture. Without this, the next Ctrl+Shift+Alt+Arrow would resume
+        // from the stale pre-edit anchor offset/column/row-delta instead of re-capturing
+        // from the caret's new position. (Esc already resets this via ClearAdditionalCarets.)
+        _keyboardColumnSelectionAnchorOffset = null;
     }
 
     /// <summary>Holds anchor state for one additional caret.</summary>
