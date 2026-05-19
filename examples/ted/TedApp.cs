@@ -54,7 +54,9 @@ public sealed partial class TedApp : Window
             ShowTabs = EditorSettings.ShowTabs,
             ReadOnly = readOnly,
             CompletionProvider = EditorSettings.AutoComplete ? new WordCompletionProvider () : null,
-            ViewportSettings = ViewportSettingsFlags.HasScrollBars
+            ViewportSettings = EditorSettings.Scrollbars
+                ? ViewportSettingsFlags.HasScrollBars
+                : ViewportSettingsFlags.None
         };
 
         GutterOptions initialGutter = GutterOptions.None;
@@ -108,6 +110,15 @@ public sealed partial class TedApp : Window
             Text = "_Word Wrap",
             Value = Editor.WordWrap ? CheckState.Checked : CheckState.UnChecked
         };
+
+        CheckBox scrollbarsCheckBox = new ()
+        {
+            AllowCheckStateNone = false,
+            CanFocus = false,
+            Text = "_Scrollbars",
+            Value = EditorSettings.Scrollbars ? CheckState.Checked : CheckState.UnChecked
+        };
+
         _previewMarkdownMenuItem = new MenuItem
         {
             Title = ToggleTitle (false, "_Preview Markdown"),
@@ -255,6 +266,28 @@ public sealed partial class TedApp : Window
                     },
                     CommandView = ShowTabsCheckBox,
                     HelpText = "Show tab glyphs"
+                },
+                new MenuItem
+                {
+                    Action = () =>
+                    {
+                        var shouldEnableScrollbars = !Editor.ViewportSettings.HasFlag (ViewportSettingsFlags.HasScrollBars);
+
+                        if (shouldEnableScrollbars)
+                        {
+                            Editor.ViewportSettings |= ViewportSettingsFlags.HasScrollBars;
+                        }
+                        else
+                        {
+                            Editor.ViewportSettings &= ~ViewportSettingsFlags.HasScrollBars;
+                        }
+
+                        scrollbarsCheckBox.Value = shouldEnableScrollbars ? CheckState.Checked : CheckState.UnChecked;
+                        Editor.SetNeedsDraw ();
+                        SaveViewSettings ();
+                    },
+                    CommandView = scrollbarsCheckBox,
+                    HelpText = "Show scrollbars"
                 },
                 _previewMarkdownMenuItem
             ]),
@@ -435,6 +468,7 @@ public sealed partial class TedApp : Window
         EditorSettings.ConvertTabsToSpaces = Editor.ConvertTabsToSpaces;
         EditorSettings.AutoIndent = Editor.IndentationStrategy is not null;
         EditorSettings.AutoComplete = Editor.CompletionProvider is not null;
+        EditorSettings.Scrollbars = Editor.ViewportSettings.HasFlag (ViewportSettingsFlags.HasScrollBars);
         EditorSettings.Save (_configPath);
     }
 
