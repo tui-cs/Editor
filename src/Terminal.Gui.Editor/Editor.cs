@@ -112,6 +112,22 @@ public partial class Editor : View
         ThemeManager.ThemeChanged += OnThemeChanged;
     }
 
+    /// <summary>
+    ///     Gets or sets the document text. This overrides <see cref="View.Text" /> so that setting
+    ///     <c>editor.Text</c> writes to <see cref="Document" /> rather than the base View label.
+    /// </summary>
+    public override string Text
+    {
+        get => Document?.Text ?? string.Empty;
+        set
+        {
+            if (Document is { } doc)
+            {
+                doc.Text = value;
+            }
+        }
+    }
+
     /// <summary>The backing <see cref="TextDocument" />. Setting this rewires change handlers and clamps the caret.</summary>
     public TextDocument? Document
     {
@@ -521,6 +537,27 @@ public partial class Editor : View
         if (disposing)
         {
             ThemeManager.ThemeChanged -= OnThemeChanged;
+
+            // Tear down the completion popover (issue #173) — without this an active
+            // popover survives disposal, leaks event subscriptions, and leaves
+            // IsCompletionActive == true on the dead editor.
+            DismissCompletion ();
+
+            // Dispose the context menu PopoverMenu created in the constructor.
+            ContextMenu?.Dispose ();
+            ContextMenu = null;
+
+            // Dispose the gutter if active.
+            if (_gutter is not null)
+            {
+                Padding.GetOrCreateView ().Remove (_gutter);
+                _gutter.Dispose ();
+                _gutter = null;
+            }
+
+            // Dispose the document highlighter.
+            _highlighter?.Dispose ();
+            _highlighter = null;
         }
 
         if (disposing && _document is not null)

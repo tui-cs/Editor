@@ -363,4 +363,42 @@ public class EditorLogicTests
         Assert.True (editor.Document.LineCount > 1, "Sample content must span more than one line.");
         Assert.NotNull (editor.HighlightingDefinition);
     }
+
+    [Fact]
+    public void Text_Get_Returns_DocumentText ()
+    {
+        Editor editor = new () { Document = new TextDocument ("hello\nworld") };
+
+        Assert.Equal ("hello\nworld", editor.Text);
+    }
+
+    [Fact]
+    public void Text_Set_Updates_DocumentText ()
+    {
+        Editor editor = new ();
+
+        editor.Text = "line1\nline2\nline3";
+
+        Assert.Equal ("line1\nline2\nline3", editor.Document!.Text);
+        Assert.Equal (3, editor.Document.LineCount);
+    }
+
+    [Fact]
+    public void Text_Get_Returns_Empty_When_Default ()
+    {
+        Editor editor = new ();
+
+        Assert.Equal (string.Empty, editor.Text);
+    }
+
+    [Fact]
+    public void Text_RoundTrip ()
+    {
+        Editor editor = new ();
+        const string content = "{\n  \"key\": \"value\"\n}";
+
+        editor.Text = content;
+
+        Assert.Equal (content, editor.Text);
+    }
 }

@@ -140,11 +140,17 @@ jobs:
     continue-on-error: true  # Non-blocking: missing secret shouldn't fail the release
     env:
       VERSION: ${{ needs.resolve-version.outputs.version }}
+      CLET_DISPATCH_TOKEN: ${{ secrets.CLET_DISPATCH_TOKEN }}
     steps:
+      - name: Skip dispatch (no token configured)
+        if: ${{ env.CLET_DISPATCH_TOKEN == '' }}
+        run: echo "::warning::CLET_DISPATCH_TOKEN is not set; skipping downstream dispatch."
+
       - name: Dispatch to gui-cs/clet
+        if: ${{ env.CLET_DISPATCH_TOKEN != '' }}
         uses: actions/github-script@v7
         with:
-          github-token: ${{ secrets.CLET_DISPATCH_TOKEN }}
+          github-token: ${{ env.CLET_DISPATCH_TOKEN }}
           script: |
             const ref = context.ref;
             const isMain = ref === 'refs/heads/main' || ref.startsWith('refs/tags/v');
