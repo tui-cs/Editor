@@ -207,6 +207,7 @@ public class EditorColumnSelectionTests
         fx.Render ();
 
         Assert.False (fx.Top.Editor.HasMultipleCarets);
+        Assert.False (fx.Top.Editor.HasSelection);
 
         AnsiSnapshot.Verify (fx.Driver, nameof (Keyboard_Column_Then_Esc_Collapses_Carets));
     }
