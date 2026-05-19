@@ -19,6 +19,10 @@
 *.bat       text eol=crlf
 *.ps1       text eol=crlf
 
+# ANSI snapshot goldens: raw escape-sequence streams with CRLF row breaks.
+# Must NOT be EOL-normalized or the byte-exact compare + `cat` fidelity breaks.
+*.ans       binary
+
 # Binary
 *.png       binary
 *.jpg       binary

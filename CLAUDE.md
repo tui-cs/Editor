@@ -53,6 +53,19 @@ dotnet run --project tests/Terminal.Gui.Editor.Tests -- -method "*MyTestName*"
 
 CI verifies formatting with `dotnet format Terminal.Gui.Editor.slnx --verify-no-changes --exclude third_party/`. Run the same locally before pushing if you've touched C# files outside `third_party/`.
 
+### Verifying the *look* (ANSI snapshots) — MANDATORY for render changes
+
+If a change affects what `Editor` **renders** (selection, multi-caret, highlighting, tabs,
+newline glyphs, scrolling, layout) you do **not** need a human to eyeball it — and you must not
+ship it unverified. Use the ANSI snapshot harness: `AnsiSnapshot.Verify (fx.Driver, name)`
+captures the screen as pure ANSI (`IDriver.ToAnsi ()`), records a `__snapshots__/*.ans`
+golden, and on mismatch prints the render inline plus a `.ans.actual` you `cat` to see the
+exact look and self-verify. Mouse gestures go through `Inject`. **Before writing any
+render/integration test, read `tests/Terminal.Gui.Editor.IntegrationTests/Testing/README.md`** —
+it has the workflow, the copy-paste template, and the rules that bite (render-before-verify
+ordering, `*.ans` must stay `binary` in `.gitattributes`, keep viewports small,
+`UPDATE_SNAPSHOTS=1` to accept an intended change).
+
 ## Architecture
 
 Two NuGet packages with a strict dependency direction:
