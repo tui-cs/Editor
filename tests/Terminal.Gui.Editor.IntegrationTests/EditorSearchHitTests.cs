@@ -1,10 +1,8 @@
 // Claude - claude-sonnet-4
 
-using Terminal.Gui.Document;
 using Terminal.Gui.Document.Search;
 using Terminal.Gui.Drawing;
 using Terminal.Gui.Editor.IntegrationTests.Testing;
-using Terminal.Gui.Editor.Rendering;
 using Terminal.Gui.Input;
 using Terminal.Gui.Testing;
 using Xunit;

@@ -24,7 +24,7 @@ public class EditorCompletionIntegrationTests
     [Fact]
     public async Task Typing_Char_While_Completion_Active_Inserts_Into_Document ()
     {
-        await using AppFixture<EditorTestHost> fx = new (() => new ("using unsafe uint "));
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("using unsafe uint "));
         Editor editor = fx.Top.Editor;
         editor.SetFocus ();
 
@@ -54,7 +54,7 @@ public class EditorCompletionIntegrationTests
     [Fact]
     public async Task Typing_NonMatching_Char_Dismisses_Completion ()
     {
-        await using AppFixture<EditorTestHost> fx = new (() => new ("using unsafe uint "));
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("using unsafe uint "));
         Editor editor = fx.Top.Editor;
         editor.SetFocus ();
 
@@ -81,7 +81,7 @@ public class EditorCompletionIntegrationTests
     [Fact]
     public async Task Enter_While_Completion_Active_Accepts_Item ()
     {
-        await using AppFixture<EditorTestHost> fx = new (() => new ("using unsafe uint "));
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("using unsafe uint "));
         Editor editor = fx.Top.Editor;
         editor.SetFocus ();
 
@@ -114,7 +114,7 @@ public class EditorCompletionIntegrationTests
     public async Task ArrowDown_Then_Enter_Accepts_Second_Item ()
     {
         // "hello help world" — typing "he" at the end matches "hello" and "help".
-        await using AppFixture<EditorTestHost> fx = new (() => new ("hello help world "));
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("hello help world "));
         Editor editor = fx.Top.Editor;
         editor.SetFocus ();
 

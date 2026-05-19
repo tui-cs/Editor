@@ -1,6 +1,5 @@
 // Claude - claude-opus-4-7
 
-using System.Drawing;
 using System.Text;
 using Terminal.Gui.Document;
 using Xunit;
@@ -33,7 +32,7 @@ public class MaxWidthEstimationTests
     {
         // > 256 KiB of identical tab-heavy lines. Each line is "\t\t\tx" (char length 4); the exact
         // tab-expanded visual width would be much larger. The estimate path must report char length.
-        var sb = new StringBuilder (400 * 1024);
+        StringBuilder sb = new (400 * 1024);
 
         while (sb.Length < 300 * 1024)
         {

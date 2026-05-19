@@ -22,7 +22,7 @@ public class EditorKillRingTests
     /// </summary>
     private static void EnsureFakeClipboard (AppFixture<EditorTestHost> fx)
     {
-        fx.Driver.Clipboard = new FakeClipboard (false, false);
+        fx.Driver.Clipboard = new FakeClipboard ();
     }
 
     // ───────────────────── CutToEndOfLine ─────────────────────
@@ -30,7 +30,7 @@ public class EditorKillRingTests
     [Fact]
     public async Task CutToEndOfLine_KillsToLineEnd ()
     {
-        await using AppFixture<EditorTestHost> fx = new (() => new ("hello world"));
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("hello world"));
         EnsureFakeClipboard (fx);
         fx.Top.Editor.SetFocus ();
         fx.Top.Editor.CaretOffset = 5; // after "hello"
@@ -48,7 +48,7 @@ public class EditorKillRingTests
     [Fact]
     public async Task CutToEndOfLine_AtEOL_KillsDelimiter ()
     {
-        await using AppFixture<EditorTestHost> fx = new (() => new ("abc\ndef"));
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("abc\ndef"));
         EnsureFakeClipboard (fx);
         fx.Top.Editor.SetFocus ();
         fx.Top.Editor.CaretOffset = 3; // at end of "abc", before \n
@@ -65,7 +65,7 @@ public class EditorKillRingTests
     [Fact]
     public async Task CutToEndOfLine_AtEndOfDocument_IsNoOp ()
     {
-        await using AppFixture<EditorTestHost> fx = new (() => new ("abc"));
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("abc"));
         EnsureFakeClipboard (fx);
         fx.Top.Editor.SetFocus ();
         fx.Top.Editor.CaretOffset = 3;
@@ -78,7 +78,7 @@ public class EditorKillRingTests
     [Fact]
     public async Task CutToEndOfLine_SingleUndo ()
     {
-        await using AppFixture<EditorTestHost> fx = new (() => new ("hello world"));
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("hello world"));
         EnsureFakeClipboard (fx);
         fx.Top.Editor.SetFocus ();
         fx.Top.Editor.CaretOffset = 5;
@@ -93,7 +93,7 @@ public class EditorKillRingTests
     [Fact]
     public async Task CutToEndOfLine_ReadOnly_IsNoOp ()
     {
-        await using AppFixture<EditorTestHost> fx = new (() => new ("hello"));
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("hello"));
         EnsureFakeClipboard (fx);
         fx.Top.Editor.SetFocus ();
         fx.Top.Editor.ReadOnly = true;
@@ -109,7 +109,7 @@ public class EditorKillRingTests
     [Fact]
     public async Task CutToStartOfLine_KillsToLineStart ()
     {
-        await using AppFixture<EditorTestHost> fx = new (() => new ("hello world"));
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("hello world"));
         EnsureFakeClipboard (fx);
         fx.Top.Editor.SetFocus ();
         fx.Top.Editor.CaretOffset = 5;
@@ -127,7 +127,7 @@ public class EditorKillRingTests
     [Fact]
     public async Task CutToStartOfLine_AtBOL_IsNoOp ()
     {
-        await using AppFixture<EditorTestHost> fx = new (() => new ("abc\ndef"));
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("abc\ndef"));
         EnsureFakeClipboard (fx);
         fx.Top.Editor.SetFocus ();
         fx.Top.Editor.CaretOffset = 4; // start of "def"
@@ -140,7 +140,7 @@ public class EditorKillRingTests
     [Fact]
     public async Task CutToStartOfLine_SingleUndo ()
     {
-        await using AppFixture<EditorTestHost> fx = new (() => new ("hello world"));
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("hello world"));
         EnsureFakeClipboard (fx);
         fx.Top.Editor.SetFocus ();
         fx.Top.Editor.CaretOffset = 5;
@@ -158,7 +158,7 @@ public class EditorKillRingTests
     public async Task ConsecutiveKillToEOL_Appends ()
     {
         // "abc\ndef\nghi" with caret at 0 — two consecutive CutToEndOfLine should accumulate.
-        await using AppFixture<EditorTestHost> fx = new (() => new ("abc\ndef\nghi"));
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("abc\ndef\nghi"));
         EnsureFakeClipboard (fx);
         fx.Top.Editor.SetFocus ();
         fx.Top.Editor.CaretOffset = 0;
@@ -179,7 +179,7 @@ public class EditorKillRingTests
     [Fact]
     public async Task NonKillCommand_BreaksConsecutiveRun ()
     {
-        await using AppFixture<EditorTestHost> fx = new (() => new ("abc\ndef"));
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("abc\ndef"));
         EnsureFakeClipboard (fx);
         fx.Top.Editor.SetFocus ();
         fx.Top.Editor.CaretOffset = 0;
@@ -207,7 +207,7 @@ public class EditorKillRingTests
         // Two consecutive CutToStartOfLine on a single line should prepend so clipboard
         // accumulates in document order.
         // "abcdef" — caret at 6 (end)
-        await using AppFixture<EditorTestHost> fx = new (() => new ("abcdef"));
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("abcdef"));
         EnsureFakeClipboard (fx);
         fx.Top.Editor.SetFocus ();
         fx.Top.Editor.CaretOffset = 6; // end of "abcdef"
@@ -226,7 +226,7 @@ public class EditorKillRingTests
     {
         // Consecutive CutToStartOfLine across different lines should prepend in document order.
         // "abc\ndef\nghi" — start at end of line 3 (offset 11, after "ghi")
-        await using AppFixture<EditorTestHost> fx = new (() => new ("abc\ndef\nghi"));
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("abc\ndef\nghi"));
         EnsureFakeClipboard (fx);
         fx.Top.Editor.SetFocus ();
         fx.Top.Editor.CaretOffset = 11; // end of "ghi"
@@ -261,7 +261,7 @@ public class EditorKillRingTests
     [Fact]
     public async Task CutToEndOfLine_WithSelection_DeletesSelection ()
     {
-        await using AppFixture<EditorTestHost> fx = new (() => new ("hello world"));
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("hello world"));
         EnsureFakeClipboard (fx);
         fx.Top.Editor.SetFocus ();
         fx.Top.Editor.SelectRange (0, 5);
@@ -277,7 +277,7 @@ public class EditorKillRingTests
     [Fact]
     public async Task CutToEndOfLine_PreservesText_When_Clipboard_Unavailable ()
     {
-        await using AppFixture<EditorTestHost> fx = new (() => new ("hello world"));
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("hello world"));
 
         // FakeClipboard(false, true) → IsSupported = false, writes fail.
         fx.Driver.Clipboard = new FakeClipboard (false, true);
@@ -293,7 +293,7 @@ public class EditorKillRingTests
     [Fact]
     public async Task CutToStartOfLine_PreservesText_When_Clipboard_Unavailable ()
     {
-        await using AppFixture<EditorTestHost> fx = new (() => new ("hello world"));
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("hello world"));
 
         fx.Driver.Clipboard = new FakeClipboard (false, true);
         fx.Top.Editor.SetFocus ();
@@ -311,7 +311,7 @@ public class EditorKillRingTests
     {
         // When HandleCompletionKey consumes a key (returns true), it must clear _lastCommandWasKill
         // so the next kill command (via InvokeCommand) does NOT append to clipboard.
-        await using AppFixture<EditorTestHost> fx = new (() => new ("abc\ndef"));
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("abc\ndef"));
         EnsureFakeClipboard (fx);
         Editor editor = fx.Top.Editor;
         editor.SetFocus ();
@@ -353,6 +353,9 @@ public class EditorKillRingTests
             return [new CompletionItem { Label = "ghi" }, new CompletionItem { Label = "ghijk" }];
         }
 
-        public bool ShouldTrigger (Key key) => key == Key.Space.WithCtrl;
+        public bool ShouldTrigger (Key key)
+        {
+            return key == Key.Space.WithCtrl;
+        }
     }
 }

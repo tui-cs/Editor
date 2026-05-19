@@ -375,10 +375,10 @@ public sealed partial class TedApp
 
             await Editor.LoadAsync (
                 stream,
-                encoding: null,
-                progress: progress,
-                cancellationToken: cancellationToken,
-                marshal: marshal);
+                null,
+                progress,
+                cancellationToken,
+                marshal);
 
             await RunOnApp (
                 marshalToApp,

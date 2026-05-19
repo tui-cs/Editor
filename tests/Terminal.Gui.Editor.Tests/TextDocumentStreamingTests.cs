@@ -76,7 +76,7 @@ public class TextDocumentStreamingTests
     [Fact]
     public void SetOwnerThread_Documentation_Describes_NullOwner_FirstAccessClaim ()
     {
-        string source = File.ReadAllText (LocateSource ("Document/TextDocument.cs"));
+        var source = File.ReadAllText (LocateSource ("Document/TextDocument.cs"));
 
         Assert.Contains ("first access", source, StringComparison.OrdinalIgnoreCase);
     }

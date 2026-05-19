@@ -23,7 +23,7 @@ public static class Inject
         ArgumentNullException.ThrowIfNull (fx);
 
         fx.Injector.InjectMouse (
-            new ()
+            new Mouse
             {
                 ScreenPosition = pos,
                 Flags = MouseFlags.LeftButtonPressed | modifiers,
@@ -32,7 +32,7 @@ public static class Inject
             Direct);
 
         fx.Injector.InjectMouse (
-            new ()
+            new Mouse
             {
                 ScreenPosition = pos,
                 Flags = MouseFlags.LeftButtonReleased,
@@ -59,7 +59,7 @@ public static class Inject
         }
 
         fx.Injector.InjectMouse (
-            new ()
+            new Mouse
             {
                 ScreenPosition = press,
                 Flags = MouseFlags.LeftButtonPressed | MouseFlags.Alt,
@@ -72,7 +72,7 @@ public static class Inject
         foreach (Point wp in waypoints)
         {
             fx.Injector.InjectMouse (
-                new ()
+                new Mouse
                 {
                     ScreenPosition = wp,
                     Flags = MouseFlags.LeftButtonPressed | MouseFlags.PositionReport | MouseFlags.Alt,
@@ -83,7 +83,7 @@ public static class Inject
         }
 
         fx.Injector.InjectMouse (
-            new ()
+            new Mouse
             {
                 ScreenPosition = waypoints[^1],
                 Flags = MouseFlags.LeftButtonReleased,

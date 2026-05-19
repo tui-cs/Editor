@@ -1,6 +1,5 @@
 using System.Drawing;
 using System.Text;
-using Terminal.Gui.Document;
 using Terminal.Gui.Drawing;
 using Terminal.Gui.ViewBase;
 using Attribute = Terminal.Gui.Drawing.Attribute;

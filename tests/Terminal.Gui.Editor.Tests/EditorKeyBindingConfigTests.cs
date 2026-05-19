@@ -127,7 +127,8 @@ public class EditorKeyBindingConfigTests
         Assert.Contains (Key.CursorLeft.WithCtrl, defaults[Command.WordLeft].GetCurrentPlatformKeys ());
         Assert.Contains (Key.CursorRight.WithCtrl, defaults[Command.WordRight].GetCurrentPlatformKeys ());
         Assert.Contains (Key.CursorLeft.WithCtrl.WithShift, defaults[Command.WordLeftExtend].GetCurrentPlatformKeys ());
-        Assert.Contains (Key.CursorRight.WithCtrl.WithShift, defaults[Command.WordRightExtend].GetCurrentPlatformKeys ());
+        Assert.Contains (Key.CursorRight.WithCtrl.WithShift,
+            defaults[Command.WordRightExtend].GetCurrentPlatformKeys ());
         Assert.Contains (Key.Backspace.WithCtrl, defaults[Command.KillWordLeft].GetCurrentPlatformKeys ());
         Assert.Contains (Key.Delete.WithCtrl, defaults[Command.KillWordRight].GetCurrentPlatformKeys ());
     }

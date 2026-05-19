@@ -3,10 +3,10 @@
 using System.Drawing;
 using System.Reflection;
 using Ted;
-using Terminal.Gui.Input;
-using Terminal.Gui.Views;
 using Terminal.Gui.Editor.IntegrationTests.Testing;
+using Terminal.Gui.Input;
 using Terminal.Gui.Testing;
+using Terminal.Gui.Views;
 using Xunit;
 
 namespace Terminal.Gui.Editor.IntegrationTests;
@@ -42,7 +42,7 @@ public class TedSettingsPersistenceTests
         app.Editor.IndentationSize = 8;
         InvokeSaveViewSettings (app);
 
-        string text = File.ReadAllText (scope.ConfigPath);
+        var text = File.ReadAllText (scope.ConfigPath);
         Assert.Contains ("\"EditorSettings.IndentSize\": 8", text);
         Assert.DoesNotContain ("\"EditorSettings.IndentSize\": 2", text);
     }
@@ -65,7 +65,7 @@ public class TedSettingsPersistenceTests
         using ConfigPathScope scope = new ();
 
         // Write a config file with non-default values
-        string? dir = Path.GetDirectoryName (scope.ConfigPath);
+        var dir = Path.GetDirectoryName (scope.ConfigPath);
         Assert.NotNull (dir);
         Directory.CreateDirectory (dir);
         File.WriteAllText (
@@ -86,7 +86,7 @@ public class TedSettingsPersistenceTests
         // Assert via TedApp.Editor instance properties (not statics)
         Assert.True (app.Editor.WordWrap);
         Assert.True (app.Editor.ShowTabs);
-        Assert.False (app.Editor.GutterOptions.HasFlag (Terminal.Gui.Editor.GutterOptions.LineNumbers));
+        Assert.False (app.Editor.GutterOptions.HasFlag (GutterOptions.LineNumbers));
         Assert.Equal (2, app.Editor.IndentationSize);
     }
 
@@ -95,7 +95,7 @@ public class TedSettingsPersistenceTests
     {
         using ConfigPathScope scope = new ();
 
-        string? dir = Path.GetDirectoryName (scope.ConfigPath);
+        var dir = Path.GetDirectoryName (scope.ConfigPath);
         Assert.NotNull (dir);
         Directory.CreateDirectory (dir);
         File.WriteAllText (
@@ -124,8 +124,8 @@ public class TedSettingsPersistenceTests
         InputInjectionOptions options = new () { Mode = InputInjectionMode.Direct };
         DateTime ts = new (2025, 1, 1, 12, 0, 0);
 
-        string[] initialLines = fx.Driver.ToString ().Split ('\n');
-        int viewHeaderX = initialLines[0].IndexOf ("View", StringComparison.Ordinal);
+        var initialLines = fx.Driver.ToString ().Split ('\n');
+        var viewHeaderX = initialLines[0].IndexOf ("View", StringComparison.Ordinal);
         Assert.True (viewHeaderX >= 0);
         Point viewHeader = new (viewHeaderX, 0);
         fx.Injector.InjectMouse (
@@ -141,13 +141,13 @@ public class TedSettingsPersistenceTests
             options);
         fx.Render ();
 
-        string[] menuLines = fx.Driver.ToString ().Split ('\n');
-        int y = Array.FindIndex (menuLines, static line => line.Contains ("Word Wrap", StringComparison.Ordinal));
+        var menuLines = fx.Driver.ToString ().Split ('\n');
+        var y = Array.FindIndex (menuLines, static line => line.Contains ("Word Wrap", StringComparison.Ordinal));
         Assert.True (y >= 0);
-        int x = -1;
+        var x = -1;
         // Prefer label text as the click target; glyph fallbacks handle renderer differences.
         string[] targets = ["Word Wrap", "☐", "☑"];
-        foreach (string target in targets)
+        foreach (var target in targets)
         {
             x = menuLines[y].IndexOf (target, StringComparison.Ordinal);
             if (x >= 0)
@@ -190,15 +190,16 @@ public class TedSettingsPersistenceTests
         fx.Injector.InjectKey (Key.V.WithAlt, options);
         fx.Render ();
 
-        string[] lines = fx.Driver.ToString ().Split ('\n');
-        int y = Array.FindIndex (lines, static line => line.Contains ("Word Wrap", StringComparison.Ordinal));
+        var lines = fx.Driver.ToString ().Split ('\n');
+        var y = Array.FindIndex (lines, static line => line.Contains ("Word Wrap", StringComparison.Ordinal));
         Assert.True (y >= 0);
-        int x = lines[y].IndexOf ("Word Wrap", StringComparison.Ordinal);
+        var x = lines[y].IndexOf ("Word Wrap", StringComparison.Ordinal);
         Assert.True (x >= 0);
 
         DateTime ts = new (2025, 1, 1, 12, 0, 0);
         Point click = new (x, y);
-        fx.Injector.InjectMouse (new Mouse { ScreenPosition = click, Flags = MouseFlags.LeftButtonPressed, Timestamp = ts }, options);
+        fx.Injector.InjectMouse (
+            new Mouse { ScreenPosition = click, Flags = MouseFlags.LeftButtonPressed, Timestamp = ts }, options);
         fx.Injector.InjectMouse (
             new Mouse
             {
@@ -232,10 +233,10 @@ public class TedSettingsPersistenceTests
         fx.Render ();
 
         // Find and click "Word Wrap"
-        string[] menuLines = fx.Driver.ToString ().Split ('\n');
-        int y = Array.FindIndex (menuLines, static line => line.Contains ("Word Wrap", StringComparison.Ordinal));
+        var menuLines = fx.Driver.ToString ().Split ('\n');
+        var y = Array.FindIndex (menuLines, static line => line.Contains ("Word Wrap", StringComparison.Ordinal));
         Assert.True (y >= 0, "Could not find 'Word Wrap' in menu");
-        int x = menuLines[y].IndexOf ("Word Wrap", StringComparison.Ordinal);
+        var x = menuLines[y].IndexOf ("Word Wrap", StringComparison.Ordinal);
         Assert.True (x >= 0);
         Point wordWrapItem = new (x, y);
 
@@ -264,7 +265,7 @@ public class TedSettingsPersistenceTests
         Assert.True (File.Exists (scope.ConfigPath), "Config file was not created");
 
         // Assert: config file contains the correct persisted value
-        string configContent = File.ReadAllText (scope.ConfigPath);
+        var configContent = File.ReadAllText (scope.ConfigPath);
         Assert.Contains ("\"EditorSettings.WordWrap\": true", configContent);
     }
 
@@ -284,7 +285,7 @@ public class TedSettingsPersistenceTests
     public void SaveViewSettings_Inserts_Comma_Before_Trailing_Comment_When_Appending_Settings ()
     {
         using ConfigPathScope scope = new ();
-        string? configDirectory = Path.GetDirectoryName (scope.ConfigPath);
+        var configDirectory = Path.GetDirectoryName (scope.ConfigPath);
         Assert.NotNull (configDirectory);
         Directory.CreateDirectory (configDirectory);
         File.WriteAllText (scope.ConfigPath, "{\n  \"Unrelated\": 1 // note\n}\n");
@@ -294,7 +295,7 @@ public class TedSettingsPersistenceTests
 
         InvokeSaveViewSettings (app);
 
-        string text = File.ReadAllText (scope.ConfigPath);
+        var text = File.ReadAllText (scope.ConfigPath);
         Assert.Contains ("\"Unrelated\": 1, // note", text);
         Assert.Contains ("\"EditorSettings.WordWrap\": true", text);
     }
@@ -306,11 +307,12 @@ public class TedSettingsPersistenceTests
         EditorSettingsDialog dialog = new (app.Editor);
 
         // Access _indentSize via reflection (it's private)
-        FieldInfo? indentSizeField = typeof (EditorSettingsDialog).GetField ("_indentSize", BindingFlags.Instance | BindingFlags.NonPublic);
+        FieldInfo? indentSizeField =
+            typeof (EditorSettingsDialog).GetField ("_indentSize", BindingFlags.Instance | BindingFlags.NonPublic);
         Assert.NotNull (indentSizeField);
-        var indentControl = (NumericUpDown<int>)indentSizeField.GetValue (dialog)!;
+        NumericUpDown<int> indentControl = (NumericUpDown<int>)indentSizeField.GetValue (dialog)!;
 
-        int valueBefore = indentControl.Value;
+        var valueBefore = indentControl.Value;
         Assert.True (valueBefore >= 1);
 
         // Attempt to set Value to 0 — ValueChanging should reject it
@@ -328,7 +330,7 @@ public class TedSettingsPersistenceTests
         // must NOT fool ReadBool into thinking WordWrap is true.
         using ConfigPathScope scope = new ();
 
-        string? dir = Path.GetDirectoryName (scope.ConfigPath);
+        var dir = Path.GetDirectoryName (scope.ConfigPath);
         Assert.NotNull (dir);
         Directory.CreateDirectory (dir);
         File.WriteAllText (
@@ -350,7 +352,7 @@ public class TedSettingsPersistenceTests
         // Regression: trailing JSONC comment containing } should not be used as insert point.
         using ConfigPathScope scope = new ();
 
-        string? dir = Path.GetDirectoryName (scope.ConfigPath);
+        var dir = Path.GetDirectoryName (scope.ConfigPath);
         Assert.NotNull (dir);
         Directory.CreateDirectory (dir);
         File.WriteAllText (
@@ -362,19 +364,19 @@ public class TedSettingsPersistenceTests
 
         InvokeSaveViewSettings (app);
 
-        string text = File.ReadAllText (scope.ConfigPath);
+        var text = File.ReadAllText (scope.ConfigPath);
         // The inserted key should be valid JSON — not inside the comment
         Assert.Contains ("\"EditorSettings.WordWrap\": true", text);
         // Config should still be parseable: the real closing brace should come after our insertion
-        int wordWrapPos = text.IndexOf ("\"EditorSettings.WordWrap\"", StringComparison.Ordinal);
-        int lastRealBrace = text.LastIndexOf ('}');
+        var wordWrapPos = text.IndexOf ("\"EditorSettings.WordWrap\"", StringComparison.Ordinal);
+        var lastRealBrace = text.LastIndexOf ('}');
         // The comment line's } may still exist, but our key must be before the real object close
         Assert.True (wordWrapPos < lastRealBrace, "WordWrap key should appear before the root closing brace");
     }
 
     private static string GetTedConfigPath ()
     {
-        string home =
+        var home =
             Environment.GetEnvironmentVariable ("HOME")
             ?? Environment.GetFolderPath (Environment.SpecialFolder.UserProfile)
             ?? Directory.GetCurrentDirectory ();
@@ -431,7 +433,7 @@ public class TedSettingsPersistenceTests
 
             if (_hadExistingConfig)
             {
-                string? configDirectory = Path.GetDirectoryName (ConfigPath);
+                var configDirectory = Path.GetDirectoryName (ConfigPath);
                 Assert.NotNull (_existingConfigContent);
 
                 if (!string.IsNullOrWhiteSpace (configDirectory))

@@ -114,7 +114,8 @@ public partial class Editor
             }
         }
 
-        _additionalCarets.Add (new CaretInfo { CaretAnchor = CreateCaretAnchor (offset), SelectionAnchor = selectionAnchor });
+        _additionalCarets.Add (new CaretInfo
+            { CaretAnchor = CreateCaretAnchor (offset), SelectionAnchor = selectionAnchor });
         SetNeedsDraw ();
     }
 

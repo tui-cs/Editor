@@ -1,5 +1,6 @@
 // Copilot - gpt-4.1
 
+using Terminal.Gui.Document;
 using Terminal.Gui.Document.Search;
 using Terminal.Gui.Drawing;
 using Terminal.Gui.Editor.IntegrationTests.Testing;
@@ -40,7 +41,7 @@ public class EditorKeyBindingTests
     [Fact]
     public async Task InsertTab_Command_Inserts_Tab ()
     {
-        await using AppFixture<EditorTestHost> fx = new (() => new ());
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ());
         fx.Top.Editor.SetFocus ();
 
         fx.Top.Editor.InvokeCommand (Command.InsertTab);
@@ -52,7 +53,7 @@ public class EditorKeyBindingTests
     [Fact]
     public async Task InsertTab_Command_ReadOnly_NoOp ()
     {
-        await using AppFixture<EditorTestHost> fx = new (() => new ("abc"));
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("abc"));
         fx.Top.Editor.SetFocus ();
         fx.Top.Editor.ReadOnly = true;
 
@@ -66,7 +67,7 @@ public class EditorKeyBindingTests
     [Fact]
     public async Task Unindent_Command_Removes_Leading_Whitespace ()
     {
-        await using AppFixture<EditorTestHost> fx = new (() => new ("    alpha"));
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("    alpha"));
         fx.Top.Editor.SetFocus ();
         fx.Top.Editor.CaretOffset = 4;
 
@@ -79,7 +80,7 @@ public class EditorKeyBindingTests
     [Fact]
     public async Task Unindent_Command_ReadOnly_NoOp ()
     {
-        await using AppFixture<EditorTestHost> fx = new (() => new ("    abc"));
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("    abc"));
         fx.Top.Editor.SetFocus ();
         fx.Top.Editor.ReadOnly = true;
         fx.Top.Editor.CaretOffset = 4;
@@ -94,7 +95,7 @@ public class EditorKeyBindingTests
     [Fact]
     public async Task FindNext_Command_Selects_Next_Match ()
     {
-        await using AppFixture<EditorTestHost> fx = new (() => new ("hello world hello"));
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("hello world hello"));
         fx.Top.Editor.SetFocus ();
         fx.Top.Editor.SearchStrategy = SearchStrategyFactory.Create ("hello", false, false, SearchMode.Normal);
         fx.Top.Editor.CaretOffset = 0;
@@ -110,7 +111,7 @@ public class EditorKeyBindingTests
     [Fact]
     public async Task FindPrevious_Command_Selects_Previous_Match ()
     {
-        await using AppFixture<EditorTestHost> fx = new (() => new ("hello world hello"));
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("hello world hello"));
         fx.Top.Editor.SetFocus ();
         fx.Top.Editor.SearchStrategy = SearchStrategyFactory.Create ("hello", false, false, SearchMode.Normal);
         fx.Top.Editor.CaretOffset = 17;
@@ -126,7 +127,7 @@ public class EditorKeyBindingTests
     [Fact]
     public async Task Find_Command_Raises_FindRequested ()
     {
-        await using AppFixture<EditorTestHost> fx = new (() => new ("test"));
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("test"));
         fx.Top.Editor.SetFocus ();
         var fired = false;
         fx.Top.Editor.FindRequested += (_, _) => fired = true;
@@ -141,7 +142,7 @@ public class EditorKeyBindingTests
     [Fact]
     public async Task Replace_Command_Raises_ReplaceRequested ()
     {
-        await using AppFixture<EditorTestHost> fx = new (() => new ("test"));
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("test"));
         fx.Top.Editor.SetFocus ();
         var fired = false;
         fx.Top.Editor.ReplaceRequested += (_, _) => fired = true;
@@ -156,7 +157,7 @@ public class EditorKeyBindingTests
     [Fact]
     public async Task Tab_Key_Bound_To_InsertTab_Command ()
     {
-        await using AppFixture<EditorTestHost> fx = new (() => new ());
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ());
         fx.Top.Editor.SetFocus ();
 
         Assert.Contains (Command.InsertTab, fx.Top.Editor.KeyBindings.GetCommands (Key.Tab));
@@ -165,7 +166,7 @@ public class EditorKeyBindingTests
     [Fact]
     public async Task ShiftTab_Key_Bound_To_Unindent_Command ()
     {
-        await using AppFixture<EditorTestHost> fx = new (() => new ());
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ());
         fx.Top.Editor.SetFocus ();
 
         Assert.Contains (Command.Unindent, fx.Top.Editor.KeyBindings.GetCommands (Key.Tab.WithShift));
@@ -174,7 +175,7 @@ public class EditorKeyBindingTests
     [Fact]
     public async Task F3_Key_Bound_To_FindNext_Command ()
     {
-        await using AppFixture<EditorTestHost> fx = new (() => new ());
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ());
         fx.Top.Editor.SetFocus ();
 
         Assert.Contains (Command.FindNext, fx.Top.Editor.KeyBindings.GetCommands (Key.F3));
@@ -183,7 +184,7 @@ public class EditorKeyBindingTests
     [Fact]
     public async Task ShiftF3_Key_Bound_To_FindPrevious_Command ()
     {
-        await using AppFixture<EditorTestHost> fx = new (() => new ());
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ());
         fx.Top.Editor.SetFocus ();
 
         Assert.Contains (Command.FindPrevious, fx.Top.Editor.KeyBindings.GetCommands (Key.F3.WithShift));
@@ -192,7 +193,7 @@ public class EditorKeyBindingTests
     [Fact]
     public async Task CtrlF_Key_Bound_To_Find_Command ()
     {
-        await using AppFixture<EditorTestHost> fx = new (() => new ());
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ());
         fx.Top.Editor.SetFocus ();
 
         Assert.Contains (Command.Find, fx.Top.Editor.KeyBindings.GetCommands (Key.F.WithCtrl));
@@ -201,7 +202,7 @@ public class EditorKeyBindingTests
     [Fact]
     public async Task CtrlH_Key_Bound_To_Replace_Command ()
     {
-        await using AppFixture<EditorTestHost> fx = new (() => new ());
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ());
         fx.Top.Editor.SetFocus ();
 
         Assert.Contains (Command.Replace, fx.Top.Editor.KeyBindings.GetCommands (Key.H.WithCtrl));
@@ -210,7 +211,7 @@ public class EditorKeyBindingTests
     [Fact]
     public async Task Removing_Tab_KeyBinding_Restores_Default_View_Navigation ()
     {
-        await using AppFixture<FocusNavigationHost> fx = new (() => new ());
+        await using AppFixture<FocusNavigationHost> fx = new (() => new FocusNavigationHost ());
         fx.Top.Editor.SetFocus ();
 
         fx.Top.Editor.KeyBindings.Remove (Key.Tab);
@@ -222,7 +223,7 @@ public class EditorKeyBindingTests
     [Fact]
     public async Task Removing_ShiftTab_KeyBinding_Restores_Default_View_Navigation ()
     {
-        await using AppFixture<FocusNavigationHost> fx = new (() => new ());
+        await using AppFixture<FocusNavigationHost> fx = new (() => new FocusNavigationHost ());
         fx.Top.Editor.SetFocus ();
 
         fx.Top.Editor.KeyBindings.Remove (Key.Tab.WithShift);
@@ -236,22 +237,22 @@ public class EditorKeyBindingTests
         public FocusNavigationHost ()
         {
             BorderStyle = LineStyle.None;
-            Previous = new TextField ()
+            Previous = new TextField
             {
                 Text = "prev",
                 X = 0,
                 Y = 0,
                 Width = 10
             };
-            Editor = new ()
+            Editor = new Editor
             {
-                Document = new (),
+                Document = new TextDocument (),
                 X = 0,
                 Y = 1,
                 Width = Dim.Fill (),
                 Height = 1
             };
-            Next = new TextField ()
+            Next = new TextField
             {
                 Text = "next",
                 X = 0,

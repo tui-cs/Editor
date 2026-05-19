@@ -327,7 +327,8 @@ public class EditorCompletionTests
     [Theory]
     [InlineData (KeyCode.CursorLeft, 1)]
     [InlineData (KeyCode.CursorRight, 3)]
-    public void Arrow_Left_Or_Right_While_Completion_Active_Dismisses_And_Moves_Caret (KeyCode navKey, int expectedCaret)
+    public void Arrow_Left_Or_Right_While_Completion_Active_Dismisses_And_Moves_Caret (KeyCode navKey,
+        int expectedCaret)
     {
         using IApplication app = Application.Create ();
         app.Init (DriverRegistry.Names.ANSI);
@@ -550,7 +551,7 @@ public class EditorCompletionTests
 
         // Lay the popover out so its screen Frame is valid before we hit-test against it.
         app.LayoutAndDraw (true);
-        var popover = (View)app.Popovers!.GetActivePopover ()!;
+        View popover = (View)app.Popovers!.GetActivePopover ()!;
         Rectangle frame = popover.Frame;
 
         // HandleCompletionMouse maps clickedIdx = ScreenPosition.Y - Frame.Y, so Frame.Y + 1
@@ -593,7 +594,7 @@ public class EditorCompletionTests
         Assert.True (editor.IsCompletionActive);
 
         app.LayoutAndDraw (true);
-        var popover = (View)app.Popovers!.GetActivePopover ()!;
+        View popover = (View)app.Popovers!.GetActivePopover ()!;
         Rectangle frame = popover.Frame;
 
         var before = editor.Document!.Text;
@@ -636,7 +637,7 @@ public class EditorCompletionTests
         Assert.True (editor.IsCompletionActive);
 
         app.LayoutAndDraw (true);
-        var popover = (View)app.Popovers!.GetActivePopover ()!;
+        View popover = (View)app.Popovers!.GetActivePopover ()!;
 
         // 4 wide chars = 8 display columns. Char-count math would yield ~6 (< 8).
         Assert.True (

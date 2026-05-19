@@ -4,7 +4,6 @@ using Terminal.Gui.Drawing;
 using Terminal.Gui.Drivers;
 using Terminal.Gui.Testing;
 using Terminal.Gui.ViewBase;
-using Terminal.Gui.Editor;
 using Terminal.Gui.Views;
 
 namespace Terminal.Gui.Editor.Benchmarks;

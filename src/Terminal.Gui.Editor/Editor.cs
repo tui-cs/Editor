@@ -1269,7 +1269,8 @@ public partial class Editor : View
 
     private bool IsDrawCacheEligible (IReadOnlyList<StyledSegment>? segments, int selStart, int selEnd)
     {
-        return segments is null && selStart >= selEnd && !HasAdditionalCaretSelections () && LineTransformers.Count == 0;
+        return segments is null && selStart >= selEnd && !HasAdditionalCaretSelections () &&
+               LineTransformers.Count == 0;
     }
 
     private CellVisualLine BuildVisualLine (

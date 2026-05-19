@@ -42,7 +42,7 @@ public class EditorOverwriteTests
     [Fact]
     public async Task InsertKey_Toggles_OverwriteMode ()
     {
-        await using AppFixture<EditorTestHost> fx = new (() => new ("abc"));
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("abc"));
         fx.Top.Editor.SetFocus ();
 
         Assert.False (fx.Top.Editor.OverwriteMode);
@@ -59,7 +59,7 @@ public class EditorOverwriteTests
     [Fact]
     public async Task Overwrite_Replaces_CharacterAtCaret ()
     {
-        await using AppFixture<EditorTestHost> fx = new (() => new ("abc"));
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("abc"));
         fx.Top.Editor.SetFocus ();
         fx.Top.Editor.CaretOffset = 0;
         fx.Top.Editor.OverwriteMode = true;
@@ -73,7 +73,7 @@ public class EditorOverwriteTests
     [Fact]
     public async Task Overwrite_AtLineEnd_Inserts ()
     {
-        await using AppFixture<EditorTestHost> fx = new (() => new ("ab"));
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("ab"));
         fx.Top.Editor.SetFocus ();
         fx.Top.Editor.CaretOffset = 2; // at end of "ab"
         fx.Top.Editor.OverwriteMode = true;
@@ -87,7 +87,7 @@ public class EditorOverwriteTests
     [Fact]
     public async Task Overwrite_WithSelection_ReplacesSelection ()
     {
-        await using AppFixture<EditorTestHost> fx = new (() => new ("abcdef"));
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("abcdef"));
         fx.Top.Editor.SetFocus ();
         fx.Top.Editor.OverwriteMode = true;
 
@@ -107,7 +107,7 @@ public class EditorOverwriteTests
     [Fact]
     public async Task Overwrite_SingleUndo_Step ()
     {
-        await using AppFixture<EditorTestHost> fx = new (() => new ("abc"));
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("abc"));
         fx.Top.Editor.SetFocus ();
         fx.Top.Editor.CaretOffset = 0;
         fx.Top.Editor.OverwriteMode = true;
@@ -122,7 +122,7 @@ public class EditorOverwriteTests
     [Fact]
     public async Task Overwrite_MultiLine_DoesNotConsumeNewline ()
     {
-        await using AppFixture<EditorTestHost> fx = new (() => new ("ab\ncd"));
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("ab\ncd"));
         fx.Top.Editor.SetFocus ();
         fx.Top.Editor.CaretOffset = 1; // at 'b'
         fx.Top.Editor.OverwriteMode = true;
@@ -142,7 +142,7 @@ public class EditorOverwriteTests
     [Fact]
     public async Task EnableOverwrite_Command_SetsMode ()
     {
-        await using AppFixture<EditorTestHost> fx = new (() => new ("abc"));
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("abc"));
         fx.Top.Editor.SetFocus ();
 
         fx.Top.Editor.InvokeCommand (Command.EnableOverwrite);
@@ -152,7 +152,7 @@ public class EditorOverwriteTests
     [Fact]
     public async Task DisableOverwrite_Command_ClearsMode ()
     {
-        await using AppFixture<EditorTestHost> fx = new (() => new ("abc"));
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("abc"));
         fx.Top.Editor.SetFocus ();
         fx.Top.Editor.OverwriteMode = true;
 

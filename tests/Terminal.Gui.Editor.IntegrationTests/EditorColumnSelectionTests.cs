@@ -28,17 +28,17 @@ public class EditorColumnSelectionTests
     [Fact]
     public async Task AltDrag_Column_Down_Selects_Each_Row ()
     {
-        await using AppFixture<EditorTestHost> fx = new (() => new ("abcd\nabcd\nabcd\nabcd"), W, 5);
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("abcd\nabcd\nabcd\nabcd"), W, 5);
         fx.Top.Editor.SetFocus ();
 
-        Inject.AltDrag (fx, new (1, 0), new Point (3, 2));
+        Inject.AltDrag (fx, new Point (1, 0), new Point (3, 2));
         fx.Render ();
 
         Assert.True (fx.Top.Editor.HasSelection);
         Assert.True (fx.Top.Editor.HasMultipleCarets);
-        Assert.Equal (3, fx.Top.Editor.CaretOffset);            // row0 col3
+        Assert.Equal (3, fx.Top.Editor.CaretOffset); // row0 col3
         Assert.Equal (2, fx.Top.Editor.AdditionalCaretOffsets.Count);
-        Assert.Contains (8, fx.Top.Editor.AdditionalCaretOffsets);  // row1 col3
+        Assert.Contains (8, fx.Top.Editor.AdditionalCaretOffsets); // row1 col3
         Assert.Contains (13, fx.Top.Editor.AdditionalCaretOffsets); // row2 col3
 
         AnsiSnapshot.Verify (fx.Driver, nameof (AltDrag_Column_Down_Selects_Each_Row));
@@ -47,15 +47,15 @@ public class EditorColumnSelectionTests
     [Fact]
     public async Task AltDrag_Reversed_Puts_Caret_Left_Of_Anchor ()
     {
-        await using AppFixture<EditorTestHost> fx = new (() => new ("abcd\nabcd\nabcd"), W, 4);
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("abcd\nabcd\nabcd"), W, 4);
         fx.Top.Editor.SetFocus ();
 
         // Press at col 3, drag left to col 1 (and down two rows).
-        Inject.AltDrag (fx, new (3, 0), new Point (1, 2));
+        Inject.AltDrag (fx, new Point (3, 0), new Point (1, 2));
         fx.Render ();
 
         Assert.True (fx.Top.Editor.HasSelection);
-        Assert.Equal (1, fx.Top.Editor.CaretOffset);            // caret on the leftward edge
+        Assert.Equal (1, fx.Top.Editor.CaretOffset); // caret on the leftward edge
         Assert.Equal (2, fx.Top.Editor.AdditionalCaretOffsets.Count);
 
         AnsiSnapshot.Verify (fx.Driver, nameof (AltDrag_Reversed_Puts_Caret_Left_Of_Anchor));
@@ -64,13 +64,13 @@ public class EditorColumnSelectionTests
     [Fact]
     public async Task AltDrag_Zero_Horizontal_Extent_Makes_Carets_Not_Selection ()
     {
-        await using AppFixture<EditorTestHost> fx = new (() => new ("abcd\nabcd\nabcd\nabcd"), W, 5);
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("abcd\nabcd\nabcd\nabcd"), W, 5);
         fx.Top.Editor.SetFocus ();
 
-        Inject.AltDrag (fx, new (2, 0), new Point (2, 3));
+        Inject.AltDrag (fx, new Point (2, 0), new Point (2, 3));
         fx.Render ();
 
-        Assert.False (fx.Top.Editor.HasSelection);              // pure column of carets
+        Assert.False (fx.Top.Editor.HasSelection); // pure column of carets
         Assert.True (fx.Top.Editor.HasMultipleCarets);
         Assert.Equal (3, fx.Top.Editor.AdditionalCaretOffsets.Count);
 
@@ -80,11 +80,11 @@ public class EditorColumnSelectionTests
     [Fact]
     public async Task AltDrag_Over_Short_Line_Clamps_Without_Padding ()
     {
-        await using AppFixture<EditorTestHost> fx = new (() => new ("abcd\na\nabcd"), W, 4);
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("abcd\na\nabcd"), W, 4);
         fx.Top.Editor.SetFocus ();
 
         // Drag a wide column (col 1 -> col 4) across a 1-char middle line.
-        Inject.AltDrag (fx, new (1, 0), new Point (4, 2));
+        Inject.AltDrag (fx, new Point (1, 0), new Point (4, 2));
         fx.Render ();
 
         // The short row's selection clamps to its real end — no padding is written when typed.
@@ -100,15 +100,15 @@ public class EditorColumnSelectionTests
     [Fact]
     public async Task AltDrag_MultiWaypoint_Rebuilds_From_Final_Point ()
     {
-        await using AppFixture<EditorTestHost> fx = new (() => new ("abcd\nabcd\nabcd\nabcd"), W, 5);
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("abcd\nabcd\nabcd\nabcd"), W, 5);
         fx.Top.Editor.SetFocus ();
 
         // Wander through (3,1) then settle at (2,3); end state must equal a single (1,0)->(2,3).
-        Inject.AltDrag (fx, new (1, 0), new Point (3, 1), new Point (2, 3));
+        Inject.AltDrag (fx, new Point (1, 0), new Point (3, 1), new Point (2, 3));
         fx.Render ();
 
         Assert.True (fx.Top.Editor.HasSelection);
-        Assert.Equal (2, fx.Top.Editor.CaretOffset);            // row0 col2 (final), not col3
+        Assert.Equal (2, fx.Top.Editor.CaretOffset); // row0 col2 (final), not col3
         Assert.Equal (3, fx.Top.Editor.AdditionalCaretOffsets.Count); // rows 1..3
 
         AnsiSnapshot.Verify (fx.Driver, nameof (AltDrag_MultiWaypoint_Rebuilds_From_Final_Point));
@@ -117,13 +117,13 @@ public class EditorColumnSelectionTests
     [Fact]
     public async Task AltDrag_Then_Plain_Click_Collapses_To_Single_Caret ()
     {
-        await using AppFixture<EditorTestHost> fx = new (() => new ("abcd\nabcd\nabcd"), W, 4);
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("abcd\nabcd\nabcd"), W, 4);
         fx.Top.Editor.SetFocus ();
 
-        Inject.AltDrag (fx, new (1, 0), new Point (3, 2));
+        Inject.AltDrag (fx, new Point (1, 0), new Point (3, 2));
         Assert.True (fx.Top.Editor.HasMultipleCarets);
 
-        Inject.Click (fx, new (0, 0));
+        Inject.Click (fx, new Point (0, 0));
         fx.Render ();
 
         Assert.False (fx.Top.Editor.HasMultipleCarets);
@@ -138,7 +138,7 @@ public class EditorColumnSelectionTests
     [Fact]
     public async Task Keyboard_Right_Then_Down_Builds_Column ()
     {
-        await using AppFixture<EditorTestHost> fx = new (() => new ("abcd\nabcd\nabcd"), W, 4);
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("abcd\nabcd\nabcd"), W, 4);
         fx.Top.Editor.SetFocus ();
         fx.Top.Editor.CaretOffset = 1;
 
@@ -158,7 +158,7 @@ public class EditorColumnSelectionTests
     public async Task Keyboard_PageDown_Extends_By_Viewport ()
     {
         await using AppFixture<EditorTestHost> fx =
-            new (() => new ("abcd\nabcd\nabcd\nabcd\nabcd\nabcd\nabcd\nabcd"), W, 4);
+            new (() => new EditorTestHost ("abcd\nabcd\nabcd\nabcd\nabcd\nabcd\nabcd\nabcd"), W, 4);
         fx.Top.Editor.SetFocus ();
         fx.Top.Editor.CaretOffset = 1;
 
@@ -176,14 +176,14 @@ public class EditorColumnSelectionTests
     [Fact]
     public async Task Keyboard_Left_Past_Anchor_Reverses_Selection ()
     {
-        await using AppFixture<EditorTestHost> fx = new (() => new ("abcde\nabcde\nabcde"), W, 4);
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("abcde\nabcde\nabcde"), W, 4);
         fx.Top.Editor.SetFocus ();
-        fx.Top.Editor.CaretOffset = 2;          // col 2
+        fx.Top.Editor.CaretOffset = 2; // col 2
 
-        fx.Injector.InjectKey (CsaW (Key.CursorRight), Direct);  // active col -> 3
+        fx.Injector.InjectKey (CsaW (Key.CursorRight), Direct); // active col -> 3
         fx.Injector.InjectKey (CsaW (Key.CursorLeft), Direct);
         fx.Injector.InjectKey (CsaW (Key.CursorLeft), Direct);
-        fx.Injector.InjectKey (CsaW (Key.CursorLeft), Direct);   // active col -> 0, left of anchor
+        fx.Injector.InjectKey (CsaW (Key.CursorLeft), Direct); // active col -> 0, left of anchor
         fx.Render ();
 
         Assert.True (fx.Top.Editor.HasSelection);
@@ -195,7 +195,7 @@ public class EditorColumnSelectionTests
     [Fact]
     public async Task Keyboard_Column_Then_Esc_Collapses_Carets ()
     {
-        await using AppFixture<EditorTestHost> fx = new (() => new ("abcd\nabcd\nabcd"), W, 4);
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("abcd\nabcd\nabcd"), W, 4);
         fx.Top.Editor.SetFocus ();
         fx.Top.Editor.CaretOffset = 1;
 
@@ -217,7 +217,7 @@ public class EditorColumnSelectionTests
     [Fact]
     public async Task Column_Type_Then_Single_Undo_Restores_All_Rows ()
     {
-        await using AppFixture<EditorTestHost> fx = new (() => new ("abcd\nabcd\nabcd"), W, 4);
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("abcd\nabcd\nabcd"), W, 4);
         fx.Top.Editor.SetFocus ();
         fx.Top.Editor.CaretOffset = 1;
 

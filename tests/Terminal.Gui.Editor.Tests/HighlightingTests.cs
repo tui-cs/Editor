@@ -1,10 +1,11 @@
 // CoPilot - claude-opus-4.6
 
+using System.Xml;
 using Terminal.Gui.Document;
 using Terminal.Gui.Drawing;
+using Terminal.Gui.Editor.Rendering;
 using Terminal.Gui.Highlighting;
 using Terminal.Gui.Highlighting.Xshd;
-using Terminal.Gui.Editor.Rendering;
 using Xunit;
 using Attribute = Terminal.Gui.Drawing.Attribute;
 
@@ -230,7 +231,7 @@ public class HighlightingTests
         using DocumentHighlighter highlighter = new (doc, csharp);
 
         Attribute defaultAttr = new (Color.White, Color.Black);
-        var themedKeyword = new Attribute (Color.Magenta, Color.Black);
+        Attribute themedKeyword = new (Color.Magenta, Color.Black);
 
         // Single delegate: returns the themed attribute when the scheme explicitly defines the
         // role, null otherwise. One arg is sufficient to fully enable role theming — there is no
@@ -238,7 +239,7 @@ public class HighlightingTests
         HighlightingColorizer colorizer = new (
             highlighter,
             defaultAttr,
-            role => role == VisualRole.CodeKeyword ? themedKeyword : (Attribute?)null);
+            role => role == VisualRole.CodeKeyword ? themedKeyword : null);
 
         VisualLineBuilder builder = new ();
         DocumentLine line = doc.GetLineByNumber (1);
@@ -260,14 +261,14 @@ public class HighlightingTests
         using DocumentHighlighter highlighter = new (doc, csharp);
 
         Attribute defaultAttr = new (Color.White, Color.Black);
-        var sentinel = new Attribute (Color.Magenta, Color.Black);
+        Attribute sentinel = new (Color.Magenta, Color.Black);
 
         // Resolver returns null for every role → scheme defines none explicitly → use xshd's
         // foreground over the editor (scheme) background — never the sentinel themed attribute.
         HighlightingColorizer colorizer = new (
             highlighter,
             defaultAttr,
-            _ => (Attribute?)null);
+            _ => null);
 
         VisualLineBuilder builder = new ();
         DocumentLine line = doc.GetLineByNumber (1);
@@ -315,7 +316,7 @@ public class HighlightingTests
                             </SyntaxDefinition>
                             """;
 
-        using System.Xml.XmlReader reader = System.Xml.XmlReader.Create (new StringReader (xshd));
+        using XmlReader reader = XmlReader.Create (new StringReader (xshd));
         IHighlightingDefinition def = HighlightingLoader.Load (reader, null!);
 
         // category="CodeKeyword" overrides XshdRoleMap's StringInterpolation → CodeString.
@@ -360,7 +361,7 @@ public class HighlightingTests
                             </SyntaxDefinition>
                             """;
 
-        using System.Xml.XmlReader reader = System.Xml.XmlReader.Create (new StringReader (xshd));
+        using XmlReader reader = XmlReader.Create (new StringReader (xshd));
         IHighlightingDefinition def = HighlightingLoader.Load (reader, null!);
 
         TextDocument doc = new ("foo bar");
@@ -368,7 +369,8 @@ public class HighlightingTests
         HighlightedLine highlighted = highlighter.HighlightLine (1);
 
         var themed = highlighted.Sections.Any (s => s.Color?.Role == VisualRole.CodeKeyword);
-        Assert.True (themed, "An unnamed <Keywords category=\"CodeKeyword\"> must materialize a color carrying that Role.");
+        Assert.True (themed,
+            "An unnamed <Keywords category=\"CodeKeyword\"> must materialize a color carrying that Role.");
     }
 
     [Fact]

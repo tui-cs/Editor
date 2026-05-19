@@ -240,7 +240,7 @@ public class EditorSingleLineTests
     public async Task SingleLine_Paste_Strips_Newlines ()
     {
         await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("ab"));
-        fx.Driver.Clipboard = new FakeClipboard (false, false);
+        fx.Driver.Clipboard = new FakeClipboard ();
         fx.Top.Editor.Multiline = false;
         fx.Top.Editor.SetFocus ();
         fx.Top.Editor.CaretOffset = 2;
@@ -335,7 +335,7 @@ public class EditorSingleLineTests
         fx.Render ();
 
         // After folding, UpdateContentSize skips hidden lines, reducing the width.
-        int widthAfterFold = fx.Top.Editor.GetContentSize ().Width;
+        var widthAfterFold = fx.Top.Editor.GetContentSize ().Width;
         Assert.True (widthAfterFold < 9,
             $"Content width after fold should decrease from 9, was {widthAfterFold}");
     }

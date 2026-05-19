@@ -23,7 +23,7 @@ public class EditorSnapshotTests
     [Fact]
     public async Task Plain_Document_Renders ()
     {
-        await using AppFixture<EditorTestHost> fx = new (() => new ("abcd\nefgh\nijkl"), W, H);
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("abcd\nefgh\nijkl"), W, H);
         fx.Top.Editor.SetFocus ();
         fx.Render ();
 
@@ -33,7 +33,7 @@ public class EditorSnapshotTests
     [Fact]
     public async Task Keyboard_Column_Selection_Highlights_Each_Row ()
     {
-        await using AppFixture<EditorTestHost> fx = new (() => new ("abcd\nabcd\nabcd"), W, H);
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("abcd\nabcd\nabcd"), W, H);
         fx.Top.Editor.SetFocus ();
         fx.Top.Editor.CaretOffset = 1;
 
@@ -50,7 +50,7 @@ public class EditorSnapshotTests
     [Fact]
     public async Task Snapshot_Render_Is_Deterministic ()
     {
-        await using AppFixture<EditorTestHost> fx = new (() => new ("abcd\nabcd\nabcd"), W, H);
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("abcd\nabcd\nabcd"), W, H);
         fx.Top.Editor.SetFocus ();
         fx.Top.Editor.CaretOffset = 1;
 

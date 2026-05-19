@@ -2,7 +2,6 @@
 
 using System.Collections.Immutable;
 using System.Drawing;
-using System.IO;
 using System.Text;
 using Ted;
 using Terminal.Gui.Configuration;
@@ -857,7 +856,8 @@ public class TedAppTests
             throw new IOException ("write failed");
         }
 
-        public override ValueTask WriteAsync (ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken = default)
+        public override ValueTask WriteAsync (ReadOnlyMemory<byte> buffer,
+            CancellationToken cancellationToken = default)
         {
             throw new IOException ("write failed");
         }

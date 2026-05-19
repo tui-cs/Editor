@@ -1,3 +1,4 @@
+using System.Globalization;
 using Terminal.Gui.App;
 using Terminal.Gui.Configuration;
 using Terminal.Gui.Document;
@@ -477,7 +478,7 @@ public partial class Editor
         // Determine the length of the grapheme cluster under the caret so wide runes are
         // replaced atomically. StringInfo.GetNextTextElementLength gives cluster length in chars.
         var remaining = _document.GetText (offset, lineEnd - offset);
-        var graphemeLength = System.Globalization.StringInfo.GetNextTextElementLength (remaining);
+        var graphemeLength = StringInfo.GetNextTextElementLength (remaining);
 
         // Use RemoveAndInsert so that the caret anchor (AfterInsertion) moves past the
         // inserted text. The default same-length Replace uses CharacterReplace mode which
@@ -573,7 +574,7 @@ public partial class Editor
     {
         // For keyboard dispatch, _previousCommandWasKill was set by OnKeyDown.
         // For InvokeCommand dispatch, fall back to _lastCommandWasKill (OnKeyDown was not called).
-        bool consecutiveKill = _previousCommandWasKill || _lastCommandWasKill;
+        var consecutiveKill = _previousCommandWasKill || _lastCommandWasKill;
         _lastCommandWasKill = false;
 
         if (ReadOnly || _document is null)
@@ -615,7 +616,7 @@ public partial class Editor
 
         var killed = _document.GetText (start, length);
 
-        if (!WriteKillToClipboard (killed, append: consecutiveKill, prepend: false))
+        if (!WriteKillToClipboard (killed, consecutiveKill, false))
         {
             return true;
         }
@@ -638,7 +639,7 @@ public partial class Editor
     private bool? CutToStartOfLine ()
     {
         // See CutToEndOfLine for rationale on the dual-path flag check.
-        bool consecutiveKill = _previousCommandWasKill || _lastCommandWasKill;
+        var consecutiveKill = _previousCommandWasKill || _lastCommandWasKill;
         _lastCommandWasKill = false;
 
         if (ReadOnly || _document is null)
@@ -665,7 +666,7 @@ public partial class Editor
 
         var killed = _document.GetText (start, length);
 
-        if (!WriteKillToClipboard (killed, append: false, prepend: consecutiveKill))
+        if (!WriteKillToClipboard (killed, false, consecutiveKill))
         {
             return true;
         }

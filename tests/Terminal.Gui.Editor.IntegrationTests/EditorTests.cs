@@ -381,7 +381,7 @@ public class EditorTests
     [Fact]
     public async Task CtrlShiftAlt_ColumnSelect_Extends_Right_And_Down_Then_Replaces_Column ()
     {
-        await using AppFixture<EditorTestHost> fx = new (() => new ("abcd\nabcd\nabcd"));
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("abcd\nabcd\nabcd"));
         fx.Top.Editor.SetFocus ();
         fx.Top.Editor.CaretOffset = 1;
 
@@ -401,7 +401,7 @@ public class EditorTests
     [Fact]
     public async Task CtrlShiftAlt_ColumnSelect_After_Type_Restarts_From_Caret_Not_Stale_Anchor ()
     {
-        await using AppFixture<EditorTestHost> fx = new (() => new ("abcd\nabcd\nabcd"));
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("abcd\nabcd\nabcd"));
         fx.Top.Editor.SetFocus ();
         fx.Top.Editor.CaretOffset = 1;
 

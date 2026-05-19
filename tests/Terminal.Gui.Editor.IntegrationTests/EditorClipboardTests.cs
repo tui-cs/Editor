@@ -22,13 +22,13 @@ public class EditorClipboardTests
     /// </summary>
     private static void EnsureFakeClipboard (AppFixture<EditorTestHost> fx)
     {
-        fx.Driver.Clipboard = new FakeClipboard (false, false);
+        fx.Driver.Clipboard = new FakeClipboard ();
     }
 
     [Fact]
     public async Task Copy_Paste_RoundTrip ()
     {
-        await using AppFixture<EditorTestHost> fx = new (() => new ("hello world"));
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("hello world"));
         EnsureFakeClipboard (fx);
         fx.Top.Editor.SetFocus ();
 
@@ -51,7 +51,7 @@ public class EditorClipboardTests
     [Fact]
     public async Task Copy_NoSelection_Copies_Current_Line ()
     {
-        await using AppFixture<EditorTestHost> fx = new (() => new ("abc"));
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("abc"));
         EnsureFakeClipboard (fx);
         fx.Top.Editor.SetFocus ();
         fx.Top.Editor.CaretOffset = 1;
@@ -67,7 +67,7 @@ public class EditorClipboardTests
     [Fact]
     public async Task Cut_RemovesSelection_And_SingleUndo ()
     {
-        await using AppFixture<EditorTestHost> fx = new (() => new ("hello world"));
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("hello world"));
         EnsureFakeClipboard (fx);
         fx.Top.Editor.SetFocus ();
 
@@ -89,7 +89,7 @@ public class EditorClipboardTests
     [Fact]
     public async Task Cut_NoSelection_IsNoOp ()
     {
-        await using AppFixture<EditorTestHost> fx = new (() => new ("abc"));
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("abc"));
         EnsureFakeClipboard (fx);
         fx.Top.Editor.SetFocus ();
         fx.Top.Editor.CaretOffset = 1;
@@ -103,7 +103,7 @@ public class EditorClipboardTests
     [Fact]
     public async Task Paste_ReplacesSelection ()
     {
-        await using AppFixture<EditorTestHost> fx = new (() => new ("hello world"));
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("hello world"));
         EnsureFakeClipboard (fx);
         fx.Top.Editor.SetFocus ();
 
@@ -123,7 +123,7 @@ public class EditorClipboardTests
     [Fact]
     public async Task Paste_MultiLine_PreservesLineEndings ()
     {
-        await using AppFixture<EditorTestHost> fx = new (() => new ("abc"));
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("abc"));
         EnsureFakeClipboard (fx);
         fx.Top.Editor.SetFocus ();
 
@@ -140,7 +140,7 @@ public class EditorClipboardTests
     [Fact]
     public async Task ReadOnly_Blocks_Cut ()
     {
-        await using AppFixture<EditorTestHost> fx = new (() => new ("secret"));
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("secret"));
         EnsureFakeClipboard (fx);
         fx.Top.Editor.SetFocus ();
         fx.Top.Editor.ReadOnly = true;
@@ -155,7 +155,7 @@ public class EditorClipboardTests
     [Fact]
     public async Task ReadOnly_Blocks_Paste ()
     {
-        await using AppFixture<EditorTestHost> fx = new (() => new ("original"));
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("original"));
         EnsureFakeClipboard (fx);
         fx.Top.Editor.SetFocus ();
         fx.Top.Editor.ReadOnly = true;
@@ -170,7 +170,7 @@ public class EditorClipboardTests
     [Fact]
     public async Task ReadOnly_Allows_Copy ()
     {
-        await using AppFixture<EditorTestHost> fx = new (() => new ("secret"));
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("secret"));
         EnsureFakeClipboard (fx);
         fx.Top.Editor.SetFocus ();
         fx.Top.Editor.ReadOnly = true;
@@ -187,7 +187,7 @@ public class EditorClipboardTests
     [Fact]
     public async Task Paste_SingleUndoStep ()
     {
-        await using AppFixture<EditorTestHost> fx = new (() => new ("AB"));
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("AB"));
         EnsureFakeClipboard (fx);
         fx.Top.Editor.SetFocus ();
 
@@ -207,7 +207,7 @@ public class EditorClipboardTests
     [Fact]
     public async Task Cut_NoOp_When_Clipboard_Unavailable ()
     {
-        await using AppFixture<EditorTestHost> fx = new (() => new ("hello world"));
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("hello world"));
 
         // Use a FakeClipboard that reports unsupported — simulates clipboard unavailability.
         fx.Driver.Clipboard = new FakeClipboard (false, true);
@@ -227,7 +227,7 @@ public class EditorClipboardTests
     [Fact]
     public async Task Copy_NoSelection_Copies_Current_Line_With_Newline ()
     {
-        await using AppFixture<EditorTestHost> fx = new (() => new ("alpha\nbeta\ngamma"));
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("alpha\nbeta\ngamma"));
         EnsureFakeClipboard (fx);
         fx.Top.Editor.SetFocus ();
 

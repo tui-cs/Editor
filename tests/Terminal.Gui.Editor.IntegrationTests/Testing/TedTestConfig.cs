@@ -1,6 +1,3 @@
-using System;
-using System.IO;
-
 namespace Terminal.Gui.Editor.IntegrationTests.Testing;
 
 /// <summary>

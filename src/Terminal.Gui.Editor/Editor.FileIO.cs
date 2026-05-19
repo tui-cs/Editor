@@ -1,8 +1,4 @@
-using System;
-using System.IO;
 using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
 using Terminal.Gui.Document;
 
 namespace Terminal.Gui.Editor;
@@ -97,7 +93,7 @@ public partial class Editor
         TextDocument document = new ();
         document.SetOwnerThread (Thread.CurrentThread);
 
-        bool priorReadOnly = ReadOnly;
+        var priorReadOnly = ReadOnly;
         Document = document;
         CaretOffset = 0;
 
@@ -107,7 +103,7 @@ public partial class Editor
 
         Encoding detected = encoding ?? new UTF8Encoding (false);
         var firstFlushDone = false;
-        var pending = new StringBuilder (SubsequentFlushChars + FirstFlushChars);
+        StringBuilder pending = new (SubsequentFlushChars + FirstFlushChars);
 
         void AppendOnUiThread (string text)
         {
@@ -132,14 +128,14 @@ public partial class Editor
         {
             pending.Append (chunk.Span);
 
-            int threshold = firstFlushDone ? SubsequentFlushChars : FirstFlushChars;
+            var threshold = firstFlushDone ? SubsequentFlushChars : FirstFlushChars;
 
             if (pending.Length < threshold)
             {
                 return;
             }
 
-            string text = pending.ToString ();
+            var text = pending.ToString ();
             pending.Clear ();
             firstFlushDone = true;
             await marshal (() => AppendOnUiThread (text)).ConfigureAwait (false);
@@ -158,43 +154,41 @@ public partial class Editor
                     cancellationToken),
                 cancellationToken).ConfigureAwait (false);
 
-            await marshal (
-                () =>
+            await marshal (() =>
+            {
+                if (!ReferenceEquals (_document, document))
                 {
-                    if (!ReferenceEquals (_document, document))
-                    {
-                        return;
-                    }
+                    return;
+                }
 
-                    if (pending.Length > 0)
-                    {
-                        document.Insert (document.TextLength, pending.ToString ());
-                        pending.Clear ();
-                    }
+                if (pending.Length > 0)
+                {
+                    document.Insert (document.TextLength, pending.ToString ());
+                    pending.Clear ();
+                }
 
-                    document.Encoding = detected;
+                document.Encoding = detected;
 
-                    // Loading is not an undoable edit (matches every editor); discard the transient append
-                    // history and mark the freshly loaded content as the pristine on-disk state.
-                    document.UndoStack.ClearAll ();
-                    document.UndoStack.MarkAsOriginalFile ();
+                // Loading is not an undoable edit (matches every editor); discard the transient append
+                // history and mark the freshly loaded content as the pristine on-disk state.
+                document.UndoStack.ClearAll ();
+                document.UndoStack.MarkAsOriginalFile ();
 
-                    ReadOnly = priorReadOnly;
-                    CaretOffset = 0;
-                    SetNeedsDraw ();
-                }).ConfigureAwait (false);
+                ReadOnly = priorReadOnly;
+                CaretOffset = 0;
+                SetNeedsDraw ();
+            }).ConfigureAwait (false);
         }
         catch
         {
             // Restore editability even on cancel/failure; keep whatever streamed in so far.
-            await marshal (
-                () =>
+            await marshal (() =>
+            {
+                if (ReferenceEquals (_document, document))
                 {
-                    if (ReferenceEquals (_document, document))
-                    {
-                        ReadOnly = priorReadOnly;
-                    }
-                }).ConfigureAwait (false);
+                    ReadOnly = priorReadOnly;
+                }
+            }).ConfigureAwait (false);
 
             throw;
         }

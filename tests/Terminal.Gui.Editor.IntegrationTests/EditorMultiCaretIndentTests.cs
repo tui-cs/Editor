@@ -25,7 +25,7 @@ public class EditorMultiCaretIndentTests
     [Fact]
     public async Task Tab_MultilineSelection_Plus_PointCaret_BlockIndents_Does_Not_Delete ()
     {
-        await using AppFixture<EditorTestHost> fx = new (() => new ("alpha\nbeta\ngamma\ndelta"));
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("alpha\nbeta\ngamma\ndelta"));
         fx.Top.Editor.SetFocus ();
 
         // Primary selection covers lines 1-3 (alpha/beta/gamma); an additional point
@@ -48,7 +48,8 @@ public class EditorMultiCaretIndentTests
     [Fact]
     public async Task ShiftTab_MultilineSelection_Plus_PointCaret_BlockUnindents ()
     {
-        await using AppFixture<EditorTestHost> fx = new (() => new ("\talpha\n\tbeta\n\tgamma\n\tdelta"));
+        await using AppFixture<EditorTestHost>
+            fx = new (() => new EditorTestHost ("\talpha\n\tbeta\n\tgamma\n\tdelta"));
         fx.Top.Editor.SetFocus ();
 
         // Primary selection covers indented lines 1-3; additional point caret on line 4.
@@ -68,10 +69,10 @@ public class EditorMultiCaretIndentTests
     [Fact]
     public async Task Tab_ColumnSelection_Preserves_PerCaret_Selections_After_BlockIndent ()
     {
-        await using AppFixture<EditorTestHost> fx = new (() => new ("abcd\nabcd\nabcd"));
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("abcd\nabcd\nabcd"));
         fx.Top.Editor.SetFocus ();
 
-        InjectAltDrag (fx, new (1, 0), new (3, 2));
+        InjectAltDrag (fx, new Point (1, 0), new Point (3, 2));
         fx.Injector.InjectKey (Key.Tab, Direct);
 
         Assert.Equal ("\tabcd\n\tabcd\n\tabcd", fx.Top.Editor.Document!.Text);
@@ -84,7 +85,7 @@ public class EditorMultiCaretIndentTests
     private static void InjectAltDrag (AppFixture<EditorTestHost> fx, Point press, Point drag)
     {
         fx.Injector.InjectMouse (
-            new ()
+            new Mouse
             {
                 ScreenPosition = press,
                 Flags = MouseFlags.LeftButtonPressed | MouseFlags.Alt,
@@ -93,7 +94,7 @@ public class EditorMultiCaretIndentTests
             Direct);
 
         fx.Injector.InjectMouse (
-            new ()
+            new Mouse
             {
                 ScreenPosition = drag,
                 Flags = MouseFlags.LeftButtonPressed | MouseFlags.PositionReport | MouseFlags.Alt,

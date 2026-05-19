@@ -2,7 +2,6 @@
 
 using System.Collections.Concurrent;
 using System.Text;
-using Terminal.Gui.Editor;
 using Xunit;
 
 namespace Terminal.Gui.Editor.Tests;

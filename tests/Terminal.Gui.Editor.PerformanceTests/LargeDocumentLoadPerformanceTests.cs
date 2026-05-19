@@ -1,6 +1,5 @@
 using System.Diagnostics;
 using System.Text;
-using Terminal.Gui.Document;
 using Terminal.Gui.Highlighting;
 using Xunit;
 
@@ -17,7 +16,7 @@ public class LargeDocumentLoadPerformanceTests
     [Fact]
     public async Task Editor_LoadAsync_10Mb_HighlightedSource_CompletesWellUnderBudget ()
     {
-        var sb = new StringBuilder (10 * 1024 * 1024 + 128);
+        StringBuilder sb = new (10 * 1024 * 1024 + 128);
 
         while (sb.Length < 10 * 1024 * 1024)
         {

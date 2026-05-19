@@ -2,7 +2,6 @@
 
 using Terminal.Gui.Document;
 using Terminal.Gui.Document.Search;
-using Terminal.Gui.Editor;
 using Xunit;
 
 namespace Terminal.Gui.Editor.Tests;

@@ -8,10 +8,9 @@ using Terminal.Gui.Highlighting;
 using Terminal.Gui.Input;
 using Terminal.Gui.Testing;
 using Terminal.Gui.Text;
-using Terminal.Gui.ViewBase;
-using Terminal.Gui.Editor;
 using Xunit;
 using Attribute = Terminal.Gui.Drawing.Attribute;
+using Color = Terminal.Gui.Drawing.Color;
 
 namespace Terminal.Gui.Editor.IntegrationTests;
 
@@ -232,18 +231,18 @@ public class EditorRenderingTests
         fx.Top.Editor.SetFocus ();
 
         fx.Injector.InjectMouse (
-            new ()
+            new Mouse
             {
-                ScreenPosition = new (1, 0),
+                ScreenPosition = new Point (1, 0),
                 Flags = MouseFlags.LeftButtonPressed | MouseFlags.Alt,
                 Timestamp = BaseTime
             },
             Direct);
 
         fx.Injector.InjectMouse (
-            new ()
+            new Mouse
             {
-                ScreenPosition = new (3, 2),
+                ScreenPosition = new Point (3, 2),
                 Flags = MouseFlags.LeftButtonPressed | MouseFlags.PositionReport | MouseFlags.Alt,
                 Timestamp = BaseTime.AddMilliseconds (20)
             },
@@ -389,28 +388,28 @@ public class EditorRenderingTests
 
         // xshd colors "public" via "Visibility", which XshdRoleMap maps to CodeKeyword.
         // Scheme A explicitly themes CodeKeyword magenta.
-        Terminal.Gui.Drawing.Color black = Terminal.Gui.Drawing.Color.Black;
-        Scheme schemeA = new (new Attribute (Terminal.Gui.Drawing.Color.White, black))
+        Color black = Color.Black;
+        Scheme schemeA = new (new Attribute (Color.White, black))
         {
-            CodeKeyword = new Attribute (Terminal.Gui.Drawing.Color.Magenta, black)
+            CodeKeyword = new Attribute (Color.Magenta, black)
         };
         fx.Top.Editor.SetScheme (schemeA);
         fx.Render ();
 
         Cell cell = fx.Driver.Contents![0, 0];
         Assert.Equal ("p", cell.Grapheme);
-        Assert.Equal (Terminal.Gui.Drawing.Color.Magenta, cell.Attribute!.Value.Foreground);
+        Assert.Equal (Color.Magenta, cell.Attribute!.Value.Foreground);
 
         // Swapping the scheme re-renders the same token with the new theme's color.
-        Scheme schemeB = new (new Attribute (Terminal.Gui.Drawing.Color.White, black))
+        Scheme schemeB = new (new Attribute (Color.White, black))
         {
-            CodeKeyword = new Attribute (Terminal.Gui.Drawing.Color.BrightGreen, black)
+            CodeKeyword = new Attribute (Color.BrightGreen, black)
         };
         fx.Top.Editor.SetScheme (schemeB);
         fx.Render ();
 
         cell = fx.Driver.Contents![0, 0];
-        Assert.Equal (Terminal.Gui.Drawing.Color.BrightGreen, cell.Attribute!.Value.Foreground);
+        Assert.Equal (Color.BrightGreen, cell.Attribute!.Value.Foreground);
     }
 
     [Fact]
@@ -551,7 +550,7 @@ public class EditorRenderingTests
             host.Editor.WordWrap = true;
 
             return host;
-        }, width: 10, height: 5);
+        }, 10, 5);
 
         fx.Top.Editor.SetFocus ();
         fx.Top.Editor.CaretOffset = 0;

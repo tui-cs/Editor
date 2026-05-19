@@ -48,9 +48,9 @@ public static class AnsiSnapshot
         ArgumentException.ThrowIfNullOrWhiteSpace (name);
 
         var actual = Canonicalize (driver.ToAnsi ());
-        string dir = SnapshotDir (callerFile);
+        var dir = SnapshotDir (callerFile);
         Directory.CreateDirectory (dir);
-        string path = Path.Combine (dir, name + ".ans");
+        var path = Path.Combine (dir, name + ".ans");
 
         if (UpdateRequested || !File.Exists (path))
         {
@@ -68,7 +68,7 @@ public static class AnsiSnapshot
             return;
         }
 
-        string actualPath = path + ".actual";
+        var actualPath = path + ".actual";
         WriteRaw (actualPath, actual);
 
         throw new XunitException (
@@ -90,14 +90,14 @@ public static class AnsiSnapshot
 
     private static string SnapshotDir (string callerFile)
     {
-        string? overrideDir = Environment.GetEnvironmentVariable ("SNAPSHOT_DIR");
+        var overrideDir = Environment.GetEnvironmentVariable ("SNAPSHOT_DIR");
 
         if (!string.IsNullOrWhiteSpace (overrideDir))
         {
             return overrideDir;
         }
 
-        string? sourceDir = Path.GetDirectoryName (callerFile);
+        var sourceDir = Path.GetDirectoryName (callerFile);
 
         if (string.IsNullOrEmpty (sourceDir))
         {
