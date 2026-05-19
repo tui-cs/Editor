@@ -2,7 +2,6 @@
 
 using Ted;
 using Terminal.Gui.Configuration;
-using Terminal.Gui.Views;
 using Xunit;
 using static Terminal.Gui.Configuration.ConfigurationManager;
 
