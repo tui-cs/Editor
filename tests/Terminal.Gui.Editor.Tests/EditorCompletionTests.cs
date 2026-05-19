@@ -481,8 +481,9 @@ public class EditorCompletionTests
     [Fact]
     public void Typing_Characters_While_Completion_Active_Filters_List ()
     {
-        // Simulates: document has "u", popup shows [using, unsafe, uint].
-        // User types "s" → document becomes "us", popup re-filters to [using, unsafe].
+        // Popup is open on prefix "u"; the user types "s". Driven through the real key
+        // path (HandleCompletionKey -> InsertTypedText -> insert + re-filter) rather
+        // than a hand-rolled Document.Insert, so it catches a break in that wiring.
         Editor editor = new ()
         {
             Document = new TextDocument ("u"),
@@ -490,20 +491,14 @@ public class EditorCompletionTests
         };
         editor.CaretOffset = 1;
 
-        // Open completion.
         editor.NotifyCompletionAfterInsert ();
         Assert.True (editor.IsCompletionActive);
 
-        // Simulate the Editor inserting "s" (as OnKeyDownNotHandled would).
-        editor.Document!.Insert (editor.CaretOffset, "s");
-        editor.CaretOffset = 2;
-
-        // Re-filter via NotifyCompletionAfterInsert.
-        editor.NotifyCompletionAfterInsert ();
+        Assert.True (editor.HandleCompletionKey (new Key ('s')));
+        Assert.Equal ("us", editor.Document!.Text);
         Assert.True (editor.IsCompletionActive);
 
-        // "us" prefix should match "using" and "unsafe" but not "uint".
-        // Verify by accepting — the accepted text should be one of the "us" matches.
+        // "us" matches "using" / "unsafe" but not "uint" — confirm via accept.
         editor.AcceptCompletion ();
         Assert.Contains (editor.Document!.Text, new[] { "using", "unsafe" });
     }
@@ -511,8 +506,8 @@ public class EditorCompletionTests
     [Fact]
     public void Typing_NonMatching_Char_While_Completion_Active_Dismisses ()
     {
-        // Simulates: document has "x", popup shows items for "x".
-        // User types "z" → document becomes "xz", no matches → popup dismissed.
+        // Popup open on "us"; typing "z" makes "usz", which matches nothing → dismiss.
+        // Driven through the real key path, not a hand-rolled Document.Insert.
         Editor editor = new ()
         {
             Document = new TextDocument ("us"),
@@ -523,11 +518,8 @@ public class EditorCompletionTests
         editor.NotifyCompletionAfterInsert ();
         Assert.True (editor.IsCompletionActive);
 
-        // Simulate inserting a character that breaks all matches.
-        editor.Document!.Insert (editor.CaretOffset, "z");
-        editor.CaretOffset = 3;
-
-        editor.NotifyCompletionAfterInsert ();
+        Assert.True (editor.HandleCompletionKey (new Key ('z')));
+        Assert.Equal ("usz", editor.Document!.Text);
         Assert.False (editor.IsCompletionActive);
     }
 
