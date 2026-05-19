@@ -49,20 +49,19 @@ public class EditorClipboardTests
     }
 
     [Fact]
-    public async Task Copy_NoSelection_IsNoOp ()
+    public async Task Copy_NoSelection_Copies_Current_Line ()
     {
         await using AppFixture<EditorTestHost> fx = new (() => new ("abc"));
         EnsureFakeClipboard (fx);
         fx.Top.Editor.SetFocus ();
         fx.Top.Editor.CaretOffset = 1;
 
-        // Copy with no selection — should be a no-op (nothing on clipboard).
+        // Copy with no selection — copies the current line (line-copy behaviour).
         fx.Injector.InjectKey (Key.C.WithCtrl, Direct);
 
-        // Paste should have nothing to paste.
-        fx.Injector.InjectKey (Key.V.WithCtrl, Direct);
-
-        Assert.Equal ("abc", fx.Top.Editor.Document?.Text);
+        // Clipboard should contain the entire line (single-line doc has no delimiter, so just "abc").
+        Assert.True (fx.App.Clipboard!.TryGetClipboardData (out var clip));
+        Assert.Equal ("abc", clip);
     }
 
     [Fact]
@@ -219,5 +218,52 @@ public class EditorClipboardTests
 
         // Text must be preserved because the clipboard write would have failed.
         Assert.Equal ("hello world", fx.Top.Editor.Document?.Text);
+    }
+
+    /// <summary>
+    ///     Issue #162: In Multiline=true mode, Copy with no selection should copy the current
+    ///     line including its newline delimiter.
+    /// </summary>
+    [Fact]
+    public async Task Copy_NoSelection_Copies_Current_Line_With_Newline ()
+    {
+        await using AppFixture<EditorTestHost> fx = new (() => new ("alpha\nbeta\ngamma"));
+        EnsureFakeClipboard (fx);
+        fx.Top.Editor.SetFocus ();
+
+        // Place caret on line 2 ("beta\n") with no selection.
+        fx.Top.Editor.CaretOffset = 7; // inside "beta"
+        Assert.False (fx.Top.Editor.HasSelection);
+
+        fx.Injector.InjectKey (Key.C.WithCtrl, Direct);
+
+        // Should copy "beta\n" (the whole line including its delimiter).
+        Assert.True (fx.App.Clipboard!.TryGetClipboardData (out var clip));
+        Assert.Equal ("beta\n", clip);
+    }
+
+    /// <summary>
+    ///     Issue #162: In Multiline=false mode, selecting the ⏎ glyph with Shift+Right and
+    ///     copying should place the newline character(s) on the clipboard.
+    /// </summary>
+    [Fact]
+    public async Task Copy_Selected_Newline_Glyph_In_SingleLine_Mode ()
+    {
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("this\nthat"));
+        EnsureFakeClipboard (fx);
+        fx.Top.Editor.Multiline = false;
+        fx.Top.Editor.SetFocus ();
+
+        // Move caret to end of "this" (offset 4), then Shift+Right to select the newline.
+        fx.Top.Editor.CaretOffset = 4;
+        fx.Injector.InjectKey (Key.CursorRight.WithShift, Direct);
+
+        Assert.True (fx.Top.Editor.HasSelection);
+        Assert.Equal ("\n", fx.Top.Editor.SelectedText);
+
+        fx.Injector.InjectKey (Key.C.WithCtrl, Direct);
+
+        Assert.True (fx.App.Clipboard!.TryGetClipboardData (out var clip));
+        Assert.Equal ("\n", clip);
     }
 }
