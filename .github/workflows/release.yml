@@ -141,7 +141,12 @@ jobs:
     env:
       VERSION: ${{ needs.resolve-version.outputs.version }}
     steps:
+      - name: Skip dispatch (no token configured)
+        if: ${{ secrets.CLET_DISPATCH_TOKEN == '' }}
+        run: echo "::warning::CLET_DISPATCH_TOKEN is not set; skipping downstream dispatch."
+
       - name: Dispatch to gui-cs/clet
+        if: ${{ secrets.CLET_DISPATCH_TOKEN != '' }}
         uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.CLET_DISPATCH_TOKEN }}
