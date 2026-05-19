@@ -1,6 +1,8 @@
 // Copilot - gpt-4.1
 
+using Terminal.Gui.Document;
 using Terminal.Gui.Drivers;
+using Terminal.Gui.Editor.Completion;
 using Terminal.Gui.Editor.IntegrationTests.Testing;
 using Terminal.Gui.Input;
 using Terminal.Gui.Testing;
@@ -300,5 +302,57 @@ public class EditorKillRingTests
         fx.Top.Editor.InvokeCommand (Command.CutToStartOfLine);
 
         Assert.Equal ("hello world", fx.Top.Editor.Document?.Text);
+    }
+
+    // ───────────────────── Completion breaks kill run ─────────────────────
+
+    [Fact]
+    public async Task CompletionConsumedKey_BreaksConsecutiveKillRun ()
+    {
+        // When HandleCompletionKey consumes a key (returns true), it must clear _lastCommandWasKill
+        // so the next kill command (via InvokeCommand) does NOT append to clipboard.
+        await using AppFixture<EditorTestHost> fx = new (() => new ("abc\ndef"));
+        EnsureFakeClipboard (fx);
+        Editor editor = fx.Top.Editor;
+        editor.SetFocus ();
+        editor.CompletionProvider = new KillRingTestCompletionProvider ();
+        editor.CaretOffset = 0;
+
+        // First CutToEndOfLine via InvokeCommand: "abc" cut, clipboard = "abc"
+        editor.InvokeCommand (Command.CutToEndOfLine);
+        Assert.Equal ("\ndef", editor.Document?.Text);
+
+        string? data = null;
+        Assert.True (fx.App.Clipboard?.TryGetClipboardData (out data));
+        Assert.Equal ("abc", data);
+
+        // Ctrl+Space goes through OnKeyDown → HandleCompletionKey → returns true (ShouldTrigger).
+        // This should break the consecutive-kill run.
+        fx.Injector.InjectKey (Key.Space.WithCtrl, new InputInjectionOptions { Mode = InputInjectionMode.Direct });
+
+        // Dismiss completion programmatically (not via keyboard).
+        editor.CompletionProvider = null;
+        editor.CompletionProvider = new KillRingTestCompletionProvider ();
+
+        // Second CutToEndOfLine — caret at 0, text = "\ndef", cuts "\n".
+        editor.InvokeCommand (Command.CutToEndOfLine);
+
+        Assert.True (fx.App.Clipboard?.TryGetClipboardData (out data));
+
+        // Bug: clipboard = "abc\n" (appended because _lastCommandWasKill was never cleared)
+        // Fix: clipboard = "\n" (replaced because Ctrl+Space broke the run)
+        Assert.Equal ("\n", data);
+    }
+
+    /// <summary>Simple completion provider for kill-ring interaction tests.</summary>
+    private sealed class KillRingTestCompletionProvider : IEditorCompletionProvider
+    {
+        public IReadOnlyList<CompletionItem> GetCompletions (TextDocument document, int caretOffset, string prefix)
+        {
+            // Always return items so the popup stays open regardless of prefix.
+            return [new CompletionItem { Label = "ghi" }, new CompletionItem { Label = "ghijk" }];
+        }
+
+        public bool ShouldTrigger (Key key) => key == Key.Space.WithCtrl;
     }
 }

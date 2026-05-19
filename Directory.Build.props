@@ -27,7 +27,7 @@
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
 
     <!-- Pinned Terminal.Gui version. CI / release workflows can override via -p:TerminalGuiVersion=<x>. -->
-    <TerminalGuiVersion Condition="'$(TerminalGuiVersion)' == ''">2.1.1-develop.98</TerminalGuiVersion>
+    <TerminalGuiVersion Condition="'$(TerminalGuiVersion)' == ''">2.2.0-rc.4</TerminalGuiVersion>
   </PropertyGroup>
 
   <ItemGroup>

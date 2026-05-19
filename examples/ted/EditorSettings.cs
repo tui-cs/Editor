@@ -29,6 +29,9 @@ internal static class EditorSettings
     [ConfigurationProperty (Scope = typeof (TedSettingsScope))]
     public static bool AutoIndent { get; set; } = true;
 
+    [ConfigurationProperty (Scope = typeof (TedSettingsScope))]
+    public static bool AutoComplete { get; set; }
+
     /// <summary>
     ///     Loads settings from the config file at <see cref="GetConfigPath" />.
     ///     Called once at startup before constructing <see cref="TedApp" />.
@@ -56,6 +59,7 @@ internal static class EditorSettings
             IndentSize = ReadInt (text, "EditorSettings.IndentSize", IndentSize);
             ConvertTabsToSpaces = ReadBool (text, "EditorSettings.ConvertTabsToSpaces", ConvertTabsToSpaces);
             AutoIndent = ReadBool (text, "EditorSettings.AutoIndent", AutoIndent);
+            AutoComplete = ReadBool (text, "EditorSettings.AutoComplete", AutoComplete);
         }
         catch (Exception ex)
         {
@@ -82,7 +86,8 @@ internal static class EditorSettings
                 ["EditorSettings.ShowTabs"] = ToJson (ShowTabs),
                 ["EditorSettings.IndentSize"] = IndentSize.ToString (),
                 ["EditorSettings.ConvertTabsToSpaces"] = ToJson (ConvertTabsToSpaces),
-                ["EditorSettings.AutoIndent"] = ToJson (AutoIndent)
+                ["EditorSettings.AutoIndent"] = ToJson (AutoIndent),
+                ["EditorSettings.AutoComplete"] = ToJson (AutoComplete)
             };
 
             List<string> toInsert = [];
