@@ -364,21 +364,35 @@ public partial class Editor
             return;
         }
 
-        // Drop the previous popover (if any) — a fresh one is built each time so the
-        // list rebuilds. Reentrant-safe so the VisibleChanged teardown can't NRE here.
-        DisposeCompletionPopover ();
-
-        // Build the label list for the ListView.
         ObservableCollection<string> labels = new (_completionItems.Select (i => i.Label));
 
         // Cap visible height at 10 items to avoid oversized popups.
         var visibleCount = Math.Min (_completionItems.Count, 10);
 
+        // Width in display columns, not char count — wide/CJK graphemes are 2 cells.
+        var width = _completionItems.Max (i => Math.Max (0, i.Label.GetColumns ())) + 2;
+
+        // Filter-as-you-type refresh: reuse the live popover/ListView rather than
+        // disposing and rebuilding (Popover + ListView + 3 event subscriptions) on
+        // every keystroke — that flickered and churned allocations.
+        if (_completionListView is not null && _completionPopover is not null)
+        {
+            _completionListView.Source = new ListWrapper<string> (labels);
+            _completionListView.Width = width;
+            _completionListView.Height = visibleCount;
+            _completionListView.SelectedItem = CompletionSelectedIndex;
+
+            Point caret = GetCaretScreenPosition ();
+            _completionPopover.MakeVisible (new Point (caret.X, caret.Y + 1));
+
+            return;
+        }
+
+        // First show — build the ListView + Popover and wire events once.
         _completionListView = new ListView
         {
             Source = new ListWrapper<string> (labels),
-            // Width in display columns, not char count — wide/CJK graphemes are 2 cells.
-            Width = _completionItems.Max (i => Math.Max (0, i.Label.GetColumns ())) + 2,
+            Width = width,
             Height = visibleCount,
             TabStop = TabBehavior.NoStop
         };
@@ -391,19 +405,20 @@ public partial class Editor
         _completionListView.MouseBindings.ReplaceCommands (MouseFlags.LeftButtonClicked, Command.Accept);
         _completionListView.SelectedItem = CompletionSelectedIndex;
 
-        IReadOnlyList<CompletionItem> capturedItems = _completionItems;
-
         _completionPopover = new Popover<ListView, CompletionItem?> (_completionListView)
         {
             Target = new WeakReference<View> (this),
+
+            // Reference the live _completionItems (not a captured snapshot) so the
+            // in-place refresh above stays consistent.
             ResultExtractor = lv =>
             {
-                if (lv.SelectedItem is not { } idx || idx < 0 || idx >= capturedItems.Count)
+                if (lv.SelectedItem is not { } idx || idx < 0 || idx >= _completionItems.Count)
                 {
                     return null;
                 }
 
-                return capturedItems[idx];
+                return _completionItems[idx];
             },
             TabStop = TabBehavior.NoStop
         };
@@ -417,7 +432,7 @@ public partial class Editor
         _completionPopover.MakeVisible (new Point (caretScreen.X, caretScreen.Y + 1));
 
         // The focused ListView's Up/Down move its selection; mirror that into
-        // _completionSelectedIndex so AcceptCompletion inserts the right item.
+        // CompletionSelectedIndex so AcceptCompletion inserts the right item.
         // Accept/dismiss keys are resolved separately in HandleCompletionKey.
         _completionListView.ValueChanged += (_, args) =>
         {

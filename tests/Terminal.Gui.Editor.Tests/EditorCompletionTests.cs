@@ -710,6 +710,46 @@ public class EditorCompletionTests
         Assert.Equal ("WriteLine", editor.Document!.Text);
     }
 
+    // #9b: filter-as-you-type must reuse the live popover, not dispose+rebuild it on
+    // every keystroke (flicker/churn). The active popover must be the SAME instance
+    // after a re-filter, and the list must actually narrow.
+    [Fact]
+    public void Filter_Refresh_Reuses_Same_Popover_Instance ()
+    {
+        using IApplication app = Application.Create ();
+        app.Init (DriverRegistry.Names.ANSI);
+        Runnable top = new ();
+
+        Editor editor = new ()
+        {
+            Width = Dim.Fill (),
+            Height = Dim.Fill (),
+            Document = new TextDocument ("u"),
+            CompletionProvider = new MultiWordCompletionProvider ("using", "unsafe", "uint")
+        };
+        top.Add (editor);
+        app.Begin (top);
+
+        editor.CaretOffset = 1;
+        editor.NotifyCompletionAfterInsert ();
+        Assert.True (editor.IsCompletionActive);
+        app.LayoutAndDraw (true);
+        View popover1 = (View)app.Popovers!.GetActivePopover ()!;
+
+        // Type 's' → re-filter "u" → "us". Must reuse the popover, not rebuild it.
+        editor.Document!.Insert (editor.CaretOffset, "s");
+        editor.CaretOffset = 2;
+        editor.NotifyCompletionAfterInsert ();
+        Assert.True (editor.IsCompletionActive);
+        View popover2 = (View)app.Popovers!.GetActivePopover ()!;
+
+        Assert.Same (popover1, popover2);
+
+        // The list actually re-filtered: "us" matches using/unsafe, not uint.
+        editor.AcceptCompletion ();
+        Assert.Contains (editor.Document!.Text, new[] { "using", "unsafe" });
+    }
+
     /// <summary>Provider whose single item has a descriptive Label distinct from InsertText.</summary>
     private sealed class DistinctInsertTextProvider : IEditorCompletionProvider
     {
