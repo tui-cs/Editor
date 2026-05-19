@@ -1,4 +1,3 @@
-// Claude - claude-sonnet-4-5
 // prompt — single-line Editor example. Captures command-line text, lets the user edit it,
 // outputs to stdout on Enter, exits silently on Esc.
 
