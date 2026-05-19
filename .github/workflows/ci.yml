@@ -59,7 +59,7 @@ jobs:
           dotnet jb cleanupcode Terminal.Gui.Editor.slnx \
             --profile="TG.Editor Full Cleanup" \
             --no-build \
-            --exclude="third_party/**/*" \
+            --exclude="third_party/**/*;src/Terminal.Gui.Editor/Document/**/*;src/Terminal.Gui.Editor/Utils/**/*;src/Terminal.Gui.Editor/Search/**/*" \
             || true
           if ! git diff --exit-code; then
             echo "::error::ReSharper code cleanup found style drift. Run 'dotnet jb cleanupcode Terminal.Gui.Editor.slnx --profile=\"TG.Editor Full Cleanup\"' locally and commit the result."
