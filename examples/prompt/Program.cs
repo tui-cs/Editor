@@ -9,20 +9,20 @@ using Terminal.Gui.Input;
 using Terminal.Gui.ViewBase;
 using Terminal.Gui.Views;
 
-var initialText = string.Join (' ', args);
+string initialText = string.Join (' ', args);
 string? result = null;
 
 using IApplication app = Application.Create ();
 app.Init ();
 
-var window = new Window
+Window window = new ()
 {
     Title = "prompt",
     Width = Dim.Fill (),
     Height = Dim.Fill ()
 };
 
-var editor = new Editor
+Editor editor = new ()
 {
     Multiline = false,
     X = 0,
