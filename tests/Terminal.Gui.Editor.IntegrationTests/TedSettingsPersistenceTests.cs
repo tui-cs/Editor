@@ -2,6 +2,7 @@
 
 using System.Drawing;
 using System.Reflection;
+using System.Text.Json.Nodes;
 using Ted;
 using Terminal.Gui.Editor.IntegrationTests.Testing;
 using Terminal.Gui.Input;
@@ -59,62 +60,16 @@ public class TedSettingsPersistenceTests
         Assert.Contains ("\"EditorSettings.WordWrap\": true", File.ReadAllText (scope.ConfigPath));
     }
 
-    [Fact]
-    public void Load_TedApp_Applies_Persisted_Settings ()
-    {
-        using ConfigPathScope scope = new ();
-
-        // Write a config file with non-default values
-        var dir = Path.GetDirectoryName (scope.ConfigPath);
-        Assert.NotNull (dir);
-        Directory.CreateDirectory (dir);
-        File.WriteAllText (
-            scope.ConfigPath,
-            """
-            {
-              "EditorSettings.WordWrap": true,
-              "EditorSettings.ShowTabs": true,
-              "EditorSettings.LineNumbers": false,
-              "EditorSettings.IndentSize": 2
-            }
-            """);
-
-        // Load settings and construct TedApp — simulates real app startup
-        EditorSettings.Load (scope.ConfigPath);
-        TedApp app = new ();
-
-        // Assert via TedApp.Editor instance properties (not statics)
-        Assert.True (app.Editor.WordWrap);
-        Assert.True (app.Editor.ShowTabs);
-        Assert.False (app.Editor.GutterOptions.HasFlag (GutterOptions.LineNumbers));
-        Assert.Equal (2, app.Editor.IndentationSize);
-    }
-
-    [Fact]
-    public void Load_Skips_Commented_Out_Settings ()
-    {
-        using ConfigPathScope scope = new ();
-
-        var dir = Path.GetDirectoryName (scope.ConfigPath);
-        Assert.NotNull (dir);
-        Directory.CreateDirectory (dir);
-        File.WriteAllText (
-            scope.ConfigPath,
-            """
-            {
-              // "EditorSettings.WordWrap": true,
-              "EditorSettings.WordWrap": false,
-              // "EditorSettings.IndentSize": 99,
-              "EditorSettings.IndentSize": 3
-            }
-            """);
-
-        EditorSettings.Load (scope.ConfigPath);
-        TedApp app = new ();
-
-        Assert.False (app.Editor.WordWrap, "Should use active value (false), not commented value (true)");
-        Assert.Equal (3, app.Editor.IndentationSize);
-    }
+    // NOTE: There is deliberately no "ConfigurationManager applies ted.config.json to the Editor"
+    // end-to-end test here. That exercises Terminal.Gui's ConfigurationManager (CM) — not ted code
+    // — and CM's [ConfigurationProperty] discovery + load/apply is process-global. In this shared
+    // multi-test host the discovery runs (triggered by some earlier test's Application) before the
+    // `ted` assembly's EditorSettings type is registered, so a CM round-trip here is inherently
+    // order-dependent/flaky (CLAUDE.md: "don't test the framework"; isolate global state). ted's
+    // own contract — that Save() writes the exact shape CM requires (nested under "AppSettings",
+    // AppSettingsScope) — is covered deterministically by
+    // SaveViewSettings_Preserves_Other_TopLevel_Keys_And_Nests_Under_AppSettings. CM's load/apply
+    // of AppSettingsScope is covered by Terminal.Gui's own ConfigurationManager tests.
 
     [Fact]
     public async Task ViewMenu_WordWrap_Toggle_Creates_ConfigFile ()
@@ -282,13 +237,17 @@ public class TedSettingsPersistenceTests
     }
 
     [Fact]
-    public void SaveViewSettings_Inserts_Comma_Before_Trailing_Comment_When_Appending_Settings ()
+    public void SaveViewSettings_Preserves_Other_TopLevel_Keys_And_Nests_Under_AppSettings ()
     {
         using ConfigPathScope scope = new ();
         var configDirectory = Path.GetDirectoryName (scope.ConfigPath);
         Assert.NotNull (configDirectory);
         Directory.CreateDirectory (configDirectory);
-        File.WriteAllText (scope.ConfigPath, "{\n  \"Unrelated\": 1 // note\n}\n");
+
+        // Unrelated top-level data + a legacy flat key (pre-CM format) that must be migrated away.
+        File.WriteAllText (
+            scope.ConfigPath,
+            "{\n  \"Theme\": \"Dark\",\n  \"EditorSettings.WordWrap\": false\n}\n");
 
         TedApp app = new ();
         app.Editor.WordWrap = true;
@@ -296,8 +255,14 @@ public class TedSettingsPersistenceTests
         InvokeSaveViewSettings (app);
 
         var text = File.ReadAllText (scope.ConfigPath);
-        Assert.Contains ("\"Unrelated\": 1, // note", text);
-        Assert.Contains ("\"EditorSettings.WordWrap\": true", text);
+        JsonNode root = JsonNode.Parse (text)!;
+
+        // Unrelated key preserved; legacy flat key migrated away; ted settings nested under
+        // "AppSettings" (the shape ConfigurationManager reads for AppSettingsScope).
+        Assert.Equal ("Dark", (string?)root["Theme"]);
+        Assert.Null (root["EditorSettings.WordWrap"]);
+        JsonNode appSettings = Assert.IsType<JsonObject> (root["AppSettings"]);
+        Assert.True ((bool)appSettings["EditorSettings.WordWrap"]!);
     }
 
     [Fact]
@@ -321,29 +286,6 @@ public class TedSettingsPersistenceTests
 
         dialog.ApplyTo (app.Editor);
         Assert.True (app.Editor.IndentationSize >= 1);
-    }
-
-    [Fact]
-    public void Load_Ignores_Key_Embedded_In_String_Value ()
-    {
-        // Regression: a line like "note": "... \"EditorSettings.WordWrap\": true ..."
-        // must NOT fool ReadBool into thinking WordWrap is true.
-        using ConfigPathScope scope = new ();
-
-        var dir = Path.GetDirectoryName (scope.ConfigPath);
-        Assert.NotNull (dir);
-        Directory.CreateDirectory (dir);
-        File.WriteAllText (
-            scope.ConfigPath,
-            "{\n"
-            + "  \"note\": \"see \\\"EditorSettings.WordWrap\\\": true for docs\",\n"
-            + "  \"EditorSettings.WordWrap\": false\n"
-            + "}\n");
-
-        EditorSettings.Load (scope.ConfigPath);
-        TedApp app = new ();
-
-        Assert.False (app.Editor.WordWrap, "Should use actual property value (false), not embedded string match");
     }
 
     [Fact]
@@ -378,8 +320,7 @@ public class TedSettingsPersistenceTests
     {
         var home =
             Environment.GetEnvironmentVariable ("HOME")
-            ?? Environment.GetFolderPath (Environment.SpecialFolder.UserProfile)
-            ?? Directory.GetCurrentDirectory ();
+            ?? Environment.GetFolderPath (Environment.SpecialFolder.UserProfile);
 
         return Path.Combine (home, ".tui", "ted.config.json");
     }
@@ -395,10 +336,10 @@ public class TedSettingsPersistenceTests
 
     private sealed class ConfigPathScope : IDisposable
     {
-        private readonly string _tempRoot;
-        private readonly string? _originalHome;
-        private readonly bool _hadExistingConfig;
         private readonly string? _existingConfigContent;
+        private readonly bool _hadExistingConfig;
+        private readonly string? _originalHome;
+        private readonly string _tempRoot;
 
         internal ConfigPathScope ()
         {
@@ -422,7 +363,9 @@ public class TedSettingsPersistenceTests
 
         public void Dispose ()
         {
-            // Reset EditorSettings statics to defaults (tests may have mutated them via Load)
+            // Explicitly restore the EditorSettings statics to their declared defaults. CM is the
+            // read authority and may have mutated them at app startup elsewhere; reset so this
+            // serialized collection stays deterministic regardless of CM internals.
             EditorSettings.LineNumbers = true;
             EditorSettings.FoldIndicators = true;
             EditorSettings.WordWrap = false;
@@ -430,6 +373,8 @@ public class TedSettingsPersistenceTests
             EditorSettings.IndentSize = 4;
             EditorSettings.ConvertTabsToSpaces = true;
             EditorSettings.AutoIndent = true;
+            EditorSettings.Scrollbars = true;
+            EditorSettings.AutoComplete = false;
 
             if (_hadExistingConfig)
             {

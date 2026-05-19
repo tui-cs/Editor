@@ -32,6 +32,7 @@
   <Project Path="examples/prompt/prompt.csproj" />
   <Project Path="examples/ted/ted.csproj" />
   <Project Path="src/Terminal.Gui.Editor/Terminal.Gui.Editor.csproj" />
+  <Project Path="tests/Terminal.Gui.Editor.ConfigTests/Terminal.Gui.Editor.ConfigTests.csproj" />
   <Project Path="tests/Terminal.Gui.Editor.IntegrationTests/Terminal.Gui.Editor.IntegrationTests.csproj" />
   <Project Path="tests/Terminal.Gui.Editor.PerformanceTests/Terminal.Gui.Editor.PerformanceTests.csproj" />
   <Project Path="tests/Terminal.Gui.Editor.Tests/Terminal.Gui.Editor.Tests.csproj" />

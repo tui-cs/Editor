@@ -95,8 +95,8 @@ public partial class Editor
 
                     break;
 
-                // Unknown commands (e.g. from a custom ContextMenu) are left untouched
-                // so the caller's intentional Enabled state is preserved.
+                    // Unknown commands (e.g. from a custom ContextMenu) are left untouched
+                    // so the caller's intentional Enabled state is preserved.
             }
         }
     }

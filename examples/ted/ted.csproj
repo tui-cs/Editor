@@ -13,6 +13,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="Terminal.Gui.Editor.ConfigTests" />
     <InternalsVisibleTo Include="Terminal.Gui.Editor.IntegrationTests" />
   </ItemGroup>
 

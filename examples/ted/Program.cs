@@ -1,16 +1,18 @@
-// Claude - claude-opus-4-7
-// ted — Terminal.Gui.Editor demo. Menubar + Editor + StatusBar, single-file.
-// See Issue #7 and specs/00-plan.md §12 for the planned demo surface.
+// ted — Terminal.Gui.Editor demo.
 
 using Ted;
 using Terminal.Gui.App;
 using Terminal.Gui.Configuration;
 
+// ReSharper disable AccessToDisposedClosure
+
 Hosting.ConfigureLogging ();
 Hosting.EnableTracing ();
 
+// ConfigurationManager is the single authority for reading settings: Enable (All) loads
+// ~/.tui/ted.config.json (ConfigLocations.AppHome) and applies the values to the
+// EditorSettings [ConfigurationProperty] statics before TedApp is constructed.
 ConfigurationManager.Enable (ConfigLocations.All);
-EditorSettings.Load ();
 
 using IApplication app = Application.Create ();
 

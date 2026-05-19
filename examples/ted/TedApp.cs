@@ -24,12 +24,12 @@ public sealed partial class TedApp : Window
     private const int MaximumAutomaticFoldingDocumentLength = 1_000_000;
 
     private readonly BraceFoldingStrategy _braceFoldingStrategy;
-    private readonly Shortcut _fileNameShortcut;
-    private readonly MenuItem _previewMarkdownMenuItem;
 
     // Per-instance config path. Defaults to the real ~/.tui location; tests inject a temp path so they
     // never touch the developer's real config (and stay parallel-safe — no env/static mutation).
     private readonly string _configPath;
+    private readonly Shortcut _fileNameShortcut;
+    private readonly MenuItem _previewMarkdownMenuItem;
 
     /// <summary>Initializes a new <see cref="TedApp" />.</summary>
     /// <param name="readOnly">Opens the editor read-only.</param>
@@ -271,7 +271,8 @@ public sealed partial class TedApp : Window
                 {
                     Action = () =>
                     {
-                        var shouldEnableScrollbars = !Editor.ViewportSettings.HasFlag (ViewportSettingsFlags.HasScrollBars);
+                        var shouldEnableScrollbars =
+                            !Editor.ViewportSettings.HasFlag (ViewportSettingsFlags.HasScrollBars);
 
                         if (shouldEnableScrollbars)
                         {

@@ -1,146 +1,101 @@
-using System.Text.RegularExpressions;
+using System.Text.Json;
+using System.Text.Json.Nodes;
 using Terminal.Gui.App;
 using Terminal.Gui.Configuration;
 
 namespace Ted;
 
-internal sealed class TedSettingsScope;
-
+/// <summary>
+///     ted's persisted editor settings. These are real Terminal.Gui configuration properties
+///     (<see cref="ConfigurationPropertyAttribute" />, <see cref="AppSettingsScope" />), so
+///     <see cref="ConfigurationManager" /> is the single authority for <b>reading</b> them: enabling
+///     CM (see <c>Program.cs</c>) loads <c>~/.tui/ted.config.json</c> and applies the values to these
+///     static properties. ted does no parsing of its own.
+///     <para>
+///         <see cref="Save(string)" /> is hand-rolled only because Terminal.Gui exposes no API for
+///         writing a user config file. It emits the exact shape CM reads: app-defined
+///         (<see cref="AppSettingsScope" />) properties live nested under a top-level
+///         <c>"AppSettings"</c> object, keyed <c>DeclaringType.PropertyName</c>. Other top-level keys
+///         a user may have added (e.g. <c>"Theme"</c>) are preserved; JSONC comments are not.
+///         Any legacy flat root-level <c>"EditorSettings.*"</c> keys from the pre-CM format are
+///         dropped on save (migration).
+///     </para>
+/// </summary>
 internal static class EditorSettings
 {
-    [ConfigurationProperty (Scope = typeof (TedSettingsScope))]
+    [ConfigurationProperty (Scope = typeof (AppSettingsScope))]
     public static bool LineNumbers { get; set; } = true;
 
-    [ConfigurationProperty (Scope = typeof (TedSettingsScope))]
+    [ConfigurationProperty (Scope = typeof (AppSettingsScope))]
     public static bool FoldIndicators { get; set; } = true;
 
-    [ConfigurationProperty (Scope = typeof (TedSettingsScope))]
+    [ConfigurationProperty (Scope = typeof (AppSettingsScope))]
     public static bool WordWrap { get; set; }
 
-    [ConfigurationProperty (Scope = typeof (TedSettingsScope))]
+    [ConfigurationProperty (Scope = typeof (AppSettingsScope))]
     public static bool ShowTabs { get; set; }
 
-    [ConfigurationProperty (Scope = typeof (TedSettingsScope))]
+    [ConfigurationProperty (Scope = typeof (AppSettingsScope))]
     public static int IndentSize { get; set; } = 4;
 
-    [ConfigurationProperty (Scope = typeof (TedSettingsScope))]
+    [ConfigurationProperty (Scope = typeof (AppSettingsScope))]
     public static bool ConvertTabsToSpaces { get; set; } = true;
 
-    [ConfigurationProperty (Scope = typeof (TedSettingsScope))]
+    [ConfigurationProperty (Scope = typeof (AppSettingsScope))]
     public static bool AutoIndent { get; set; } = true;
 
-    [ConfigurationProperty (Scope = typeof (TedSettingsScope))]
+    [ConfigurationProperty (Scope = typeof (AppSettingsScope))]
     public static bool Scrollbars { get; set; } = true;
 
-    [ConfigurationProperty (Scope = typeof (TedSettingsScope))]
+    [ConfigurationProperty (Scope = typeof (AppSettingsScope))]
     public static bool AutoComplete { get; set; }
-
-    /// <summary>
-    ///     Loads settings from the config file at <see cref="GetConfigPath" />.
-    ///     Called once at startup before constructing <see cref="TedApp" />.
-    /// </summary>
-    internal static void Load ()
-    {
-        Load (GetConfigPath ());
-    }
-
-    internal static void Load (string path)
-    {
-        if (!File.Exists (path))
-        {
-            return;
-        }
-
-        try
-        {
-            var text = File.ReadAllText (path);
-
-            LineNumbers = ReadBool (text, "EditorSettings.LineNumbers", LineNumbers);
-            FoldIndicators = ReadBool (text, "EditorSettings.FoldIndicators", FoldIndicators);
-            WordWrap = ReadBool (text, "EditorSettings.WordWrap", WordWrap);
-            ShowTabs = ReadBool (text, "EditorSettings.ShowTabs", ShowTabs);
-            IndentSize = ReadInt (text, "EditorSettings.IndentSize", IndentSize);
-            ConvertTabsToSpaces = ReadBool (text, "EditorSettings.ConvertTabsToSpaces", ConvertTabsToSpaces);
-            AutoIndent = ReadBool (text, "EditorSettings.AutoIndent", AutoIndent);
-            AutoComplete = ReadBool (text, "EditorSettings.AutoComplete", AutoComplete);
-            Scrollbars = ReadBool (text, "EditorSettings.Scrollbars", Scrollbars);
-        }
-        catch (Exception ex)
-        {
-            Logging.Error ($"EditorSettings.Load: {ex.GetType ().Name}: {ex.Message}");
-        }
-    }
-
-    internal static void Save ()
-    {
-        Save (GetConfigPath ());
-    }
 
     internal static void Save (string path)
     {
         try
         {
-            EnsureConfigFile (path);
-            var text = File.ReadAllText (path);
-            Dictionary<string, string> entries = new ()
+            JsonObject root = ReadRoot (path);
+
+            // Migration: drop legacy flat root-level "EditorSettings.*" keys (the pre-CM
+            // hand-rolled format). CM reads ted's settings only from the "AppSettings" object.
+            foreach (var legacyKey in root
+                         .Where (kvp => kvp.Key.StartsWith ("EditorSettings.", StringComparison.Ordinal))
+                         .Select (kvp => kvp.Key)
+                         .ToList ())
             {
-                ["EditorSettings.LineNumbers"] = ToJson (LineNumbers),
-                ["EditorSettings.FoldIndicators"] = ToJson (FoldIndicators),
-                ["EditorSettings.WordWrap"] = ToJson (WordWrap),
-                ["EditorSettings.ShowTabs"] = ToJson (ShowTabs),
-                ["EditorSettings.IndentSize"] = IndentSize.ToString (),
-                ["EditorSettings.ConvertTabsToSpaces"] = ToJson (ConvertTabsToSpaces),
-                ["EditorSettings.AutoIndent"] = ToJson (AutoIndent),
-                ["EditorSettings.AutoComplete"] = ToJson (AutoComplete),
-                ["EditorSettings.Scrollbars"] = ToJson (Scrollbars)
-            };
-
-            List<string> toInsert = [];
-
-            foreach (var (key, value) in entries)
-            {
-                Regex pattern = new (
-                    $@"^(?<prefix>\s*""{Regex.Escape (key)}""\s*:\s*)(?:true|false|-?\d+)(?<suffix>\s*,?\s*(?://.*)?)$",
-                    RegexOptions.Multiline);
-                var replaced = false;
-                text = pattern.Replace (
-                    text,
-                    match =>
-                    {
-                        replaced = true;
-
-                        return $"{match.Groups["prefix"].Value}{value}{match.Groups["suffix"].Value}";
-                    },
-                    1);
-
-                if (replaced)
-                {
-                    continue;
-                }
-
-                toInsert.Add ($"  \"{key}\": {value}");
+                root.Remove (legacyKey);
             }
 
-            if (toInsert.Count > 0)
+            JsonObject appSettings;
+
+            if (root["AppSettings"] is JsonObject existing)
             {
-                var lastBrace = FindRootClosingBrace (text);
-
-                if (lastBrace >= 0)
-                {
-                    var insertCommaAfter = FindLastObjectMemberCharacterPosition (text, lastBrace);
-
-                    if (insertCommaAfter >= 0 && text[insertCommaAfter] != ',' && text[insertCommaAfter] != '{')
-                    {
-                        text = text.Insert (insertCommaAfter + 1, ",");
-                        lastBrace = FindRootClosingBrace (text);
-                    }
-
-                    var insertion = $"\n\n{string.Join (",\n", toInsert)}\n";
-                    text = text.Insert (lastBrace, insertion);
-                }
+                appSettings = existing;
+            }
+            else
+            {
+                appSettings = new JsonObject ();
+                root["AppSettings"] = appSettings;
             }
 
-            File.WriteAllText (path, text);
+            appSettings["EditorSettings.LineNumbers"] = LineNumbers;
+            appSettings["EditorSettings.FoldIndicators"] = FoldIndicators;
+            appSettings["EditorSettings.WordWrap"] = WordWrap;
+            appSettings["EditorSettings.ShowTabs"] = ShowTabs;
+            appSettings["EditorSettings.IndentSize"] = IndentSize;
+            appSettings["EditorSettings.ConvertTabsToSpaces"] = ConvertTabsToSpaces;
+            appSettings["EditorSettings.AutoIndent"] = AutoIndent;
+            appSettings["EditorSettings.AutoComplete"] = AutoComplete;
+            appSettings["EditorSettings.Scrollbars"] = Scrollbars;
+
+            var directory = Path.GetDirectoryName (path);
+
+            if (!string.IsNullOrWhiteSpace (directory))
+            {
+                Directory.CreateDirectory (directory);
+            }
+
+            File.WriteAllText (path, root.ToJsonString (new JsonSerializerOptions { WriteIndented = true }));
         }
         catch (Exception ex)
         {
@@ -157,130 +112,29 @@ internal static class EditorSettings
         return Path.Combine (home, ".tui", "ted.config.json");
     }
 
-    private static void EnsureConfigFile (string path)
+    private static JsonObject ReadRoot (string path)
     {
-        var directory = Path.GetDirectoryName (path);
-
-        if (!string.IsNullOrWhiteSpace (directory))
-        {
-            Directory.CreateDirectory (directory);
-        }
-
         if (!File.Exists (path))
         {
-            File.WriteAllText (path, "{}");
+            return new JsonObject ();
         }
-    }
 
-    private static string ToJson (bool value)
-    {
-        return value ? "true" : "false";
-    }
+        var text = File.ReadAllText (path);
 
-    private static bool ReadBool (string json, string key, bool defaultValue)
-    {
-        // Match key only at a JSON property position: line starts with optional whitespace,
-        // then the key. Negative lookahead skips // comment lines.
-        Match m = Regex.Match (
-            json,
-            $@"^(?!\s*//)\s*""{Regex.Escape (key)}""\s*:\s*(?<v>true|false)",
-            RegexOptions.IgnoreCase | RegexOptions.Multiline);
-
-        return m.Success
-            ? string.Equals (m.Groups["v"].Value, "true", StringComparison.OrdinalIgnoreCase)
-            : defaultValue;
-    }
-
-    private static int ReadInt (string json, string key, int defaultValue)
-    {
-        Match m = Regex.Match (
-            json,
-            $@"^(?!\s*//)\s*""{Regex.Escape (key)}""\s*:\s*(?<v>-?\d+)",
-            RegexOptions.Multiline);
-
-        return m.Success && int.TryParse (m.Groups["v"].Value, out var v) ? v : defaultValue;
-    }
-
-    /// <summary>
-    ///     Finds the last '}' that is NOT inside a // comment.
-    ///     Scans backwards, skipping any '}' on a line whose non-whitespace content starts with //.
-    /// </summary>
-    private static int FindRootClosingBrace (string text)
-    {
-        var i = text.Length - 1;
-
-        while (i >= 0)
+        if (string.IsNullOrWhiteSpace (text))
         {
-            i = text.LastIndexOf ('}', i);
-
-            if (i < 0)
-            {
-                return -1;
-            }
-
-            // Check if this '}' is on a comment line
-            var lineStart = text.LastIndexOf ('\n', i) + 1;
-            var lineBeforeBrace = text[lineStart..i];
-
-            if (lineBeforeBrace.TrimStart ().StartsWith ("//", StringComparison.Ordinal))
-            {
-                i--;
-
-                continue;
-            }
-
-            return i;
+            return new JsonObject ();
         }
 
-        return -1;
-    }
-
-    private static int FindLastObjectMemberCharacterPosition (string text, int braceIndex)
-    {
-        var i = braceIndex - 1;
-
-        while (i >= 0)
-        {
-            var c = text[i];
-
-            if (char.IsWhiteSpace (c))
+        // Tolerate the JSONC TG itself accepts (// comments, trailing commas).
+        JsonNode? node = JsonNode.Parse (
+            text,
+            documentOptions: new JsonDocumentOptions
             {
-                i--;
+                CommentHandling = JsonCommentHandling.Skip,
+                AllowTrailingCommas = true
+            });
 
-                continue;
-            }
-
-            var lineStart = text.LastIndexOf ('\n', i) + 1;
-            var line = text[lineStart..(i + 1)];
-            var trimmedLine = line.TrimStart ();
-
-            if (trimmedLine.StartsWith ("//", StringComparison.Ordinal))
-            {
-                i = lineStart - 1;
-
-                continue;
-            }
-
-            var commentStart = line.IndexOf ("//", StringComparison.Ordinal);
-
-            if (commentStart >= 0)
-            {
-                var withoutComment = line[..commentStart];
-                var lastNonWhitespace = withoutComment.TrimEnd ().Length - 1;
-
-                if (lastNonWhitespace >= 0)
-                {
-                    return lineStart + lastNonWhitespace;
-                }
-
-                i = lineStart - 1;
-
-                continue;
-            }
-
-            return i;
-        }
-
-        return -1;
+        return node as JsonObject ?? new JsonObject ();
     }
 }
