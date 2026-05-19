@@ -30,6 +30,9 @@ internal static class EditorSettings
     public static bool AutoIndent { get; set; } = true;
 
     [ConfigurationProperty (Scope = typeof (TedSettingsScope))]
+    public static bool Scrollbars { get; set; } = true;
+
+    [ConfigurationProperty (Scope = typeof (TedSettingsScope))]
     public static bool AutoComplete { get; set; }
 
     /// <summary>
@@ -60,6 +63,7 @@ internal static class EditorSettings
             ConvertTabsToSpaces = ReadBool (text, "EditorSettings.ConvertTabsToSpaces", ConvertTabsToSpaces);
             AutoIndent = ReadBool (text, "EditorSettings.AutoIndent", AutoIndent);
             AutoComplete = ReadBool (text, "EditorSettings.AutoComplete", AutoComplete);
+            Scrollbars = ReadBool (text, "EditorSettings.Scrollbars", Scrollbars);
         }
         catch (Exception ex)
         {
@@ -87,7 +91,8 @@ internal static class EditorSettings
                 ["EditorSettings.IndentSize"] = IndentSize.ToString (),
                 ["EditorSettings.ConvertTabsToSpaces"] = ToJson (ConvertTabsToSpaces),
                 ["EditorSettings.AutoIndent"] = ToJson (AutoIndent),
-                ["EditorSettings.AutoComplete"] = ToJson (AutoComplete)
+                ["EditorSettings.AutoComplete"] = ToJson (AutoComplete),
+                ["EditorSettings.Scrollbars"] = ToJson (Scrollbars)
             };
 
             List<string> toInsert = [];
