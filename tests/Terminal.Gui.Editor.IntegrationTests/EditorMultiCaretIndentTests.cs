@@ -1,5 +1,6 @@
 // Claude - claude-opus-4-7
 
+using System.Drawing;
 using Terminal.Gui.Editor.IntegrationTests.Testing;
 using Terminal.Gui.Input;
 using Terminal.Gui.Testing;
@@ -19,6 +20,7 @@ namespace Terminal.Gui.Editor.IntegrationTests;
 public class EditorMultiCaretIndentTests
 {
     private static readonly InputInjectionOptions Direct = new () { Mode = InputInjectionMode.Direct };
+    private static readonly DateTime BaseTime = new (2025, 1, 1, 12, 0, 0);
 
     [Fact]
     public async Task Tab_MultilineSelection_Plus_PointCaret_BlockIndents_Does_Not_Delete ()
@@ -61,5 +63,42 @@ public class EditorMultiCaretIndentTests
 
         fx.Top.Editor.Document.UndoStack.Undo ();
         Assert.Equal ("\talpha\n\tbeta\n\tgamma\n\tdelta", fx.Top.Editor.Document.Text);
+    }
+
+    [Fact]
+    public async Task Tab_ColumnSelection_Preserves_PerCaret_Selections_After_BlockIndent ()
+    {
+        await using AppFixture<EditorTestHost> fx = new (() => new ("abcd\nabcd\nabcd"));
+        fx.Top.Editor.SetFocus ();
+
+        InjectAltDrag (fx, new (1, 0), new (3, 2));
+        fx.Injector.InjectKey (Key.Tab, Direct);
+
+        Assert.Equal ("\tabcd\n\tabcd\n\tabcd", fx.Top.Editor.Document!.Text);
+
+        fx.Injector.InjectKey (Key.X, Direct);
+
+        Assert.Equal ("\taxd\n\taxd\n\taxd", fx.Top.Editor.Document.Text);
+    }
+
+    private static void InjectAltDrag (AppFixture<EditorTestHost> fx, Point press, Point drag)
+    {
+        fx.Injector.InjectMouse (
+            new ()
+            {
+                ScreenPosition = press,
+                Flags = MouseFlags.LeftButtonPressed | MouseFlags.Alt,
+                Timestamp = BaseTime
+            },
+            Direct);
+
+        fx.Injector.InjectMouse (
+            new ()
+            {
+                ScreenPosition = drag,
+                Flags = MouseFlags.LeftButtonPressed | MouseFlags.PositionReport | MouseFlags.Alt,
+                Timestamp = BaseTime.AddMilliseconds (20)
+            },
+            Direct);
     }
 }

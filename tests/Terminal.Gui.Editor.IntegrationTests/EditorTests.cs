@@ -1,6 +1,7 @@
 // Claude - claude-opus-4-7
 
 using System.Drawing;
+using Terminal.Gui.Drivers;
 using Terminal.Gui.Editor.IntegrationTests.Testing;
 using Terminal.Gui.Input;
 using Terminal.Gui.Testing;
@@ -378,6 +379,47 @@ public class EditorTests
     }
 
     [Fact]
+    public async Task CtrlShiftAlt_ColumnSelect_Extends_Right_And_Down_Then_Replaces_Column ()
+    {
+        await using AppFixture<EditorTestHost> fx = new (() => new ("abcd\nabcd\nabcd"));
+        fx.Top.Editor.SetFocus ();
+        fx.Top.Editor.CaretOffset = 1;
+
+        fx.Injector.InjectKey (Key.CursorRight.WithCtrl.WithShift.WithAlt, Direct);
+        fx.Injector.InjectKey (Key.CursorRight.WithCtrl.WithShift.WithAlt, Direct);
+        fx.Injector.InjectKey (Key.CursorDown.WithCtrl.WithShift.WithAlt, Direct);
+        fx.Injector.InjectKey (Key.CursorDown.WithCtrl.WithShift.WithAlt, Direct);
+        fx.Injector.InjectKey (Key.X, Direct);
+
+        Assert.Equal ("axd\naxd\naxd", fx.Top.Editor.Document!.Text);
+    }
+
+    // Regression: typing over a keyboard column selection ends the gesture. The next
+    // Ctrl+Shift+Alt+Arrow must re-capture from the caret's new position, not resume from
+    // the stale pre-edit anchor offset/column/row-delta. Pre-fix this produced
+    // "ay\nay\nabcd" (stale 2-row column rebuilt on the edited document).
+    [Fact]
+    public async Task CtrlShiftAlt_ColumnSelect_After_Type_Restarts_From_Caret_Not_Stale_Anchor ()
+    {
+        await using AppFixture<EditorTestHost> fx = new (() => new ("abcd\nabcd\nabcd"));
+        fx.Top.Editor.SetFocus ();
+        fx.Top.Editor.CaretOffset = 1;
+
+        fx.Injector.InjectKey (Key.CursorRight.WithCtrl.WithShift.WithAlt, Direct);
+        fx.Injector.InjectKey (Key.CursorRight.WithCtrl.WithShift.WithAlt, Direct);
+        fx.Injector.InjectKey (Key.CursorDown.WithCtrl.WithShift.WithAlt, Direct);
+        fx.Injector.InjectKey (Key.X, Direct);
+
+        Assert.Equal ("axd\naxd\nabcd", fx.Top.Editor.Document!.Text);
+
+        // Second gesture: a single Right must select only "d" on the caret's current row.
+        fx.Injector.InjectKey (Key.CursorRight.WithCtrl.WithShift.WithAlt, Direct);
+        fx.Injector.InjectKey (Key.Y, Direct);
+
+        Assert.Equal ("axy\naxd\nabcd", fx.Top.Editor.Document!.Text);
+    }
+
+    [Fact]
     public async Task Esc_Dismisses_MultiCaret_And_Down_Can_Move_Past_Previous_Block ()
     {
         await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("abcd\nabcd\nabcd\nabcd"));
@@ -535,5 +577,6 @@ public class EditorTests
         // The primary caret is the terminal cursor. After dismissing the block it must still be
         // drawn (visible, not the hidden default cursor) and positioned on the primary offset.
         Assert.True (fx.Top.Editor.Cursor.IsVisible);
+        Assert.Equal (CursorStyle.Default, fx.Top.Editor.Cursor.Style);
     }
 }

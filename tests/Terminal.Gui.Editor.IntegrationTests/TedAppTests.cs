@@ -754,11 +754,11 @@ public class TedAppTests
         ImmutableList<string> expected = ThemeManager.GetThemeNames ();
         Assert.True (expected.Count > 0, "ThemeManager should expose at least one theme.");
 
-        List<string> actual = fx.Top.ThemeDropDown.Source!.ToList ()
+        List<string> actualThemeNames = fx.Top.ThemeDropDown.Source!.ToList ()
             .Cast<string> ()
             .ToList ();
 
-        Assert.Equal (expected, actual);
+        Assert.Equal (expected, actualThemeNames);
     }
 
     [Fact]

@@ -13,6 +13,10 @@ namespace Terminal.Gui.Editor;
 public partial class Editor
 {
     private readonly List<CaretInfo> _additionalCarets = [];
+    private int? _keyboardColumnSelectionAnchorOffset;
+    private int _keyboardColumnSelectionActiveColumn;
+    private int _keyboardColumnSelectionActiveRowDelta;
+    private int _keyboardColumnSelectionAnchorColumn;
     private int _verticalCaretKeyboardDirection;
 
     /// <summary>Gets the offsets of all additional carets (excludes the primary).</summary>
@@ -70,6 +74,11 @@ public partial class Editor
     /// </summary>
     private void AddAdditionalCaretAt (int offset)
     {
+        AddAdditionalCaretAt (offset, null);
+    }
+
+    private void AddAdditionalCaretAt (int offset, int? selectionAnchorOffset)
+    {
         if (_document is null)
         {
             return;
@@ -90,7 +99,22 @@ public partial class Editor
             }
         }
 
-        _additionalCarets.Add (new CaretInfo { CaretAnchor = CreateCaretAnchor (offset) });
+        TextAnchor? selectionAnchor = null;
+
+        if (selectionAnchorOffset is { } anchorOffset)
+        {
+            anchorOffset = Math.Clamp (anchorOffset, 0, _document.TextLength);
+
+            if (anchorOffset != offset)
+            {
+                selectionAnchor = CreateSelectionAnchor (anchorOffset);
+                selectionAnchor.MovementType = anchorOffset <= offset
+                    ? AnchorMovementType.AfterInsertion
+                    : AnchorMovementType.BeforeInsertion;
+            }
+        }
+
+        _additionalCarets.Add (new CaretInfo { CaretAnchor = CreateCaretAnchor (offset), SelectionAnchor = selectionAnchor });
         SetNeedsDraw ();
     }
 
@@ -195,21 +219,22 @@ public partial class Editor
     ///     scratch on every drag event so the end state is identical to a single press at the
     ///     final position.
     /// </summary>
-    private void SetVerticalCaretsFromViewRows (int anchorViewRow, int activeViewRow, int viewColumn)
+    private void SetVerticalCaretsFromViewRows (int anchorViewRow, int activeViewRow, int anchorViewColumn,
+        int activeViewColumn)
     {
         if (_document is null)
         {
             return;
         }
 
-        var primaryOffset = MousePositionToOffset (new Point (viewColumn, anchorViewRow));
+        var primaryAnchorOffset = MousePositionToOffset (new Point (anchorViewColumn, anchorViewRow));
+        var primaryOffset = MousePositionToOffset (new Point (activeViewColumn, anchorViewRow));
         _verticalCaretKeyboardDirection = 0;
 
         ClearSelection ();
         ClearAdditionalCarets ();
 
-        // The CaretOffset setter resets the sticky column from the anchor row's primary.
-        CaretOffset = primaryOffset;
+        SetPrimaryColumnSelection (primaryAnchorOffset, primaryOffset);
 
         var top = Math.Min (anchorViewRow, activeViewRow);
         var bottom = Math.Max (anchorViewRow, activeViewRow);
@@ -221,9 +246,108 @@ public partial class Editor
                 continue;
             }
 
-            AddAdditionalCaretAt (MousePositionToOffset (new Point (viewColumn, row)));
+            var rowAnchorOffset = MousePositionToOffset (new Point (anchorViewColumn, row));
+            var rowActiveOffset = MousePositionToOffset (new Point (activeViewColumn, row));
+
+            AddAdditionalCaretAt (rowActiveOffset, rowAnchorOffset);
         }
 
+        SetNeedsDraw ();
+    }
+
+    private bool ColumnSelectByKeyboard (int rowDelta, int columnDelta)
+    {
+        if (_document is null)
+        {
+            return true;
+        }
+
+        if (_keyboardColumnSelectionAnchorOffset is null)
+        {
+            _keyboardColumnSelectionAnchorOffset = CaretOffset;
+            _keyboardColumnSelectionAnchorColumn = GetVisualColumnForOffset (CaretOffset);
+            _keyboardColumnSelectionActiveColumn = _keyboardColumnSelectionAnchorColumn;
+            _keyboardColumnSelectionActiveRowDelta = 0;
+        }
+
+        var nextRowDelta = _keyboardColumnSelectionActiveRowDelta + rowDelta;
+        var nextActiveColumn = Math.Max (0, _keyboardColumnSelectionActiveColumn + columnDelta);
+        var anchorOffset = _keyboardColumnSelectionAnchorOffset.Value;
+
+        if (!TryGetVerticalOffset (anchorOffset, nextRowDelta, nextActiveColumn, out _))
+        {
+            return true;
+        }
+
+        _keyboardColumnSelectionActiveRowDelta = nextRowDelta;
+        _keyboardColumnSelectionActiveColumn = nextActiveColumn;
+        SetVerticalSelectionsFromAnchorOffset (
+            anchorOffset,
+            _keyboardColumnSelectionActiveRowDelta,
+            _keyboardColumnSelectionAnchorColumn,
+            _keyboardColumnSelectionActiveColumn);
+        _keyboardColumnSelectionAnchorOffset = anchorOffset;
+
+        return true;
+    }
+
+    private void SetVerticalSelectionsFromAnchorOffset (
+        int anchorOffset,
+        int activeRowDelta,
+        int anchorColumn,
+        int activeColumn)
+    {
+        if (_document is null)
+        {
+            return;
+        }
+
+        _verticalCaretKeyboardDirection = 0;
+        ClearSelection ();
+        ClearAdditionalCarets ();
+
+        if (!TryGetVerticalOffset (anchorOffset, 0, anchorColumn, out var primaryAnchorOffset)
+            || !TryGetVerticalOffset (anchorOffset, 0, activeColumn, out var primaryActiveOffset))
+        {
+            return;
+        }
+
+        SetPrimaryColumnSelection (primaryAnchorOffset, primaryActiveOffset);
+
+        var firstDelta = Math.Min (0, activeRowDelta);
+        var lastDelta = Math.Max (0, activeRowDelta);
+
+        for (var delta = firstDelta; delta <= lastDelta; delta++)
+        {
+            if (delta == 0)
+            {
+                continue;
+            }
+
+            if (TryGetVerticalOffset (anchorOffset, delta, anchorColumn, out var rowAnchorOffset)
+                && TryGetVerticalOffset (anchorOffset, delta, activeColumn, out var rowActiveOffset))
+            {
+                AddAdditionalCaretAt (rowActiveOffset, rowAnchorOffset);
+            }
+        }
+
+        SetNeedsDraw ();
+    }
+
+    private void SetPrimaryColumnSelection (int anchorOffset, int activeOffset)
+    {
+        CaretOffset = activeOffset;
+
+        if (anchorOffset == activeOffset)
+        {
+            ClearSelection ();
+
+            return;
+        }
+
+        _selectionAnchor = CreateSelectionAnchor (anchorOffset);
+        RefreshSelectionAnchorMovement ();
+        SelectionChanged?.Invoke (this, EventArgs.Empty);
         SetNeedsDraw ();
     }
 
@@ -232,6 +356,7 @@ public partial class Editor
     {
         var had = _additionalCarets.Count > 0;
         _verticalCaretKeyboardDirection = 0;
+        _keyboardColumnSelectionAnchorOffset = null;
 
         if (had)
         {
@@ -604,10 +729,10 @@ public partial class Editor
     }
 
     /// <summary>
-    ///     Tab at every caret, one undo scope. Per caret: a selection that spans multiple lines
-    ///     <em>block-indents</em> every line it touches (never replace/delete it — that was the
-    ///     Codex P1 data-loss bug); a single-line selection is type-over-replaced with a tab; a
-    ///     caret with no selection gets a tab inserted at its own visual column via
+    ///     Tab at every caret, one undo scope. Per caret: any selection
+    ///     <em>block-indents</em> every line it touches and preserves the selection (never
+    ///     replace/delete it — that was the Codex P1 data-loss bug and the column-selection
+    ///     follow-up); a caret with no selection gets a tab inserted at its own visual column via
     ///     <see cref="GetTabInsertionText" /> so the column stays aligned across repeated
     ///     presses. Block-indent lines are deduped; every edit is applied strictly
     ///     high-offset-first so an earlier edit doesn't shift a not-yet-applied offset. Caller
@@ -624,17 +749,10 @@ public partial class Editor
         {
             if (TryGetCaretSelectionRange (caret, out int selStart, out int selEnd))
             {
-                if (RangeSpansMultipleLines (selStart, selEnd))
+                foreach (DocumentLine line in LinesInRange (selStart, selEnd))
                 {
-                    foreach (DocumentLine line in LinesInRange (selStart, selEnd))
-                    {
-                        indentLineOffsets.Add (line.Offset);
-                    }
-
-                    continue;
+                    indentLineOffsets.Add (line.Offset);
                 }
-
-                edits.Add ((selStart, selEnd - selStart, GetTabInsertionText (selStart)));
 
                 continue;
             }
@@ -663,8 +781,6 @@ public partial class Editor
                 }
             }
         }
-
-        ClearAdditionalCaretSelections ();
 
         return true;
     }
@@ -718,9 +834,42 @@ public partial class Editor
             }
         }
 
-        ClearAdditionalCaretSelections ();
-
         return true;
+    }
+
+    internal bool HasAdditionalCaretSelections ()
+    {
+        foreach (CaretInfo caret in _additionalCarets)
+        {
+            if (caret.CaretAnchor is { IsDeleted: false } caretAnchor
+                && caret.SelectionAnchor is { IsDeleted: false } selectionAnchor
+                && caretAnchor.Offset != selectionAnchor.Offset)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    internal IReadOnlyList<(int start, int end)> AdditionalCaretSelectionRanges ()
+    {
+        List<(int start, int end)> ranges = [];
+
+        foreach (CaretInfo caret in _additionalCarets)
+        {
+            if (caret.CaretAnchor is not { IsDeleted: false } caretAnchor
+                || caret.SelectionAnchor is not { IsDeleted: false } selectionAnchor
+                || caretAnchor.Offset == selectionAnchor.Offset)
+            {
+                continue;
+            }
+
+            ranges.Add ((Math.Min (caretAnchor.Offset, selectionAnchor.Offset),
+                Math.Max (caretAnchor.Offset, selectionAnchor.Offset)));
+        }
+
+        return ranges;
     }
 
     private bool TryRemoveEdgeCaret (int direction)
@@ -762,6 +911,12 @@ public partial class Editor
         {
             caret.SelectionAnchor = null;
         }
+
+        // An edit that collapses per-caret selections also ends the in-flight keyboard
+        // column-select gesture. Without this, the next Ctrl+Shift+Alt+Arrow would resume
+        // from the stale pre-edit anchor offset/column/row-delta instead of re-capturing
+        // from the caret's new position. (Esc already resets this via ClearAdditionalCarets.)
+        _keyboardColumnSelectionAnchorOffset = null;
     }
 
     /// <summary>Holds anchor state for one additional caret.</summary>

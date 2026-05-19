@@ -1,7 +1,7 @@
 # Overwrite (Insert-Replace) Mode
 
-**Status**: Implemented  
-**Issue**: [#146](https://github.com/gui-cs/Editor/issues/146)  
+**Status**: Implemented
+**Issue**: [#146](https://github.com/gui-cs/Editor/issues/146)
 **Updated**: 2026-05-17
 
 ## Summary

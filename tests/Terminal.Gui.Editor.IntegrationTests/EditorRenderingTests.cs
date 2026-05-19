@@ -26,6 +26,7 @@ namespace Terminal.Gui.Editor.IntegrationTests;
 public class EditorRenderingTests
 {
     private static readonly InputInjectionOptions Direct = new () { Mode = InputInjectionMode.Direct };
+    private static readonly DateTime BaseTime = new (2025, 1, 1, 12, 0, 0);
 
     [Fact]
     public async Task Unselected_Text_Uses_Normal_Role_Not_Editable ()
@@ -222,6 +223,40 @@ public class EditorRenderingTests
         Cell cell = fx.Driver.Contents![0, 0];
         Assert.Equal ("p", cell.Grapheme);
         Assert.Equal (active, cell.Attribute);
+    }
+
+    [Fact]
+    public async Task Additional_Caret_Selections_Render_With_Active_Role ()
+    {
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("abcd\nabcd\nabcd"));
+        fx.Top.Editor.SetFocus ();
+
+        fx.Injector.InjectMouse (
+            new ()
+            {
+                ScreenPosition = new (1, 0),
+                Flags = MouseFlags.LeftButtonPressed | MouseFlags.Alt,
+                Timestamp = BaseTime
+            },
+            Direct);
+
+        fx.Injector.InjectMouse (
+            new ()
+            {
+                ScreenPosition = new (3, 2),
+                Flags = MouseFlags.LeftButtonPressed | MouseFlags.PositionReport | MouseFlags.Alt,
+                Timestamp = BaseTime.AddMilliseconds (20)
+            },
+            Direct);
+
+        fx.Render ();
+
+        Attribute active = fx.Top.Editor.GetAttributeForRole (VisualRole.Active);
+
+        Assert.Equal ("b", fx.Driver.Contents![1, 1].Grapheme);
+        Assert.Equal (active, fx.Driver.Contents[1, 1].Attribute);
+        Assert.Equal ("c", fx.Driver.Contents[2, 2].Grapheme);
+        Assert.Equal (active, fx.Driver.Contents[2, 2].Attribute);
     }
 
     [Fact]
