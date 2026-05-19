@@ -9,10 +9,11 @@ using Terminal.Gui.Input;
 using Terminal.Gui.ViewBase;
 using Terminal.Gui.Views;
 
-string initialText = string.Join (' ', args);
+var initialText = string.Join (' ', args);
 string? result = null;
 
 using IApplication app = Application.Create ();
+app.AppModel = AppModel.Inline;
 app.Init ();
 
 Window window = new ()
@@ -41,11 +42,13 @@ editor.Accepting += (_, e) =>
 
 editor.KeyDown += (_, key) =>
 {
-    if (key == Key.Esc)
+    if (key != Key.Esc)
     {
-        window.RequestStop ();
-        key.Handled = true;
+        return;
     }
+
+    window.RequestStop ();
+    key.Handled = true;
 };
 
 window.Add (editor);

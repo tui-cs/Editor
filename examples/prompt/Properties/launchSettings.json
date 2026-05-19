@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "prompt": {
+      "commandName": "Project",
+      "commandLineArgs": "this is line 1\r\n\r\nthis is line 2"
+    }
+  }
+}
