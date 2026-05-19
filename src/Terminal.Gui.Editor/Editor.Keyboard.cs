@@ -20,6 +20,9 @@ public partial class Editor
     {
         if (HandleCompletionKey (key))
         {
+            // A completion-consumed key is not a kill command — break any consecutive-kill run.
+            _lastCommandWasKill = false;
+
             return true;
         }
 

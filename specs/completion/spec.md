@@ -63,8 +63,9 @@ inside a single `Document.RunUpdate()` scope, so one `Ctrl+Z` undoes the entire 
 
 ### Dismissing
 
-Pressing `Esc`, pressing `Enter` on NewLine command, typing a non-word character that empties the prefix,
+Pressing `Esc`, typing a non-word character that empties the prefix,
 or the provider returning zero items — all dismiss the popup.
+Pressing `Enter`/`Tab` accepts the selected item (see "Accepting" above), not dismiss.
 
 ## Positioning
 

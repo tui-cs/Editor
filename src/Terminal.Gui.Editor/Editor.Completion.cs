@@ -31,6 +31,13 @@ public partial class Editor
                 return;
             }
 
+            // Dismiss stale completion when the provider changes — prevents accepting
+            // suggestions from the previous provider after a swap.
+            if (IsCompletionActive)
+            {
+                DismissCompletion ();
+            }
+
             field = value;
 
             if (value is null)
