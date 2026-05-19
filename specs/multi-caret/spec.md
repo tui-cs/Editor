@@ -55,7 +55,7 @@ Add multi-caret support to the Editor. Expose `IReadOnlyList<int> AdditionalCare
 
 ## Out of Scope
 
-- Column/block selection mode — the "multi-select" follow-up PR. **When built, it must also close the carried-forward selection-preservation gap:** multi-caret `Tab`/`Shift+Tab` block-indent must preserve the primary *and* per-caret selections (parity with the single-caret `IndentSelectedLines` path; today `ClearAdditionalCaretSelections ()` collapses them post-edit). See `specs/vertical-multi-caret/spec.md` § Out of Scope → *Column / box selection* for the full requirement.
+- Sticky Column Selection Mode — VS Code's modal toggle where ordinary clicks/arrows keep column-select behavior until disabled. The drag and keyboard column-selection gestures are in scope for `specs/vertical-multi-caret/spec.md`; the persistent mode with menu/status UI is a separate follow-up.
 - Multi-caret find/replace
 
 ## Notes

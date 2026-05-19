@@ -143,11 +143,8 @@ public sealed partial class TedApp : Window
             }
         };
         ShowTabsCheckBox.Value = Editor.ShowTabs ? CheckState.Checked : CheckState.UnChecked;
-        PreviewCheckBox.ValueChanged += (_, e) =>
-        {
-            ToggleMarkdownPreview ();
-            _previewMarkdownMenuItem.Title = ToggleTitle (e.NewValue == CheckState.Checked, "_Preview Markdown");
-        };
+        OverwriteShortcut = new Shortcut (Key.Empty, "INS", null) { MouseHighlightStates = MouseState.None };
+        LocShortcut = new Shortcut (Key.Empty, FormatLoc (1, 1), null) { MouseHighlightStates = MouseState.None };
         LoadStatusSpinner = new SpinnerView
         {
             Style = new SpinnerStyle.Aesthetic (),
@@ -155,21 +152,25 @@ public sealed partial class TedApp : Window
             AutoSpin = false,
             Visible = false
         };
+        LoadSpinnerShortcut = new Shortcut
+        {
+            CommandView = LoadStatusSpinner,
+            Title = string.Empty,
+            MouseHighlightStates = MouseState.None
+        };
+        PreviewCheckBox.ValueChanged += (_, e) =>
+        {
+            ToggleMarkdownPreview ();
+            _previewMarkdownMenuItem.Title = ToggleTitle (e.NewValue == CheckState.Checked, "_Preview Markdown");
+        };
 
         StatusBar statusBar =
             new ([
                 new Shortcut { Title = "Language", CommandView = LanguageShortcut },
                 new Shortcut { Title = "Theme", CommandView = ThemeDropDown },
-                LoadSpinnerShortcut = new Shortcut
-                {
-                    CommandView = LoadStatusSpinner,
-                    Title = string.Empty,
-                    MouseHighlightStates = MouseState.None
-                },
-                OverwriteShortcut = new Shortcut (Key.Empty, "INS", null)
-                    { MouseHighlightStates = MouseState.None },
-                LocShortcut = new Shortcut (Key.Empty, FormatLoc (1, 1), null)
-                    { MouseHighlightStates = MouseState.None }
+                LoadSpinnerShortcut,
+                OverwriteShortcut,
+                LocShortcut
             ])
             {
                 AlignmentModes = AlignmentModes.IgnoreFirstOrLast

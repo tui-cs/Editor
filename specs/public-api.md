@@ -36,10 +36,9 @@ public class Editor : View
     public void ToggleCaretAt (int offset);                       // multi-caret (Ctrl+Click toggle)
     public void ClearAdditionalCarets ();                         // multi-caret (Esc collapse)
     // vertical-multi-caret adds NO new public API: Ctrl+Alt+CursorUp / Ctrl+Alt+CursorDown
-    //   create a vertically-aligned column of carets at the sticky visual column, and
-    //   Alt + LeftButton drag builds a column of carets (carets only). Both reuse the
-    //   existing AdditionalCaretOffsets / HasMultipleCarets / ClearAdditionalCarets surface and
-    //   are bound through the configurable Editor.DefaultKeyBindings ([ConfigurationProperty]).
+    //   create a vertically-aligned column of carets at the sticky visual column; Alt + LeftButton
+    //   drag and Ctrl+Shift+Alt+Arrow/Page create column selections. All reuse the existing
+    //   AdditionalCaretOffsets / HasMultipleCarets / ClearAdditionalCarets surface.
 
     // --- Display ---
     public bool ShowLineNumbers { get; set; }                     // exists
@@ -178,6 +177,7 @@ public readonly record struct TextDocumentProgress (
 | 2026-05-12 | `ISearchStrategy?` `SearchStrategy { get; set; }` landed on Editor; string-based FindNext/FindPrevious/ReplaceNext/ReplaceAll overloads retained as convenience wrappers | find-and-replace |
 | 2026-05-16 | Vertical multi-caret keybindings (`Ctrl+Alt+CursorUp/Down`, `Alt+Drag`) added via `Editor.DefaultKeyBindings`; no new public Editor API (R8) | vertical-multi-caret |
 | 2026-05-17 | `Multiline` property added (default `true`); single-line mode suppresses newlines, constrains vertical nav/scroll, forces WordWrap off, disables multi-caret | single-line-mode |
+| 2026-05-17 | Column selection during `Alt+Drag` and `Ctrl+Shift+Alt+Arrow/Page` added without new public Editor API | vertical-multi-caret |
 | 2026-05-17 | `IEditorCompletionProvider?` `CompletionProvider` + `bool IsCompletionActive` landed; `CompletionItem` sealed class; `Popover<ListView>`-based popup; DEC-009 resolves OPEN-002 | completion |
 | 2026-05-17 | Streaming `TextDocument.LoadAsync` / `TextDocument.SaveAsync`, `TextDocumentProgress`, `TextDocument.Encoding`, and delegating `Editor.LoadAsync` / `Editor.SaveAsync` landed | file-io |
 | 2026-05-17 | `Editor` implements `IDesignable`; `EnableForDesign()` seeds C# sample code with syntax highlighting and line numbers | design-time |

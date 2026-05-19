@@ -309,6 +309,8 @@ public partial class Editor
             }
         }
 
+        ApplyAdditionalCaretSelections (visualLine, selected);
+
         return visualLine;
     }
 
@@ -494,12 +496,44 @@ public partial class Editor
         }
 
         Point screen = ViewportToScreen (new Point (col, row));
-        CursorStyle style = OverwriteMode ? CursorStyle.SteadyBlock :
-            Cursor.Style == CursorStyle.Hidden ? CursorStyle.Default : Cursor.Style;
+        CursorStyle style;
+
+        if (OverwriteMode)
+        {
+            style = CursorStyle.SteadyBlock;
+        }
+        else if (Cursor.Style == CursorStyle.Hidden)
+        {
+            style = CursorStyle.Default;
+        }
+        else
+        {
+            style = Cursor.Style;
+        }
+
         Cursor = Cursor with
         {
             Position = screen,
             Style = style
         };
+    }
+
+    private void ApplyAdditionalCaretSelections (CellVisualLine visualLine, Attribute selected)
+    {
+        if (!HasAdditionalCaretSelections ())
+        {
+            return;
+        }
+
+        foreach ((int start, int end) selection in AdditionalCaretSelectionRanges ())
+        {
+            foreach (CellVisualLineElement element in visualLine.Elements)
+            {
+                if (element.DocumentOffset < selection.end && element.DocumentEndOffset > selection.start)
+                {
+                    element.Attribute = selected;
+                }
+            }
+        }
     }
 }
