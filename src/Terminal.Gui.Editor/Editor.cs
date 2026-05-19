@@ -517,6 +517,27 @@ public partial class Editor : View
         if (disposing)
         {
             ThemeManager.ThemeChanged -= OnThemeChanged;
+
+            // Tear down the completion popover (issue #173) — without this an active
+            // popover survives disposal, leaks event subscriptions, and leaves
+            // IsCompletionActive == true on the dead editor.
+            DismissCompletion ();
+
+            // Dispose the context menu PopoverMenu created in the constructor.
+            ContextMenu?.Dispose ();
+            ContextMenu = null;
+
+            // Dispose the gutter if active.
+            if (_gutter is not null)
+            {
+                Padding.GetOrCreateView ().Remove (_gutter);
+                _gutter.Dispose ();
+                _gutter = null;
+            }
+
+            // Dispose the document highlighter.
+            _highlighter?.Dispose ();
+            _highlighter = null;
         }
 
         if (disposing && _document is not null)
