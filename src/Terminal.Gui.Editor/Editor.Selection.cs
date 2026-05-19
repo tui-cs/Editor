@@ -179,8 +179,9 @@ public partial class Editor
 
     /// <summary>
     ///     In single-line flat mode, prevents the caret from landing inside a multi-char delimiter
-    ///     (e.g. CRLF). If <paramref name="offset" /> is inside a delimiter, snaps forward or backward
-    ///     based on <paramref name="direction" />.
+    ///     (e.g. CRLF). If <paramref name="offset" /> is inside a delimiter, snaps forward (to the
+    ///     next line start) when <paramref name="direction" /> is zero or positive, or backward (to
+    ///     the end of line text) when <paramref name="direction" /> is negative.
     /// </summary>
     private int SnapOffsetPastDelimiter (int offset, int direction)
     {

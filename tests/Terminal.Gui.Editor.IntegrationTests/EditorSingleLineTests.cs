@@ -435,7 +435,7 @@ public class EditorSingleLineTests
         fx.Render ();
 
         // Click at flat column 3 → should be 'c' which is offset 3 (after "ab\n").
-        Inject.Click (fx, new (3, 0));
+        Inject.Click (fx, new Point (3, 0));
 
         Assert.Equal (3, fx.Top.Editor.CaretOffset);
     }
