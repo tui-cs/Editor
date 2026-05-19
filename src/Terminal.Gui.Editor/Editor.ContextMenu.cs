@@ -94,9 +94,6 @@ public partial class Editor
                     menuItem.Enabled = canPaste;
 
                     break;
-
-                    // Unknown commands (e.g. from a custom ContextMenu) are left untouched
-                    // so the caller's intentional Enabled state is preserved.
             }
         }
     }
