@@ -46,6 +46,7 @@ public partial class Editor : View
     private GutterOptions _gutterOptions;
     private DocumentHighlighter? _highlighter;
     private HighlightingColorizer? _highlightingColorizer;
+    private bool _hasFoldedSections;
     private int _lastKnownCaretOffset;
 
     // Kill-ring: consecutive CutToEndOfLine / CutToStartOfLine appends to the clipboard instead
@@ -109,6 +110,22 @@ public partial class Editor : View
         Document = new TextDocument ();
         InitializeDefaultContextMenu ();
         ThemeManager.ThemeChanged += OnThemeChanged;
+    }
+
+    /// <summary>
+    ///     Gets or sets the document text. This overrides <see cref="View.Text" /> so that setting
+    ///     <c>editor.Text</c> writes to <see cref="Document" /> rather than the base View label.
+    /// </summary>
+    public override string Text
+    {
+        get => Document?.Text ?? string.Empty;
+        set
+        {
+            if (Document is { } doc)
+            {
+                doc.Text = value;
+            }
+        }
     }
 
     /// <summary>The backing <see cref="TextDocument" />. Setting this rewires change handlers and clamps the caret.</summary>
@@ -398,10 +415,11 @@ public partial class Editor : View
             if (field is not null)
             {
                 field.FoldingChanged += OnFoldingChanged;
-                LineTransformers.Insert (0, new FoldingTransformer (field));
             }
 
             ClearVisualLineCaches ();
+            RefreshFoldingState ();
+            SyncFoldingTransformer ();
             UpdateContentSize ();
             UpdateGutterWidth ();
             SetNeedsDraw ();
@@ -424,6 +442,8 @@ public partial class Editor : View
         _cachedVisibleLineNumbers = null;
         _wrapMap = null;
         _maxWidthDirty = true;
+        RefreshFoldingState ();
+        SyncFoldingTransformer ();
         UpdateContentSize ();
         SetNeedsDraw ();
         _gutter?.SetNeedsDraw ();
@@ -517,6 +537,27 @@ public partial class Editor : View
         if (disposing)
         {
             ThemeManager.ThemeChanged -= OnThemeChanged;
+
+            // Tear down the completion popover (issue #173) — without this an active
+            // popover survives disposal, leaks event subscriptions, and leaves
+            // IsCompletionActive == true on the dead editor.
+            DismissCompletion ();
+
+            // Dispose the context menu PopoverMenu created in the constructor.
+            ContextMenu?.Dispose ();
+            ContextMenu = null;
+
+            // Dispose the gutter if active.
+            if (_gutter is not null)
+            {
+                Padding.GetOrCreateView ().Remove (_gutter);
+                _gutter.Dispose ();
+                _gutter = null;
+            }
+
+            // Dispose the document highlighter.
+            _highlighter?.Dispose ();
+            _highlighter = null;
         }
 
         if (disposing && _document is not null)
@@ -613,7 +654,8 @@ public partial class Editor : View
         }
 
         // +1 column lets the caret sit just past the end-of-line.
-        var visibleLineCount = _document.LineCount - (FoldingManager?.GetHiddenLineCount () ?? 0);
+        var hiddenLineCount = HasFoldedSections () ? FoldingManager!.GetHiddenLineCount () : 0;
+        var visibleLineCount = _document.LineCount - hiddenLineCount;
         SetContentSize (new Size (_maxVisualWidth + 1, Math.Max (1, visibleLineCount)));
     }
 
@@ -1049,11 +1091,72 @@ public partial class Editor : View
             return GetCaretWrapRow ();
         }
 
-        var docLineNumber = _document?.GetLineByOffset (CaretOffset).LineNumber ?? 1;
+        DocumentLine? line = _document?.GetLineByOffset (CaretOffset);
+
+        if (line is null)
+        {
+            return 0;
+        }
+
+        if (!HasFoldedSections ())
+        {
+            return line.LineNumber - 1;
+        }
+
+        var docLineNumber = line.LineNumber;
         List<int> visible = GetVisibleLineNumbers ();
         var idx = visible.IndexOf (docLineNumber);
 
         return idx >= 0 ? idx : GetCaretLineIndex ();
+    }
+
+    private bool HasFoldedSections ()
+    {
+        return _hasFoldedSections;
+    }
+
+    private void RefreshFoldingState ()
+    {
+        _hasFoldedSections = false;
+
+        if (FoldingManager is not { } fm)
+        {
+            return;
+        }
+
+        foreach (FoldingSection fs in fm.AllFoldings)
+        {
+            if (!fs.IsFolded)
+            {
+                continue;
+            }
+
+            _hasFoldedSections = true;
+
+            return;
+        }
+    }
+
+    private void SyncFoldingTransformer ()
+    {
+        for (var i = LineTransformers.Count - 1; i >= 0; i--)
+        {
+            if (LineTransformers[i] is FoldingTransformer)
+            {
+                LineTransformers.RemoveAt (i);
+            }
+        }
+
+        if (!_hasFoldedSections || FoldingManager is null)
+        {
+            return;
+        }
+
+        var insertIndex = _highlightingColorizer is not null
+            ? LineTransformers.IndexOf (_highlightingColorizer) + 1
+            : 0;
+
+        LineTransformers.Insert (Math.Max (0, insertIndex), new FoldingTransformer (FoldingManager));
     }
 
     /// <summary>
