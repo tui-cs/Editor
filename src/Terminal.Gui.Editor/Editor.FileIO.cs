@@ -13,10 +13,16 @@ public partial class Editor
     // the whole point of progressive load.
     private const int FirstFlushChars = 16 * 1024;
 
-    // Chars buffered between subsequent paints. Each flush is one marshalled append + a visible-viewport
-    // redraw, so this only needs to be large enough to avoid an excessive number of round-trips. 64 KiB
-    // makes a 10 MiB file fill in ~160 smooth steps; 256 KiB felt chunky.
-    private const int SubsequentFlushChars = 64 * 1024;
+    // Chars buffered between subsequent flushes. AppendOnUiThread pins the caret to offset 0, so the
+    // viewport stays on the first screenful and every subsequent chunk streams in *below the fold,
+    // off-screen* — it is never visually "chunky". The only per-flush cost is one marshalled round-trip
+    // (the consumer's marshal hops to its UI thread) plus the full render frame that SetNeedsDraw
+    // triggers there — a frame that repaints the unchanged top screen, i.e. pure waste. So subsequent
+    // flushes want to be as large as practical: at 64 KiB a 10 MiB file cost ~160 of those wasted
+    // round-trips + frames (~8 s wall in ted vs ~0.75 s of actual document work); 1 MiB cuts that to
+    // ~10. Larger still helps less and inflates the transient per-flush allocation (string + snapshot
+    // + undo entry), so 1 MiB is the balance. The tiny FirstFlushChars keeps first paint instant.
+    private const int SubsequentFlushChars = 1024 * 1024;
 
     /// <summary>
     ///     Streams text from <paramref name="stream" /> into <see cref="Document" /> without ever materializing the
