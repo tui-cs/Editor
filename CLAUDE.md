@@ -234,7 +234,6 @@ Don't accidentally do these — they were considered and rejected:
 - RTL bidi or rich text shaping beyond grapheme width.
 - Pixel/proportional font fidelity.
 - Porting AvaloniaEdit's `Editing/`, `Rendering/`, or `CodeCompletion/` namespaces — those are Avalonia-UI-specific and replaced by TG-native equivalents (`Editor` partials, cell-grid `Rendering/`, `Popover<ListView>` for completion).
-- Speculative / unwired public API "for the future" (LSP-shape parity, forward-compat, etc.). Add a member when the code that consumes it lands, not before. Unwired public surface is **deleted**, not shelved-and-documented — hypothetical APIs lie to consumers and accrete compat cost for value that may never arrive. (Distinguish from genuinely-used-but-untested API: that stays and gets a test.)
 
 ## Open decisions
 
