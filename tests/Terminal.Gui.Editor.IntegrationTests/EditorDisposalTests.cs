@@ -1,5 +1,6 @@
 // Claude - claude-opus-4-6
 
+using System.Drawing;
 using Terminal.Gui.Document;
 using Terminal.Gui.Editor.Completion;
 using Terminal.Gui.Editor.IntegrationTests.Testing;
@@ -76,7 +77,7 @@ public class EditorDisposalTests
         Assert.False (editor.IsCompletionActive);
 
         // Should not throw on dispose — the popover was already cleaned up.
-        var ex = Record.Exception (() => editor.Dispose ());
+        Exception? ex = Record.Exception (() => editor.Dispose ());
         Assert.Null (ex);
     }
 
@@ -108,7 +109,7 @@ public class EditorDisposalTests
             fx.Injector.InjectKey (Key.Backspace, Direct);
         }
 
-        var ex = Record.Exception (() => editor.Dispose ());
+        Exception? ex = Record.Exception (() => editor.Dispose ());
         Assert.Null (ex);
     }
 
@@ -162,7 +163,7 @@ public class EditorDisposalTests
 
         // The original PopoverMenu is now orphaned — nobody disposes it.
         // Dispose the editor.
-        var ex = Record.Exception (() => editor.Dispose ());
+        Exception? ex = Record.Exception (() => editor.Dispose ());
         Assert.Null (ex);
 
         // Manually dispose the orphan to verify it doesn't blow up (but note: the Editor
@@ -185,7 +186,7 @@ public class EditorDisposalTests
 
         // The original is now orphaned with no owner to dispose it.
         // Dispose the editor cleanly.
-        var ex = Record.Exception (() => editor.Dispose ());
+        Exception? ex = Record.Exception (() => editor.Dispose ());
         Assert.Null (ex);
 
         // The orphan should still be disposable on its own.
@@ -215,7 +216,7 @@ public class EditorDisposalTests
         Assert.True (editor.Padding.GetOrCreateView ().SubViews.Any (), "Gutter should be present in Padding");
 
         // Dispose the editor — should not throw even with gutter active.
-        var ex = Record.Exception (() => editor.Dispose ());
+        Exception? ex = Record.Exception (() => editor.Dispose ());
         Assert.Null (ex);
     }
 
@@ -243,7 +244,7 @@ public class EditorDisposalTests
             "Gutter should be removed from Padding after disabling");
 
         // Dispose should be clean.
-        var ex = Record.Exception (() => editor.Dispose ());
+        Exception? ex = Record.Exception (() => editor.Dispose ());
         Assert.Null (ex);
     }
 
@@ -262,7 +263,7 @@ public class EditorDisposalTests
 
         editor.Dispose ();
 
-        var ex = Record.Exception (() => editor.Dispose ());
+        Exception? ex = Record.Exception (() => editor.Dispose ());
         Assert.Null (ex);
     }
 
@@ -278,7 +279,7 @@ public class EditorDisposalTests
 
         // Set a highlighting definition if one is loaded; otherwise just verify dispose works.
         // Even without a highlighter, the dispose path should handle nulls gracefully.
-        var ex = Record.Exception (() => editor.Dispose ());
+        Exception? ex = Record.Exception (() => editor.Dispose ());
         Assert.Null (ex);
     }
 
@@ -295,7 +296,7 @@ public class EditorDisposalTests
         editor.FindNext ("me");
         Assert.NotNull (editor.SearchStrategy);
 
-        var ex = Record.Exception (() => editor.Dispose ());
+        Exception? ex = Record.Exception (() => editor.Dispose ());
         Assert.Null (ex);
     }
 
@@ -324,7 +325,7 @@ public class EditorDisposalTests
         fx.Injector.InjectMouse (
             new Mouse
             {
-                ScreenPosition = new System.Drawing.Point (2, 0),
+                ScreenPosition = new Point (2, 0),
                 Flags = MouseFlags.RightButtonClicked,
                 Timestamp = new DateTime (2025, 1, 1, 12, 0, 0)
             },
@@ -332,7 +333,7 @@ public class EditorDisposalTests
         fx.Render ();
 
         // Now dispose the entire fixture — tests the cascading disposal path.
-        var ex = await Record.ExceptionAsync (async () => await fx.DisposeAsync ());
+        Exception? ex = await Record.ExceptionAsync (async () => await fx.DisposeAsync ());
         Assert.Null (ex);
     }
 
