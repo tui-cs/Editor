@@ -33,6 +33,24 @@ public class EditorSingleLineTests
     }
 
     [Fact]
+    public async Task SingleLine_Renders_Newlines_As_Glyphs ()
+    {
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("ab\ncd\nef"), 12, 3);
+        fx.Top.Editor.Multiline = false;
+        fx.Top.Editor.SetFocus ();
+        fx.Render ();
+
+        // The document keeps its newlines; single-line mode flattens every visible line onto one
+        // row, rendering each newline as a visible ⏎ glyph (DrawSingleLineFlat). The ANSI golden
+        // locks that exact look — cat __snapshots__/SingleLine_Renders_Newlines_As_Glyphs.ans.
+        Assert.Equal ("ab\ncd\nef", fx.Top.Editor.Document!.Text);
+        Assert.Equal (3, fx.Top.Editor.Document.LineCount);
+        Assert.Equal (1, fx.Top.Editor.Viewport.Height);
+
+        AnsiSnapshot.Verify (fx.Driver, nameof (SingleLine_Renders_Newlines_As_Glyphs));
+    }
+
+    [Fact]
     public async Task SingleLine_Up_Down_Are_NoOps ()
     {
         await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("hello"));
