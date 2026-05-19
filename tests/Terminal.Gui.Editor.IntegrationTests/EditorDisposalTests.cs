@@ -119,7 +119,7 @@ public class EditorDisposalTests
 
     /// <summary>
     ///     The default context menu is created in the constructor. On disposal it should be
-    ///     cleaned up — at minimum not cause exceptions or leave orphan views.
+    ///     cleaned up — the Editor nulls the property so the PopoverMenu is no longer reachable.
     /// </summary>
     [Fact]
     public async Task Dispose_Cleans_Up_ContextMenu ()
@@ -127,24 +127,15 @@ public class EditorDisposalTests
         await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("test"));
         Editor editor = fx.Top.Editor;
 
-        // Verify the context menu exists.
+        // Verify the context menu exists before dispose.
         Assert.NotNull (editor.ContextMenu);
-        PopoverMenu contextMenu = editor.ContextMenu!;
 
         // Dispose the editor.
         editor.Dispose ();
 
-        // The context menu should ideally be disposed. We can't check WasDisposed without
-        // DEBUG_IDISPOSABLE, but we verify no exception occurred and the menu items are not
-        // still referencing a live editor via the Target WeakReference.
-        if (contextMenu.Target is not null && contextMenu.Target.TryGetTarget (out View? target))
-        {
-            // If the WeakReference is still alive, the context menu's target is the disposed editor.
-            // This is a potential leak indicator — the disposed editor is still reachable.
-            // NOTE: This assertion documents the current (buggy?) behavior; if the Editor properly
-            // nulled ContextMenu.Target on dispose, this would fail.
-            Assert.Same (editor, target);
-        }
+        // After disposal the ContextMenu property should be null — the Editor no longer
+        // holds a reference to the PopoverMenu.
+        Assert.Null (editor.ContextMenu);
     }
 
     /// <summary>
