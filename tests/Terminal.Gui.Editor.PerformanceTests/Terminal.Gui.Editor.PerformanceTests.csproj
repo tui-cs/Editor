@@ -20,6 +20,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\examples\ted\ted.csproj" />
     <ProjectReference Include="..\..\src\Terminal.Gui.Editor\Terminal.Gui.Editor.csproj" />
   </ItemGroup>
 

@@ -28,6 +28,7 @@ public class FoldingManager
 {
     private readonly TextSegmentCollection<FoldingSection> _foldings;
     private bool _isFirstUpdate = true;
+    private bool _suppressFoldingChanged;
 
     #region Constructor
 
@@ -50,7 +51,27 @@ public class FoldingManager
 
     private void OnDocumentChanged (object? sender, DocumentChangeEventArgs e)
     {
+        var lineStructurePreservingChange = IsLineStructurePreservingChange (e);
+        var hasFoldedSections = HasFoldedSections ();
+
+        if (!hasFoldedSections && lineStructurePreservingChange)
+        {
+            _suppressFoldingChanged = true;
+
+            try
+            {
+                _foldings.UpdateOffsets (e);
+            }
+            finally
+            {
+                _suppressFoldingChanged = false;
+            }
+
+            return;
+        }
+
         _foldings.UpdateOffsets (e);
+
         var newEndOffset = e.Offset + e.InsertionLength;
         // extend end offset to the end of the line (including delimiter)
         DocumentLine endLine = Document.GetLineByOffset (newEndOffset);
@@ -63,6 +84,163 @@ public class FoldingManager
                 RemoveFolding (affectedFolding);
             }
         }
+    }
+
+    private bool HasFoldedSections ()
+    {
+        foreach (FoldingSection fs in _foldings)
+        {
+            if (fs.IsFolded)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static bool IsLineStructurePreservingChange (DocumentChangeEventArgs e)
+    {
+        OffsetChangeMap map = e.OffsetChangeMap;
+        var hasInsertion = false;
+        var hasRemoval = false;
+
+        foreach (OffsetChangeMapEntry entry in map)
+        {
+            hasInsertion |= entry.InsertionLength > 0;
+            hasRemoval |= entry.RemovalLength > 0;
+
+            if (entry.InsertionLength > 0 && entry.RemovalLength > 0)
+            {
+                return false;
+            }
+        }
+
+        if (!hasInsertion && !hasRemoval)
+        {
+            return false;
+        }
+
+        if (hasInsertion && hasRemoval)
+        {
+            return false;
+        }
+
+        if (hasInsertion)
+        {
+            return !MappedInsertionsContainNewLines (map, e.InsertedText, e.Offset);
+        }
+
+        return !MappedRemovalsContainNewLines (map, e.RemovedText, e.Offset, e.RemovalLength);
+    }
+
+    private static bool MappedInsertionsContainNewLines (OffsetChangeMap map, ITextSource text, int baseOffset)
+    {
+        if (InsertionEntriesUseInsertedTextCoordinates (map, baseOffset, text.TextLength))
+        {
+            return MappedInsertionsContainNewLinesWithoutShift (map, text, baseOffset);
+        }
+
+        var insertedShift = 0;
+
+        foreach (OffsetChangeMapEntry entry in map)
+        {
+            if (entry.InsertionLength == 0)
+            {
+                continue;
+            }
+
+            var relativeOffset = entry.Offset - baseOffset + insertedShift;
+
+            for (var i = 0; i < entry.InsertionLength; i++)
+            {
+                var ch = text.GetCharAt (relativeOffset + i);
+
+                if (ch is '\r' or '\n')
+                {
+                    return true;
+                }
+            }
+
+            insertedShift += entry.InsertionLength;
+        }
+
+        return false;
+    }
+
+    private static bool MappedInsertionsContainNewLinesWithoutShift (OffsetChangeMap map, ITextSource text,
+        int baseOffset)
+    {
+        foreach (OffsetChangeMapEntry entry in map)
+        {
+            if (entry.InsertionLength == 0)
+            {
+                continue;
+            }
+
+            var relativeOffset = entry.Offset - baseOffset;
+
+            for (var i = 0; i < entry.InsertionLength; i++)
+            {
+                var ch = text.GetCharAt (relativeOffset + i);
+
+                if (ch is '\r' or '\n')
+                {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    private static bool MappedRemovalsContainNewLines (
+        OffsetChangeMap map,
+        ITextSource text,
+        int baseOffset,
+        int removalLength)
+    {
+        if (!RemovalEntriesUseRemovedTextCoordinates (map, baseOffset, removalLength))
+        {
+            return MappedInsertionsContainNewLines (map.Invert (), text, baseOffset);
+        }
+
+        foreach (OffsetChangeMapEntry entry in map)
+        {
+            if (entry.RemovalLength == 0)
+            {
+                continue;
+            }
+
+            var relativeOffset = entry.Offset - baseOffset;
+
+            for (var i = 0; i < entry.RemovalLength; i++)
+            {
+                var ch = text.GetCharAt (relativeOffset + i);
+
+                if (ch is '\r' or '\n')
+                {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    private static bool RemovalEntriesUseRemovedTextCoordinates (OffsetChangeMap map, int baseOffset, int removalLength)
+    {
+        return map.Count > 0
+               && map[0].RemovalLength > 0
+               && map[0].Offset + map[0].RemovalLength == baseOffset + removalLength;
+    }
+
+    private static bool InsertionEntriesUseInsertedTextCoordinates (OffsetChangeMap map, int baseOffset,
+        int insertionLength)
+    {
+        return map.Count > 0
+               && map[^1].InsertionLength > 0
+               && map[^1].Offset + map[^1].InsertionLength == baseOffset + insertionLength;
     }
 
     #endregion
@@ -169,6 +347,11 @@ public class FoldingManager
 
     internal void RaiseFoldingChanged ()
     {
+        if (_suppressFoldingChanged)
+        {
+            return;
+        }
+
         FoldingChanged?.Invoke (this, EventArgs.Empty);
     }
 
@@ -305,7 +488,8 @@ public class FoldingManager
                 continue;
             }
 
-            DocumentLine startLine = Document.GetLineByOffset (Math.Clamp (fs.StartOffset, 0, Document.TextLength));
+            DocumentLine startLine =
+                Document.GetLineByOffset (Math.Clamp (fs.StartOffset, 0, Document.TextLength));
             DocumentLine endLine = Document.GetLineByOffset (Math.Clamp (fs.EndOffset, 0, Document.TextLength));
             var hiddenStart = startLine.LineNumber + 1;
             var hiddenEnd = endLine.LineNumber;
@@ -356,7 +540,8 @@ public class FoldingManager
                 continue;
             }
 
-            DocumentLine startLine = Document.GetLineByOffset (Math.Clamp (fs.StartOffset, 0, Document.TextLength));
+            DocumentLine startLine =
+                Document.GetLineByOffset (Math.Clamp (fs.StartOffset, 0, Document.TextLength));
             DocumentLine endLine = Document.GetLineByOffset (Math.Clamp (fs.EndOffset, 0, Document.TextLength));
             if (lineNumber > startLine.LineNumber && lineNumber <= endLine.LineNumber)
             {
@@ -413,7 +598,8 @@ public class FoldingManager
                 continue;
             }
 
-            DocumentLine startLine = Document.GetLineByOffset (Math.Clamp (fs.StartOffset, 0, Document.TextLength));
+            DocumentLine startLine =
+                Document.GetLineByOffset (Math.Clamp (fs.StartOffset, 0, Document.TextLength));
             DocumentLine endLine = Document.GetLineByOffset (Math.Clamp (fs.EndOffset, 0, Document.TextLength));
             if (lineNumber > startLine.LineNumber && lineNumber <= endLine.LineNumber)
             {

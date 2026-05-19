@@ -1,4 +1,5 @@
 using System.Drawing;
+using System.Text;
 using Terminal.Gui.Document;
 
 namespace Terminal.Gui.Editor;
@@ -427,6 +428,11 @@ public partial class Editor
         {
             List<CaretEditInfo> carets = GetAllCaretsDescending ();
 
+            if (TryMultiCaretPlainInsertAsSingleChange (text, carets))
+            {
+                return;
+            }
+
             foreach (CaretEditInfo caret in carets)
             {
                 if (caret.IsPrimary)
@@ -476,6 +482,55 @@ public partial class Editor
         ClearAdditionalCaretSelections ();
     }
 
+    private bool TryMultiCaretPlainInsertAsSingleChange (string text, List<CaretEditInfo> carets)
+    {
+        if (_document is null || OverwriteMode || HasSelection)
+        {
+            return false;
+        }
+
+        foreach (CaretEditInfo caret in carets)
+        {
+            if (caret.SelectionAnchor is { IsDeleted: false } selAnchor && selAnchor.Offset != caret.Offset)
+            {
+                return false;
+            }
+        }
+
+        carets.Sort ((a, b) => a.Offset.CompareTo (b.Offset));
+
+        var firstOffset = carets[0].Offset;
+        var lastOffset = carets[^1].Offset;
+        var replaceLength = lastOffset - firstOffset;
+
+        if (replaceLength > 200_000)
+        {
+            carets.Sort ((a, b) => b.Offset.CompareTo (a.Offset));
+
+            return false;
+        }
+
+        var original = _document.GetText (firstOffset, replaceLength);
+        StringBuilder replacement = new (original.Length + text.Length * carets.Count);
+        OffsetChangeMap map = new ();
+        var copied = 0;
+
+        foreach (CaretEditInfo caret in carets)
+        {
+            var relativeOffset = caret.Offset - firstOffset;
+            replacement.Append (original, copied, relativeOffset - copied);
+            replacement.Append (text);
+            copied = relativeOffset;
+            map.Add (new OffsetChangeMapEntry (caret.Offset, 0, text.Length));
+        }
+
+        replacement.Append (original, copied, original.Length - copied);
+        _document.Replace (firstOffset, replaceLength, replacement.ToString (), map);
+        ClearAdditionalCaretSelections ();
+
+        return true;
+    }
+
     /// <summary>
     ///     Executes a multi-caret delete-left (backspace). Each caret deletes one indentation unit
     ///     (when at a leading-whitespace boundary) or one character to its left, matching single-caret
@@ -496,6 +551,11 @@ public partial class Editor
         using (_document.RunUpdate ())
         {
             List<CaretEditInfo> carets = GetAllCaretsDescending ();
+
+            if (TryMultiCaretPlainDeleteLeftAsSingleChange (carets))
+            {
+                return true;
+            }
 
             foreach (CaretEditInfo caret in carets)
             {
@@ -533,6 +593,71 @@ public partial class Editor
             }
         }
 
+        ClearAdditionalCaretSelections ();
+
+        return true;
+    }
+
+    private bool TryMultiCaretPlainDeleteLeftAsSingleChange (List<CaretEditInfo> carets)
+    {
+        if (_document is null || HasSelection)
+        {
+            return false;
+        }
+
+        foreach (CaretEditInfo caret in carets)
+        {
+            if (caret.Offset == 0
+                || (caret.SelectionAnchor is { IsDeleted: false } selAnchor && selAnchor.Offset != caret.Offset)
+                || TryGetIndentationRemovalAt (caret.Offset, out _))
+            {
+                return false;
+            }
+
+            var deletedChar = _document.GetCharAt (caret.Offset - 1);
+
+            if (deletedChar is '\r' or '\n')
+            {
+                return false;
+            }
+        }
+
+        carets.Sort ((a, b) => a.Offset.CompareTo (b.Offset));
+
+        var firstOffset = carets[0].Offset - 1;
+        var lastOffset = carets[^1].Offset;
+        var replaceLength = lastOffset - firstOffset;
+
+        if (replaceLength > 200_000)
+        {
+            carets.Sort ((a, b) => b.Offset.CompareTo (a.Offset));
+
+            return false;
+        }
+
+        var original = _document.GetText (firstOffset, replaceLength);
+        StringBuilder replacement = new (original.Length - carets.Count);
+        List<OffsetChangeMapEntry> removals = new (carets.Count);
+        var copied = 0;
+
+        foreach (CaretEditInfo caret in carets)
+        {
+            var relativeRemovalOffset = caret.Offset - 1 - firstOffset;
+            replacement.Append (original, copied, relativeRemovalOffset - copied);
+            copied = relativeRemovalOffset + 1;
+            removals.Add (new OffsetChangeMapEntry (caret.Offset - 1, 1, 0));
+        }
+
+        replacement.Append (original, copied, original.Length - copied);
+
+        OffsetChangeMap map = new ();
+
+        for (var i = removals.Count - 1; i >= 0; i--)
+        {
+            map.Add (removals[i]);
+        }
+
+        _document.Replace (firstOffset, replaceLength, replacement.ToString (), map);
         ClearAdditionalCaretSelections ();
 
         return true;
