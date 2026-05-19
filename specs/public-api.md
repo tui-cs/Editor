@@ -44,6 +44,7 @@ public class Editor : View
     public bool ShowLineNumbers { get; set; }                     // exists
     public bool WordWrap { get; set; }                            // word-wrap-toggle (needs word-wrap)
     public bool ReadOnly { get; set; }                            // exists (read-only ✅)
+    public bool Multiline { get; set; } = true;                   // single-line-mode (single-line ✅)
     public bool OverwriteMode { get; set; }                       // exists (overwrite-mode ✅)
     public event EventHandler? OverwriteModeChanged;              // exists (overwrite-mode ✅)
 
@@ -175,6 +176,7 @@ public readonly record struct TextDocumentProgress (
 | 2026-05-11 | ReadOnly property landed on Editor | read-only |
 | 2026-05-12 | `ISearchStrategy?` `SearchStrategy { get; set; }` landed on Editor; string-based FindNext/FindPrevious/ReplaceNext/ReplaceAll overloads retained as convenience wrappers | find-and-replace |
 | 2026-05-16 | Vertical multi-caret keybindings (`Ctrl+Alt+CursorUp/Down`, `Alt+Drag`) added via `Editor.DefaultKeyBindings`; no new public Editor API (R8) | vertical-multi-caret |
+| 2026-05-17 | `Multiline` property added (default `true`); single-line mode suppresses newlines, constrains vertical nav/scroll, forces WordWrap off, disables multi-caret | single-line-mode |
 | 2026-05-17 | Column selection during `Alt+Drag` and `Ctrl+Shift+Alt+Arrow/Page` added without new public Editor API | vertical-multi-caret |
 | 2026-05-17 | `IEditorCompletionProvider?` `CompletionProvider` + `bool IsCompletionActive` landed; `CompletionItem` sealed class; `Popover<ListView>`-based popup; DEC-009 resolves OPEN-002 | completion |
 | 2026-05-17 | Streaming `TextDocument.LoadAsync` / `TextDocument.SaveAsync`, `TextDocumentProgress`, `TextDocument.Encoding`, and delegating `Editor.LoadAsync` / `Editor.SaveAsync` landed | file-io |

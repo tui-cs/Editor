@@ -36,7 +36,7 @@ public partial class Editor
     /// </summary>
     public void ToggleCaretAt (int offset)
     {
-        if (_document is null)
+        if (_document is null || !Multiline)
         {
             return;
         }
@@ -168,7 +168,7 @@ public partial class Editor
     /// </summary>
     private bool? AddCaretVertically (int delta)
     {
-        if (_document is null)
+        if (_document is null || !Multiline)
         {
             return true;
         }
@@ -222,7 +222,7 @@ public partial class Editor
     private void SetVerticalCaretsFromViewRows (int anchorViewRow, int activeViewRow, int anchorViewColumn,
         int activeViewColumn)
     {
-        if (_document is null)
+        if (_document is null || !Multiline)
         {
             return;
         }
@@ -604,7 +604,7 @@ public partial class Editor
     /// </summary>
     private bool? MultiCaretNewLine ()
     {
-        if (ReadOnly || _document is null)
+        if (ReadOnly || !Multiline || _document is null)
         {
             return true;
         }
@@ -747,7 +747,7 @@ public partial class Editor
 
         foreach (CaretEditInfo caret in GetAllCaretsDescending ())
         {
-            if (TryGetCaretSelectionRange (caret, out int selStart, out int selEnd))
+            if (TryGetCaretSelectionRange (caret, out var selStart, out var selEnd))
             {
                 foreach (DocumentLine line in LinesInRange (selStart, selEnd))
                 {
@@ -801,9 +801,11 @@ public partial class Editor
 
         foreach (CaretEditInfo caret in GetAllCaretsDescending ())
         {
-            List<DocumentLine> lines = TryGetCaretSelectionRange (caret, out int selStart, out int selEnd) && RangeSpansMultipleLines (selStart, selEnd)
-                                           ? LinesInRange (selStart, selEnd)
-                                           : [_document!.GetLineByOffset (caret.Offset)];
+            List<DocumentLine> lines =
+                TryGetCaretSelectionRange (caret, out var selStart, out var selEnd) &&
+                RangeSpansMultipleLines (selStart, selEnd)
+                    ? LinesInRange (selStart, selEnd)
+                    : [_document!.GetLineByOffset (caret.Offset)];
 
             foreach (DocumentLine line in lines)
             {

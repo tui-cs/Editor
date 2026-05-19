@@ -70,6 +70,18 @@ need to know the document construction details.
 
 ---
 
+### DEC-008: Single-line / embeddable-input mode (resolves former OPEN-006)
+
+**Decision**: **Yes** — `Editor` adds a `Multiline` property (default `true`) that enables a single-line / fixed-height input mode. When `false`, newlines are suppressed (Enter is a no-op), vertical navigation is constrained, WordWrap is forced off, and multi-caret is disabled. Follow-up properties `EnterKeyAddsLine` and `TabKeyAddsTab` (Enter raises `Accepting`, Tab traverses focus) are tracked separately in [#147](https://github.com/gui-cs/Editor/issues/147) and not yet implemented. Defaults preserve today's multi-line behavior exactly.
+
+**Rationale**: The earlier "tension" rested on the CLAUDE.md non-goal *"`Editor` ships beside `TextView`, not as a replacement."* Maintainer direction (2026-05-17): `Editor` **will** functionally replace `TextView` — just **not** in a source/API- or UI-compatible way. For *feature* purposes that dissolves the tension: a code-aware single-/few-line input (highlighted expression field, REPL line) is a capability `TextView` serves and `Editor` must therefore serve. The behavior is mostly binding-shaped (Enter/Tab semantics + an `Accepting` event + a height/scroll constraint), so the cost is low and the defaults are non-breaking.
+
+**Affected features**: see [`textview-parity-gap/spec.md`](textview-parity-gap/spec.md) Gap 3 (#147). Note: this "functionally replaces `TextView`" framing also reclassifies `IDesignable` (#151) from non-goal to a tracked gap and keeps single-line Enter/Tab as a real feature (not mere rebinding).
+
+**Date**: 2026-05-17
+
+---
+
 ### DEC-009: Completion item shape & provider interface
 
 **Decision**: Use a fresh LSP-flavored `IEditorCompletionProvider` interface and `CompletionItem` type (`Terminal.Gui.Editor.Completion` namespace), **not** Terminal.Gui's existing `IAutocomplete` / `PopupAutocomplete`.
@@ -111,18 +123,6 @@ Resolved — see DEC-009.
 **Affected features**: syntax-highlighting, syntax-colorizer.
 
 **Note (2026-05-17)**: effectively settled by syntax-theme Phase 2 (PR #134) — xshd colors now route through TG `Scheme` code-token `VisualRole`s and `HighlightingColor.Style` continues to carry `TextStyle` flags. Confirm no xshd attribute is silently dropped, then move to Resolved.
-
----
-
-### DEC-008: Single-line / embeddable-input mode (resolves former OPEN-006)
-
-**Decision**: **Yes** — `Editor` adds a single-line / fixed-height input mode: `Multiline` (default `true`), `EnterKeyAddsLine` (default `true`; when `false`, Enter raises `Accepting` instead of inserting a newline), `TabKeyAddsTab` (default `true`; when `false`, Tab traverses focus). Defaults preserve today's multi-line behavior exactly. Tracked in [#147](https://github.com/gui-cs/Editor/issues/147).
-
-**Rationale**: The earlier "tension" rested on the CLAUDE.md non-goal *"`Editor` ships beside `TextView`, not as a replacement."* Maintainer direction (2026-05-17): `Editor` **will** functionally replace `TextView` — just **not** in a source/API- or UI-compatible way. For *feature* purposes that dissolves the tension: a code-aware single-/few-line input (highlighted expression field, REPL line) is a capability `TextView` serves and `Editor` must therefore serve. The behavior is mostly binding-shaped (Enter/Tab semantics + an `Accepting` event + a height/scroll constraint), so the cost is low and the defaults are non-breaking.
-
-**Affected features**: see [`textview-parity-gap/spec.md`](textview-parity-gap/spec.md) Gap 3 (#147). Note: this "functionally replaces `TextView`" framing also reclassifies `IDesignable` (#151) from non-goal to a tracked gap and keeps single-line Enter/Tab as a real feature (not mere rebinding).
-
-**Date**: 2026-05-17
 
 ---
 

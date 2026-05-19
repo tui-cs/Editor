@@ -29,6 +29,7 @@
     <File Path="scripts/start-agent.sh" />
   </Folder>
   <Project Path="benchmarks/Terminal.Gui.Editor.Benchmarks/Terminal.Gui.Editor.Benchmarks.csproj" />
+  <Project Path="examples/prompt/prompt.csproj" />
   <Project Path="examples/ted/ted.csproj" />
   <Project Path="src/Terminal.Gui.Editor/Terminal.Gui.Editor.csproj" />
   <Project Path="tests/Terminal.Gui.Editor.IntegrationTests/Terminal.Gui.Editor.IntegrationTests.csproj" />

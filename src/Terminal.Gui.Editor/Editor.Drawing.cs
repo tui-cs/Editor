@@ -55,6 +55,13 @@ public partial class Editor
         var visibleStart = viewport.X;
         var visibleEnd = viewport.X + viewport.Width;
 
+        if (!Multiline)
+        {
+            DrawSingleLineFlat (viewport, normal, selected, selStart, selEnd, visibleStart, visibleEnd);
+
+            return;
+        }
+
         if (WordWrap)
         {
             DrawWrappedLines (viewport, normal, selected, selStart, selEnd);
@@ -128,6 +135,111 @@ public partial class Editor
                 renderer.Draw (this, visualLine, row, viewport);
             }
         }
+    }
+
+    /// <summary>
+    ///     Draws all document content on a single visual row with newline characters rendered as
+    ///     visible glyphs. Used when <see cref="Multiline" /> is <see langword="false" />.
+    /// </summary>
+    private void DrawSingleLineFlat (
+        Rectangle viewport,
+        Attribute normal,
+        Attribute selected,
+        int selStart,
+        int selEnd,
+        int visibleStart,
+        int visibleEnd)
+    {
+        // Build a composite visual line from visible document lines (respecting folds),
+        // inserting newline glyph elements between them. Uses the first visible line as the owner.
+        List<int> visibleLines = GetVisibleLineNumbers ();
+
+        if (visibleLines.Count == 0)
+        {
+            return;
+        }
+
+        DocumentLine firstLine = _document!.GetLineByNumber (visibleLines[0]);
+        CellVisualLine composite = new (firstLine);
+        var flatColumn = 0;
+
+        for (var idx = 0; idx < visibleLines.Count; idx++)
+        {
+            var lineNum = visibleLines[idx];
+            DocumentLine line = _document.GetLineByNumber (lineNum);
+            CellVisualLine lineVisual = GetOrBuildDrawVisualLine (line, null, normal, selected, selStart, selEnd);
+
+            foreach (CellVisualLineElement element in lineVisual.Elements)
+            {
+                CellVisualLineElement shifted = ShiftElement (element, flatColumn);
+                composite.AddElement (shifted);
+            }
+
+            flatColumn += lineVisual.VisualLength;
+
+            if (idx < visibleLines.Count - 1)
+            {
+                // The newline delimiter occupies document offsets at the end of the line.
+                var nlOffset = line.Offset + line.Length;
+                var nlLength = line.DelimiterLength;
+
+                // Determine the newline glyph attribute: use selection attribute if within selection.
+                Attribute nlAttr = selStart < selEnd && nlOffset < selEnd && nlOffset + nlLength > selStart
+                    ? selected
+                    : normal;
+
+                composite.AddElement (new NewlineGlyphElement (nlOffset, nlLength, flatColumn, nlAttr));
+                flatColumn += 1;
+            }
+        }
+
+        foreach (IBackgroundRenderer renderer in BackgroundRenderers)
+        {
+            renderer.Draw (this, composite, 0, viewport);
+        }
+
+        foreach (CellVisualLineElement element in composite.Elements)
+        {
+            if (element.VisualColumn >= visibleEnd)
+            {
+                break;
+            }
+
+            if (element.VisualEndColumn <= visibleStart)
+            {
+                continue;
+            }
+
+            element.Draw (this, 0, 0, visibleStart, visibleEnd);
+        }
+
+        foreach (IOverlayRenderer renderer in OverlayRenderers)
+        {
+            renderer.Draw (this, composite, 0, viewport);
+        }
+    }
+
+    /// <summary>
+    ///     Creates a copy of an element shifted by a flat column offset. Used to compose
+    ///     elements from multiple document lines onto a single visual row.
+    /// </summary>
+    private static CellVisualLineElement ShiftElement (CellVisualLineElement element, int columnOffset)
+    {
+        if (columnOffset == 0)
+        {
+            return element;
+        }
+
+        return element switch
+        {
+            TabElement tab => new TabElement (
+                tab.DocumentOffset, tab.VisualColumn + columnOffset, tab.VisualLength, tab.ShowTabs, tab.Attribute),
+            FoldingMarkerElement fold => new FoldingMarkerElement (
+                fold.DocumentOffset, fold.DocumentLength, fold.VisualColumn + columnOffset, fold.Attribute, fold.Title),
+            TextRunElement text => new TextRunElement (
+                text.DocumentOffset, text.DocumentLength, text.VisualColumn + columnOffset, text.Text, text.Attribute),
+            _ => element // Unknown element type — leave as-is (shouldn't happen).
+        };
     }
 
     private CellVisualLine BuildWrappedSegmentVisualLine (

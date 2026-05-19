@@ -82,23 +82,31 @@ public partial class Editor
         // Selection-extending movement
         AddCommand (Command.LeftExtend, () => ExtendCommand (() => ExtendCaretBy (-1)));
         AddCommand (Command.RightExtend, () => ExtendCommand (() => ExtendCaretBy (1)));
-        AddCommand (Command.UpExtend, () => ExtendCommand (() => ExtendCaretVertically (-1)));
-        AddCommand (Command.DownExtend, () => ExtendCommand (() => ExtendCaretVertically (1)));
+        AddCommand (Command.UpExtend, () => Multiline ? ExtendCommand (() => ExtendCaretVertically (-1)) : true);
+        AddCommand (Command.DownExtend, () => Multiline ? ExtendCommand (() => ExtendCaretVertically (1)) : true);
         AddCommand (Command.LeftStartExtend,
-            () => ExtendCommand (() => ExtendCaretTo (_document!.GetLineByOffset (CaretOffset).Offset)));
+            () => ExtendCommand (() =>
+                ExtendCaretTo (!Multiline ? 0 : _document!.GetLineByOffset (CaretOffset).Offset)));
 
         AddCommand (Command.RightEndExtend, () => ExtendCommand (() =>
         {
-            DocumentLine line = _document!.GetLineByOffset (CaretOffset);
-            ExtendCaretTo (line.Offset + line.Length);
+            if (!Multiline)
+            {
+                ExtendCaretTo (_document!.TextLength);
+            }
+            else
+            {
+                DocumentLine line = _document!.GetLineByOffset (CaretOffset);
+                ExtendCaretTo (line.Offset + line.Length);
+            }
         }));
 
         AddCommand (Command.StartExtend, () => ExtendCommand (() => ExtendCaretTo (0)));
         AddCommand (Command.EndExtend, () => ExtendCommand (() => ExtendCaretTo (_document!.TextLength)));
         AddCommand (Command.PageUpExtend,
-            () => ExtendCommand (() => ExtendCaretVertically (-Math.Max (1, Viewport.Height))));
+            () => Multiline ? ExtendCommand (() => ExtendCaretVertically (-Math.Max (1, Viewport.Height))) : true);
         AddCommand (Command.PageDownExtend,
-            () => ExtendCommand (() => ExtendCaretVertically (Math.Max (1, Viewport.Height))));
+            () => Multiline ? ExtendCommand (() => ExtendCaretVertically (Math.Max (1, Viewport.Height))) : true);
 
         // Selection ops
         AddCommand (Command.SelectAll, () =>
@@ -154,6 +162,13 @@ public partial class Editor
             if (clipboard is null || !clipboard.TryGetClipboardData (out var contents))
             {
                 return true;
+            }
+
+            // In single-line mode, strip newlines from pasted content so the document
+            // stays on one line.
+            if (!Multiline)
+            {
+                contents = contents.ReplaceLineEndings (string.Empty);
             }
 
             using (_document!.RunUpdate ())
@@ -327,6 +342,11 @@ public partial class Editor
 
     private bool? MoveCaretVerticallyCollapsing (int delta)
     {
+        if (!Multiline)
+        {
+            return true;
+        }
+
         MoveCaretVerticallyCollapsingSelection (delta);
 
         return true;
@@ -334,6 +354,13 @@ public partial class Editor
 
     private bool? ScrollVerticalCommand (int delta)
     {
+        // In single-line mode, vertical scroll is a no-op but must return true (handled)
+        // to prevent the event from bubbling to parent containers.
+        if (!Multiline)
+        {
+            return true;
+        }
+
         if (_document is null || ScrollVertical (delta) != true)
         {
             return false;
@@ -358,7 +385,7 @@ public partial class Editor
 
     private bool? InsertNewLineWithAutoIndent ()
     {
-        if (ReadOnly)
+        if (ReadOnly || !Multiline)
         {
             return true;
         }
@@ -499,6 +526,13 @@ public partial class Editor
 
     private bool? MoveCaretToLineStart ()
     {
+        if (!Multiline)
+        {
+            CaretOffset = 0;
+
+            return true;
+        }
+
         DocumentLine line = _document!.GetLineByOffset (CaretOffset);
         CaretOffset = line.Offset;
 
@@ -507,6 +541,13 @@ public partial class Editor
 
     private bool? MoveCaretToLineEnd ()
     {
+        if (!Multiline)
+        {
+            CaretOffset = _document!.TextLength;
+
+            return true;
+        }
+
         DocumentLine line = _document!.GetLineByOffset (CaretOffset);
         CaretOffset = line.Offset + line.Length;
 

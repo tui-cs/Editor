@@ -6,6 +6,7 @@ using Terminal.Gui.Document.Folding;
 using Terminal.Gui.Drawing;
 using Terminal.Gui.Editor.Rendering;
 using Terminal.Gui.Highlighting;
+using Terminal.Gui.Input;
 using Terminal.Gui.Text;
 using Terminal.Gui.Text.Indentation;
 using Terminal.Gui.ViewBase;
@@ -194,6 +195,56 @@ public partial class Editor : View
     public bool ReadOnly { get; set; }
 
     /// <summary>
+    ///     Gets or sets whether the editor supports multiple lines. When <see langword="true" /> (default),
+    ///     Enter inserts a newline, vertical navigation moves across lines, and content height reflects the
+    ///     full document. When <see langword="false" />, newline insertion is suppressed, vertical
+    ///     navigation and scroll are constrained to a single row, <see cref="WordWrap" /> is forced off,
+    ///     and multi-caret operations are disabled. Existing newlines in the document are preserved (no
+    ///     data loss) and rendered as visible <c>⏎</c> glyphs. Selection and horizontal editing still work.
+    /// </summary>
+    public bool Multiline
+    {
+        get;
+        set
+        {
+            if (field == value)
+            {
+                return;
+            }
+
+            field = value;
+
+            if (!value)
+            {
+                // Force off WordWrap — meaningless for a single-line input.
+                WordWrap = false;
+
+                // Collapse additional carets — vertical multi-caret is a multi-line concept.
+                ClearAdditionalCarets ();
+
+                // Auto-size to ContentSize (height = 1) so callers don't need explicit Height = 1.
+                Height = Dim.Auto (DimAutoStyle.Content);
+
+                // Rebind Enter to Accept (like TextField) — raises Accepting event.
+                KeyBindings.Remove (Key.Enter);
+                KeyBindings.Add (Key.Enter, Command.Accept);
+            }
+            else
+            {
+                // Restore Enter → NewLine binding for multiline mode.
+                KeyBindings.Remove (Key.Enter);
+                KeyBindings.Add (Key.Enter, Command.NewLine);
+            }
+
+            ClearVisualLineCaches ();
+            _maxWidthDirty = true;
+            UpdateContentSize ();
+            EnsureCaretVisible ();
+            SetNeedsDraw ();
+        }
+    } = true;
+
+    /// <summary>
     ///     Gets or sets the highlighting definition used for syntax coloring. When set, a
     ///     <see cref="HighlightingColorizer" /> is automatically added to
     ///     <see cref="LineTransformers" />. Set to <see langword="null" /> to disable
@@ -282,6 +333,12 @@ public partial class Editor : View
         get;
         set
         {
+            // Word wrap is meaningless in single-line mode.
+            if (!Multiline && value)
+            {
+                return;
+            }
+
             if (field == value)
             {
                 return;
@@ -519,6 +576,27 @@ public partial class Editor : View
             return;
         }
 
+        if (!Multiline)
+        {
+            // Single-line mode: one row, width = sum of visible line visual lengths + newline glyphs.
+            List<int> visibleLines = GetVisibleLineNumbers ();
+            var width = 0;
+
+            for (var idx = 0; idx < visibleLines.Count; idx++)
+            {
+                width += GetOrBuildDefaultVisualLine (_document.GetLineByNumber (visibleLines[idx])).VisualLength;
+
+                if (idx < visibleLines.Count - 1)
+                {
+                    width += 1; // newline glyph
+                }
+            }
+
+            SetContentSize (new Size (width + 1, 1));
+
+            return;
+        }
+
         if (WordWrap)
         {
             // In word-wrap mode, the content height is the total number of visual rows
@@ -535,8 +613,8 @@ public partial class Editor : View
         }
 
         // +1 column lets the caret sit just past the end-of-line.
-        var visibleLines = _document.LineCount - (FoldingManager?.GetHiddenLineCount () ?? 0);
-        SetContentSize (new Size (_maxVisualWidth + 1, Math.Max (1, visibleLines)));
+        var visibleLineCount = _document.LineCount - (FoldingManager?.GetHiddenLineCount () ?? 0);
+        SetContentSize (new Size (_maxVisualWidth + 1, Math.Max (1, visibleLineCount)));
     }
 
     /// <summary>
@@ -888,6 +966,11 @@ public partial class Editor : View
             return 0;
         }
 
+        if (!Multiline)
+        {
+            return GetFlatVisualColumn (line, caretOffset - line.Offset);
+        }
+
         if (!WordWrap)
         {
             return GetOrBuildDefaultVisualLine (line).GetVisualColumn (caretOffset - line.Offset);
@@ -920,12 +1003,43 @@ public partial class Editor : View
     }
 
     /// <summary>
+    ///     Returns the visual column of an offset in a flattened single-line view. Sums the visual
+    ///     lengths of all visible preceding lines (plus 1-cell newline glyphs) and adds the column
+    ///     within the target line. Respects folding by using <see cref="GetVisibleLineNumbers" />.
+    /// </summary>
+    private int GetFlatVisualColumn (DocumentLine targetLine, int offsetInLine)
+    {
+        List<int> visibleLines = GetVisibleLineNumbers ();
+        var flatColumn = 0;
+
+        foreach (var lineNum in visibleLines)
+        {
+            if (lineNum == targetLine.LineNumber)
+            {
+                break;
+            }
+
+            flatColumn += GetOrBuildDefaultVisualLine (_document!.GetLineByNumber (lineNum)).VisualLength;
+            flatColumn += 1; // newline glyph
+        }
+
+        flatColumn += GetOrBuildDefaultVisualLine (targetLine).GetVisualColumn (offsetInLine);
+
+        return flatColumn;
+    }
+
+    /// <summary>
     ///     Returns the caret's position as an index into the visible-line list (i.e. the coordinate
     ///     system used by <c>Viewport.Y</c>). Falls back to <see cref="GetCaretLineIndex" /> when
     ///     no folding is active.
     /// </summary>
     private int GetCaretVisibleLineIndex ()
     {
+        if (!Multiline)
+        {
+            return 0;
+        }
+
         if (WordWrap)
         {
             return GetCaretWrapRow ();
