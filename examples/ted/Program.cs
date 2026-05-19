@@ -23,15 +23,29 @@ using TedApp ted = new (readOnly);
 
 if (!string.IsNullOrWhiteSpace (requestedPath))
 {
-    // Defer onto the app loop so the window renders first, then the file streams in progressively
-    // instead of blocking the UI until the whole file is read.
-    if (File.Exists (requestedPath))
+    // Files at or below this size load fully before the first paint so the editor opens with content
+    // already on screen. Above it, the progressive path wins (window appears immediately, content
+    // fills in top-down) and the brief empty-buffer frame is the acceptable cost of not blocking
+    // startup on a multi-megabyte read. 1 MiB matches ted's existing "large document" boundary.
+    const long synchronousLoadMaxBytes = 1024 * 1024;
+
+    FileInfo file = new (requestedPath);
+
+    if (!file.Exists)
     {
-        app.Invoke (() => ted.BeginOpenFile (requestedPath));
+        app.Invoke (() => ted.OpenMissingFile (requestedPath));
+    }
+    else if (file.Length <= synchronousLoadMaxBytes)
+    {
+        // Synchronous (non-marshalled) load completes before app.Run, so the very first paint
+        // shows the document — no blank-buffer-then-fill flash for the common small-file case.
+        ted.OpenFileAsync (requestedPath).GetAwaiter ().GetResult ();
     }
     else
     {
-        app.Invoke (() => ted.OpenMissingFile (requestedPath));
+        // Large file: defer onto the app loop so the window renders first, then the file streams
+        // in progressively instead of blocking the UI until the whole file is read.
+        app.Invoke (() => ted.BeginOpenFile (requestedPath));
     }
 }
 
