@@ -1,5 +1,6 @@
 // Copilot - claude-sonnet-4
 
+using System.Drawing;
 using Terminal.Gui.Document.Folding;
 using Terminal.Gui.Drivers;
 using Terminal.Gui.Editor.IntegrationTests.Testing;
@@ -337,5 +338,105 @@ public class EditorSingleLineTests
         int widthAfterFold = fx.Top.Editor.GetContentSize ().Width;
         Assert.True (widthAfterFold < 9,
             $"Content width after fold should decrease from 9, was {widthAfterFold}");
+    }
+
+    /// <summary>
+    ///     CRLF delimiter is treated atomically by horizontal navigation in single-line flat mode.
+    ///     Right arrow from the end of line text skips the entire 2-char delimiter in one keypress.
+    /// </summary>
+    [Fact]
+    public async Task SingleLine_CRLF_Right_Skips_Full_Delimiter ()
+    {
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("ab\r\ncd"));
+        fx.Top.Editor.Multiline = false;
+        fx.Top.Editor.SetFocus ();
+
+        // Caret at end of "ab" (offset 2), before the CRLF delimiter.
+        fx.Top.Editor.CaretOffset = 2;
+
+        fx.Injector.InjectKey (Key.CursorRight, Direct);
+
+        // One Right should skip the full CRLF (offsets 2,3) and land at offset 4 ("c").
+        Assert.Equal (4, fx.Top.Editor.CaretOffset);
+    }
+
+    /// <summary>
+    ///     Left arrow from the start of a line after a CRLF delimiter skips the entire delimiter
+    ///     atomically in single-line flat mode.
+    /// </summary>
+    [Fact]
+    public async Task SingleLine_CRLF_Left_Skips_Full_Delimiter ()
+    {
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("ab\r\ncd"));
+        fx.Top.Editor.Multiline = false;
+        fx.Top.Editor.SetFocus ();
+
+        // Caret at start of "cd" (offset 4), after the CRLF delimiter.
+        fx.Top.Editor.CaretOffset = 4;
+
+        fx.Injector.InjectKey (Key.CursorLeft, Direct);
+
+        // One Left should skip the full CRLF and land at offset 2 (end of "ab").
+        Assert.Equal (2, fx.Top.Editor.CaretOffset);
+    }
+
+    /// <summary>
+    ///     Shift+Right from end of line text selects the entire CRLF delimiter atomically,
+    ///     ensuring that the ⏎ glyph can be fully selected with one Shift+Right.
+    /// </summary>
+    [Fact]
+    public async Task SingleLine_CRLF_ShiftRight_Selects_Full_Delimiter ()
+    {
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("ab\r\ncd"));
+        fx.Top.Editor.Multiline = false;
+        fx.Top.Editor.SetFocus ();
+
+        fx.Top.Editor.CaretOffset = 2;
+
+        fx.Injector.InjectKey (Key.CursorRight.WithShift, Direct);
+
+        // Selection should span the full CRLF: start=2, end=4.
+        Assert.True (fx.Top.Editor.HasSelection);
+        Assert.Equal (2, fx.Top.Editor.SelectionStart);
+        Assert.Equal (4, fx.Top.Editor.SelectionEnd);
+        Assert.Equal ("\r\n", fx.Top.Editor.SelectedText);
+    }
+
+    /// <summary>
+    ///     LF delimiter (single char) still works correctly — one Right crosses it in one keypress
+    ///     (no regression from the CRLF atomic-skip fix).
+    /// </summary>
+    [Fact]
+    public async Task SingleLine_LF_Right_Crosses_Delimiter_In_One_Step ()
+    {
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("ab\ncd"));
+        fx.Top.Editor.Multiline = false;
+        fx.Top.Editor.SetFocus ();
+
+        fx.Top.Editor.CaretOffset = 2;
+
+        fx.Injector.InjectKey (Key.CursorRight, Direct);
+
+        // LF is 1 char, so offset 2 → 3 is the start of "cd".
+        Assert.Equal (3, fx.Top.Editor.CaretOffset);
+    }
+
+    /// <summary>
+    ///     Mouse click on a position beyond the first line resolves to the correct offset
+    ///     in single-line flat mode.
+    /// </summary>
+    [Fact]
+    public async Task SingleLine_MouseClick_Resolves_Offset_In_Second_Line ()
+    {
+        // "ab⏎cd" → flat columns: a(0) b(1) ⏎(2) c(3) d(4)
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("ab\ncd"), 10, 3);
+        fx.Top.Editor.Multiline = false;
+        fx.Top.Editor.SetFocus ();
+        fx.Render ();
+
+        // Click at flat column 3 → should be 'c' which is offset 3 (after "ab\n").
+        Inject.Click (fx, new Point (3, 0));
+
+        Assert.Equal (3, fx.Top.Editor.CaretOffset);
     }
 }

@@ -1006,6 +1006,7 @@ public partial class Editor : View
     ///     Returns the visual column of an offset in a flattened single-line view. Sums the visual
     ///     lengths of all visible preceding lines (plus 1-cell newline glyphs) and adds the column
     ///     within the target line. Respects folding by using <see cref="GetVisibleLineNumbers" />.
+    ///     Offsets inside a multi-char delimiter (e.g. CRLF) are clamped to the line's text end.
     /// </summary>
     private int GetFlatVisualColumn (DocumentLine targetLine, int offsetInLine)
     {
@@ -1023,7 +1024,10 @@ public partial class Editor : View
             flatColumn += 1; // newline glyph
         }
 
-        flatColumn += GetOrBuildDefaultVisualLine (targetLine).GetVisualColumn (offsetInLine);
+        // Clamp offsets inside the delimiter to the line's text length so the caret never
+        // visually stalls inside a multi-char delimiter (CRLF).
+        var clampedOffset = Math.Min (offsetInLine, targetLine.Length);
+        flatColumn += GetOrBuildDefaultVisualLine (targetLine).GetVisualColumn (clampedOffset);
 
         return flatColumn;
     }

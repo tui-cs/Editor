@@ -121,6 +121,16 @@ public partial class Editor
         {
             if (!HasSelection)
             {
+                // No selection: copy the current line (including its delimiter) — standard
+                // "line copy" behaviour matching VS Code / Sublime / JetBrains editors.
+                if (_document is null)
+                {
+                    return true;
+                }
+
+                DocumentLine line = _document.GetLineByOffset (CaretOffset);
+                App?.Clipboard?.TrySetClipboardData (_document.GetText (line.Offset, line.TotalLength));
+
                 return true;
             }
 
