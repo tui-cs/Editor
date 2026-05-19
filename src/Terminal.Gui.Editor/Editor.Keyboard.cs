@@ -60,6 +60,7 @@ public partial class Editor
         if (key == Application.GetDefaultKey (Command.Quit) && HasMultipleCarets)
         {
             ClearAdditionalCarets ();
+            ClearSelection ();
 
             return true;
         }
