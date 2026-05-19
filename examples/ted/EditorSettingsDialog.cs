@@ -7,6 +7,7 @@ namespace Ted;
 
 internal sealed class EditorSettingsDialog : Dialog
 {
+    private readonly CheckBox _autoCompleteCheck;
     private readonly CheckBox _autoIndentCheck;
     private readonly CheckBox _convertTabsCheck;
     private readonly NumericUpDown<int> _indentSize;
@@ -15,7 +16,7 @@ internal sealed class EditorSettingsDialog : Dialog
     {
         Title = "Settings";
         Width = Dim.Percent (60);
-        Height = 16;
+        Height = 18;
 
         View tabSettingsTab = new ()
         {
@@ -61,6 +62,14 @@ internal sealed class EditorSettingsDialog : Dialog
             _convertTabsCheck,
             _autoIndentCheck);
 
+        _autoCompleteCheck = new CheckBox
+        {
+            X = 1,
+            Y = 1,
+            Title = "Auto _Complete (Ctrl+Space)",
+            Value = editor.CompletionProvider is not null ? CheckState.Checked : CheckState.UnChecked
+        };
+
         View configTab = new ()
         {
             Title = "_Config",
@@ -68,7 +77,7 @@ internal sealed class EditorSettingsDialog : Dialog
             Height = Dim.Fill ()
         };
 
-        configTab.Add (new Label { X = 1, Y = 1, Text = "No settings yet." });
+        configTab.Add (_autoCompleteCheck);
 
         Tabs tabs = new ()
         {
@@ -114,6 +123,9 @@ internal sealed class EditorSettingsDialog : Dialog
         editor.ConvertTabsToSpaces = _convertTabsCheck.Value == CheckState.Checked;
         editor.IndentationStrategy = _autoIndentCheck.Value == CheckState.Checked
             ? new DefaultIndentationStrategy ()
+            : null;
+        editor.CompletionProvider = _autoCompleteCheck.Value == CheckState.Checked
+            ? new WordCompletionProvider ()
             : null;
     }
 }

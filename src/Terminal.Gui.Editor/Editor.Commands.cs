@@ -191,10 +191,20 @@ public partial class Editor
         AddCommand (Command.CutToEndOfLine, CutToEndOfLine);
         AddCommand (Command.CutToStartOfLine, CutToStartOfLine);
 
-        // Editing — selection-aware (multi-caret aware)
-        AddCommand (Command.NewLine, MultiCaretNewLine);
-        AddCommand (Command.DeleteCharLeft, MultiCaretDeleteLeft);
-        AddCommand (Command.DeleteCharRight, MultiCaretDeleteRight);
+        // Editing — selection-aware (multi-caret aware), with completion notification.
+        AddCommand (Command.NewLine, () =>
+        {
+            DismissCompletion ();
+
+            return MultiCaretNewLine ();
+        });
+        AddCommand (Command.DeleteCharLeft, DeleteCharLeftAndRefresh);
+        AddCommand (Command.DeleteCharRight, () =>
+        {
+            DismissCompletion ();
+
+            return MultiCaretDeleteRight ();
+        });
 
         // History
         AddCommand (Command.Undo, () =>
