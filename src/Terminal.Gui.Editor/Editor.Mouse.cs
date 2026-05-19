@@ -170,6 +170,11 @@ public partial class Editor
             return MousePositionToOffsetWrapped (viewPos, col);
         }
 
+        if (!Multiline)
+        {
+            return MousePositionToOffsetFlat (col);
+        }
+
         // Map viewport row to document line via visible-line list (respects folding).
         List<int> visibleLines = GetVisibleLineNumbers ();
         var visibleIndex = Math.Clamp (Viewport.Y + viewPos.Y, 0, visibleLines.Count - 1);
@@ -178,6 +183,43 @@ public partial class Editor
         var colInLine = GetOrBuildDefaultVisualLine (line).GetRelativeOffset (col);
 
         return line.Offset + colInLine;
+    }
+
+    /// <summary>
+    ///     Single-line flat mode: resolves a flat visual column to a document offset by walking
+    ///     visible lines and their newline glyphs. Ensures clicks on the ⏎ glyph snap to the
+    ///     start of the delimiter (end of line text).
+    /// </summary>
+    private int MousePositionToOffsetFlat (int flatCol)
+    {
+        List<int> visibleLines = GetVisibleLineNumbers ();
+        var accumulatedCol = 0;
+
+        for (var idx = 0; idx < visibleLines.Count; idx++)
+        {
+            DocumentLine line = _document!.GetLineByNumber (visibleLines[idx]);
+            CellVisualLine lineVisual = GetOrBuildDefaultVisualLine (line);
+            var lineVisualEnd = accumulatedCol + lineVisual.VisualLength;
+
+            if (flatCol < lineVisualEnd || idx == visibleLines.Count - 1)
+            {
+                // The click is within this line's visual span (or this is the last line).
+                var colInLine = lineVisual.GetRelativeOffset (flatCol - accumulatedCol);
+
+                return line.Offset + colInLine;
+            }
+
+            // Check if the click is on the newline glyph (1 cell after the line's visual end).
+            if (flatCol < lineVisualEnd + 1)
+            {
+                // Snap to end of line text (before the delimiter) — the caret sits before the ⏎.
+                return line.Offset + line.Length;
+            }
+
+            accumulatedCol = lineVisualEnd + 1; // line visual length + 1 for the ⏎ glyph
+        }
+
+        return _document!.TextLength;
     }
 
     /// <summary>

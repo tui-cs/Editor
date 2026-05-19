@@ -102,7 +102,7 @@ public partial class Editor
     /// </summary>
     private void ExtendCaretBy (int delta)
     {
-        ExtendCaretTo (CaretOffset + delta);
+        ExtendCaretTo (SnapOffsetPastDelimiter (CaretOffset + delta, delta));
     }
 
     private void ExtendCaretVertically (int delta)
@@ -169,12 +169,40 @@ public partial class Editor
         {
             var target = delta < 0 ? SelectionStart : SelectionEnd;
             ClearSelection ();
-            CaretOffset = target;
+            CaretOffset = SnapOffsetPastDelimiter (target, delta);
 
             return;
         }
 
-        CaretOffset = CaretOffset + delta;
+        CaretOffset = SnapOffsetPastDelimiter (CaretOffset + delta, delta);
+    }
+
+    /// <summary>
+    ///     In single-line flat mode, prevents the caret from landing inside a multi-char delimiter
+    ///     (e.g. CRLF). If <paramref name="offset" /> is inside a delimiter, snaps forward or backward
+    ///     based on <paramref name="direction" />.
+    /// </summary>
+    private int SnapOffsetPastDelimiter (int offset, int direction)
+    {
+        if (Multiline || _document is null)
+        {
+            return offset;
+        }
+
+        offset = Math.Clamp (offset, 0, _document.TextLength);
+        DocumentLine line = _document.GetLineByOffset (offset);
+        var offsetInLine = offset - line.Offset;
+
+        // The delimiter spans offsets [line.Length .. line.TotalLength-1]. If the caret is strictly
+        // inside (past the first byte but before the next line), snap to an edge.
+        if (offsetInLine > line.Length && offsetInLine < line.TotalLength)
+        {
+            return direction >= 0
+                ? line.Offset + line.TotalLength
+                : line.Offset + line.Length;
+        }
+
+        return offset;
     }
 
     /// <summary>
