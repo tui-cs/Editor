@@ -47,7 +47,7 @@ public static class AnsiSnapshot
         ArgumentNullException.ThrowIfNull (driver);
         ArgumentException.ThrowIfNullOrWhiteSpace (name);
 
-        var actual = driver.ToAnsi ();
+        var actual = Canonicalize (driver.ToAnsi ());
         string dir = SnapshotDir (callerFile);
         Directory.CreateDirectory (dir);
         string path = Path.Combine (dir, name + ".ans");
@@ -61,7 +61,7 @@ public static class AnsiSnapshot
             return;
         }
 
-        var expected = File.ReadAllText (path);
+        var expected = Canonicalize (File.ReadAllText (path));
 
         if (string.Equals (expected, actual, StringComparison.Ordinal))
         {
@@ -108,8 +108,18 @@ public static class AnsiSnapshot
         return Path.Combine (sourceDir, "__snapshots__");
     }
 
-    // Byte-exact, UTF-8 without BOM, no added/translated newlines: the file must remain a
-    // faithful `cat`-able reproduction of the terminal stream.
+    // TG's OutputBase.ToAnsi separates rows with StringBuilder.AppendLine () == Environment.NewLine
+    // — CRLF on Windows, LF elsewhere. Without this, a golden recorded on one OS never matches
+    // another OS's render (the CI failure that motivated this). Canonicalize both sides to LF.
+    // `cat` fidelity is unaffected: terminals map LF -> CRLF via the ONLCR tty discipline, so a
+    // LF-only .ans still reproduces the screen exactly.
+    private static string Canonicalize (string? ansi)
+    {
+        return (ansi ?? string.Empty).Replace ("\r\n", "\n").Replace ("\r", "\n");
+    }
+
+    // UTF-8 without BOM. Content is already LF-canonical; write it verbatim (no extra
+    // translation) so the on-disk golden stays a faithful `cat`-able reproduction.
     private static void WriteRaw (string path, string ansi)
     {
         File.WriteAllText (path, ansi, new UTF8Encoding (false));

@@ -64,8 +64,13 @@ cursor and is **not** in the snapshot; additional carets render as blink+reverse
   *driver buffer*, not the document. Inject all input, then render, then verify. A snapshot
   taken before the render that reflects your last edit captures the *previous* frame and will
   silently assert the wrong thing.
-- **`*.ans` is `binary` in `.gitattributes`.** These are CRLF escape blobs; `core.autocrlf`
-  would corrupt them and break both the byte compare and `cat` fidelity. Never relax that.
+- **Goldens are LF-canonical; cross-platform.** TG's `ToAnsi ()` separates rows with
+  `StringBuilder.AppendLine ()` == `Environment.NewLine` (CRLF on Windows, LF elsewhere), so a
+  golden recorded on one OS would never match another OS's render — this *was* a CI failure.
+  `AnsiSnapshot` normalizes both the capture and the file to `\n` before comparing and writes
+  goldens LF. `cat` fidelity is unaffected (terminals map LF→CRLF via the ONLCR tty
+  discipline). `*.ans` stays `binary` in `.gitattributes` so Windows `core.autocrlf` can't
+  reintroduce CRLF on checkout. Don't "fix" a golden by rewriting it with CRLF.
 - **Keep goldens compact.** Pass a small `width`/`height` to `AppFixture` (e.g. `10 × 4`) so
   the `.ans` is a few hundred bytes and a human/agent can `cat` it at a glance.
 - **`ToAnsi ()` is deterministic** — `EditorSnapshotTests.Snapshot_Render_Is_Deterministic`
