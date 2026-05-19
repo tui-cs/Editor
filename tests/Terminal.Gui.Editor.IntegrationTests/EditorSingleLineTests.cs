@@ -121,6 +121,34 @@ public class EditorSingleLineTests
     }
 
     [Fact]
+    public async Task SingleLine_Height_Defaults_To_DimAuto ()
+    {
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("hello"));
+        fx.Top.Editor.Multiline = false;
+        fx.Render ();
+
+        // Multiline=false sets Height to Dim.Auto(Content), so no explicit Height=1 needed.
+        Assert.Equal (1, fx.Top.Editor.Frame.Height);
+    }
+
+    [Fact]
+    public async Task SingleLine_Enter_Raises_Accept ()
+    {
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("hello"));
+        fx.Top.Editor.Multiline = false;
+        fx.Top.Editor.SetFocus ();
+
+        var accepted = false;
+        fx.Top.Editor.Accepting += (_, _) => accepted = true;
+
+        fx.Injector.InjectKey (Key.Enter, Direct);
+
+        Assert.True (accepted);
+        // Document is still unchanged (no newline inserted).
+        Assert.Equal ("hello", fx.Top.Editor.Document!.Text);
+    }
+
+    [Fact]
     public async Task SingleLine_PageUp_PageDown_Are_NoOps ()
     {
         await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("hello"));

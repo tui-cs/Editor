@@ -1,5 +1,6 @@
 using System.Drawing;
 using Terminal.Gui.Document;
+using Terminal.Gui.Input;
 
 namespace Terminal.Gui.Editor;
 
@@ -479,9 +480,15 @@ public partial class Editor
     /// </summary>
     private bool? MultiCaretNewLine ()
     {
-        if (ReadOnly || !Multiline || _document is null)
+        if (ReadOnly || _document is null)
         {
             return true;
+        }
+
+        if (!Multiline)
+        {
+            // Single-line mode: Enter raises Accept (like TextField) instead of inserting a newline.
+            return InvokeCommand (Command.Accept);
         }
 
         if (!HasMultipleCarets)

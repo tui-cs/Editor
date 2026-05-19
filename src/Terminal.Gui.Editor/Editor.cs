@@ -220,6 +220,9 @@ public partial class Editor : View
 
                 // Collapse additional carets — vertical multi-caret is a multi-line concept.
                 ClearAdditionalCarets ();
+
+                // Auto-size to ContentSize (height = 1) so callers don't need explicit Height = 1.
+                Height = Dim.Auto (DimAutoStyle.Content);
             }
 
             ClearVisualLineCaches ();

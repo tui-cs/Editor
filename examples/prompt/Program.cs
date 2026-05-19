@@ -28,20 +28,20 @@ Editor editor = new ()
     X = 0,
     Y = 0,
     Width = Dim.Fill (),
-    Height = 1,
     Document = new TextDocument (initialText),
     CaretOffset = initialText.Length
 };
 
+editor.Accepting += (_, e) =>
+{
+    result = editor.Document.Text;
+    window.RequestStop ();
+    e.Handled = true;
+};
+
 editor.KeyDown += (_, key) =>
 {
-    if (key == Key.Enter)
-    {
-        result = editor.Document.Text;
-        window.RequestStop ();
-        key.Handled = true;
-    }
-    else if (key == Key.Esc)
+    if (key == Key.Esc)
     {
         window.RequestStop ();
         key.Handled = true;
