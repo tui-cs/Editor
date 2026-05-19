@@ -111,6 +111,22 @@ public partial class Editor : View
         ThemeManager.ThemeChanged += OnThemeChanged;
     }
 
+    /// <summary>
+    ///     Gets or sets the document text. This overrides <see cref="View.Text" /> so that setting
+    ///     <c>editor.Text</c> writes to <see cref="Document" /> rather than the base View label.
+    /// </summary>
+    public override string Text
+    {
+        get => Document?.Text ?? string.Empty;
+        set
+        {
+            if (Document is { } doc)
+            {
+                doc.Text = value;
+            }
+        }
+    }
+
     /// <summary>The backing <see cref="TextDocument" />. Setting this rewires change handlers and clamps the caret.</summary>
     public TextDocument? Document
     {
