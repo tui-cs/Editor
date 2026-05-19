@@ -6,6 +6,7 @@ using Terminal.Gui.Document.Folding;
 using Terminal.Gui.Drawing;
 using Terminal.Gui.Editor.Rendering;
 using Terminal.Gui.Highlighting;
+using Terminal.Gui.Input;
 using Terminal.Gui.Text;
 using Terminal.Gui.Text.Indentation;
 using Terminal.Gui.ViewBase;
@@ -223,6 +224,16 @@ public partial class Editor : View
 
                 // Auto-size to ContentSize (height = 1) so callers don't need explicit Height = 1.
                 Height = Dim.Auto (DimAutoStyle.Content);
+
+                // Rebind Enter to Accept (like TextField) — raises Accepting event.
+                KeyBindings.Remove (Key.Enter);
+                KeyBindings.Add (Key.Enter, Command.Accept);
+            }
+            else
+            {
+                // Restore Enter → NewLine binding for multiline mode.
+                KeyBindings.Remove (Key.Enter);
+                KeyBindings.Add (Key.Enter, Command.NewLine);
             }
 
             ClearVisualLineCaches ();
