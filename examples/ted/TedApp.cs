@@ -30,6 +30,8 @@ public sealed partial class TedApp : Window
     private readonly string _configPath;
     private readonly Shortcut _fileNameShortcut;
     private readonly MenuItem _previewMarkdownMenuItem;
+    private TextDocument? _foldingDocument;
+    private bool _foldingUpdateNeeded;
 
     /// <summary>Initializes a new <see cref="TedApp" />.</summary>
     /// <param name="readOnly">Opens the editor read-only.</param>
@@ -72,7 +74,8 @@ public sealed partial class TedApp : Window
         }
 
         Editor.GutterOptions = initialGutter;
-        Editor.IndentationStrategy = EditorSettings.AutoIndent ? new DefaultIndentationStrategy () : null;
+        Editor.IndentationStrategy =
+            EditorSettings.AutoIndent ? new DefaultIndentationStrategy () : null;
 
         // Enable brace-based folding. The strategy re-scans on each document change.
         _braceFoldingStrategy = new BraceFoldingStrategy ();
@@ -92,7 +95,9 @@ public sealed partial class TedApp : Window
             AllowCheckStateNone = false,
             CanFocus = false,
             Text = "_Line Numbers",
-            Value = Editor.GutterOptions.HasFlag (GutterOptions.LineNumbers) ? CheckState.Checked : CheckState.UnChecked
+            Value = Editor.GutterOptions.HasFlag (GutterOptions.LineNumbers)
+                ? CheckState.Checked
+                : CheckState.UnChecked
         };
 
         CheckBox foldIndicatorsCheckBox = new ()
@@ -100,7 +105,9 @@ public sealed partial class TedApp : Window
             AllowCheckStateNone = false,
             CanFocus = false,
             Text = "_Fold Indicators",
-            Value = Editor.GutterOptions.HasFlag (GutterOptions.Folding) ? CheckState.Checked : CheckState.UnChecked
+            Value = Editor.GutterOptions.HasFlag (GutterOptions.Folding)
+                ? CheckState.Checked
+                : CheckState.UnChecked
         };
 
         CheckBox wordWrapCheckBox = new ()
@@ -202,7 +209,8 @@ public sealed partial class TedApp : Window
                 {
                     Action = () =>
                     {
-                        var shouldEnableLineNumbers = !Editor.GutterOptions.HasFlag (GutterOptions.LineNumbers);
+                        var shouldEnableLineNumbers =
+                            !Editor.GutterOptions.HasFlag (GutterOptions.LineNumbers);
 
                         if (shouldEnableLineNumbers)
                         {
@@ -224,7 +232,8 @@ public sealed partial class TedApp : Window
                 {
                     Action = () =>
                     {
-                        var shouldEnableFoldIndicators = !Editor.GutterOptions.HasFlag (GutterOptions.Folding);
+                        var shouldEnableFoldIndicators =
+                            !Editor.GutterOptions.HasFlag (GutterOptions.Folding);
 
                         if (shouldEnableFoldIndicators)
                         {
@@ -361,7 +370,8 @@ public sealed partial class TedApp : Window
     /// </summary>
     private Key KeyFor (Command command)
     {
-        return Editor.KeyBindings.GetAllFromCommands (command).FirstOrDefault () ?? Application.GetDefaultKey (command);
+        return Editor.KeyBindings.GetAllFromCommands (command).FirstOrDefault () ??
+               Application.GetDefaultKey (command);
     }
 
     private void ShowAboutDialog ()
@@ -469,7 +479,8 @@ public sealed partial class TedApp : Window
         EditorSettings.ConvertTabsToSpaces = Editor.ConvertTabsToSpaces;
         EditorSettings.AutoIndent = Editor.IndentationStrategy is not null;
         EditorSettings.AutoComplete = Editor.CompletionProvider is not null;
-        EditorSettings.Scrollbars = Editor.ViewportSettings.HasFlag (ViewportSettingsFlags.HasScrollBars);
+        EditorSettings.Scrollbars =
+            Editor.ViewportSettings.HasFlag (ViewportSettingsFlags.HasScrollBars);
         EditorSettings.Save (_configPath);
     }
 
@@ -500,11 +511,14 @@ public sealed partial class TedApp : Window
     {
         if (Editor.Document is null)
         {
+            SetFoldingDocument (null);
+
             return;
         }
 
         if (Editor.Document.TextLength > MaximumAutomaticFoldingDocumentLength)
         {
+            SetFoldingDocument (null);
             Editor.FoldingManager = null;
 
             return;
@@ -513,7 +527,7 @@ public sealed partial class TedApp : Window
         FoldingManager fm = new (Editor.Document);
         Editor.FoldingManager = fm;
         _braceFoldingStrategy.UpdateFoldings (fm, Editor.Document);
-        Editor.Document.Changed += (_, _) => UpdateFoldings ();
+        SetFoldingDocument (Editor.Document);
     }
 
     private void UpdateFoldings ()
@@ -525,11 +539,222 @@ public sealed partial class TedApp : Window
 
         if (Editor.Document.TextLength > MaximumAutomaticFoldingDocumentLength)
         {
+            SetFoldingDocument (null);
             Editor.FoldingManager = null;
 
             return;
         }
 
-        _braceFoldingStrategy.UpdateFoldings (Editor.FoldingManager, Editor.Document);
+        _braceFoldingStrategy.UpdateFoldings (Editor.FoldingManager,
+            Editor.Document);
+    }
+
+    private void SetFoldingDocument (TextDocument? document)
+    {
+        if (ReferenceEquals (_foldingDocument, document))
+        {
+            return;
+        }
+
+        if (_foldingDocument is not null)
+        {
+            _foldingDocument.Changed -= OnFoldingDocumentChanged;
+            _foldingDocument.UpdateFinished -= OnFoldingDocumentUpdateFinished;
+        }
+
+        _foldingDocument = document;
+        _foldingUpdateNeeded = false;
+
+        if (_foldingDocument is not null)
+        {
+            _foldingDocument.Changed += OnFoldingDocumentChanged;
+            _foldingDocument.UpdateFinished += OnFoldingDocumentUpdateFinished;
+        }
+    }
+
+    private void OnFoldingDocumentChanged (object? sender, DocumentChangeEventArgs e)
+    {
+        _foldingUpdateNeeded |= FoldingChangeMayAffectStructure (e);
+    }
+
+    private void OnFoldingDocumentUpdateFinished (object? sender, EventArgs e)
+    {
+        if (!_foldingUpdateNeeded)
+        {
+            return;
+        }
+
+        _foldingUpdateNeeded = false;
+        UpdateFoldings ();
+    }
+
+    private bool FoldingChangeMayAffectStructure (DocumentChangeEventArgs e)
+    {
+        if (TryGetMappedStructuralChange (e, out var mappedStructuralChange))
+        {
+            return mappedStructuralChange;
+        }
+
+        return ContainsFoldingStructuralCharacter (e.InsertedText)
+               || ContainsFoldingStructuralCharacter (e.RemovedText);
+    }
+
+    private bool TryGetMappedStructuralChange (DocumentChangeEventArgs e, out bool structuralChange)
+    {
+        structuralChange = false;
+        OffsetChangeMap map = e.OffsetChangeMap;
+        var hasInsertion = false;
+        var hasRemoval = false;
+
+        if (map.Count == 0)
+        {
+            return false;
+        }
+
+        foreach (OffsetChangeMapEntry entry in map)
+        {
+            hasInsertion |= entry.InsertionLength > 0;
+            hasRemoval |= entry.RemovalLength > 0;
+
+            if (entry.InsertionLength > 0 && entry.RemovalLength > 0)
+            {
+                return false;
+            }
+        }
+
+        if (!hasInsertion && !hasRemoval)
+        {
+            return false;
+        }
+
+        if (hasInsertion && hasRemoval)
+        {
+            return false;
+        }
+
+        structuralChange = hasInsertion
+            ? MappedInsertionsContainFoldingStructuralCharacter (map, e.InsertedText, e.Offset)
+            : MappedRemovalsContainFoldingStructuralCharacter (map, e.RemovedText, e.Offset, e.RemovalLength);
+
+        return true;
+    }
+
+    private bool MappedInsertionsContainFoldingStructuralCharacter (OffsetChangeMap map, ITextSource text,
+        int baseOffset)
+    {
+        if (InsertionEntriesUseInsertedTextCoordinates (map, baseOffset, text.TextLength))
+        {
+            return MappedInsertionsContainFoldingStructuralCharacterWithoutShift (map, text, baseOffset);
+        }
+
+        var insertedShift = 0;
+
+        foreach (OffsetChangeMapEntry entry in map)
+        {
+            if (entry.InsertionLength == 0)
+            {
+                continue;
+            }
+
+            var relativeOffset = entry.Offset - baseOffset + insertedShift;
+
+            if (ContainsFoldingStructuralCharacter (text, relativeOffset, entry.InsertionLength))
+            {
+                return true;
+            }
+
+            insertedShift += entry.InsertionLength;
+        }
+
+        return false;
+    }
+
+    private bool MappedInsertionsContainFoldingStructuralCharacterWithoutShift (
+        OffsetChangeMap map,
+        ITextSource text,
+        int baseOffset)
+    {
+        foreach (OffsetChangeMapEntry entry in map)
+        {
+            if (entry.InsertionLength == 0)
+            {
+                continue;
+            }
+
+            var relativeOffset = entry.Offset - baseOffset;
+
+            if (ContainsFoldingStructuralCharacter (text, relativeOffset, entry.InsertionLength))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private bool MappedRemovalsContainFoldingStructuralCharacter (
+        OffsetChangeMap map,
+        ITextSource text,
+        int baseOffset,
+        int removalLength)
+    {
+        if (!RemovalEntriesUseRemovedTextCoordinates (map, baseOffset, removalLength))
+        {
+            return MappedInsertionsContainFoldingStructuralCharacter (map.Invert (), text, baseOffset);
+        }
+
+        foreach (OffsetChangeMapEntry entry in map)
+        {
+            if (entry.RemovalLength == 0)
+            {
+                continue;
+            }
+
+            var relativeOffset = entry.Offset - baseOffset;
+
+            if (ContainsFoldingStructuralCharacter (text, relativeOffset, entry.RemovalLength))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static bool RemovalEntriesUseRemovedTextCoordinates (OffsetChangeMap map, int baseOffset, int removalLength)
+    {
+        return map.Count > 0
+               && map[0].RemovalLength > 0
+               && map[0].Offset + map[0].RemovalLength == baseOffset + removalLength;
+    }
+
+    private static bool InsertionEntriesUseInsertedTextCoordinates (OffsetChangeMap map, int baseOffset,
+        int insertionLength)
+    {
+        return map.Count > 0
+               && map[^1].InsertionLength > 0
+               && map[^1].Offset + map[^1].InsertionLength == baseOffset + insertionLength;
+    }
+
+    private bool ContainsFoldingStructuralCharacter (ITextSource text)
+    {
+        return ContainsFoldingStructuralCharacter (text, 0, text.TextLength);
+    }
+
+    private bool ContainsFoldingStructuralCharacter (ITextSource text, int offset, int length)
+    {
+        for (var i = offset; i < offset + length; i++)
+        {
+            var ch = text.GetCharAt (i);
+
+            if (ch == _braceFoldingStrategy.OpeningBrace
+                || ch == _braceFoldingStrategy.ClosingBrace
+                || ch is '\r' or '\n')
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 }
