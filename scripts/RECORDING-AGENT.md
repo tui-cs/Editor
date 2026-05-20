@@ -54,14 +54,18 @@ A keystroke script is a **comma-separated** string. Each token is one of:
 └──────────────────────────────────────────────────────────────────────┘
 ```
 
-### Menu bar (activated by F9 or Alt+<letter>)
+### Menu bar (activated by F10 or Alt+<letter>)
 
-**File** (`Alt+F` or `F9` then first item):
-- **New** — `Ctrl+N`
-- **Open** — `Ctrl+O`
-- **Save** — `Ctrl+S`
-- **Save As** — `Ctrl+Shift+S`
-- **Quit** — `Ctrl+Q`
+Menu activation:
+- **F10** opens the menu bar (focus lands on `File`); then press the underlined letter (e.g. `O` for Open) or navigate with arrows + `Enter`.
+- **Alt+`<letter>`** opens a menu directly (e.g. `Alt+F` → File). Then press the menu item's underlined letter (e.g. `Alt+F` then `O` for Open). **Do not assume `Ctrl+`-shortcuts work** for menu items — they are not all globally wired. Drive menus via F10 or Alt+letter sequences.
+
+**File** (`Alt+F`):
+- **New** — `Alt+F` then `N`
+- **Open** — `Alt+F` then `O`
+- **Save** — `Alt+F` then `S`
+- **Save As** — `Alt+F` then `A`
+- **Quit** — `Alt+F` then `Q`, **or just `Esc`** (Terminal.Gui's default `QuitKey` is `Esc`, not `Ctrl+Q`)
 
 **Edit** (`Alt+E`):
 - **Find...** — `Ctrl+F`
@@ -109,7 +113,7 @@ A keystroke script is a **comma-separated** string. Each token is one of:
 
 ### Open dialog
 
-Triggered by `Ctrl+O`. A standard Terminal.Gui `OpenDialog`:
+Triggered via the File menu (`Alt+F` then `O`, or `F10` → `O`). A standard Terminal.Gui `OpenDialog`:
 - Has a text field for the path (pre-focused)
 - Type a relative or absolute path and press `Enter`
 - Or navigate the file list with arrows and `Enter`
@@ -166,8 +170,9 @@ Triggered by Options → Settings. Has checkboxes for:
 2. **Wait after UI transitions** — opening a dialog, switching tabs, or loading a file
    needs `wait:500` to `wait:1000` for the UI to settle before the next action.
 
-3. **End with quit or Esc** — recordings should end cleanly. Use `Ctrl+Q` to quit
-   (may prompt for save), or `Esc` to close a dialog.
+3. **End with `Esc`** — Terminal.Gui's default `QuitKey` is `Esc`. A single trailing
+   `Esc` (after any dialogs are closed) quits ted cleanly. Do **not** use `Ctrl+Q`
+   — it is not wired. `Alt+F, Q` via the File menu also works.
 
 4. **Keep recordings short** — aim for 10–30 seconds of real time. Viewers lose
    interest after that. Use `--MaxDuration 60` as a safety net.
@@ -182,28 +187,31 @@ Triggered by Options → Settings. Has checkboxes for:
 
 ## Example keystroke scripts
 
+> **File-open idiom.** Use `Alt+F,wait:400,O,wait:600,<path>,Enter` to open a file.
+> Do not use `Ctrl+O` — menu shortcuts are not globally wired in ted.
+
 ### Open a file and scroll
 
 ```
-wait:2000,Ctrl+O,wait:500,./examples/ted/TedApp.cs,Enter,wait:2000,PageDown,wait:1500,PageDown,wait:1500,Ctrl+Q
+wait:2000,Alt+F,wait:400,O,wait:600,./examples/ted/TedApp.cs,Enter,wait:2000,PageDown,wait:1500,PageDown,wait:1500,Esc
 ```
 
 ### Find text
 
 ```
-wait:2000,Ctrl+O,wait:500,./examples/ted/TedApp.cs,Enter,wait:1500,Ctrl+F,wait:500,Editor,Alt+N,wait:1000,Alt+N,wait:1000,Esc,wait:500,Ctrl+Q
+wait:2000,Alt+F,wait:400,O,wait:600,./examples/ted/TedApp.cs,Enter,wait:1500,Ctrl+F,wait:500,Editor,Alt+N,wait:1000,Alt+N,wait:1000,Esc,wait:500,Esc
 ```
 
 ### Find and replace
 
 ```
-wait:2000,Ctrl+O,wait:500,./examples/ted/TedApp.cs,Enter,wait:1500,Ctrl+H,wait:500,Editor,Tab,View,Alt+A,wait:1500,Esc,wait:500,Ctrl+Z,wait:1000,Ctrl+Q
+wait:2000,Alt+F,wait:400,O,wait:600,./examples/ted/TedApp.cs,Enter,wait:1500,Ctrl+H,wait:500,Editor,Tab,View,Alt+A,wait:1500,Esc,wait:500,Ctrl+Z,wait:1000,Esc
 ```
 
 ### Toggle view options
 
 ```
-wait:2000,Ctrl+O,wait:500,./README.md,Enter,wait:1500,Alt+V,wait:300,CursorDown,CursorDown,Enter,wait:1000,Alt+V,wait:300,CursorDown,CursorDown,CursorDown,Enter,wait:1500,Ctrl+Q
+wait:2000,Alt+F,wait:400,O,wait:600,./README.md,Enter,wait:1500,Alt+V,wait:300,CursorDown,CursorDown,Enter,wait:1000,Alt+V,wait:300,CursorDown,CursorDown,CursorDown,Enter,wait:1500,Esc
 ```
 
 ### Type and undo
