@@ -1,46 +1,73 @@
 <#
 .SYNOPSIS
-    Records ted opening ./examples/ted/TedApp.cs with TUIcast.
+    Records a ted session with TUIcast using a caller-supplied keystroke script.
 
 .DESCRIPTION
-    Records the examples/ted app starting, opens the File menu, chooses Open,
-    types ./examples/ted/TedApp.cs into the OpenDialog, and saves:
+    Generic recording wrapper for the examples/ted app. An AI agent (or human)
+    supplies the --Keystrokes parameter describing what to demonstrate, and this
+    script handles tool resolution, building, and invoking tuicast record.
 
-      artifacts/tuicast/ted-open.gif
-      artifacts/tuicast/ted-open.cast
+    Output goes to artifacts/tuicast/ by default. If tuicast or agg are not on
+    PATH, they are automatically downloaded from
+    https://github.com/gui-cs/TUIcast/releases and installed into ~/tools.
 
-    If tuicast or agg are not found on PATH, they are automatically downloaded
-    from https://github.com/gui-cs/TUIcast/releases and installed into ~/tools.
-
-.PARAMETER Output
-    GIF output path (default: artifacts/tuicast/ted-open.gif)
-
-.PARAMETER CastOutput
-    asciinema cast output path (default: artifacts/tuicast/ted-open.cast)
-
-.PARAMETER TedExePath
-    Path to the ted executable (default: examples/ted/bin/Debug/net10.0/ted.exe)
-
-.PARAMETER Cols
-    Recording columns (default: 120)
-
-.PARAMETER Rows
-    Recording rows (default: 36)
+    See scripts/RECORDING-AGENT.md for the keystroke syntax reference and
+    guidance on composing keystroke scripts for ted.
 
 .PARAMETER Keystrokes
-    Override the TUIcast keystroke script
+    TUIcast keystroke script (required). Comma-separated sequence of keys,
+    text literals, and wait directives. See RECORDING-AGENT.md for syntax.
+
+.PARAMETER Name
+    Short identifier for the recording (used in output filenames).
+    Default: "demo"
+
+.PARAMETER Title
+    Human-readable title burned into the cast metadata.
+    Default: "ted demo"
+
+.PARAMETER Output
+    GIF output path. Default: artifacts/tuicast/ted-<Name>.gif
+
+.PARAMETER CastOutput
+    Asciinema .cast output path. Default: artifacts/tuicast/ted-<Name>.cast
+
+.PARAMETER TedExePath
+    Path to the ted executable. Default: auto-detected from build output.
+
+.PARAMETER Cols
+    Recording columns. Default: 120
+
+.PARAMETER Rows
+    Recording rows. Default: 36
+
+.PARAMETER MaxDuration
+    Maximum recording duration in seconds. Default: 60
+
+.PARAMETER DrainMs
+    Milliseconds to wait after last keystroke before stopping. Default: 1500
+
+.PARAMETER SkipBuild
+    Skip dotnet build of examples/ted before recording.
 
 .PARAMETER TuicastVersion
-    TUIcast release version to download if not found (default: 0.1.1)
+    TUIcast release version to download if not found. Default: 0.1.1
 #>
 [CmdletBinding()]
 param (
+    [Parameter(Mandatory = $true)]
+    [string] $Keystrokes,
+
+    [string] $Name = 'demo',
+    [string] $Title = 'ted demo',
     [string] $Output,
     [string] $CastOutput,
     [string] $TedExePath,
     [int]    $Cols = 120,
     [int]    $Rows = 36,
-    [string] $Keystrokes,
+    [int]    $MaxDuration = 60,
+    [int]    $DrainMs = 1500,
+    [switch] $SkipBuild,
     [string] $TuicastVersion = '0.1.1'
 )
 
@@ -52,18 +79,10 @@ $RepoRoot = $RepoRoot.Trim()
 
 $ToolsDir = Join-Path $HOME 'tools'
 
-if (-not $Output) { $Output = Join-Path $RepoRoot 'artifacts/tuicast/ted-open.gif' }
-if (-not $CastOutput) { $CastOutput = Join-Path $RepoRoot 'artifacts/tuicast/ted-open.cast' }
-if (-not $Keystrokes) {
-    $Keystrokes = if ($env:KEYSTROKES) { $env:KEYSTROKES }
-    else { 'wait:2000,10,CursorDown,CursorDown,Enter,wait:500,./examples/ted/TedApp.cs,Enter,wait:2000,PageDown,wait:2000,Esc' }
-}
-
-$MaxDuration = 45
-$DrainMs = 1000
+if (-not $Output) { $Output = Join-Path $RepoRoot "artifacts/tuicast/ted-${Name}.gif" }
+if (-not $CastOutput) { $CastOutput = Join-Path $RepoRoot "artifacts/tuicast/ted-${Name}.cast" }
 
 function Get-TuicastAssetName {
-    # Determine the correct release archive name for the current platform
     if ($IsWindows -or ($PSVersionTable.PSVersion.Major -le 5)) {
         $os = 'windows'
         $ext = 'zip'
@@ -104,7 +123,6 @@ function Install-TuicastTools {
         tar -xzf $tempFile -C $tempExtract
     }
 
-    # Copy tuicast and agg executables to ~/tools
     $exeExt = if ($IsWindows -or ($PSVersionTable.PSVersion.Major -le 5)) { '.exe' } else { '' }
     foreach ($tool in @('tuicast', 'agg')) {
         $src = Get-ChildItem -Path $tempExtract -Recurse -Filter "${tool}${exeExt}" | Select-Object -First 1
@@ -114,22 +132,19 @@ function Install-TuicastTools {
         }
     }
 
-    # Cleanup
     Remove-Item -Recurse -Force $tempFile -ErrorAction SilentlyContinue
     Remove-Item -Recurse -Force $tempExtract -ErrorAction SilentlyContinue
 }
 
 function Resolve-TuicastTool {
-    param ([string] $Name)
+    param ([string] $ToolName)
 
     $exeExt = if ($IsWindows -or ($PSVersionTable.PSVersion.Major -le 5)) { '.exe' } else { '' }
 
-    # Check PATH
-    $found = Get-Command $Name -ErrorAction SilentlyContinue
+    $found = Get-Command $ToolName -ErrorAction SilentlyContinue
     if ($found) { return $found.Source }
 
-    # Check ~/tools
-    $toolPath = Join-Path $ToolsDir "${Name}${exeExt}"
+    $toolPath = Join-Path $ToolsDir "${ToolName}${exeExt}"
     if (Test-Path $toolPath) { return (Resolve-Path $toolPath).Path }
 
     return $null
@@ -153,6 +168,17 @@ $exeExt = if ($IsWindows -or ($PSVersionTable.PSVersion.Major -le 5)) { '.exe' }
 if (-not $TedExePath) {
     $TedExePath = Join-Path $RepoRoot "examples/ted/bin/Debug/net10.0/ted${exeExt}"
 }
+
+# Build if needed
+if (-not $SkipBuild) {
+    Write-Host 'Building examples/ted...'
+    $buildResult = & dotnet build (Join-Path $RepoRoot 'examples/ted/ted.csproj') --verbosity minimal
+    if ($LASTEXITCODE -ne 0) {
+        $buildResult | ForEach-Object { Write-Host $_ }
+        throw "dotnet build failed with exit code $LASTEXITCODE"
+    }
+}
+
 if (-not (Test-Path $TedExePath)) {
     throw "ted executable not found at: $TedExePath`nBuild it first with: dotnet build examples/ted/ted.csproj"
 }
@@ -164,6 +190,10 @@ $null = New-Item -ItemType Directory -Force -Path (Split-Path -Parent $CastOutpu
 
 Set-Location $RepoRoot
 
+Write-Host "Recording: $Title"
+Write-Host "  Keystrokes: $Keystrokes"
+Write-Host "  Output:     $Output"
+
 & $TuicastBin record `
     --binary $TedBin `
     --keystrokes $Keystrokes `
@@ -174,11 +204,11 @@ Set-Location $RepoRoot
     --rows $Rows `
     --max-duration $MaxDuration `
     --drain $DrainMs `
-    --title 'ted opens TedApp.cs'
+    --title $Title
 
 if ($LASTEXITCODE -ne 0) { throw "tuicast record failed with exit code $LASTEXITCODE" }
 
 Write-Host ''
-Write-Host 'Recorded ted File.Open flow:'
+Write-Host "Recording complete:"
 Write-Host "  GIF:  $Output"
 Write-Host "  cast: $CastOutput"
