@@ -425,7 +425,15 @@ namespace Terminal.Gui.Document
             remove => TextChanged -= value;
         }
 
-        /// <inheritdoc/>
+        /// <summary>
+        /// Gets the total text length in UTF-16 code units (<see langword="char" />s).
+        /// </summary>
+        /// <remarks>
+        /// <para>A single grapheme cluster (e.g. surrogate pair 🦮 or ZWJ sequence 👨‍👩‍👧)
+        /// can span multiple code units. This property reports storage length, not the number
+        /// of user-visible characters or display columns.</para>
+        /// <inheritdoc cref="Changing"/>
+        /// </remarks>
         public int TextLength
         {
             get

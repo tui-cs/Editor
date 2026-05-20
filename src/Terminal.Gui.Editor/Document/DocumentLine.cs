@@ -152,10 +152,15 @@ namespace Terminal.Gui.Document
         private byte _delimiterLength;
 
         /// <summary>
-        /// Gets the length of this line. The length does not include the line delimiter. O(1)
+        /// Gets the length of this line in UTF-16 code units (<see langword="char" />s).
+        /// The length does not include the line delimiter. O(1)
         /// </summary>
-        /// <remarks>This property is still available even if the line was deleted;
-        /// in that case, it contains the line's length before the deletion.</remarks>
+        /// <remarks>
+        /// <para>This property is still available even if the line was deleted;
+        /// in that case, it contains the line's length before the deletion.</para>
+        /// <para>A single grapheme cluster (e.g. emoji, ZWJ sequence) can span multiple
+        /// code units. Do not assume this equals the number of graphemes or columns.</para>
+        /// </remarks>
         public int Length
         {
             get
@@ -166,7 +171,8 @@ namespace Terminal.Gui.Document
         }
 
         /// <summary>
-        /// Gets the length of this line, including the line delimiter. O(1)
+        /// Gets the length of this line in UTF-16 code units (<see langword="char" />s),
+        /// including the line delimiter. O(1)
         /// </summary>
         /// <remarks>This property is still available even if the line was deleted;
         /// in that case, it contains the line's length before the deletion.</remarks>
