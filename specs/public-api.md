@@ -64,6 +64,9 @@ public class Editor : View
 
     // --- Folding ---
     public FoldingManager? FoldingManager { get; set; }           // folding-ui (needs folding + rendering-pipeline ✅)
+    public IFoldingStrategy? FoldingStrategy { get; set; }        // composable-parts §1 (issue #178)
+    public bool AutomaticFolding { get; set; }                    // composable-parts §1 (issue #178)
+    public int MaximumAutomaticFoldingDocumentLength { get; set; } = 1_000_000; // composable-parts §1 (issue #178)
 
     // --- Search ---
     public ISearchStrategy? SearchStrategy { get; set; }          // find-and-replace (needs search + rendering-pipeline ✅)
@@ -165,6 +168,40 @@ public readonly record struct TextDocumentProgress (
 }
 ```
 
+## Folding Strategy Interface (composable-parts — proposed, issue #178)
+
+```csharp
+namespace Terminal.Gui.Document.Folding;
+
+public interface IFoldingStrategy
+{
+    void UpdateFoldings (FoldingManager manager, TextDocument document);
+    bool ChangeMayAffectFoldings (DocumentChangeEventArgs e);
+}
+```
+
+## Composable Parts (composable-parts — proposed)
+
+```csharp
+namespace Terminal.Gui.Editor;
+
+public class EditorMenuBar : MenuBar
+{
+    public EditorMenuBar (Editor editor);
+    public EditorMenuBar (Func<Editor> activeEditorProvider);
+    public IList<MenuBarItem> ExtraMenuItems { get; }
+    public Func<string?>? ShowOpenDialog { get; set; }
+    public Func<string?>? ShowSaveDialog { get; set; }
+}
+
+public class EditorStatusBar : StatusBar
+{
+    public EditorStatusBar (Editor editor);
+    public EditorStatusBar (Func<Editor> activeEditorProvider);
+    public IList<Shortcut> ExtraShortcuts { get; }
+}
+```
+
 ## Change Log
 
 | Date | Change | Feature |
@@ -181,3 +218,4 @@ public readonly record struct TextDocumentProgress (
 | 2026-05-17 | `IEditorCompletionProvider?` `CompletionProvider` + `bool IsCompletionActive` landed; `CompletionItem` sealed class; `Popover<ListView>`-based popup; DEC-009 resolves OPEN-002 | completion |
 | 2026-05-17 | Streaming `TextDocument.LoadAsync` / `TextDocument.SaveAsync`, `TextDocumentProgress`, `TextDocument.Encoding`, and delegating `Editor.LoadAsync` / `Editor.SaveAsync` landed | file-io |
 | 2026-05-17 | `Editor` implements `IDesignable`; `EnableForDesign()` seeds C# sample code with syntax highlighting and line numbers | design-time |
+| 2026-05-20 | `IFoldingStrategy`, `AutomaticFolding`, `MaximumAutomaticFoldingDocumentLength` proposed; composable-parts spec created | composable-parts (issue #178) |
