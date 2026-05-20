@@ -915,9 +915,15 @@ public partial class Editor : View
                 {
                     if (lineDelta != 0)
                     {
-                        // Line numbers shifted — remove old key, re-add with shifted key.
+                        // Line numbers shifted — remove old key. Only re-add with shifted key
+                        // when the absolute document offsets haven't changed; otherwise the
+                        // cached visual line's element offsets are stale and must be rebuilt.
                         (toRemove ??= []).Add (kvp.Key);
-                        (toRekey ??= []).Add (kvp);
+
+                        if (offsetDelta == 0)
+                        {
+                            (toRekey ??= []).Add (kvp);
+                        }
                     }
                     else if (offsetDelta != 0)
                     {
