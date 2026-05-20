@@ -59,11 +59,16 @@ namespace Terminal.Gui.Document
 		TextReader CreateReader(int offset, int length);
 		
 		/// <summary>
-		/// Gets the total text length.
+		/// Gets the total text length in UTF-16 code units (<see langword="char" />s).
 		/// </summary>
-		/// <returns>The length of the text, in characters.</returns>
-		/// <remarks>This is the same as Text.Length, but is more efficient because
-		///  it doesn't require creating a String object.</remarks>
+		/// <returns>The length of the text, in UTF-16 code units.</returns>
+		/// <remarks>
+		/// <para>This is the same as <c>Text.Length</c>, but is more efficient because
+		///  it doesn't require creating a String object.</para>
+		/// <para>Note: a single user-visible grapheme cluster (e.g. a surrogate pair like 🦮
+		///  or a ZWJ sequence like 👨‍👩‍👧) can span multiple code units. Do not assume
+		///  <c>TextLength</c> equals the number of graphemes or display columns.</para>
+		/// </remarks>
 		int TextLength { get; }
 		
 		/// <summary>

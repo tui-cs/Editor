@@ -503,7 +503,11 @@ public partial class Editor
         }
         else if (CaretOffset > 0)
         {
-            _document!.Remove (CaretOffset - 1, 1);
+            var graphemeLen = GetGraphemeLengthBackward (CaretOffset);
+
+            // If at start of line (graphemeLen == 0), remove 1 code unit to join with previous line.
+            var removeLen = graphemeLen > 0 ? graphemeLen : 1;
+            _document!.Remove (CaretOffset - removeLen, removeLen);
         }
 
         return true;
@@ -522,7 +526,11 @@ public partial class Editor
         }
         else if (CaretOffset < _document!.TextLength)
         {
-            _document!.Remove (CaretOffset, 1);
+            var graphemeLen = GetGraphemeLengthForward (CaretOffset);
+
+            // If at end of line (graphemeLen == 0), remove 1 code unit to join with next line.
+            var removeLen = graphemeLen > 0 ? graphemeLen : 1;
+            _document!.Remove (CaretOffset, removeLen);
         }
 
         return true;
@@ -563,6 +571,60 @@ public partial class Editor
         CaretOffset = line.Offset + line.Length;
 
         return true;
+    }
+
+    /// <summary>
+    ///     Returns the length (in UTF-16 code units) of the grapheme cluster starting at
+    ///     <paramref name="offset" />. Returns 0 if <paramref name="offset" /> is at or beyond
+    ///     the end of the line's text content.
+    /// </summary>
+    private int GetGraphemeLengthForward (int offset)
+    {
+        DocumentLine line = _document!.GetLineByOffset (offset);
+        var lineEnd = line.Offset + line.Length;
+
+        if (offset >= lineEnd)
+        {
+            // At or past end-of-line text — the delimiter is handled separately.
+            return 0;
+        }
+
+        // GetTextAsMemory avoids a string allocation when the rope implementation supports it.
+        // We pass the full remainder so StringInfo sees the complete cluster even for
+        // pathological sequences (base + many combining marks).
+        ReadOnlyMemory<char> slice = _document.GetTextAsMemory (offset, lineEnd - offset);
+
+        return StringInfo.GetNextTextElementLength (slice.Span);
+    }
+
+    /// <summary>
+    ///     Returns the length (in UTF-16 code units) of the grapheme cluster ending at
+    ///     <paramref name="offset" /> (i.e. the cluster immediately before the offset).
+    ///     Returns 0 if <paramref name="offset" /> is at the start of the line.
+    /// </summary>
+    private int GetGraphemeLengthBackward (int offset)
+    {
+        DocumentLine line = _document!.GetLineByOffset (offset);
+        var lineStart = line.Offset;
+
+        if (offset <= lineStart)
+        {
+            // At or before the start of this line — delimiter crossing handled by caller.
+            return 0;
+        }
+
+        // Scan from line start to the caret so TextElementEnumerator sees aligned grapheme
+        // boundaries. The last enumerated element is the grapheme immediately before the caret.
+        var text = _document.GetText (lineStart, offset - lineStart);
+        TextElementEnumerator enumerator = StringInfo.GetTextElementEnumerator (text);
+        var lastLength = 0;
+
+        while (enumerator.MoveNext ())
+        {
+            lastLength = enumerator.GetTextElement ().Length;
+        }
+
+        return lastLength;
     }
 
     /// <summary>

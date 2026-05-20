@@ -97,12 +97,19 @@ public partial class Editor
     }
 
     /// <summary>
-    ///     Begins (if needed) or extends the selection by setting the anchor to the current caret and then moving the
-    ///     caret <paramref name="delta" /> characters horizontally.
+    ///     Begins (if needed) or extends the selection by moving the caret one grapheme cluster
+    ///     in the direction indicated by <paramref name="delta" /> (positive = forward, negative = backward).
     /// </summary>
     private void ExtendCaretBy (int delta)
     {
-        ExtendCaretTo (SnapOffsetPastDelimiter (CaretOffset + delta, delta));
+        var graphemeDelta = delta > 0
+            ? GetGraphemeLengthForward (CaretOffset)
+            : GetGraphemeLengthBackward (CaretOffset);
+
+        // If graphemeDelta is 0, we're at a line boundary — fall back to ±1 to cross the delimiter.
+        var step = graphemeDelta > 0 ? graphemeDelta : 1;
+        var newOffset = delta > 0 ? CaretOffset + step : CaretOffset - step;
+        ExtendCaretTo (SnapOffsetPastDelimiter (newOffset, delta));
     }
 
     private void ExtendCaretVertically (int delta)
@@ -161,7 +168,8 @@ public partial class Editor
 
     /// <summary>
     ///     Movement helper that respects an existing selection: plain (non-extending) cursor keys clear the selection
-    ///     and snap to the appropriate end; otherwise the caret moves by <paramref name="delta" />.
+    ///     and snap to the appropriate end; otherwise the caret moves one grapheme cluster in the direction
+    ///     indicated by <paramref name="delta" />.
     /// </summary>
     private void MoveCaretByCollapsingSelection (int delta)
     {
@@ -174,7 +182,14 @@ public partial class Editor
             return;
         }
 
-        CaretOffset = SnapOffsetPastDelimiter (CaretOffset + delta, delta);
+        var graphemeDelta = delta > 0
+            ? GetGraphemeLengthForward (CaretOffset)
+            : GetGraphemeLengthBackward (CaretOffset);
+
+        // If graphemeDelta is 0, we're at a line boundary — fall back to ±1 to cross the delimiter.
+        var step = graphemeDelta > 0 ? graphemeDelta : 1;
+        var newOffset = delta > 0 ? CaretOffset + step : CaretOffset - step;
+        CaretOffset = SnapOffsetPastDelimiter (newOffset, delta);
     }
 
     /// <summary>
