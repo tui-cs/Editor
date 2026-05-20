@@ -41,17 +41,33 @@
 .PARAMETER Rows
     Recording rows. Default: 36
 
+.PARAMETER ShowCommand
+    Synthetic shell prompt/command pre-roll shown in the GIF before the app
+    starts (e.g. '$ ted foo.cs'). Omit for no pre-roll.
+
+.PARAMETER StartupDelay
+    Milliseconds to wait after the target process starts before copying its
+    output and playing keystrokes. Default: 0 (no extra delay).
+
+.PARAMETER InputDelay
+    Default pause in milliseconds before the scripted keys begin (after
+    startup-delay has elapsed). Default: 0.
+
 .PARAMETER MaxDuration
     Maximum recording duration in seconds. Default: 60
 
 .PARAMETER DrainMs
     Milliseconds to wait after last keystroke before stopping. Default: 1500
 
+.PARAMETER Verbosity
+    TUIcast verbosity level: low, medium, high. 'high' logs key tokens and
+    pacing to stderr for troubleshooting. Default: not set.
+
 .PARAMETER SkipBuild
     Skip dotnet build of examples/ted before recording.
 
 .PARAMETER TuicastVersion
-    TUIcast release version to download if not found. Default: 0.1.1
+    TUIcast release version to download if not found. Default: 0.1.2
 #>
 [CmdletBinding()]
 param (
@@ -67,8 +83,12 @@ param (
     [int]    $Rows = 36,
     [int]    $MaxDuration = 60,
     [int]    $DrainMs = 1500,
+    [string] $ShowCommand,
+    [int]    $StartupDelay = 0,
+    [int]    $InputDelay = 0,
+    [string] $Verbosity,
     [switch] $SkipBuild,
-    [string] $TuicastVersion = '0.1.1'
+    [string] $TuicastVersion = '0.1.2'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -194,17 +214,26 @@ Write-Host "Recording: $Title"
 Write-Host "  Keystrokes: $Keystrokes"
 Write-Host "  Output:     $Output"
 
-& $TuicastBin record `
-    --binary $TedBin `
-    --keystrokes $Keystrokes `
-    --output $Output `
-    --cast-output $CastOutput `
-    --agg-path $AggBin `
-    --cols $Cols `
-    --rows $Rows `
-    --max-duration $MaxDuration `
-    --drain $DrainMs `
-    --title $Title
+$recordArgs = @(
+    'record',
+    '--binary', $TedBin,
+    '--keystrokes', $Keystrokes,
+    '--output', $Output,
+    '--cast-output', $CastOutput,
+    '--agg-path', $AggBin,
+    '--cols', $Cols,
+    '--rows', $Rows,
+    '--max-duration', $MaxDuration,
+    '--drain', $DrainMs,
+    '--title', $Title
+)
+
+if ($ShowCommand)       { $recordArgs += '--show-command';   $recordArgs += $ShowCommand }
+if ($StartupDelay -gt 0){ $recordArgs += '--startup-delay'; $recordArgs += $StartupDelay }
+if ($InputDelay -gt 0)  { $recordArgs += '--input-delay';   $recordArgs += $InputDelay }
+if ($Verbosity)         { $recordArgs += '--verbosity';     $recordArgs += $Verbosity }
+
+& $TuicastBin @recordArgs
 
 if ($LASTEXITCODE -ne 0) { throw "tuicast record failed with exit code $LASTEXITCODE" }
 
