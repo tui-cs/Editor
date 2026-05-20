@@ -589,9 +589,10 @@ public partial class Editor
             return 0;
         }
 
-        // Read a small bounded slice (max grapheme cluster is ~30 code units for complex ZWJ).
-        var sliceLen = Math.Min (lineEnd - offset, 32);
-        ReadOnlyMemory<char> slice = _document.GetTextAsMemory (offset, sliceLen);
+        // GetTextAsMemory avoids a string allocation when the rope implementation supports it.
+        // We pass the full remainder so StringInfo sees the complete cluster even for
+        // pathological sequences (base + many combining marks).
+        ReadOnlyMemory<char> slice = _document.GetTextAsMemory (offset, lineEnd - offset);
 
         return StringInfo.GetNextTextElementLength (slice.Span);
     }
@@ -612,12 +613,9 @@ public partial class Editor
             return 0;
         }
 
-        // For correctness, scan from line start so TextElementEnumerator sees aligned boundaries.
-        // Cap at 64 chars — no known grapheme cluster exceeds ~25 code units, and caret is
-        // always at a grapheme boundary, so the last element in the window is always complete.
-        var scanLen = Math.Min (offset - lineStart, 64);
-        var scanStart = offset - scanLen;
-        var text = _document.GetText (scanStart, scanLen);
+        // Scan from line start to the caret so TextElementEnumerator sees aligned grapheme
+        // boundaries. The last enumerated element is the grapheme immediately before the caret.
+        var text = _document.GetText (lineStart, offset - lineStart);
         TextElementEnumerator enumerator = StringInfo.GetTextElementEnumerator (text);
         var lastLength = 0;
 
