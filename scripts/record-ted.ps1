@@ -241,3 +241,24 @@ Write-Host ''
 Write-Host "Recording complete:"
 Write-Host "  GIF:  $Output"
 Write-Host "  cast: $CastOutput"
+
+$GifPath = (Resolve-Path $Output).Path
+
+try
+{
+    Set-Clipboard -Value $GifPath
+    Write-Host "  GIF path copied to clipboard."
+}
+catch
+{
+    Write-Host "  (Set-Clipboard unavailable: $($_.Exception.Message))"
+}
+
+try
+{
+    Invoke-Item -Path $GifPath
+}
+catch
+{
+    Write-Host "  (Could not launch GIF: $($_.Exception.Message))"
+}
