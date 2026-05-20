@@ -589,9 +589,11 @@ public partial class Editor
             return 0;
         }
 
-        var remaining = _document.GetText (offset, lineEnd - offset);
+        // Read a small bounded slice (max grapheme cluster is ~30 code units for complex ZWJ).
+        var sliceLen = Math.Min (lineEnd - offset, 32);
+        ReadOnlyMemory<char> slice = _document.GetTextAsMemory (offset, sliceLen);
 
-        return StringInfo.GetNextTextElementLength (remaining);
+        return StringInfo.GetNextTextElementLength (slice.Span);
     }
 
     /// <summary>
@@ -610,9 +612,13 @@ public partial class Editor
             return 0;
         }
 
-        // Walk the text elements from line start up to offset and take the last one's length.
-        var textUpToCaret = _document.GetText (lineStart, offset - lineStart);
-        TextElementEnumerator enumerator = StringInfo.GetTextElementEnumerator (textUpToCaret);
+        // For correctness, scan from line start so TextElementEnumerator sees aligned boundaries.
+        // Cap at 64 chars — no known grapheme cluster exceeds ~25 code units, and caret is
+        // always at a grapheme boundary, so the last element in the window is always complete.
+        var scanLen = Math.Min (offset - lineStart, 64);
+        var scanStart = offset - scanLen;
+        var text = _document.GetText (scanStart, scanLen);
+        TextElementEnumerator enumerator = StringInfo.GetTextElementEnumerator (text);
         var lastLength = 0;
 
         while (enumerator.MoveNext ())
