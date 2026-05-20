@@ -257,7 +257,7 @@ public sealed partial class TedApp
 
     private string? ShowDefaultSaveDialog ()
     {
-        using SaveDialog dialog = new ();
+        using SaveDialog dialog = new () { Title = "Save File As" };
         dialog.AllowsMultipleSelection = false;
         dialog.OpenMode = OpenMode.File;
 
