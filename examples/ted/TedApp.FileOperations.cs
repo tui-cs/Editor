@@ -241,6 +241,10 @@ public sealed partial class TedApp
         Editor.CaretOffset = 0;
         CurrentFilePath = filePath;
 
+        _lastFileByteSize = text.Length == 0 ? 0 : Encoding.UTF8.GetByteCount (text);
+        _lastStatusVerb = "Loaded";
+        CompleteStreamingStatus (FormatCompletedProgress ("Loaded", _lastFileByteSize));
+
         ApplyFileMetadata (filePath);
     }
 

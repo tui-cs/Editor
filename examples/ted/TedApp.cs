@@ -463,9 +463,7 @@ public sealed partial class TedApp : Window
     private void UpdateModifiedStatus ()
     {
         var verb = Editor.IsModified ? "Modified" : _lastStatusVerb;
-        LoadSpinnerShortcut.Title = FormatCompletedProgress (verb, _lastFileByteSize);
-        LoadSpinnerShortcut.HelpText = LoadSpinnerShortcut.Title;
-        LoadSpinnerShortcut.SetNeedsDraw ();
+        CompleteStreamingStatus (FormatCompletedProgress (verb, _lastFileByteSize));
     }
 
     private static string FormatLoc (int line, int column)

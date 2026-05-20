@@ -781,6 +781,52 @@ public class TedAppTests
         Assert.Equal (target, ThemeManager.Theme);
     }
 
+    [Fact]
+    public void NewFile_Shows_Loaded_Zero_Bytes ()
+    {
+        TedApp app = new (configPath: TedTestConfig.NewPath ());
+        app.ShowOpenDialog = () => "/tmp/ted-new.txt";
+        app.OpenRead = _ => new MemoryStream (Encoding.UTF8.GetBytes ("hello"));
+
+        Assert.True (app.OpenFile ());
+        Assert.Equal ("Loaded 5 B", app.LoadSpinnerShortcut.Title);
+
+        app.NewFile ();
+
+        Assert.Equal ("Loaded 0 B", app.LoadSpinnerShortcut.Title);
+    }
+
+    [Fact]
+    public async Task Edit_After_Load_Shows_Modified_Status ()
+    {
+        TedApp app = new (configPath: TedTestConfig.NewPath ());
+        app.OpenRead = _ => new MemoryStream (Encoding.UTF8.GetBytes ("hello world"));
+
+        Assert.True (await app.OpenFileAsync ("/tmp/ted-mod.txt", TestContext.Current.CancellationToken));
+        Assert.Equal ("Loaded 11 B", app.LoadSpinnerShortcut.Title);
+
+        // Simulate an edit
+        app.Editor.Document!.Insert (0, "x");
+
+        Assert.Equal ("Modified 11 B", app.LoadSpinnerShortcut.Title);
+    }
+
+    [Fact]
+    public async Task Undo_To_Clean_Reverts_Modified_Status ()
+    {
+        TedApp app = new (configPath: TedTestConfig.NewPath ());
+        app.OpenRead = _ => new MemoryStream (Encoding.UTF8.GetBytes ("abc"));
+
+        Assert.True (await app.OpenFileAsync ("/tmp/ted-undo.txt", TestContext.Current.CancellationToken));
+        Assert.Equal ("Loaded 3 B", app.LoadSpinnerShortcut.Title);
+
+        app.Editor.Document!.Insert (0, "z");
+        Assert.Equal ("Modified 3 B", app.LoadSpinnerShortcut.Title);
+
+        app.Editor.Document.UndoStack.Undo ();
+        Assert.Equal ("Loaded 3 B", app.LoadSpinnerShortcut.Title);
+    }
+
     private sealed class CapturingWriteStream : MemoryStream
     {
         private readonly Action<string> _capture;
