@@ -522,8 +522,9 @@ public sealed partial class TedApp : Window
             return;
         }
 
-        long insertedBytes = Encoding.UTF8.GetByteCount (e.InsertedText.Text);
-        long removedBytes = Encoding.UTF8.GetByteCount (e.RemovedText.Text);
+        Encoding encoding = Editor.Document?.Encoding ?? Encoding.UTF8;
+        long insertedBytes = encoding.GetByteCount (e.InsertedText.Text);
+        long removedBytes = encoding.GetByteCount (e.RemovedText.Text);
         _lastFileByteSize = Math.Max (0, currentSize + insertedBytes - removedBytes);
 
         UpdateModifiedStatus ();
