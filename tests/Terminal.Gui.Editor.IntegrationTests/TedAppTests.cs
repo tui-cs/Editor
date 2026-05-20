@@ -25,7 +25,7 @@ public class TedAppTests
         CultureInfo.DefaultThreadCurrentCulture = CultureInfo.InvariantCulture;
         CultureInfo.DefaultThreadCurrentUICulture = CultureInfo.InvariantCulture;
     }
-    
+
     private static void DeleteIfExists (string filePath)
     {
         if (File.Exists (filePath))
