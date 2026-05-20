@@ -1,5 +1,6 @@
 // Copilot - claude-opus-4-6
 
+using System.Globalization;
 using Ted;
 using Terminal.Gui.Editor.IntegrationTests.Testing;
 using Terminal.Gui.Input;
@@ -17,6 +18,12 @@ namespace Terminal.Gui.Editor.IntegrationTests;
 public class TedFileMenuShortcutTests
 {
     private static readonly InputInjectionOptions Direct = new () { Mode = InputInjectionMode.Direct };
+
+    public TedFileMenuShortcutTests ()
+    {
+        CultureInfo.DefaultThreadCurrentCulture = CultureInfo.InvariantCulture;
+        CultureInfo.DefaultThreadCurrentUICulture = CultureInfo.InvariantCulture;
+    }
 
     [Fact]
     public async Task FileMenu_Shows_Keyboard_Shortcuts ()

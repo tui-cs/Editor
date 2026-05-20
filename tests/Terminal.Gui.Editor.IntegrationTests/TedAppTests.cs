@@ -2,6 +2,7 @@
 
 using System.Collections.Immutable;
 using System.Drawing;
+using System.Globalization;
 using System.Text;
 using Ted;
 using Terminal.Gui.Configuration;
@@ -19,6 +20,12 @@ namespace Terminal.Gui.Editor.IntegrationTests;
 /// </summary>
 public class TedAppTests
 {
+    public TedAppTests ()
+    {
+        CultureInfo.DefaultThreadCurrentCulture = CultureInfo.InvariantCulture;
+        CultureInfo.DefaultThreadCurrentUICulture = CultureInfo.InvariantCulture;
+    }
+    
     private static void DeleteIfExists (string filePath)
     {
         if (File.Exists (filePath))

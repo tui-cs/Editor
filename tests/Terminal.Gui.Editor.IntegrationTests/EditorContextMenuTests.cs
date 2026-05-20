@@ -1,6 +1,7 @@
 // CoPilot - gpt-4.1
 
 using System.Drawing;
+using System.Globalization;
 using Terminal.Gui.Editor.IntegrationTests.Testing;
 using Terminal.Gui.Input;
 using Terminal.Gui.Testing;
@@ -17,6 +18,12 @@ namespace Terminal.Gui.Editor.IntegrationTests;
 public class EditorContextMenuTests
 {
     private static readonly InputInjectionOptions Direct = new () { Mode = InputInjectionMode.Direct };
+
+    public EditorContextMenuTests ()
+    {
+        CultureInfo.DefaultThreadCurrentCulture = CultureInfo.InvariantCulture;
+        CultureInfo.DefaultThreadCurrentUICulture = CultureInfo.InvariantCulture;
+    }
 
     [Fact]
     public async Task RightClick_Shows_Default_ContextMenu ()
