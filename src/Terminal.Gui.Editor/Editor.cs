@@ -443,6 +443,7 @@ public partial class Editor : View
         _wrapMap = null;
         _maxWidthDirty = true;
         RefreshFoldingState ();
+        MoveCaretOutOfFold ();
         SyncFoldingTransformer ();
         UpdateContentSize ();
         SetNeedsDraw ();
@@ -450,11 +451,12 @@ public partial class Editor : View
     }
 
     /// <summary>
-    ///     If the caret is inside a collapsed fold, expand it so the caret stays visible.
+    ///     If the caret is inside the hidden part of a collapsed fold (i.e. on a line after
+    ///     the fold's start line), expand the fold so the caret stays visible.
     /// </summary>
     private void EnsureCaretNotInFold ()
     {
-        if (FoldingManager is not { } fm)
+        if (FoldingManager is not { } fm || _document is null)
         {
             return;
         }
@@ -463,9 +465,56 @@ public partial class Editor : View
 
         foreach (FoldingSection fs in fm.GetFoldingsContaining (caretOffset))
         {
-            if (fs.IsFolded && fs.StartOffset < caretOffset && caretOffset < fs.EndOffset)
+            if (!fs.IsFolded)
+            {
+                continue;
+            }
+
+            // The fold's start line remains visible — only expand if caret is past that line.
+            DocumentLine startLine =
+                _document.GetLineByOffset (Math.Clamp (fs.StartOffset, 0, _document.TextLength));
+
+            if (caretOffset > startLine.EndOffset && caretOffset < fs.EndOffset)
             {
                 fs.IsFolded = false;
+            }
+        }
+    }
+
+    /// <summary>
+    ///     If the caret is inside the hidden part of a collapsed fold, move it to the fold's
+    ///     start offset (the beginning of the fold line that remains visible). Unlike
+    ///     <see cref="EnsureCaretNotInFold" /> this does not expand the fold — it relocates
+    ///     the caret instead. Called from <see cref="OnFoldingChanged" /> so that folding
+    ///     via the gutter never hides the caret.
+    /// </summary>
+    private void MoveCaretOutOfFold ()
+    {
+        if (FoldingManager is not { } fm || _document is null)
+        {
+            return;
+        }
+
+        var caretOffset = CaretOffset;
+
+        foreach (FoldingSection fs in fm.GetFoldingsContaining (caretOffset))
+        {
+            if (!fs.IsFolded)
+            {
+                continue;
+            }
+
+            // The fold's start line remains visible — only relocate if caret is past that line.
+            DocumentLine startLine =
+                _document.GetLineByOffset (Math.Clamp (fs.StartOffset, 0, _document.TextLength));
+
+            if (caretOffset > startLine.EndOffset && caretOffset < fs.EndOffset)
+            {
+                _caretAnchor = CreateCaretAnchor (fs.StartOffset);
+                _lastKnownCaretOffset = fs.StartOffset;
+                _virtualCaretColumn = GetCaretColumn ();
+
+                break;
             }
         }
     }
@@ -1162,6 +1211,7 @@ public partial class Editor : View
     /// <summary>
     ///     Moves the caret <paramref name="delta" /> lines, preserving the sticky virtual column when
     ///     traversing shorter lines (i.e. snap back to the original column on the next long-enough line).
+    ///     When folds are active, navigates by visible lines so folded regions are skipped.
     /// </summary>
     private void MoveCaretVertically (int delta)
     {
@@ -1172,11 +1222,40 @@ public partial class Editor : View
             return;
         }
 
+        if (HasFoldedSections ())
+        {
+            MoveCaretVerticallyFolded (delta);
+
+            return;
+        }
+
         var targetLine = Math.Clamp (GetCaretLineIndex () + delta, 0, _document!.LineCount - 1);
         DocumentLine line = _document!.GetLineByNumber (targetLine + 1);
         var targetCol = GetOrBuildDefaultVisualLine (line).GetRelativeOffset (_virtualCaretColumn);
 
         // resetVirtualColumn: false keeps the sticky column intact across vertical moves.
+        SetCaretOffset (line.Offset + targetCol, false);
+    }
+
+    /// <summary>
+    ///     Fold-aware vertical caret movement. Navigates by visible-line index so folded regions
+    ///     are treated as a single line and skipped over.
+    /// </summary>
+    private void MoveCaretVerticallyFolded (int delta)
+    {
+        List<int> visibleLines = GetVisibleLineNumbers ();
+        var currentIndex = GetCaretVisibleLineIndex ();
+        var targetIndex = Math.Clamp (currentIndex + delta, 0, visibleLines.Count - 1);
+
+        if (targetIndex == currentIndex)
+        {
+            return;
+        }
+
+        var targetLineNumber = visibleLines[targetIndex];
+        DocumentLine line = _document!.GetLineByNumber (targetLineNumber);
+        var targetCol = GetOrBuildDefaultVisualLine (line).GetRelativeOffset (_virtualCaretColumn);
+
         SetCaretOffset (line.Offset + targetCol, false);
     }
 
@@ -1244,6 +1323,30 @@ public partial class Editor : View
             return true;
         }
 
+        if (HasFoldedSections ())
+        {
+            List<int> visibleLines = GetVisibleLineNumbers ();
+            var currentLineNumber = _document.GetLineByOffset (startOffset).LineNumber;
+            var currentIndex = visibleLines.IndexOf (currentLineNumber);
+
+            if (currentIndex < 0)
+            {
+                return false;
+            }
+
+            var targetIndex = currentIndex + delta;
+
+            if (targetIndex < 0 || targetIndex >= visibleLines.Count)
+            {
+                return false;
+            }
+
+            DocumentLine line = _document.GetLineByNumber (visibleLines[targetIndex]);
+            targetOffset = line.Offset + GetOrBuildDefaultVisualLine (line).GetRelativeOffset (targetVisualColumn);
+
+            return true;
+        }
+
         var targetLineIndex = _document.GetLineByOffset (startOffset).LineNumber - 1 + delta;
 
         if (targetLineIndex < 0 || targetLineIndex > _document.LineCount - 1)
@@ -1251,8 +1354,8 @@ public partial class Editor : View
             return false;
         }
 
-        DocumentLine line = _document.GetLineByNumber (targetLineIndex + 1);
-        targetOffset = line.Offset + GetOrBuildDefaultVisualLine (line).GetRelativeOffset (targetVisualColumn);
+        DocumentLine line2 = _document.GetLineByNumber (targetLineIndex + 1);
+        targetOffset = line2.Offset + GetOrBuildDefaultVisualLine (line2).GetRelativeOffset (targetVisualColumn);
 
         return true;
     }
