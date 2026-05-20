@@ -97,10 +97,9 @@ public partial class Editor
     }
 
     /// <summary>
-    ///     <summary>
-    ///         Begins (if needed) or extends the selection by moving the caret one grapheme cluster
-    ///         in the direction indicated by <paramref name="delta" /> (positive = forward, negative = backward).
-    ///     </summary>
+    ///     Begins (if needed) or extends the selection by moving the caret one grapheme cluster
+    ///     in the direction indicated by <paramref name="delta" /> (positive = forward, negative = backward).
+    /// </summary>
     private void ExtendCaretBy (int delta)
     {
         var graphemeDelta = delta > 0

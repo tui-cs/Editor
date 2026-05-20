@@ -9,14 +9,14 @@ namespace Terminal.Gui.Editor.Tests;
 /// <summary>
 ///     Tests that caret navigation and deletion operate on whole grapheme clusters,
 ///     not individual UTF-16 code units. Covers surrogate pairs (🦮 = 2 chars) and
-///     ZWJ sequences (👨‍👩‍👧 = 11 chars).
+///     ZWJ sequences (👨‍👩‍👧 = 8 code units).
 /// </summary>
 public class EditorGraphemeNavigationTests
 {
     // 🦮 = U+1F9AE (surrogate pair, 2 UTF-16 code units, 2 columns)
     private const string GuideDog = "\U0001F9AE";
 
-    // 👨‍👩‍👧 = U+1F468 U+200D U+1F469 U+200D U+1F467 (ZWJ sequence, 11 UTF-16 code units, 2 columns)
+    // 👨‍👩‍👧 = U+1F468 U+200D U+1F469 U+200D U+1F467 (ZWJ sequence, 8 UTF-16 code units, 2 columns)
     private const string Family = "\U0001F468\u200D\U0001F469\u200D\U0001F467";
 
     [Fact]
@@ -34,7 +34,7 @@ public class EditorGraphemeNavigationTests
     [Fact]
     public void CursorRight_Skips_Entire_ZWJ_Sequence ()
     {
-        // "👨‍👩‍👧X" — caret at 0, CursorRight should land at offset 11 (past the ZWJ sequence)
+        // "👨‍👩‍👧X" — caret at 0, CursorRight should land past the ZWJ sequence
         Editor editor = new () { Document = new TextDocument (Family + "X") };
         editor.CaretOffset = 0;
 
@@ -58,7 +58,7 @@ public class EditorGraphemeNavigationTests
     [Fact]
     public void CursorLeft_Skips_Entire_ZWJ_Sequence ()
     {
-        // "👨‍👩‍👧X" — caret at end of 👨‍👩‍👧 (offset 11), CursorLeft should land at 0
+        // "👨‍👩‍👧X" — caret at end of 👨‍👩‍👧, CursorLeft should land at 0
         Editor editor = new () { Document = new TextDocument (Family + "X") };
         editor.CaretOffset = Family.Length;
 
