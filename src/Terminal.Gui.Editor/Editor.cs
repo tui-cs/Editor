@@ -166,6 +166,7 @@ public partial class Editor : View
             _maxWidthDirty = true;
 
             InstallHighlighter ();
+            InstallAutomaticFolding ();
 
             _virtualCaretColumn = GetCaretColumn ();
             UpdateContentSize ();
@@ -638,6 +639,7 @@ public partial class Editor : View
             // etc.). The Document setter unsubscribes on swap; this covers View-teardown.
             _document.Changed -= OnDocumentChanged;
             _document.UndoStack.PropertyChanged -= OnUndoStackPropertyChanged;
+            SetFoldingDocument (null);
             // Dispose can run after document ownership moved; _lastKnownCaretOffset is maintained
             // during caret movement and document changes, so avoid reading CaretOffset here.
             _caretAnchor = null;

@@ -33,7 +33,7 @@ internal sealed class XmlFoldStart : NewFolding
 /// <summary>
 ///     Determines folds for an xml string in the editor.
 /// </summary>
-public class XmlFoldingStrategy
+public class XmlFoldingStrategy : IFoldingStrategy
 {
     /// <summary>
     ///     Flag indicating whether attributes should be displayed on folded
@@ -48,6 +48,13 @@ public class XmlFoldingStrategy
     {
         IEnumerable<NewFolding> foldings = CreateNewFoldings (document, out var firstErrorOffset);
         manager.UpdateFoldings (foldings, firstErrorOffset);
+    }
+
+    /// <inheritdoc />
+    public bool ChangeMayAffectFoldings (DocumentChangeEventArgs e)
+    {
+        return ContainsXmlStructuralCharacter (e.InsertedText)
+               || ContainsXmlStructuralCharacter (e.RemovedText);
     }
 
     /// <summary>
@@ -257,5 +264,20 @@ public class XmlFoldingStrategy
         }
 
         return encodedValue.ToString ();
+    }
+
+    private static bool ContainsXmlStructuralCharacter (ITextSource text)
+    {
+        for (var i = 0; i < text.TextLength; i++)
+        {
+            var ch = text.GetCharAt (i);
+
+            if (ch is '<' or '>' or '/' or '\r' or '\n')
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

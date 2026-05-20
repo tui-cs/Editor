@@ -586,7 +586,6 @@ public sealed partial class TedApp
 
         UpdateFileNameShortcut ();
         UpdatePreviewVisibility ();
-        InstallFolding ();
         Editor.SetNeedsDraw ();
     }
 
