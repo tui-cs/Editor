@@ -79,8 +79,17 @@ internal sealed class FindReplaceDialog : Dialog
             findNextButton,
             findPreviousButton);
 
-        findNextButton.Accepted += (_, _) => RunFind (editor, _findTextField.Text, true);
-        findPreviousButton.Accepted += (_, _) => RunFind (editor, _findTextField.Text, false);
+        findNextButton.Accepting += (_, e) =>
+        {
+            RunFind (editor, _findTextField.Text, true);
+            e.Handled = true;
+        };
+
+        findPreviousButton.Accepting += (_, e) =>
+        {
+            RunFind (editor, _findTextField.Text, false);
+            e.Handled = true;
+        };
 
         return tab;
     }
@@ -92,16 +101,30 @@ internal sealed class FindReplaceDialog : Dialog
         tab.Add (
             new Label { X = 1, Y = 1, Text = "F_ind:" },
             _replaceFindTextField,
-            new Label { X = 1, Y = 3, Text = "R_eplace:" },
+            new Label { X = 1, Y = 3, Text = "Replace:" },
             _replaceWithTextField);
 
         Button findNextButton = new () { X = 1, Y = 5, Text = "Find _Next", IsDefault = true };
         Button replaceButton = new () { X = Pos.Right (findNextButton) + 1, Y = 5, Text = "R_eplace" };
         Button replaceAllButton = new () { X = Pos.Right (replaceButton) + 1, Y = 5, Text = "Replace _All" };
 
-        findNextButton.Accepted += (_, _) => RunFind (editor, _replaceFindTextField.Text, true);
-        replaceButton.Accepted += (_, _) => RunReplaceNext (editor);
-        replaceAllButton.Accepted += (_, _) => RunReplaceAll (editor);
+        findNextButton.Accepting += (_, e) =>
+        {
+            RunFind (editor, _replaceFindTextField.Text, true);
+            e.Handled = true;
+        };
+
+        replaceButton.Accepting += (_, e) =>
+        {
+            RunReplaceNext (editor);
+            e.Handled = true;
+        };
+
+        replaceAllButton.Accepting += (_, e) =>
+        {
+            RunReplaceAll (editor);
+            e.Handled = true;
+        };
 
         tab.Add (findNextButton, replaceButton, replaceAllButton);
 
