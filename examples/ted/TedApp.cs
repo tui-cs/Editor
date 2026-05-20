@@ -470,7 +470,14 @@ public sealed partial class TedApp : Window
         }
 
         var verb = Editor.IsModified ? "Modified" : _lastStatusVerb;
-        CompleteStreamingStatus (FormatCompletedProgress (verb, _lastFileByteSize));
+        var status = FormatCompletedProgress (verb, _lastFileByteSize);
+
+        // Set directly rather than going through CompleteStreamingStatus, which would
+        // bump the operation-id and potentially invalidate a pending streaming completion.
+        // ModifiedChanged always fires on the UI thread, so no marshalling is needed.
+        LoadSpinnerShortcut.Title = status;
+        LoadSpinnerShortcut.HelpText = status;
+        LoadSpinnerShortcut.SetNeedsDraw ();
     }
 
     private static string FormatLoc (int line, int column)
