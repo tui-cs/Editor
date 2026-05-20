@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Drawing;
 using Terminal.Gui.App;
 using Terminal.Gui.Configuration;
@@ -141,7 +142,7 @@ public partial class Editor : View
                 return;
             }
 
-            bool wasModified = IsModified;
+            var wasModified = IsModified;
 
             if (_document is not null)
             {
@@ -598,7 +599,7 @@ public partial class Editor : View
         base.Dispose (disposing);
     }
 
-    private void OnUndoStackPropertyChanged (object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    private void OnUndoStackPropertyChanged (object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName == "IsOriginalFile")
         {
