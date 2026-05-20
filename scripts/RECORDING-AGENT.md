@@ -10,6 +10,7 @@ recording the `ted` example app (a Terminal.Gui `Editor` demo). Any AI system
 ./scripts/record-ted.ps1 `
     -Name "search-replace" `
     -Title "ted: find and replace" `
+    -ShowCommand '$ ted TedApp.cs' `
     -Keystrokes "wait:2000,Ctrl+H,hello,Tab,world,Alt+A,wait:1500,Esc"
 ```
 
@@ -17,24 +18,27 @@ recording the `ted` example app (a Terminal.Gui `Editor` demo). Any AI system
 
 ## TUIcast keystroke syntax
 
+Key tokens use **Terminal.Gui's `Key.ToString()` / `Key.TryParse()` format**.
 A keystroke script is a **comma-separated** string. Each token is one of:
 
 | Token type | Examples | Description |
 |---|---|---|
 | **Wait** | `wait:2000` | Pause N milliseconds before next key |
-| **Named key** | `Enter`, `Escape`, `Tab`, `Space`, `Backspace`, `Delete` | Single special key press |
+| **Named key** | `Enter`, `Esc`, `Tab`, `Space`, `Backspace`, `Delete` | Single special key press |
 | **Arrow/nav** | `CursorUp`, `CursorDown`, `CursorLeft`, `CursorRight`, `Home`, `End`, `PageUp`, `PageDown` | Navigation keys |
 | **Function key** | `F1`–`F12` | Function keys |
-| **Modifier combo** | `Ctrl+S`, `Ctrl+Shift+Z`, `Alt+A`, `Shift+Tab` | Modifier + key |
+| **Modifier combo** | `Ctrl+S`, `Ctrl+Shift+Z`, `Alt+A`, `Shift+Tab`, `Ctrl+Alt+Shift+CursorUp` | Modifier + key |
 | **Literal text** | `hello world` | Typed character-by-character (spaces included) |
 
 ### Rules
 
-- Tokens are **case-sensitive** for modifiers: `Ctrl`, `Alt`, `Shift`.
-- Named keys are case-insensitive but conventional: `CursorDown` not `cursordown`.
+- Uses Terminal.Gui key format: `Ctrl+C`, `Ctrl-C`, `A-Ctrl` are all valid.
+- Older aliases like `ArrowUp`, `ArrowDown`, `Escape` are accepted (prefer
+  `CursorUp`, `CursorDown`, `Esc`).
+- **Unknown key-like tokens** (e.g. `Ctrl-Foo`) fail fast — they won't be
+  silently typed as literal text.
 - Literal text tokens are everything that doesn't match a known key name or `wait:N`.
 - Commas inside literal text are **not supported** — split around them with separate tokens.
-- Use `Esc` or `Escape` for the escape key.
 - `wait:N` is essential between actions that trigger UI transitions (dialog open,
   file load, menu animation). **Always wait after opening a dialog or menu.**
 
@@ -163,20 +167,29 @@ Triggered by Options → Settings. Has checkboxes for:
 1. **Always start with a wait** — `wait:1500` or `wait:2000` gives the app time to
    start and render its first frame.
 
-2. **Wait after UI transitions** — opening a dialog, switching tabs, or loading a file
+2. **Use `-ShowCommand` for polish** — adds a synthetic `$ ted myfile.cs` prompt
+   frame before the app launches. Makes the GIF look like a real terminal session.
+
+3. **Use `-StartupDelay`** when the app needs extra init time (large file, network)
+   before you want output captured.
+
+4. **Wait after UI transitions** — opening a dialog, switching tabs, or loading a file
    needs `wait:500` to `wait:1000` for the UI to settle before the next action.
 
-3. **End with quit or Esc** — recordings should end cleanly. Use `Ctrl+Q` to quit
+5. **End with quit or Esc** — recordings should end cleanly. Use `Ctrl+Q` to quit
    (may prompt for save), or `Esc` to close a dialog.
 
-4. **Keep recordings short** — aim for 10–30 seconds of real time. Viewers lose
+6. **Keep recordings short** — aim for 10–30 seconds of real time. Viewers lose
    interest after that. Use `--MaxDuration 60` as a safety net.
 
-5. **Show, don't rush** — generous waits between meaningful actions let the viewer
+7. **Show, don't rush** — generous waits between meaningful actions let the viewer
    see what happened. `wait:1500` after a find highlights the match visually.
 
-6. **Open a file first** for most demos — unless you're demoing the empty-buffer
+8. **Open a file first** for most demos — unless you're demoing the empty-buffer
    experience, start by opening a file so there's content to work with.
+
+9. **Use `-Verbosity high`** when debugging a keystroke script that isn't working
+   as expected — it logs each key token and timing to stderr.
 
 ---
 
@@ -224,6 +237,8 @@ wait:2000,Hello world!,wait:1000,Enter,This is ted.,wait:1500,Ctrl+Z,wait:500,Ct
 ./scripts/record-ted.ps1 `
     -Name "find-replace" `
     -Title "ted: search and replace demo" `
+    -ShowCommand '$ ted TedApp.cs' `
+    -StartupDelay 500 `
     -Keystrokes "wait:2000,Ctrl+O,wait:500,./examples/ted/TedApp.cs,Enter,wait:1500,Ctrl+H,wait:500,Editor,Tab,View,Alt+A,wait:1500,Esc,wait:500,Ctrl+Q" `
     -Cols 120 `
     -Rows 36 `
@@ -237,14 +252,18 @@ wait:2000,Hello world!,wait:1000,Enter,This is ted.,wait:1500,Ctrl+Z,wait:500,Ct
 | `-Keystrokes` | **Yes** | — | The TUIcast keystroke script |
 | `-Name` | No | `demo` | Short ID for filenames (`ted-<Name>.gif`) |
 | `-Title` | No | `ted demo` | Title in cast metadata |
+| `-ShowCommand` | No | — | Synthetic shell prompt pre-roll (e.g. `'$ ted foo.cs'`) |
+| `-StartupDelay` | No | 0 | Ms to wait after process start before output capture |
+| `-InputDelay` | No | 0 | Ms pause before scripted keys begin |
 | `-Output` | No | `artifacts/tuicast/ted-<Name>.gif` | GIF path |
 | `-CastOutput` | No | `artifacts/tuicast/ted-<Name>.cast` | Cast path |
 | `-Cols` | No | 120 | Terminal columns |
 | `-Rows` | No | 36 | Terminal rows |
 | `-MaxDuration` | No | 60 | Safety timeout (seconds) |
 | `-DrainMs` | No | 1500 | Wait after last keystroke |
+| `-Verbosity` | No | — | `low`, `medium`, or `high` (debug logging) |
 | `-SkipBuild` | No | false | Skip `dotnet build` |
-| `-TuicastVersion` | No | `0.1.1` | Auto-download version |
+| `-TuicastVersion` | No | `0.1.2` | Auto-download version |
 
 ---
 
