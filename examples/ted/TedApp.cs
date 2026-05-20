@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
 using System.Collections.ObjectModel;
+using System.Text;
 using Terminal.Gui.App;
 using Terminal.Gui.Configuration;
 using Terminal.Gui.Document;
@@ -350,6 +351,8 @@ public sealed partial class TedApp : Window
         // caret (insert/remove). Initial render seeds the value before any movement happens.
         Editor.CaretChanged += (_, _) => UpdateLocShortcut ();
         Editor.OverwriteModeChanged += (_, _) => UpdateOverwriteShortcut ();
+        Editor.ModifiedChanged += (_, _) => UpdateModifiedStatus ();
+        Editor.ContentChanged += (_, e) => UpdateContentSizeStatus (e);
         Editor.FindRequested += (_, _) => ShowFindReplaceDialog (false);
         Editor.ReplaceRequested += (_, _) => ShowFindReplaceDialog (true);
         UpdateLocShortcut ();
@@ -485,6 +488,46 @@ public sealed partial class TedApp : Window
     {
         OverwriteShortcut.Title = Editor.OverwriteMode ? "OVR" : "INS";
         OverwriteShortcut.SetNeedsDraw ();
+    }
+
+    private void UpdateModifiedStatus ()
+    {
+        // Don't override the status while a streaming load/save is in progress --
+        // the streaming operation owns the spinner and operation-id sequence.
+        if (LoadStatusSpinner.AutoSpin)
+        {
+            return;
+        }
+
+        var verb = Editor.IsModified ? "Modified" : _lastStatusVerb;
+        var status = FormatCompletedProgress (verb, _lastFileByteSize);
+
+        // Set directly rather than going through CompleteStreamingStatus, which would
+        // bump the operation-id and potentially invalidate a pending streaming completion.
+        // ModifiedChanged always fires on the UI thread, so no marshalling is needed.
+        LoadSpinnerShortcut.Title = status;
+        LoadSpinnerShortcut.HelpText = status;
+        LoadSpinnerShortcut.SetNeedsDraw ();
+    }
+
+    private void UpdateContentSizeStatus (DocumentChangeEventArgs e)
+    {
+        if (LoadStatusSpinner.AutoSpin)
+        {
+            return;
+        }
+
+        if (_lastFileByteSize is not { } currentSize)
+        {
+            return;
+        }
+
+        Encoding encoding = Editor.Document?.Encoding ?? Encoding.UTF8;
+        long insertedBytes = encoding.GetByteCount (e.InsertedText.Text);
+        long removedBytes = encoding.GetByteCount (e.RemovedText.Text);
+        _lastFileByteSize = Math.Max (0, currentSize + insertedBytes - removedBytes);
+
+        UpdateModifiedStatus ();
     }
 
     private static string FormatLoc (int line, int column)
