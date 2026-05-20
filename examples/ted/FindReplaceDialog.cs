@@ -41,7 +41,7 @@ internal sealed class FindReplaceDialog : Dialog
         _regexCheckBox = new CheckBox { X = Pos.Right (_wholeWordCheckBox) + 2, Y = 0, Title = "Reg_ex" };
         _statusLabel = new Label { X = 1, Y = 1, Width = Dim.Fill (1) };
 
-        Tabs tabs = new () { X = 0, Y = 0, Width = Dim.Fill (), Height = Dim.Auto () };
+        Tabs tabs = new () { X = 0, Y = 0, Width = Dim.Fill (), Height = 11 };
         View findTab = BuildFindTab (editor);
         View replaceTab = BuildReplaceTab (editor);
 
