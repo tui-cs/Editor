@@ -462,6 +462,13 @@ public sealed partial class TedApp : Window
 
     private void UpdateModifiedStatus ()
     {
+        // Don't override the status while a streaming load/save is in progress --
+        // the streaming operation owns the spinner and operation-id sequence.
+        if (LoadStatusSpinner.AutoSpin)
+        {
+            return;
+        }
+
         var verb = Editor.IsModified ? "Modified" : _lastStatusVerb;
         CompleteStreamingStatus (FormatCompletedProgress (verb, _lastFileByteSize));
     }
