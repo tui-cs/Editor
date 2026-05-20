@@ -10,8 +10,9 @@ public sealed partial class TedApp
     {
         return
         [
-            new MenuItem ("_Find...", "Find text in the current document", Find),
-            new MenuItem ("_Replace...", "Find and replace text in the current document", Replace),
+            new MenuItem ("_Find...", "Find text in the current document", Find) { Key = KeyFor (Command.Find) },
+            new MenuItem ("_Replace...", "Find and replace text in the current document", Replace)
+                { Key = KeyFor (Command.Replace) },
             new Line (),
             new MenuItem (Editor, Command.Undo) { Key = KeyFor (Command.Undo) },
             new MenuItem (Editor, Command.Redo) { Key = KeyFor (Command.Redo) },

@@ -85,6 +85,34 @@ public sealed partial class TedApp : Window
         ShowSaveDialog = ShowDefaultSaveDialog;
         ShowSaveChangesDialog = ShowDefaultSaveChangesDialog;
 
+        // Register file-command key bindings on the Window so they work from anywhere in the app
+        // and so MenuItem(this, Command.XXX) can resolve them for display.
+        HotKeyBindings.Add (Key.N.WithCtrl, Command.New);
+        HotKeyBindings.Add (Key.O.WithCtrl, Command.Open);
+        HotKeyBindings.Add (Key.S.WithCtrl, Command.Save);
+        HotKeyBindings.Add (Key.S.WithCtrl.WithShift, Command.SaveAs);
+
+        AddCommand (Command.New, () =>
+        {
+            New ();
+            return true;
+        });
+        AddCommand (Command.Open, () =>
+        {
+            Open ();
+            return true;
+        });
+        AddCommand (Command.Save, () =>
+        {
+            Save ();
+            return true;
+        });
+        AddCommand (Command.SaveAs, () =>
+        {
+            SaveAs ();
+            return true;
+        });
+
         MenuBar menu = new ()
         {
             AlignmentModes = AlignmentModes.IgnoreFirstOrLast
@@ -196,11 +224,11 @@ public sealed partial class TedApp : Window
 
         menu.Add (new MenuBarItem (Strings.menuFile,
             [
-                new MenuItem { Command = Command.New, Action = New, Key = KeyFor (Command.New) },
-                new MenuItem { Command = Command.Open, Action = Open, Key = KeyFor (Command.Open) },
-                new MenuItem { Command = Command.Save, Action = Save, Key = KeyFor (Command.Save) },
-                new MenuItem { Command = Command.SaveAs, Action = SaveAs, Key = KeyFor (Command.SaveAs) },
-                new MenuItem { Command = Command.Quit, Action = Quit, Key = KeyFor (Command.Quit) }
+                new MenuItem (this, Command.New),
+                new MenuItem (this, Command.Open),
+                new MenuItem (this, Command.Save),
+                new MenuItem (this, Command.SaveAs),
+                new MenuItem { Command = Command.Quit, Action = Quit, Key = Application.GetDefaultKey (Command.Quit) }
             ]),
             new MenuBarItem (Strings.menuEdit, CreateEditMenuItems ()),
             new MenuBarItem ("_View",

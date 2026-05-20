@@ -265,11 +265,15 @@ public sealed partial class TedApp
         return dialog.FilePaths.FirstOrDefault ();
     }
 
+    /// <summary>Creates the <see cref="SaveDialog" /> used by <see cref="ShowDefaultSaveDialog" />.</summary>
+    internal SaveDialog CreateSaveDialog ()
+    {
+        return new SaveDialog { Title = "Save File As", AllowsMultipleSelection = false, OpenMode = OpenMode.File };
+    }
+
     private string? ShowDefaultSaveDialog ()
     {
-        using SaveDialog dialog = new ();
-        dialog.AllowsMultipleSelection = false;
-        dialog.OpenMode = OpenMode.File;
+        using SaveDialog dialog = CreateSaveDialog ();
 
         if (App is null)
         {
