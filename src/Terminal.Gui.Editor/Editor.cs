@@ -141,6 +141,8 @@ public partial class Editor : View
                 return;
             }
 
+            bool wasModified = IsModified;
+
             if (_document is not null)
             {
                 _document.Changed -= OnDocumentChanged;
@@ -171,6 +173,11 @@ public partial class Editor : View
             if (hadSelection)
             {
                 RaiseSelectionChangedIfMoved (beforeSelection);
+            }
+
+            if (IsModified != wasModified)
+            {
+                ModifiedChanged?.Invoke (this, EventArgs.Empty);
             }
 
             SetNeedsDraw ();

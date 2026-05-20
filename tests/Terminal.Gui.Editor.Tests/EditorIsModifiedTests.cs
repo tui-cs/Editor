@@ -85,13 +85,14 @@ public class EditorIsModifiedTests
         var fires = 0;
         editor.ModifiedChanged += (_, _) => fires++;
 
-        // Swap to a fresh (clean) document — IsOriginalFile is true on the new UndoStack,
-        // but the subscription to the old UndoStack is removed; no spurious fire.
+        // Swap to a fresh (clean) document — IsModified transitions from true to false,
+        // so ModifiedChanged must fire on the swap itself.
         editor.Document = new TextDocument ("new");
         Assert.False (editor.IsModified);
-
-        // Edit new doc should fire
-        editor.Document.Insert (0, "z");
         Assert.Equal (1, fires);
+
+        // Edit new doc should fire again
+        editor.Document.Insert (0, "z");
+        Assert.Equal (2, fires);
     }
 }
