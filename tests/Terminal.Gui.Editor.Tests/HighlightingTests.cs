@@ -305,6 +305,17 @@ public class HighlightingTests
     }
 
     [Fact]
+    public void Markdown_Definition_Uses_Theme_Roles_For_Hard_To_Read_Default_Colors ()
+    {
+        IHighlightingDefinition markdown = HighlightingManager.Instance.GetDefinition ("MarkDown")!;
+
+        Assert.Equal (VisualRole.CodeKeyword, markdown.GetNamedColor ("Heading").Role);
+        Assert.Equal (VisualRole.CodeComment, markdown.GetNamedColor ("BlockQuote").Role);
+        Assert.Equal (VisualRole.CodeIdentifier, markdown.GetNamedColor ("Link").Role);
+        Assert.Equal (VisualRole.CodeType, markdown.GetNamedColor ("Image").Role);
+    }
+
+    [Fact]
     public void Category_Attribute_Overrides_Table ()
     {
         const string xshd = """

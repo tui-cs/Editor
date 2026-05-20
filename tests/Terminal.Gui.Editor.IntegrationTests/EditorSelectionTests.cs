@@ -1,5 +1,6 @@
 // Claude - claude-opus-4-7
 
+using Terminal.Gui.Document;
 using Terminal.Gui.Editor.IntegrationTests.Testing;
 using Terminal.Gui.Input;
 using Terminal.Gui.Testing;
@@ -199,5 +200,34 @@ public class EditorSelectionTests
         fx.Injector.InjectKey (Key.Z, Direct);
 
         Assert.Equal ("z", fx.Top.Editor.Document!.Text);
+    }
+
+    [Fact]
+    public async Task ShiftDown_Delete_Then_CursorDown_Moves_To_Next_Line ()
+    {
+        // 5 lines: "1\n2\n3\n4\n5"
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("1\n2\n3\n4\n5"), 20, 8);
+        fx.Top.Editor.SetFocus ();
+        fx.Top.Editor.CaretOffset = 0; // line 1, col 0
+
+        // Shift+Down twice to select lines 1 and 2 (selection spans offset 0..4 "1\n2\n")
+        fx.Injector.InjectKey (Key.CursorDown.WithShift, Direct);
+        fx.Injector.InjectKey (Key.CursorDown.WithShift, Direct);
+
+        Assert.True (fx.Top.Editor.HasSelection);
+
+        // Delete the selection — should leave "3\n4\n5" with caret at offset 0, line 1
+        fx.Injector.InjectKey (Key.Delete, Direct);
+
+        Assert.False (fx.Top.Editor.HasSelection);
+        Assert.Equal ("3\n4\n5", fx.Top.Editor.Document!.Text);
+        Assert.Equal (0, fx.Top.Editor.CaretOffset);
+
+        // Press Down — caret should move from line 1 to line 2 (offset of "3\n" = 2)
+        fx.Injector.InjectKey (Key.CursorDown, Direct);
+
+        // Expected: caret on line 2 of the remaining doc (offset 2, the "4" line)
+        DocumentLine caretLine = fx.Top.Editor.Document!.GetLineByOffset (fx.Top.Editor.CaretOffset);
+        Assert.Equal (2, caretLine.LineNumber); // line 2 in 1-based numbering
     }
 }
