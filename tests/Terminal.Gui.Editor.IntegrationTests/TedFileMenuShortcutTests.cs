@@ -4,6 +4,7 @@ using Ted;
 using Terminal.Gui.Editor.IntegrationTests.Testing;
 using Terminal.Gui.Input;
 using Terminal.Gui.Testing;
+using Terminal.Gui.Views;
 using Xunit;
 
 namespace Terminal.Gui.Editor.IntegrationTests;
@@ -48,28 +49,13 @@ public class TedFileMenuShortcutTests
     [Fact]
     public void SaveAs_Dialog_Title_Is_Save_File_As ()
     {
-        // Verify the default ShowDefaultSaveDialog sets Title = "Save File As" by
-        // not replacing the hook but intercepting the dialog at a higher level.
-        // We test the code path by verifying the default hook creates the correct title.
-        TedApp app = new (configPath: TedTestConfig.NewPath ());
+        // Verify that CreateSaveDialog (used by ShowDefaultSaveDialog) produces a dialog
+        // with the expected title. This catches regressions if someone removes or changes
+        // the Title assignment.
+        using SaveDialog dialog = TedApp.CreateSaveDialog ();
 
-        // Replace ShowSaveDialog with one that constructs the same dialog as the default
-        // and asserts the title before cancelling.
-        var titleVerified = false;
-        app.ShowSaveDialog = () =>
-        {
-            // The default ShowDefaultSaveDialog creates: new SaveDialog() { Title = "Save File As" }
-            // Since we can't intercept the real one without App.Run blocking, we verify the
-            // Ctrl+Shift+S shortcut routes here (proves the binding works) and the title is
-            // verified via code inspection + the snapshot test. Return null to cancel.
-            titleVerified = true;
-
-            return null;
-        };
-
-        // Invoke SaveAs directly (the keyboard shortcut routing is tested separately)
-        app.SaveFileAs ();
-
-        Assert.True (titleVerified, "ShowSaveDialog hook should be invoked by SaveFileAs.");
+        Assert.Equal ("Save File As", dialog.Title);
+        Assert.False (dialog.AllowsMultipleSelection);
+        Assert.Equal (OpenMode.File, dialog.OpenMode);
     }
 }
