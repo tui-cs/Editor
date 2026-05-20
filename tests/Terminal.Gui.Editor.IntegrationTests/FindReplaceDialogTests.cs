@@ -2,13 +2,9 @@
 
 using Ted;
 using Terminal.Gui.App;
-using Terminal.Gui.Document;
-using Terminal.Gui.Drivers;
 using Terminal.Gui.Editor.IntegrationTests.Testing;
 using Terminal.Gui.Input;
 using Terminal.Gui.Testing;
-using Terminal.Gui.ViewBase;
-using Terminal.Gui.Views;
 using Xunit;
 
 namespace Terminal.Gui.Editor.IntegrationTests;
@@ -26,11 +22,11 @@ public sealed class FindReplaceDialogTests
     {
         await using AppFixture<EditorTestHost> fx = new (
             () => new EditorTestHost ("hello world\nfoo bar"),
-            width: 60, height: 20);
+            60, 20);
 
         // Open Find dialog via the Editor's FindRequested event path — but since we can't
         // run a nested modal in tests, construct the dialog directly and Begin it.
-        using FindReplaceDialog dialog = new (fx.Top.Editor, selectReplaceTab: false);
+        using FindReplaceDialog dialog = new (fx.Top.Editor, false);
         SessionToken? session = fx.App.Begin (dialog);
 
         try
@@ -49,9 +45,9 @@ public sealed class FindReplaceDialogTests
     {
         await using AppFixture<EditorTestHost> fx = new (
             () => new EditorTestHost ("hello world\nfoo bar"),
-            width: 60, height: 20);
+            60, 20);
 
-        using FindReplaceDialog dialog = new (fx.Top.Editor, selectReplaceTab: true);
+        using FindReplaceDialog dialog = new (fx.Top.Editor, true);
         SessionToken? session = fx.App.Begin (dialog);
 
         try
@@ -70,12 +66,12 @@ public sealed class FindReplaceDialogTests
     {
         await using AppFixture<EditorTestHost> fx = new (
             () => new EditorTestHost ("hello world hello"),
-            width: 60, height: 20);
+            60, 20);
 
         fx.Top.Editor.SetFocus ();
         fx.Render ();
 
-        using FindReplaceDialog dialog = new (fx.Top.Editor, selectReplaceTab: false);
+        using FindReplaceDialog dialog = new (fx.Top.Editor, false);
         SessionToken? session = fx.App.Begin (dialog);
 
         try
@@ -104,9 +100,9 @@ public sealed class FindReplaceDialogTests
     {
         await using AppFixture<EditorTestHost> fx = new (
             () => new EditorTestHost ("test"),
-            width: 60, height: 20);
+            60, 20);
 
-        using FindReplaceDialog dialog = new (fx.Top.Editor, selectReplaceTab: false);
+        using FindReplaceDialog dialog = new (fx.Top.Editor, false);
         SessionToken? session = fx.App.Begin (dialog);
 
         try
