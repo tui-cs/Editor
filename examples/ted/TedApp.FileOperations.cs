@@ -19,6 +19,12 @@ public sealed partial class TedApp
     private DateTime _lastStreamingStatusUpdate = DateTime.MinValue;
     private long _streamingStatusOperationId;
 
+    /// <summary>The last-known on-disk file size in bytes (from load or save).</summary>
+    private long? _lastFileByteSize;
+
+    /// <summary>The verb last used in the completed status ("Loaded" or "Saved").</summary>
+    private string _lastStatusVerb = "Loaded";
+
     /// <summary>The path currently associated with <see cref="Editor" />, or <see langword="null" /> for an untitled buffer.</summary>
     public string? CurrentFilePath { get; private set; }
 
@@ -386,6 +392,8 @@ public sealed partial class TedApp
                 {
                     CurrentFilePath = filePath;
                     ApplyFileMetadata (filePath);
+                    _lastFileByteSize = fileSize;
+                    _lastStatusVerb = "Loaded";
                     CompleteStreamingStatus (
                         startedStatusOperationId,
                         FormatCompletedProgress ("Loaded", fileSize));
@@ -492,6 +500,8 @@ public sealed partial class TedApp
 
             void MarkSaved ()
             {
+                _lastFileByteSize = fileSize;
+                _lastStatusVerb = "Saved";
                 Editor.Document!.UndoStack.MarkAsOriginalFile ();
                 CompleteStreamingStatus (startedStatusOperationId, FormatCompletedProgress ("Saved", fileSize));
             }

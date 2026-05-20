@@ -322,6 +322,7 @@ public sealed partial class TedApp : Window
         // caret (insert/remove). Initial render seeds the value before any movement happens.
         Editor.CaretChanged += (_, _) => UpdateLocShortcut ();
         Editor.OverwriteModeChanged += (_, _) => UpdateOverwriteShortcut ();
+        Editor.ModifiedChanged += (_, _) => UpdateModifiedStatus ();
         Editor.FindRequested += (_, _) => ShowFindReplaceDialog (false);
         Editor.ReplaceRequested += (_, _) => ShowFindReplaceDialog (true);
         UpdateLocShortcut ();
@@ -457,6 +458,14 @@ public sealed partial class TedApp : Window
     {
         OverwriteShortcut.Title = Editor.OverwriteMode ? "OVR" : "INS";
         OverwriteShortcut.SetNeedsDraw ();
+    }
+
+    private void UpdateModifiedStatus ()
+    {
+        var verb = Editor.IsModified ? "Modified" : _lastStatusVerb;
+        LoadSpinnerShortcut.Title = FormatCompletedProgress (verb, _lastFileByteSize);
+        LoadSpinnerShortcut.HelpText = LoadSpinnerShortcut.Title;
+        LoadSpinnerShortcut.SetNeedsDraw ();
     }
 
     private static string FormatLoc (int line, int column)
