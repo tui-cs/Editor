@@ -146,6 +146,22 @@ jobs:
         if: ${{ env.CLET_DISPATCH_TOKEN == '' }}
         run: echo "::warning::CLET_DISPATCH_TOKEN is not set; skipping downstream dispatch."
 
+      - name: Wait for NuGet flat-container to index the version
+        if: ${{ env.CLET_DISPATCH_TOKEN != '' }}
+        run: |
+          VER="${{ env.VERSION }}"
+          for i in $(seq 1 60); do
+            if curl -fsS https://api.nuget.org/v3-flatcontainer/terminal.gui.editor/index.json \
+              | jq -r '.versions[]' | grep -qx "$VER"; then
+              echo "Indexed on flat-container: $VER (after $((i*10))s)"
+              exit 0
+            fi
+            echo "Waiting for $VER on NuGet flat-container ($i/60, 10s each)..."
+            sleep 10
+          done
+          echo "::error::Timed out after 10min waiting for $VER on flat-container"
+          exit 1
+
       - name: Dispatch to gui-cs/clet
         if: ${{ env.CLET_DISPATCH_TOKEN != '' }}
         uses: actions/github-script@v7
