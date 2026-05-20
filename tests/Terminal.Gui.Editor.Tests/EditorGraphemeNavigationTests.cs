@@ -209,4 +209,16 @@ public class EditorGraphemeNavigationTests
         // Should land at end of first line text (offset 1 = after 'X')
         Assert.Equal (1, editor.CaretOffset);
     }
+
+    [Fact]
+    public void InsertBetweenGraphemes_Does_Not_Create_Orphan_Surrogates ()
+    {
+        // "🦮👨‍👩‍👧" — caret between the two clusters (offset 2), type a space
+        Editor editor = new () { Document = new TextDocument (GuideDog + Family) };
+        editor.CaretOffset = GuideDog.Length; // offset 2, between 🦮 and 👨‍👩‍👧
+
+        editor.Document!.Insert (editor.CaretOffset, " ");
+
+        Assert.Equal (GuideDog + " " + Family, editor.Document.Text);
+    }
 }
