@@ -19,9 +19,9 @@ internal sealed class FindReplaceDialog : Dialog
     {
         ArgumentNullException.ThrowIfNull (editor);
 
-        Title = "_Find / Replace";
+        Title = "Find / Replace";
         Width = Dim.Percent (70);
-        Height = Dim.Percent (50);
+        Height = Dim.Auto ();
 
         var initialSearchText = string.Empty;
 
@@ -41,7 +41,7 @@ internal sealed class FindReplaceDialog : Dialog
         _regexCheckBox = new CheckBox { X = Pos.Right (_wholeWordCheckBox) + 2, Y = 0, Title = "Reg_ex" };
         _statusLabel = new Label { X = 1, Y = 1, Width = Dim.Fill (1) };
 
-        Tabs tabs = new () { X = 0, Y = 3, Width = Dim.Fill (), Height = Dim.Fill () };
+        Tabs tabs = new () { X = 0, Y = 0, Width = Dim.Fill (), Height = Dim.Auto () };
         View findTab = BuildFindTab (editor);
         View replaceTab = BuildReplaceTab (editor);
 
@@ -49,8 +49,13 @@ internal sealed class FindReplaceDialog : Dialog
         tabs.Add (replaceTab);
         tabs.Value = selectReplaceTab ? replaceTab : findTab;
 
+        _matchCaseCheckBox.Y = Pos.Bottom (tabs);
+        _wholeWordCheckBox.Y = Pos.Bottom (tabs);
+        _regexCheckBox.Y = Pos.Bottom (tabs);
+        _statusLabel.Y = Pos.Bottom (tabs) + 1;
+
         AddButton (new Button { Text = "_Close" });
-        Add (_matchCaseCheckBox, _wholeWordCheckBox, _regexCheckBox, _statusLabel, tabs);
+        Add (tabs, _matchCaseCheckBox, _wholeWordCheckBox, _regexCheckBox, _statusLabel);
 
         if (selectReplaceTab)
         {
@@ -65,11 +70,11 @@ internal sealed class FindReplaceDialog : Dialog
     private View BuildFindTab (Editor editor)
     {
         View tab = new () { Title = "_Find" };
-        Button findNextButton = new () { X = 1, Y = 3, Text = "Find _Next" };
+        Button findNextButton = new () { X = 1, Y = 3, Text = "Find _Next", IsDefault = true };
         Button findPreviousButton = new () { X = Pos.Right (findNextButton) + 1, Y = 3, Text = "Find _Previous" };
 
         tab.Add (
-            new Label { X = 1, Y = 1, Text = "_Find:" },
+            new Label { X = 1, Y = 1, Text = "F_ind:" },
             _findTextField,
             findNextButton,
             findPreviousButton);
@@ -85,13 +90,13 @@ internal sealed class FindReplaceDialog : Dialog
         View tab = new () { Title = "_Replace" };
 
         tab.Add (
-            new Label { X = 1, Y = 1, Text = "_Find:" },
+            new Label { X = 1, Y = 1, Text = "F_ind:" },
             _replaceFindTextField,
-            new Label { X = 1, Y = 3, Text = "_Replace:" },
+            new Label { X = 1, Y = 3, Text = "R_eplace:" },
             _replaceWithTextField);
 
-        Button findNextButton = new () { X = 1, Y = 5, Text = "Find _Next" };
-        Button replaceButton = new () { X = Pos.Right (findNextButton) + 1, Y = 5, Text = "_Replace" };
+        Button findNextButton = new () { X = 1, Y = 5, Text = "Find _Next", IsDefault = true };
+        Button replaceButton = new () { X = Pos.Right (findNextButton) + 1, Y = 5, Text = "R_eplace" };
         Button replaceAllButton = new () { X = Pos.Right (replaceButton) + 1, Y = 5, Text = "Replace _All" };
 
         findNextButton.Accepted += (_, _) => RunFind (editor, _replaceFindTextField.Text, true);
