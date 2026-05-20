@@ -256,7 +256,7 @@ public sealed partial class TedApp
     }
 
     /// <summary>Creates the <see cref="SaveDialog" /> used by <see cref="ShowDefaultSaveDialog" />.</summary>
-    internal static SaveDialog CreateSaveDialog ()
+    internal SaveDialog CreateSaveDialog ()
     {
         return new SaveDialog { Title = "Save File As", AllowsMultipleSelection = false, OpenMode = OpenMode.File };
     }

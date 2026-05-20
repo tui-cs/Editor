@@ -52,7 +52,8 @@ public class TedFileMenuShortcutTests
         // Verify that CreateSaveDialog (used by ShowDefaultSaveDialog) produces a dialog
         // with the expected title. This catches regressions if someone removes or changes
         // the Title assignment.
-        using SaveDialog dialog = TedApp.CreateSaveDialog ();
+        using TedApp ted = new ();
+        using SaveDialog dialog = ted.CreateSaveDialog ();
 
         Assert.Equal ("Save File As", dialog.Title);
         Assert.False (dialog.AllowsMultipleSelection);
