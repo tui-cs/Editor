@@ -805,10 +805,10 @@ public class TedAppTests
         Assert.True (await app.OpenFileAsync ("/tmp/ted-mod.txt", TestContext.Current.CancellationToken));
         Assert.Equal ("Loaded 11 B", app.LoadSpinnerShortcut.Title);
 
-        // Simulate an edit
+        // Simulate an edit — size should update to reflect new content
         app.Editor.Document!.Insert (0, "x");
 
-        Assert.Equal ("Modified 11 B", app.LoadSpinnerShortcut.Title);
+        Assert.Equal ("Modified 12 B", app.LoadSpinnerShortcut.Title);
     }
 
     [Fact]
@@ -821,7 +821,7 @@ public class TedAppTests
         Assert.Equal ("Loaded 3 B", app.LoadSpinnerShortcut.Title);
 
         app.Editor.Document!.Insert (0, "z");
-        Assert.Equal ("Modified 3 B", app.LoadSpinnerShortcut.Title);
+        Assert.Equal ("Modified 4 B", app.LoadSpinnerShortcut.Title);
 
         app.Editor.Document.UndoStack.Undo ();
         Assert.Equal ("Loaded 3 B", app.LoadSpinnerShortcut.Title);

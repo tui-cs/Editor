@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
 using System.Collections.ObjectModel;
+using System.Text;
 using Terminal.Gui.App;
 using Terminal.Gui.Configuration;
 using Terminal.Gui.Document;
@@ -351,6 +352,7 @@ public sealed partial class TedApp : Window
         Editor.CaretChanged += (_, _) => UpdateLocShortcut ();
         Editor.OverwriteModeChanged += (_, _) => UpdateOverwriteShortcut ();
         Editor.ModifiedChanged += (_, _) => UpdateModifiedStatus ();
+        Editor.ContentChanged += (_, e) => UpdateContentSizeStatus (e);
         Editor.FindRequested += (_, _) => ShowFindReplaceDialog (false);
         Editor.ReplaceRequested += (_, _) => ShowFindReplaceDialog (true);
         UpdateLocShortcut ();
@@ -506,6 +508,25 @@ public sealed partial class TedApp : Window
         LoadSpinnerShortcut.Title = status;
         LoadSpinnerShortcut.HelpText = status;
         LoadSpinnerShortcut.SetNeedsDraw ();
+    }
+
+    private void UpdateContentSizeStatus (DocumentChangeEventArgs e)
+    {
+        if (LoadStatusSpinner.AutoSpin)
+        {
+            return;
+        }
+
+        if (_lastFileByteSize is not { } currentSize)
+        {
+            return;
+        }
+
+        long insertedBytes = Encoding.UTF8.GetByteCount (e.InsertedText.Text);
+        long removedBytes = Encoding.UTF8.GetByteCount (e.RemovedText.Text);
+        _lastFileByteSize = Math.Max (0, currentSize + insertedBytes - removedBytes);
+
+        UpdateModifiedStatus ();
     }
 
     private static string FormatLoc (int line, int column)

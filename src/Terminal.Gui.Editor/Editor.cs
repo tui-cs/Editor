@@ -512,6 +512,9 @@ public partial class Editor : View
     /// <summary>Raised whenever <see cref="IsModified" /> changes (dirty ↔ clean transitions).</summary>
     public event EventHandler? ModifiedChanged;
 
+    /// <summary>Raised after each document content change (insertion, deletion, or replacement).</summary>
+    public event EventHandler<DocumentChangeEventArgs>? ContentChanged;
+
     /// <summary>Raised whenever <see cref="CaretOffset" /> changes.</summary>
     public event EventHandler? CaretChanged;
 
@@ -635,6 +638,7 @@ public partial class Editor : View
 
         EnsureCaretVisible ();
         SetNeedsDraw ();
+        ContentChanged?.Invoke (this, e);
     }
 
     private void UpdateContentSize ()
