@@ -1,5 +1,7 @@
 // Codex - GPT-5
 
+using Ted;
+using Terminal.Gui.Drivers;
 using Terminal.Gui.Editor.IntegrationTests.Testing;
 using Terminal.Gui.Input;
 using Terminal.Gui.Testing;
@@ -14,7 +16,7 @@ public class EditorTabTests
     [Fact]
     public async Task Tab_Inserts_Tab_Character_By_Default ()
     {
-        await using AppFixture<EditorTestHost> fx = new (() => new ());
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ());
         fx.Top.Editor.SetFocus ();
 
         fx.Injector.InjectKey (Key.Tab, Direct);
@@ -26,7 +28,7 @@ public class EditorTabTests
     [Fact]
     public async Task Tab_Inserts_Spaces_When_ConvertTabsToSpaces_Is_True ()
     {
-        await using AppFixture<EditorTestHost> fx = new (() => new ("a"));
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("a"));
         fx.Top.Editor.SetFocus ();
         fx.Top.Editor.CaretOffset = 1;
         fx.Top.Editor.ConvertTabsToSpaces = true;
@@ -40,7 +42,7 @@ public class EditorTabTests
     [Fact]
     public async Task Tab_On_Multiline_Selection_Indents_Block_In_One_Undo_Step ()
     {
-        await using AppFixture<EditorTestHost> fx = new (() => new ("one\ntwo"));
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("one\ntwo"));
         fx.Top.Editor.SetFocus ();
         fx.Top.Editor.SelectAll ();
 
@@ -58,7 +60,7 @@ public class EditorTabTests
     [Fact]
     public async Task ShiftTab_Unindents_Current_Line ()
     {
-        await using AppFixture<EditorTestHost> fx = new (() => new ("    alpha"));
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("    alpha"));
         fx.Top.Editor.SetFocus ();
         fx.Top.Editor.CaretOffset = 4;
 
@@ -69,9 +71,22 @@ public class EditorTabTests
     }
 
     [Fact]
+    public async Task Tab_Then_ShiftTab_Reverts_Indent_On_Current_Line ()
+    {
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ());
+        fx.Top.Editor.SetFocus ();
+
+        fx.Injector.InjectKey (Key.Tab, Direct);
+        fx.Injector.InjectKey (Key.Tab.WithShift, Direct);
+
+        Assert.Equal (string.Empty, fx.Top.Editor.Document!.Text);
+        Assert.Equal (0, fx.Top.Editor.CaretOffset);
+    }
+
+    [Fact]
     public async Task ShiftTab_On_Multiline_Selection_Unindents_Block ()
     {
-        await using AppFixture<EditorTestHost> fx = new (() => new ("\tone\n    two"));
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("\tone\n    two"));
         fx.Top.Editor.SetFocus ();
         fx.Top.Editor.SelectAll ();
 
@@ -88,7 +103,7 @@ public class EditorTabTests
         // Selection that stays on one line must use single-line tab behavior (replace
         // selection with tab) rather than block-indent. This exercises the optimized
         // SelectionSpansMultipleLines path that avoids allocating a List<DocumentLine>.
-        await using AppFixture<EditorTestHost> fx = new (() => new ("one\ntwo"));
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("one\ntwo"));
         fx.Top.Editor.SetFocus ();
         fx.Top.Editor.CaretOffset = 0;
 
@@ -105,7 +120,7 @@ public class EditorTabTests
     {
         // Ensures the multi-line detection works: selection from line 1 into line 2
         // must trigger block-indent, not replacement.
-        await using AppFixture<EditorTestHost> fx = new (() => new ("aaa\nbbb"));
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("aaa\nbbb"));
         fx.Top.Editor.SetFocus ();
         fx.Top.Editor.CaretOffset = 0;
 
@@ -122,7 +137,7 @@ public class EditorTabTests
     [Fact]
     public async Task Backspace_At_End_Of_Leading_Whitespace_Removes_One_Indentation_Unit ()
     {
-        await using AppFixture<EditorTestHost> fx = new (() => new ("    alpha"));
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("    alpha"));
         fx.Top.Editor.SetFocus ();
         fx.Top.Editor.CaretOffset = 4;
 
@@ -130,5 +145,44 @@ public class EditorTabTests
 
         Assert.Equal ("alpha", fx.Top.Editor.Document!.Text);
         Assert.Equal (0, fx.Top.Editor.CaretOffset);
+    }
+
+    [Fact]
+    public async Task RawAnsi_Tab_After_ShiftTab_Reindents_Line_On_First_Keypress ()
+    {
+        await using AppFixture<TedApp> fx = new (() => new TedApp (configPath: TedTestConfig.NewPath ()));
+        fx.Top.Editor.SetFocus ();
+        fx.Top.Editor.Document!.Text = "hello world";
+        fx.Top.Editor.CaretOffset = 0;
+
+        InjectAnsi (fx, "\t");
+
+        Assert.Equal ("    hello world", fx.Top.Editor.Document.Text);
+        Assert.Equal (4, fx.Top.Editor.CaretOffset);
+
+        InjectAnsi (fx, "\u001b[Z");
+
+        Assert.Equal ("hello world", fx.Top.Editor.Document.Text);
+        Assert.Equal (0, fx.Top.Editor.CaretOffset);
+
+        InjectAnsi (fx, "\t");
+
+        Assert.Equal ("    hello world", fx.Top.Editor.Document.Text);
+        Assert.Equal (4, fx.Top.Editor.CaretOffset);
+    }
+
+    private static void InjectAnsi (AppFixture<TedApp> fx, string sequence)
+    {
+        if (fx.App.Driver!.GetInputProcessor () is not AnsiInputProcessor processor)
+        {
+            throw new InvalidOperationException ("ANSI input processor is required for raw ANSI input tests.");
+        }
+
+        foreach (var ch in sequence)
+        {
+            processor.InputQueue.Enqueue (ch);
+        }
+
+        processor.ProcessQueue ();
     }
 }

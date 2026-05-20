@@ -147,3 +147,16 @@ resharper_space_before_default_parentheses = true
 resharper_space_before_checked_parentheses = true
 resharper_space_before_sizeof_parentheses = true
 resharper_space_before_nameof_parentheses = true
+
+# AvaloniaEdit-lifted source keeps upstream formatting for manual re-syncs.
+[src/Terminal.Gui.Editor/Document/**/*.cs]
+generated_code = true
+
+[src/Terminal.Gui.Editor/Folding/**/*.cs]
+generated_code = true
+
+[src/Terminal.Gui.Editor/Search/**/*.cs]
+generated_code = true
+
+[src/Terminal.Gui.Editor/Utils/**/*.cs]
+generated_code = true

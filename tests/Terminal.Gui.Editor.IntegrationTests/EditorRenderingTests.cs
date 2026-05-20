@@ -2,14 +2,15 @@
 
 using System.Drawing;
 using Terminal.Gui.Drawing;
+using Terminal.Gui.Drivers;
 using Terminal.Gui.Editor.IntegrationTests.Testing;
 using Terminal.Gui.Highlighting;
 using Terminal.Gui.Input;
 using Terminal.Gui.Testing;
 using Terminal.Gui.Text;
-using Terminal.Gui.Editor;
 using Xunit;
 using Attribute = Terminal.Gui.Drawing.Attribute;
+using Color = Terminal.Gui.Drawing.Color;
 
 namespace Terminal.Gui.Editor.IntegrationTests;
 
@@ -24,6 +25,7 @@ namespace Terminal.Gui.Editor.IntegrationTests;
 public class EditorRenderingTests
 {
     private static readonly InputInjectionOptions Direct = new () { Mode = InputInjectionMode.Direct };
+    private static readonly DateTime BaseTime = new (2025, 1, 1, 12, 0, 0);
 
     [Fact]
     public async Task Unselected_Text_Uses_Normal_Role_Not_Editable ()
@@ -223,6 +225,40 @@ public class EditorRenderingTests
     }
 
     [Fact]
+    public async Task Additional_Caret_Selections_Render_With_Active_Role ()
+    {
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("abcd\nabcd\nabcd"));
+        fx.Top.Editor.SetFocus ();
+
+        fx.Injector.InjectMouse (
+            new Mouse
+            {
+                ScreenPosition = new Point (1, 0),
+                Flags = MouseFlags.LeftButtonPressed | MouseFlags.Alt,
+                Timestamp = BaseTime
+            },
+            Direct);
+
+        fx.Injector.InjectMouse (
+            new Mouse
+            {
+                ScreenPosition = new Point (3, 2),
+                Flags = MouseFlags.LeftButtonPressed | MouseFlags.PositionReport | MouseFlags.Alt,
+                Timestamp = BaseTime.AddMilliseconds (20)
+            },
+            Direct);
+
+        fx.Render ();
+
+        Attribute active = fx.Top.Editor.GetAttributeForRole (VisualRole.Active);
+
+        Assert.Equal ("b", fx.Driver.Contents![1, 1].Grapheme);
+        Assert.Equal (active, fx.Driver.Contents[1, 1].Attribute);
+        Assert.Equal ("c", fx.Driver.Contents[2, 2].Grapheme);
+        Assert.Equal (active, fx.Driver.Contents[2, 2].Attribute);
+    }
+
+    [Fact]
     public async Task Tab_Then_Emoji_Renders_At_Correct_Cells ()
     {
         // drawing-overhaul Scenario 3 regression: `\tHello 🌍` must render with the tab expanded
@@ -329,54 +365,75 @@ public class EditorRenderingTests
     }
 
     [Fact]
-    public async Task UseThemeBackground_True_Preserves_Highlighter_Background ()
+    public async Task Cursor_Style_Is_Preserved_When_Position_Updates ()
     {
-        const string text = "public class C";
-
-        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost (text));
-
-        fx.Top.Editor.HighlightingDefinition = HighlightingManager.Instance.GetDefinition ("C#");
-        fx.Top.Editor.UseThemeBackground = true;
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("abc"));
+        fx.Top.Editor.SetFocus ();
+        fx.Top.Editor.Cursor = new Cursor { Style = CursorStyle.SteadyUnderline };
+        fx.Top.Editor.CaretOffset = 2;
         fx.Render ();
 
-        // With xshd highlighting active, the keyword should get a highlighting color.
-        Attribute normal = fx.Top.Editor.GetAttributeForRole (VisualRole.Normal);
-        Cell cell = fx.Driver.Contents![0, 0];
-        Assert.Equal ("p", cell.Grapheme);
-        Assert.NotEqual (normal, cell.Attribute);
+        Assert.Equal (new Point (2, 0), fx.Top.Editor.Cursor.Position);
+        Assert.Equal (CursorStyle.SteadyUnderline, fx.Top.Editor.Cursor.Style);
     }
 
     [Fact]
-    public async Task UseThemeBackground_False_Overrides_Highlighter_Background ()
+    public async Task Highlighted_Tokens_Follow_The_Active_Scheme ()
     {
         const string text = "public class C";
 
         await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost (text));
 
         fx.Top.Editor.HighlightingDefinition = HighlightingManager.Instance.GetDefinition ("C#");
-        fx.Top.Editor.UseThemeBackground = false;
+
+        // xshd colors "public" via "Visibility", which XshdRoleMap maps to CodeKeyword.
+        // Scheme A explicitly themes CodeKeyword magenta.
+        Color black = Color.Black;
+        Scheme schemeA = new (new Attribute (Color.White, black))
+        {
+            CodeKeyword = new Attribute (Color.Magenta, black)
+        };
+        fx.Top.Editor.SetScheme (schemeA);
         fx.Render ();
 
+        Cell cell = fx.Driver.Contents![0, 0];
+        Assert.Equal ("p", cell.Grapheme);
+        Assert.Equal (Color.Magenta, cell.Attribute!.Value.Foreground);
+
+        // Swapping the scheme re-renders the same token with the new theme's color.
+        Scheme schemeB = new (new Attribute (Color.White, black))
+        {
+            CodeKeyword = new Attribute (Color.BrightGreen, black)
+        };
+        fx.Top.Editor.SetScheme (schemeB);
+        fx.Render ();
+
+        cell = fx.Driver.Contents![0, 0];
+        Assert.Equal (Color.BrightGreen, cell.Attribute!.Value.Foreground);
+    }
+
+    [Fact]
+    public async Task Editor_Background_Follows_Scheme_Not_Highlighter ()
+    {
+        const string text = "public class C";
+
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost (text));
+
+        fx.Top.Editor.HighlightingDefinition = HighlightingManager.Instance.GetDefinition ("C#");
+        fx.Render ();
+
+        // The xshd definition's hardcoded background must never reach the cell — the editor's
+        // scheme background wins (the #128 fix), whether the token is themed or falls back.
         Attribute normal = fx.Top.Editor.GetAttributeForRole (VisualRole.Normal);
         Cell cell = fx.Driver.Contents![0, 0];
         Assert.Equal ("p", cell.Grapheme);
-
-        // The background must match the TG theme's Normal background, not the highlighter's.
         Assert.Equal (normal.Background, cell.Attribute!.Value.Background);
     }
 
     [Fact]
-    public async Task UseThemeBackground_Defaults_To_True ()
+    public async Task MultiCaret_Renders_Reverse_Blink_Attribute_On_Text ()
     {
-        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("Hello"));
-
-        Assert.True (fx.Top.Editor.UseThemeBackground);
-    }
-
-    [Fact]
-    public async Task MultiCaret_Renders_Inverted_Attribute_On_Text ()
-    {
-        // P1: MultiCaretRenderer must draw AFTER text elements so that the inverted caret
+        // P1: MultiCaretRenderer must draw AFTER text elements so that the caret
         // cell is not overwritten by the subsequent element.Draw call.
         await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("abcdef"));
 
@@ -386,9 +443,9 @@ public class EditorRenderingTests
         fx.Render ();
 
         Attribute normal = fx.Top.Editor.GetAttributeForRole (VisualRole.Normal);
-        Attribute caretAttr = new (normal.Background, normal.Foreground);
+        Attribute caretAttr = new (normal.Foreground, normal.Background, TextStyle.Blink | TextStyle.Reverse);
 
-        // The cell at column 3 ('d') should have the inverted attribute, not the normal one.
+        // The cell at column 3 ('d') should have the reverse+blink attribute, not the normal one.
         Cell cell = fx.Driver.Contents![0, 3];
         Assert.Equal ("d", cell.Grapheme);
         Assert.Equal (caretAttr, cell.Attribute);
@@ -413,6 +470,75 @@ public class EditorRenderingTests
     }
 
     [Fact]
+    public async Task MultiCaret_Does_Not_Leak_Attribute_To_Adjacent_Cell ()
+    {
+        // Bug: MultiCaretRenderer.Draw set caretAttr but never restored the normal attribute,
+        // causing the next cell to inherit the inverted attribute. Visible as both slashes of
+        // "//" appearing highlighted when only one has a caret.
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("// comment"));
+
+        fx.Top.Editor.SetFocus ();
+        fx.Top.Editor.CaretOffset = 5; // put primary elsewhere (on 'o')
+        fx.Top.Editor.ToggleCaretAt (0); // additional caret on first '/'
+        fx.Render ();
+
+        Attribute normal = fx.Top.Editor.GetAttributeForRole (VisualRole.Normal);
+        Attribute caretAttr = new (normal.Foreground, normal.Background, TextStyle.Blink | TextStyle.Reverse);
+
+        // Column 0 (first '/') should have the reverse+blink caret attribute.
+        Cell cell0 = fx.Driver.Contents![0, 0];
+        Assert.Equal ("/", cell0.Grapheme);
+        Assert.Equal (caretAttr, cell0.Attribute);
+
+        // Column 1 (second '/') should have the NORMAL attribute, not the caret attribute.
+        Cell cell1 = fx.Driver.Contents![0, 1];
+        Assert.Equal ("/", cell1.Grapheme);
+        Assert.Equal (normal, cell1.Attribute);
+    }
+
+    [Fact]
+    public async Task MultiCaret_First_Slash_With_SyntaxHighlighting_Only_Highlights_One_Cell ()
+    {
+        // Bug repro: In ted (with C# syntax highlighting + gutter), Ctrl+clicking the first '/'
+        // of "/// summary" highlights ALL three slashes. Clicking the 2nd or 3rd works fine.
+        // Test with C# highlighting enabled to match the real ted scenario.
+        await using AppFixture<EditorTestHost> fx = new (() =>
+        {
+            EditorTestHost host = new ("/// summary\nint x = 1;");
+            host.Editor.HighlightingDefinition = HighlightingManager.Instance.GetDefinition ("C#");
+
+            return host;
+        });
+
+        fx.Top.Editor.SetFocus ();
+        fx.Top.Editor.CaretOffset = 5; // primary elsewhere (on 's' in "summary")
+        fx.Top.Editor.ToggleCaretAt (0); // additional caret on first '/'
+        fx.Render ();
+
+        // Grab the Cell buffer attributes for the three slashes.
+        Cell cell0 = fx.Driver.Contents![0, 0];
+        Cell cell1 = fx.Driver.Contents![0, 1];
+        Cell cell2 = fx.Driver.Contents![0, 2];
+
+        Assert.Equal ("/", cell0.Grapheme);
+        Assert.Equal ("/", cell1.Grapheme);
+        Assert.Equal ("/", cell2.Grapheme);
+
+        // cell0 must have Blink|Reverse (the caret style).
+        Assert.True (
+            cell0.Attribute!.Value.Style.HasFlag (TextStyle.Blink | TextStyle.Reverse),
+            $"Cell 0 should have Blink|Reverse but has Style={cell0.Attribute!.Value.Style}");
+
+        // cell1 and cell2 must NOT have Reverse or Blink.
+        Assert.False (
+            cell1.Attribute!.Value.Style.HasFlag (TextStyle.Reverse),
+            $"Cell 1 should NOT have Reverse but has Style={cell1.Attribute!.Value.Style}");
+        Assert.False (
+            cell2.Attribute!.Value.Style.HasFlag (TextStyle.Reverse),
+            $"Cell 2 should NOT have Reverse but has Style={cell2.Attribute!.Value.Style}");
+    }
+
+    [Fact]
     public async Task MultiCaret_WordWrap_No_Duplicate_At_Boundary ()
     {
         // P2: At a wrap boundary, offset == segEnd of one segment AND offset == segStart of the next.
@@ -424,7 +550,7 @@ public class EditorRenderingTests
             host.Editor.WordWrap = true;
 
             return host;
-        }, width: 10, height: 5);
+        }, 10, 5);
 
         fx.Top.Editor.SetFocus ();
         fx.Top.Editor.CaretOffset = 0;
@@ -433,7 +559,7 @@ public class EditorRenderingTests
         fx.Render ();
 
         Attribute normal = fx.Top.Editor.GetAttributeForRole (VisualRole.Normal);
-        Attribute caretAttr = new (normal.Background, normal.Foreground);
+        Attribute caretAttr = new (normal.Foreground, normal.Background, TextStyle.Blink | TextStyle.Reverse);
 
         // Row 1, col 0 should show the caret attribute on 'f'.
         Cell row1FirstCol = fx.Driver.Contents![1, 0];

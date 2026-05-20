@@ -1,6 +1,5 @@
 using System.Drawing;
 using System.Text;
-using Terminal.Gui.Document;
 using Terminal.Gui.Drawing;
 using Terminal.Gui.ViewBase;
 using Attribute = Terminal.Gui.Drawing.Attribute;
@@ -8,7 +7,7 @@ using Attribute = Terminal.Gui.Drawing.Attribute;
 namespace Terminal.Gui.Editor.Rendering;
 
 /// <summary>
-///     Renders additional (non-primary) caret positions as inverted-attribute cells.
+///     Renders additional (non-primary) caret positions as blinking, reverse-video cells.
 ///     Installed automatically by <see cref="Editor" /> when multi-caret mode is active.
 /// </summary>
 public sealed class MultiCaretRenderer : IOverlayRenderer
@@ -37,8 +36,10 @@ public sealed class MultiCaretRenderer : IOverlayRenderer
 
         Attribute normal = host.GetAttributeForRole (VisualRole.Normal);
 
-        // Invert foreground/background to distinguish additional carets from selection.
-        Attribute caretAttr = new (normal.Background, normal.Foreground);
+        // Use reverse-video + blink to distinguish additional carets. Underline rendered poorly
+        // and inconsistently across terminals; the reverse (foreground/background swap) is far
+        // more legible and reliably supported.
+        Attribute caretAttr = new (normal.Foreground, normal.Background, TextStyle.Blink | TextStyle.Reverse);
 
         foreach (var offset in _editor.AdditionalCaretOffsets)
         {
@@ -60,6 +61,9 @@ public sealed class MultiCaretRenderer : IOverlayRenderer
             host.Move (col, row);
             host.AddRune (offset < segEnd ? GetRuneAt (offset) : new Rune (' '));
         }
+
+        // Restore the normal attribute so subsequent drawing doesn't inherit the caret style.
+        host.SetAttribute (normal);
     }
 
     /// <summary>

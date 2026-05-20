@@ -265,7 +265,7 @@ internal sealed class XmlHighlightingDefinition : IHighlightingDefinition
             {
                 c = _def._colorDict[color.Name];
             }
-            else if (color.Foreground == null && color.Italic == null && color.Bold == null)
+            else if (color.Foreground == null && color.Italic == null && color.Bold == null && color.Category == null)
             {
                 return null;
             }
@@ -281,6 +281,7 @@ internal sealed class XmlHighlightingDefinition : IHighlightingDefinition
             c.Strikethrough = color.Strikethrough;
             c.Italic = color.Italic;
             c.Bold = color.Bold;
+            c.Role = XshdRoleMap.ResolveRole (color.Name, color.Category);
             return c;
         }
 

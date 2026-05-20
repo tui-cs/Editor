@@ -17,6 +17,11 @@ public partial class Editor
             return true;
         }
 
+        if (HasMultipleCarets)
+        {
+            return MultiCaretInsertTab ();
+        }
+
         if (HasSelection && SelectionSpansMultipleLines ())
         {
             IndentSelectedLines ();
@@ -47,7 +52,21 @@ public partial class Editor
 
         if (ReadOnly)
         {
+            AnsiInputProcessorState.ClearPendingPrintableSuppression (App);
+
             return true;
+        }
+
+        if (HasMultipleCarets)
+        {
+            var handled = MultiCaretUnindent ();
+
+            if (handled)
+            {
+                AnsiInputProcessorState.ClearPendingPrintableSuppression (App);
+            }
+
+            return handled;
         }
 
         List<DocumentLine> lines = HasSelection && SelectionSpansMultipleLines ()
@@ -68,6 +87,8 @@ public partial class Editor
 
         if (removals.Count == 0)
         {
+            AnsiInputProcessorState.ClearPendingPrintableSuppression (App);
+
             return true;
         }
 
@@ -91,6 +112,8 @@ public partial class Editor
                 AdjustOffsetAfterRemovals (selectionStart, removals),
                 AdjustOffsetAfterRemovals (selectionEnd, removals));
         }
+
+        AnsiInputProcessorState.ClearPendingPrintableSuppression (App);
 
         return true;
     }
@@ -135,6 +158,20 @@ public partial class Editor
     /// </summary>
     private bool TryDeleteIndentationLeftAt (int offset)
     {
+        if (!TryGetIndentationRemovalAt (offset, out (int offset, int length) removal))
+        {
+            return false;
+        }
+
+        _document!.Remove (removal.offset, removal.length);
+
+        return true;
+    }
+
+    private bool TryGetIndentationRemovalAt (int offset, out (int offset, int length) removal)
+    {
+        removal = default;
+
         if (_document is null || offset == 0)
         {
             return false;
@@ -148,7 +185,6 @@ public partial class Editor
             return false;
         }
 
-        // Walk forward through indent units; delete the last complete one ending at the caret.
         var scanOffset = line.Offset;
         (int offset, int length) lastSegment = (0, 0);
 
@@ -170,7 +206,7 @@ public partial class Editor
             return false;
         }
 
-        _document.Remove (lastSegment.offset, lastSegment.length);
+        removal = lastSegment;
 
         return true;
     }

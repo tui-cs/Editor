@@ -1,9 +1,9 @@
 // Copilot - claude-sonnet-4
 
 using Terminal.Gui.Document;
-using Terminal.Gui.Editor;
 using Terminal.Gui.Editor.Rendering;
 using Terminal.Gui.Input;
+using Terminal.Gui.Text.Indentation;
 using Xunit;
 
 namespace Terminal.Gui.Editor.Tests;
@@ -156,7 +156,7 @@ public class EditorMultiCaretTests
         Editor editor = new ()
         {
             Document = new TextDocument ("    line1\n    line2"),
-            IndentationStrategy = new Terminal.Gui.Text.Indentation.DefaultIndentationStrategy ()
+            IndentationStrategy = new DefaultIndentationStrategy ()
         };
 
         // Primary at end of "    line1" (offset 9), additional at end of "    line2" (offset 19)
@@ -196,13 +196,13 @@ public class EditorMultiCaretTests
     }
 
     [Theory]
-    [InlineData (3, 0, 3, 3, true)]  // offset == segEnd == lineEnd → EOL caret, should be included
-    [InlineData (0, 0, 3, 3, true)]  // offset at start, within segment
-    [InlineData (2, 0, 3, 3, true)]  // offset within segment
+    [InlineData (3, 0, 3, 3, true)] // offset == segEnd == lineEnd → EOL caret, should be included
+    [InlineData (0, 0, 3, 3, true)] // offset at start, within segment
+    [InlineData (2, 0, 3, 3, true)] // offset within segment
     [InlineData (4, 0, 3, 3, false)] // offset past segEnd → excluded
     [InlineData (5, 0, 3, 10, false)] // offset past segEnd (non-last segment) → excluded
     [InlineData (3, 0, 3, 10, false)] // offset == segEnd but segEnd != lineEnd (wrap boundary) → excluded
-    [InlineData (0, 0, 0, 0, true)]  // empty line: offset 0 == segEnd == lineEnd → included
+    [InlineData (0, 0, 0, 0, true)] // empty line: offset 0 == segEnd == lineEnd → included
     public void IsOffsetInSegment_Correctly_Filters_Offsets (
         int offset, int segStart, int segEnd, int lineEndOffset, bool expected)
     {

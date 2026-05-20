@@ -171,6 +171,23 @@ public class FoldingManagerTests
     }
 
     [Fact]
+    public void Edit_Before_Unfolded_Fold_Updates_Offsets ()
+    {
+        TextDocument doc = new ("line 1\nline 2\nline 3\n");
+        FoldingManager fm = new (doc);
+        FoldingSection section = fm.CreateFolding (7, 14); // starts on line 2
+        var raised = 0;
+        fm.FoldingChanged += (_, _) => raised++;
+
+        doc.Insert (0, "prefix");
+
+        Assert.Equal (13, section.StartOffset);
+        Assert.Equal (20, section.EndOffset);
+        Assert.Same (section, fm.GetFoldingAtLine (2));
+        Assert.Equal (0, raised);
+    }
+
+    [Fact]
     public void Whole_Document_Replace_Clears_Zero_Length_Folds ()
     {
         TextDocument doc = new ("line 1\nline 2\n");

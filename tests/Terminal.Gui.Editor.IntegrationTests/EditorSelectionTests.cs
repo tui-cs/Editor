@@ -19,7 +19,7 @@ public class EditorSelectionTests
     [Fact]
     public async Task ShiftRight_Begins_And_Extends_Selection ()
     {
-        await using AppFixture<EditorTestHost> fx = new (() => new ("hello"));
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("hello"));
         fx.Top.Editor.SetFocus ();
         fx.Top.Editor.CaretOffset = 0;
 
@@ -35,7 +35,7 @@ public class EditorSelectionTests
     [Fact]
     public async Task ShiftLeft_Extends_Backwards ()
     {
-        await using AppFixture<EditorTestHost> fx = new (() => new ("hello"));
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("hello"));
         fx.Top.Editor.SetFocus ();
         fx.Top.Editor.CaretOffset = 5;
 
@@ -51,7 +51,7 @@ public class EditorSelectionTests
     [Fact]
     public async Task PlainArrow_Collapses_Selection_To_End ()
     {
-        await using AppFixture<EditorTestHost> fx = new (() => new ("hello"));
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("hello"));
         fx.Top.Editor.SetFocus ();
         fx.Top.Editor.CaretOffset = 0;
         fx.Injector.InjectKey (Key.CursorRight.WithShift, Direct);
@@ -68,7 +68,7 @@ public class EditorSelectionTests
     [Fact]
     public async Task PlainArrow_Left_Collapses_Selection_To_Start ()
     {
-        await using AppFixture<EditorTestHost> fx = new (() => new ("hello"));
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("hello"));
         fx.Top.Editor.SetFocus ();
         fx.Top.Editor.CaretOffset = 0;
         fx.Injector.InjectKey (Key.CursorRight.WithShift, Direct);
@@ -83,7 +83,7 @@ public class EditorSelectionTests
     [Fact]
     public async Task Typing_With_Selection_Replaces_It ()
     {
-        await using AppFixture<EditorTestHost> fx = new (() => new ("hello"));
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("hello"));
         fx.Top.Editor.SetFocus ();
         fx.Top.Editor.SelectAll ();
 
@@ -97,7 +97,7 @@ public class EditorSelectionTests
     [Fact]
     public async Task Backspace_With_Selection_Deletes_Range ()
     {
-        await using AppFixture<EditorTestHost> fx = new (() => new ("hello"));
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("hello"));
         fx.Top.Editor.SetFocus ();
         fx.Top.Editor.SelectAll ();
 
@@ -110,7 +110,7 @@ public class EditorSelectionTests
     [Fact]
     public async Task Delete_With_Selection_Deletes_Range ()
     {
-        await using AppFixture<EditorTestHost> fx = new (() => new ("hello"));
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("hello"));
         fx.Top.Editor.SetFocus ();
         fx.Top.Editor.SelectAll ();
 
@@ -123,7 +123,7 @@ public class EditorSelectionTests
     [Fact]
     public async Task Enter_With_Selection_Replaces_With_Newline ()
     {
-        await using AppFixture<EditorTestHost> fx = new (() => new ("hello"));
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("hello"));
         fx.Top.Editor.SetFocus ();
         fx.Top.Editor.SelectAll ();
 
@@ -136,7 +136,7 @@ public class EditorSelectionTests
     [Fact]
     public async Task CtrlA_Selects_All ()
     {
-        await using AppFixture<EditorTestHost> fx = new (() => new ("hello"));
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("hello"));
         fx.Top.Editor.SetFocus ();
         fx.Top.Editor.CaretOffset = 2;
 
@@ -150,7 +150,7 @@ public class EditorSelectionTests
     [Fact]
     public async Task ShiftHome_Extends_To_Line_Start ()
     {
-        await using AppFixture<EditorTestHost> fx = new (() => new ("first\nsecond line"));
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("first\nsecond line"));
         fx.Top.Editor.SetFocus ();
         fx.Top.Editor.CaretOffset = "first\nsecond line".Length;
 
@@ -163,7 +163,7 @@ public class EditorSelectionTests
     [Fact]
     public async Task ShiftCtrlEnd_Extends_To_DocEnd ()
     {
-        await using AppFixture<EditorTestHost> fx = new (() => new ("first\nsecond"));
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("first\nsecond"));
         fx.Top.Editor.SetFocus ();
         fx.Top.Editor.CaretOffset = 0;
 
@@ -177,7 +177,7 @@ public class EditorSelectionTests
     [Fact]
     public async Task ShiftDown_Extends_Across_Lines ()
     {
-        await using AppFixture<EditorTestHost> fx = new (() => new ("alpha\nbeta\ngamma"));
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("alpha\nbeta\ngamma"));
         fx.Top.Editor.SetFocus ();
         fx.Top.Editor.CaretOffset = 2; // line 1, column 2
 
@@ -192,7 +192,7 @@ public class EditorSelectionTests
     [Fact]
     public async Task ReplaceSelection_Spans_Multiple_Lines ()
     {
-        await using AppFixture<EditorTestHost> fx = new (() => new ("alpha\nbeta\ngamma"));
+        await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("alpha\nbeta\ngamma"));
         fx.Top.Editor.SetFocus ();
         fx.Top.Editor.SelectAll ();
 

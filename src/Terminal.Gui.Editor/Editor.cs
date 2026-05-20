@@ -1,12 +1,15 @@
 using System.Drawing;
+using Terminal.Gui.App;
+using Terminal.Gui.Configuration;
 using Terminal.Gui.Document;
 using Terminal.Gui.Document.Folding;
 using Terminal.Gui.Drawing;
-using Terminal.Gui.Highlighting;
-using Terminal.Gui.Text.Indentation;
-using Terminal.Gui.Text;
-using Terminal.Gui.ViewBase;
 using Terminal.Gui.Editor.Rendering;
+using Terminal.Gui.Highlighting;
+using Terminal.Gui.Input;
+using Terminal.Gui.Text;
+using Terminal.Gui.Text.Indentation;
+using Terminal.Gui.ViewBase;
 using Attribute = Terminal.Gui.Drawing.Attribute;
 
 namespace Terminal.Gui.Editor;
@@ -40,9 +43,29 @@ public partial class Editor : View
     private TextAnchor? _caretAnchor;
     private TextDocument? _document;
     private Gutter? _gutter;
+    private GutterOptions _gutterOptions;
     private DocumentHighlighter? _highlighter;
     private HighlightingColorizer? _highlightingColorizer;
+    private bool _hasFoldedSections;
     private int _lastKnownCaretOffset;
+
+    // Kill-ring: consecutive CutToEndOfLine / CutToStartOfLine appends to the clipboard instead
+    // of replacing. Any non-kill command (including plain character insertion) breaks the run.
+    //
+    // _lastCommandWasKill is set to true by kill commands after executing.
+    // _previousCommandWasKill is set by OnKeyDown (keyboard path) — it snapshots _lastCommandWasKill
+    // before clearing it, so the dispatched kill command can read whether the preceding command was
+    // a kill for append/prepend decisions.
+    //
+    // Keyboard path: OnKeyDown snapshots _lastCommandWasKill → _previousCommandWasKill, clears
+    //   _lastCommandWasKill, then dispatches.  Kill commands read _previousCommandWasKill.
+    // InvokeCommand path (programmatic): OnKeyDown is bypassed.  Kill commands fall back to
+    //   _lastCommandWasKill directly.  Note: non-kill commands invoked via InvokeCommand do NOT
+    //   clear _lastCommandWasKill, so a sequence like InvokeCommand(Kill) → InvokeCommand(Right) →
+    //   InvokeCommand(Kill) will incorrectly append.  This is a known limitation of the
+    //   programmatic path; keyboard dispatch (the primary use case) is unaffected.
+    private bool _lastCommandWasKill;
+    private bool _previousCommandWasKill;
 
     // Incremental max-width tracking: avoids the O(N) all-lines walk that UpdateContentSize
     // used to do on every edit. _maxVisualWidth is the widest visual line seen; _maxWidthLineNumber
@@ -51,14 +74,18 @@ public partial class Editor : View
     private int _maxVisualWidth;
     private bool _maxWidthDirty = true;
     private int _maxWidthLineNumber;
-    private GutterOptions _gutterOptions;
 
-    // Word-wrap map: when WordWrap == true, maps visual row indices to (lineNumber, segmentIndex)
-    // pairs. Lazily built and cached. Cleared on any document change or property change that
-    // affects wrapping. _wrapMapColumn tracks the wrap column used to build the map so we
-    // can detect viewport-width changes and rebuild.
-    private List<WrapMapEntry>? _wrapMap;
-    private int _wrapMapColumn;
+    // Above this document size the horizontal extent is estimated from each line's character count
+    // (O(1) per line) instead of building + syntax-highlighting a CellVisualLine for every line.
+    // Building every line on load is what made a 10 MiB open take ~10 s; the model layer alone
+    // loads in ~0.2 s. Smaller documents keep the exact computation (tab/wide-glyph precise).
+    private const int MaxWidthEstimateThresholdBytes = 256 * 1024;
+
+    // Set by the draw path when a rendered line turned out wider than the running max (e.g. an
+    // estimated large doc whose visible tab-indented line expands past the char-length estimate).
+    // OnDrawingContent reconciles the content size once after the draw, so the horizontal scrollbar
+    // grows as wider lines scroll into view — matching VS Code's "estimate, then refine" model.
+    private bool _maxWidthGrewDuringDraw;
 
     /// <summary>
     ///     Sticky column for vertical caret moves. Tracks the column the user *intends* to be in,
@@ -67,13 +94,38 @@ public partial class Editor : View
     /// </summary>
     private int _virtualCaretColumn;
 
+    // Word-wrap map: when WordWrap == true, maps visual row indices to (lineNumber, segmentIndex)
+    // pairs. Lazily built and cached. Cleared on any document change or property change that
+    // affects wrapping. _wrapMapColumn tracks the wrap column used to build the map so we
+    // can detect viewport-width changes and rebuild.
+    private List<WrapMapEntry>? _wrapMap;
+    private int _wrapMapColumn;
+
     /// <summary>Initializes a new <see cref="Editor" /> with an empty <see cref="TextDocument" />.</summary>
     public Editor ()
     {
         CanFocus = true;
         CreateCommandsAndBindings ();
-        OverlayRenderers.Add (new Rendering.MultiCaretRenderer (this));
+        OverlayRenderers.Add (new MultiCaretRenderer (this));
         Document = new TextDocument ();
+        InitializeDefaultContextMenu ();
+        ThemeManager.ThemeChanged += OnThemeChanged;
+    }
+
+    /// <summary>
+    ///     Gets or sets the document text. This overrides <see cref="View.Text" /> so that setting
+    ///     <c>editor.Text</c> writes to <see cref="Document" /> rather than the base View label.
+    /// </summary>
+    public override string Text
+    {
+        get => Document?.Text ?? string.Empty;
+        set
+        {
+            if (Document is { } doc)
+            {
+                doc.Text = value;
+            }
+        }
     }
 
     /// <summary>The backing <see cref="TextDocument" />. Setting this rewires change handlers and clamps the caret.</summary>
@@ -160,6 +212,56 @@ public partial class Editor : View
     public bool ReadOnly { get; set; }
 
     /// <summary>
+    ///     Gets or sets whether the editor supports multiple lines. When <see langword="true" /> (default),
+    ///     Enter inserts a newline, vertical navigation moves across lines, and content height reflects the
+    ///     full document. When <see langword="false" />, newline insertion is suppressed, vertical
+    ///     navigation and scroll are constrained to a single row, <see cref="WordWrap" /> is forced off,
+    ///     and multi-caret operations are disabled. Existing newlines in the document are preserved (no
+    ///     data loss) and rendered as visible <c>⏎</c> glyphs. Selection and horizontal editing still work.
+    /// </summary>
+    public bool Multiline
+    {
+        get;
+        set
+        {
+            if (field == value)
+            {
+                return;
+            }
+
+            field = value;
+
+            if (!value)
+            {
+                // Force off WordWrap — meaningless for a single-line input.
+                WordWrap = false;
+
+                // Collapse additional carets — vertical multi-caret is a multi-line concept.
+                ClearAdditionalCarets ();
+
+                // Auto-size to ContentSize (height = 1) so callers don't need explicit Height = 1.
+                Height = Dim.Auto (DimAutoStyle.Content);
+
+                // Rebind Enter to Accept (like TextField) — raises Accepting event.
+                KeyBindings.Remove (Key.Enter);
+                KeyBindings.Add (Key.Enter, Command.Accept);
+            }
+            else
+            {
+                // Restore Enter → NewLine binding for multiline mode.
+                KeyBindings.Remove (Key.Enter);
+                KeyBindings.Add (Key.Enter, Command.NewLine);
+            }
+
+            ClearVisualLineCaches ();
+            _maxWidthDirty = true;
+            UpdateContentSize ();
+            EnsureCaretVisible ();
+            SetNeedsDraw ();
+        }
+    } = true;
+
+    /// <summary>
     ///     Gets or sets the highlighting definition used for syntax coloring. When set, a
     ///     <see cref="HighlightingColorizer" /> is automatically added to
     ///     <see cref="LineTransformers" />. Set to <see langword="null" /> to disable
@@ -221,29 +323,6 @@ public partial class Editor : View
     /// </summary>
     public IIndentationStrategy? IndentationStrategy { get; set; } = new DefaultIndentationStrategy ();
 
-    /// <summary>
-    ///     When <see langword="true" /> (the default), syntax-highlighted tokens keep both their
-    ///     foreground and background from the syntax highlighting theme (e.g. Dark Plus's
-    ///     <c>#1E1E1E</c> background). Set to <see langword="false" /> to override the
-    ///     highlighter's background with the TG scheme's <see cref="VisualRole.Normal" />
-    ///     background, matching the active application theme.
-    /// </summary>
-    public bool UseThemeBackground
-    {
-        get;
-        set
-        {
-            if (field == value)
-            {
-                return;
-            }
-
-            field = value;
-            ClearVisualLineCaches ();
-            SetNeedsDraw ();
-        }
-    } = true;
-
     /// <summary>Whether tab characters render with a visible glyph in their first cell.</summary>
     public bool ShowTabs
     {
@@ -271,6 +350,12 @@ public partial class Editor : View
         get;
         set
         {
+            // Word wrap is meaningless in single-line mode.
+            if (!Multiline && value)
+            {
+                return;
+            }
+
             if (field == value)
             {
                 return;
@@ -330,14 +415,25 @@ public partial class Editor : View
             if (field is not null)
             {
                 field.FoldingChanged += OnFoldingChanged;
-                LineTransformers.Insert (0, new FoldingTransformer (field));
             }
 
             ClearVisualLineCaches ();
+            RefreshFoldingState ();
+            SyncFoldingTransformer ();
             UpdateContentSize ();
             UpdateGutterWidth ();
             SetNeedsDraw ();
         }
+    }
+
+    /// <summary>
+    ///     Re-renders with the new TG theme's attributes when <see cref="ThemeManager.Theme" />
+    ///     changes. Visual-line caches bake in resolved attributes, so they are dropped.
+    /// </summary>
+    private void OnThemeChanged (object? sender, EventArgs<string> e)
+    {
+        ClearVisualLineCaches ();
+        SetNeedsDraw ();
     }
 
     private void OnFoldingChanged (object? sender, EventArgs e)
@@ -346,6 +442,8 @@ public partial class Editor : View
         _cachedVisibleLineNumbers = null;
         _wrapMap = null;
         _maxWidthDirty = true;
+        RefreshFoldingState ();
+        SyncFoldingTransformer ();
         UpdateContentSize ();
         SetNeedsDraw ();
         _gutter?.SetNeedsDraw ();
@@ -372,6 +470,30 @@ public partial class Editor : View
         }
     }
 
+    /// <summary>
+    ///     Gets or sets whether the editor is in overwrite mode. When <see langword="true" />, typed
+    ///     characters replace the grapheme under the caret instead of inserting before it. At line-end
+    ///     or when a selection is active, the insertion still inserts. Defaults to <see langword="false" />.
+    /// </summary>
+    public bool OverwriteMode
+    {
+        get;
+        set
+        {
+            if (field == value)
+            {
+                return;
+            }
+
+            field = value;
+            SetNeedsDraw ();
+            OverwriteModeChanged?.Invoke (this, EventArgs.Empty);
+        }
+    }
+
+    /// <summary>Raised whenever <see cref="OverwriteMode" /> changes.</summary>
+    public event EventHandler? OverwriteModeChanged;
+
     /// <summary>Raised whenever <see cref="CaretOffset" /> changes.</summary>
     public event EventHandler? CaretChanged;
 
@@ -388,6 +510,11 @@ public partial class Editor : View
         var changed = clamped != current;
         _caretAnchor = _document is null ? null : CreateCaretAnchor (clamped);
         _lastKnownCaretOffset = clamped;
+
+        // The primary just moved. Re-establish the multi-caret invariant *before* the next edit
+        // applies: drop any additional caret that now coincides with the primary so a primary
+        // landing on an additional caret doesn't produce a duplicate insert.
+        NormalizeAdditionalCarets ();
 
         if (resetVirtualColumn)
         {
@@ -407,13 +534,40 @@ public partial class Editor : View
     /// <inheritdoc />
     protected override void Dispose (bool disposing)
     {
+        if (disposing)
+        {
+            ThemeManager.ThemeChanged -= OnThemeChanged;
+
+            // Tear down the completion popover (issue #173) — without this an active
+            // popover survives disposal, leaks event subscriptions, and leaves
+            // IsCompletionActive == true on the dead editor.
+            DismissCompletion ();
+
+            // Dispose the context menu PopoverMenu created in the constructor.
+            ContextMenu?.Dispose ();
+            ContextMenu = null;
+
+            // Dispose the gutter if active.
+            if (_gutter is not null)
+            {
+                Padding.GetOrCreateView ().Remove (_gutter);
+                _gutter.Dispose ();
+                _gutter = null;
+            }
+
+            // Dispose the document highlighter.
+            _highlighter?.Dispose ();
+            _highlighter = null;
+        }
+
         if (disposing && _document is not null)
         {
             // Without this the document keeps the editor alive via the Changed subscription whenever
             // external code retains the TextDocument (test fixtures, future shared docs across panes,
             // etc.). The Document setter unsubscribes on swap; this covers View-teardown.
             _document.Changed -= OnDocumentChanged;
-            _lastKnownCaretOffset = CaretOffset;
+            // Dispose can run after document ownership moved; _lastKnownCaretOffset is maintained
+            // during caret movement and document changes, so avoid reading CaretOffset here.
             _caretAnchor = null;
             _selectionAnchor = null;
             _additionalCarets.Clear ();
@@ -447,6 +601,11 @@ public partial class Editor : View
         }
 
         RefreshSelectionAnchorMovement ();
+
+        // Document structure changed — re-establish the multi-caret invariant before the next
+        // edit (drop deleted / duplicate / primary-coinciding additional carets).
+        NormalizeAdditionalCarets ();
+
         EnsureCaretVisible ();
         SetNeedsDraw ();
     }
@@ -455,6 +614,27 @@ public partial class Editor : View
     {
         if (_document == null)
         {
+            return;
+        }
+
+        if (!Multiline)
+        {
+            // Single-line mode: one row, width = sum of visible line visual lengths + newline glyphs.
+            List<int> visibleLines = GetVisibleLineNumbers ();
+            var width = 0;
+
+            for (var idx = 0; idx < visibleLines.Count; idx++)
+            {
+                width += GetOrBuildDefaultVisualLine (_document.GetLineByNumber (visibleLines[idx])).VisualLength;
+
+                if (idx < visibleLines.Count - 1)
+                {
+                    width += 1; // newline glyph
+                }
+            }
+
+            SetContentSize (new Size (width + 1, 1));
+
             return;
         }
 
@@ -474,8 +654,28 @@ public partial class Editor : View
         }
 
         // +1 column lets the caret sit just past the end-of-line.
-        var visibleLines = _document.LineCount - (FoldingManager?.GetHiddenLineCount () ?? 0);
-        SetContentSize (new Size (_maxVisualWidth + 1, Math.Max (1, visibleLines)));
+        var hiddenLineCount = HasFoldedSections () ? FoldingManager!.GetHiddenLineCount () : 0;
+        var visibleLineCount = _document.LineCount - hiddenLineCount;
+        SetContentSize (new Size (_maxVisualWidth + 1, Math.Max (1, visibleLineCount)));
+    }
+
+    /// <summary>
+    ///     Per-line horizontal extent used for the content width / horizontal scrollbar. For documents
+    ///     below <see cref="MaxWidthEstimateThresholdBytes" /> this is the exact visual width (builds the
+    ///     line, tab/wide-glyph precise). For larger documents it is the line's character count — O(1),
+    ///     no build, no syntax-highlight — so opening a multi-MB file does not build + highlight every
+    ///     line just to size a scrollbar. The estimate can be short for tab-indented / wide-glyph lines;
+    ///     the draw path refines <see cref="_maxVisualWidth" /> exactly for lines it actually renders, so
+    ///     visible content always has a correct extent and the scrollbar grows on scroll.
+    /// </summary>
+    private int MeasureLineWidth (DocumentLine line)
+    {
+        if (_document is { } document && document.TextLength >= MaxWidthEstimateThresholdBytes)
+        {
+            return line.Length;
+        }
+
+        return GetOrBuildDefaultVisualLine (line).VisualLength;
     }
 
     /// <summary>Full O(N) recompute — only called on Document swap, IndentationSize change, etc.</summary>
@@ -493,7 +693,7 @@ public partial class Editor : View
 
         foreach (DocumentLine line in _document.Lines)
         {
-            var width = GetOrBuildDefaultVisualLine (line).VisualLength;
+            var width = MeasureLineWidth (line);
 
             if (width > _maxVisualWidth)
             {
@@ -518,9 +718,9 @@ public partial class Editor : View
 
         // Find which lines are affected by the change.
         DocumentLine firstAffected = _document.GetLineByOffset (Math.Min (e.Offset, _document.TextLength));
-        var insertedText = e.InsertedText?.Text ?? "";
+        var insertedText = e.InsertedText.Text;
         var newlineCount = insertedText.Count (c => c == '\n');
-        var removedText = e.RemovedText?.Text ?? "";
+        var removedText = e.RemovedText.Text;
         var removedNewlines = removedText.Count (c => c == '\n');
 
         // If the widest line was deleted or its content changed, we must recompute.
@@ -539,7 +739,7 @@ public partial class Editor : View
             for (var lineNum = firstAffected.LineNumber; lineNum <= scanEnd; lineNum++)
             {
                 DocumentLine line = _document.GetLineByNumber (lineNum);
-                var width = GetOrBuildDefaultVisualLine (line).VisualLength;
+                var width = MeasureLineWidth (line);
 
                 if (width >= newMax)
                 {
@@ -570,7 +770,7 @@ public partial class Editor : View
         for (var lineNum = firstAffected.LineNumber; lineNum <= endLine; lineNum++)
         {
             DocumentLine line = _document.GetLineByNumber (lineNum);
-            var width = GetOrBuildDefaultVisualLine (line).VisualLength;
+            var width = MeasureLineWidth (line);
 
             if (width > _maxVisualWidth)
             {
@@ -592,7 +792,7 @@ public partial class Editor : View
     ///     and handles incremental invalidation internally, so no per-edit work is needed here
     ///     beyond clearing the visual-line caches (handled separately).
     /// </summary>
-    private void InvalidateHighlighterState (DocumentChangeEventArgs e)
+    private void InvalidateHighlighterState (DocumentChangeEventArgs _)
     {
         // DocumentHighlighter (an ILineTracker) is notified of edits automatically
         // by the TextDocument. No explicit invalidation needed.
@@ -622,7 +822,12 @@ public partial class Editor : View
 
         _highlighter = new DocumentHighlighter (_document, HighlightingDefinition);
         Attribute normal = HasFocus ? GetAttributeForRole (VisualRole.Normal) : Attribute.Default;
-        _highlightingColorizer = new HighlightingColorizer (_highlighter, normal, UseThemeBackground);
+        _highlightingColorizer = new HighlightingColorizer (
+            _highlighter,
+            normal,
+            role => GetScheme ().TryGetExplicitlySetAttributeForRole (role, out Attribute? explicitAttr)
+                ? explicitAttr
+                : null);
         LineTransformers.Insert (0, _highlightingColorizer);
     }
 
@@ -637,17 +842,22 @@ public partial class Editor : View
         var threshold = firstAffected.LineNumber;
 
         // Count net newline delta: downstream line numbers shift by this amount.
-        var insertedText = e.InsertedText?.Text ?? "";
+        var insertedText = e.InsertedText.Text;
         var insertedNewlines = insertedText.Count (c => c == '\n');
-        var removedText = e.RemovedText?.Text ?? "";
+        var removedText = e.RemovedText.Text;
         var removedNewlines = removedText.Count (c => c == '\n');
         var lineDelta = insertedNewlines - removedNewlines;
 
-        RekeyCache (_defaultVisualLineCache, threshold, lineDelta, removedNewlines);
-        RekeyCache (_drawVisualLineCache, threshold, lineDelta, removedNewlines);
+        // Net character shift. Cached visual lines store *absolute* element offsets, so a
+        // same-line-count edit upstream (no newline added/removed) still leaves every
+        // downstream cached line stale even though its line *number* is unchanged.
+        var offsetDelta = insertedText.Length - removedText.Length;
+
+        RekeyCache (_defaultVisualLineCache, threshold, lineDelta, removedNewlines, offsetDelta);
+        RekeyCache (_drawVisualLineCache, threshold, lineDelta, removedNewlines, offsetDelta);
 
         static void RekeyCache<TValue> (Dictionary<int, TValue> cache, int threshold, int lineDelta,
-            int removedNewlines)
+            int removedNewlines, int offsetDelta)
         {
             if (cache.Count == 0)
             {
@@ -671,16 +881,22 @@ public partial class Editor : View
                 }
                 else if (kvp.Key > invalidateEnd)
                 {
-                    if (lineDelta == 0)
-                    {
-                        // No newline change — downstream entries are still valid as-is.
-                    }
-                    else
+                    if (lineDelta != 0)
                     {
                         // Line numbers shifted — remove old key, re-add with shifted key.
                         (toRemove ??= []).Add (kvp.Key);
                         (toRekey ??= []).Add (kvp);
                     }
+                    else if (offsetDelta != 0)
+                    {
+                        // No newline change, but the edit shifted absolute offsets. The cached
+                        // visual line for this downstream line carries stale absolute element
+                        // offsets — drop it (correctness > a few cache hits). This is the defect
+                        // the "Tab twice with spaces" multi-caret scenario exposes.
+                        (toRemove ??= []).Add (kvp.Key);
+                    }
+
+                    // else: offsetDelta == 0 — pure in-place rewrite, downstream entries valid.
                 }
             }
 
@@ -775,12 +991,26 @@ public partial class Editor : View
 
     private int GetCaretColumn ()
     {
-        var caretOffset = CaretOffset;
+        return GetVisualColumnForOffset (CaretOffset);
+    }
+
+    /// <summary>
+    ///     Returns the visual (cell) column of an arbitrary document offset, accounting for tabs,
+    ///     double-width graphemes, and word-wrap segments. Single-caret and multi-caret vertical
+    ///     placement share this so the multi-caret path never re-derives column geometry.
+    /// </summary>
+    private int GetVisualColumnForOffset (int caretOffset)
+    {
         DocumentLine? line = _document?.GetLineByOffset (caretOffset);
 
         if (line is null)
         {
             return 0;
+        }
+
+        if (!Multiline)
+        {
+            return GetFlatVisualColumn (line, caretOffset - line.Offset);
         }
 
         if (!WordWrap)
@@ -815,22 +1045,118 @@ public partial class Editor : View
     }
 
     /// <summary>
+    ///     Returns the visual column of an offset in a flattened single-line view. Sums the visual
+    ///     lengths of all visible preceding lines (plus 1-cell newline glyphs) and adds the column
+    ///     within the target line. Respects folding by using <see cref="GetVisibleLineNumbers" />.
+    ///     Offsets inside a multi-char delimiter (e.g. CRLF) are clamped to the line's text end.
+    /// </summary>
+    private int GetFlatVisualColumn (DocumentLine targetLine, int offsetInLine)
+    {
+        List<int> visibleLines = GetVisibleLineNumbers ();
+        var flatColumn = 0;
+
+        foreach (var lineNum in visibleLines)
+        {
+            if (lineNum == targetLine.LineNumber)
+            {
+                break;
+            }
+
+            flatColumn += GetOrBuildDefaultVisualLine (_document!.GetLineByNumber (lineNum)).VisualLength;
+            flatColumn += 1; // newline glyph
+        }
+
+        // Clamp offsets inside the delimiter to the line's text length so the caret never
+        // visually stalls inside a multi-char delimiter (CRLF).
+        var clampedOffset = Math.Min (offsetInLine, targetLine.Length);
+        flatColumn += GetOrBuildDefaultVisualLine (targetLine).GetVisualColumn (clampedOffset);
+
+        return flatColumn;
+    }
+
+    /// <summary>
     ///     Returns the caret's position as an index into the visible-line list (i.e. the coordinate
     ///     system used by <c>Viewport.Y</c>). Falls back to <see cref="GetCaretLineIndex" /> when
     ///     no folding is active.
     /// </summary>
     private int GetCaretVisibleLineIndex ()
     {
+        if (!Multiline)
+        {
+            return 0;
+        }
+
         if (WordWrap)
         {
             return GetCaretWrapRow ();
         }
 
-        var docLineNumber = (_document?.GetLineByOffset (CaretOffset).LineNumber ?? 1);
+        DocumentLine? line = _document?.GetLineByOffset (CaretOffset);
+
+        if (line is null)
+        {
+            return 0;
+        }
+
+        if (!HasFoldedSections ())
+        {
+            return line.LineNumber - 1;
+        }
+
+        var docLineNumber = line.LineNumber;
         List<int> visible = GetVisibleLineNumbers ();
         var idx = visible.IndexOf (docLineNumber);
 
         return idx >= 0 ? idx : GetCaretLineIndex ();
+    }
+
+    private bool HasFoldedSections ()
+    {
+        return _hasFoldedSections;
+    }
+
+    private void RefreshFoldingState ()
+    {
+        _hasFoldedSections = false;
+
+        if (FoldingManager is not { } fm)
+        {
+            return;
+        }
+
+        foreach (FoldingSection fs in fm.AllFoldings)
+        {
+            if (!fs.IsFolded)
+            {
+                continue;
+            }
+
+            _hasFoldedSections = true;
+
+            return;
+        }
+    }
+
+    private void SyncFoldingTransformer ()
+    {
+        for (var i = LineTransformers.Count - 1; i >= 0; i--)
+        {
+            if (LineTransformers[i] is FoldingTransformer)
+            {
+                LineTransformers.RemoveAt (i);
+            }
+        }
+
+        if (!_hasFoldedSections || FoldingManager is null)
+        {
+            return;
+        }
+
+        var insertIndex = _highlightingColorizer is not null
+            ? LineTransformers.IndexOf (_highlightingColorizer) + 1
+            : 0;
+
+        LineTransformers.Insert (Math.Max (0, insertIndex), new FoldingTransformer (FoldingManager));
     }
 
     /// <summary>
@@ -879,15 +1205,72 @@ public partial class Editor : View
         SetCaretOffset (line.Offset + seg.StartOffset + localOffset, false);
     }
 
+    /// <summary>
+    ///     Resolves the document offset <paramref name="delta" /> visual rows from
+    ///     <paramref name="startOffset" /> at the sticky <paramref name="targetVisualColumn" />,
+    ///     using the same wrap-map / visual-line primitives as single-caret vertical movement.
+    ///     Returns <see langword="false" /> (a no-op for the caller) when the move would cross the
+    ///     top or bottom document bound.
+    /// </summary>
+    private bool TryGetVerticalOffset (int startOffset, int delta, int targetVisualColumn, out int targetOffset)
+    {
+        targetOffset = startOffset;
+
+        if (_document is null)
+        {
+            return false;
+        }
+
+        if (WordWrap)
+        {
+            List<WrapMapEntry> map = GetWrapMap ();
+            var targetRow = GetWrapRowForOffset (startOffset) + delta;
+
+            if (targetRow < 0 || targetRow >= map.Count)
+            {
+                return false;
+            }
+
+            WrapMapEntry entry = map[targetRow];
+            DocumentLine wrapLine = _document.GetLineByNumber (entry.LineNumber);
+            var wrapText = _document.GetText (wrapLine);
+            IReadOnlyList<WrapSegment> wrapSegments =
+                WordWrapStrategy.ComputeSegments (wrapText, GetWrapColumn (), IndentationSize);
+            WrapSegment seg = wrapSegments[entry.SegmentIndex];
+            var segText = wrapText.Substring (seg.StartOffset, seg.Length);
+            var localOffset = ComputeRelativeOffsetDirect (segText, targetVisualColumn);
+            targetOffset = wrapLine.Offset + seg.StartOffset + localOffset;
+
+            return true;
+        }
+
+        var targetLineIndex = _document.GetLineByOffset (startOffset).LineNumber - 1 + delta;
+
+        if (targetLineIndex < 0 || targetLineIndex > _document.LineCount - 1)
+        {
+            return false;
+        }
+
+        DocumentLine line = _document.GetLineByNumber (targetLineIndex + 1);
+        targetOffset = line.Offset + GetOrBuildDefaultVisualLine (line).GetRelativeOffset (targetVisualColumn);
+
+        return true;
+    }
+
     /// <summary>Returns the visual row in the wrap map for the current caret position.</summary>
     private int GetCaretWrapRow ()
+    {
+        return GetWrapRowForOffset (CaretOffset);
+    }
+
+    /// <summary>Returns the visual row in the wrap map for an arbitrary document offset.</summary>
+    private int GetWrapRowForOffset (int caretOffset)
     {
         if (_document is null)
         {
             return 0;
         }
 
-        var caretOffset = CaretOffset;
         DocumentLine line = _document.GetLineByOffset (caretOffset);
         var offsetInLine = caretOffset - line.Offset;
         var text = _document.GetText (line);
@@ -923,12 +1306,7 @@ public partial class Editor : View
 
     private int GetCaretOffset ()
     {
-        if (_caretAnchor is not { IsDeleted: false } anchor)
-        {
-            return _lastKnownCaretOffset;
-        }
-
-        return anchor.Offset;
+        return _caretAnchor is not { IsDeleted: false } anchor ? _lastKnownCaretOffset : anchor.Offset;
     }
 
     private TextAnchor CreateCaretAnchor (int offset)
@@ -994,7 +1372,8 @@ public partial class Editor : View
 
     private bool IsDrawCacheEligible (IReadOnlyList<StyledSegment>? segments, int selStart, int selEnd)
     {
-        return segments is null && selStart >= selEnd && LineTransformers.Count == 0;
+        return segments is null && selStart >= selEnd && !HasAdditionalCaretSelections () &&
+               LineTransformers.Count == 0;
     }
 
     private CellVisualLine BuildVisualLine (
@@ -1014,10 +1393,16 @@ public partial class Editor : View
             styledSegments,
             selectionStart,
             selectionEnd,
-            LineTransformers,
-            UseThemeBackground);
+            LineTransformers);
 
-        return _visualLineBuilder.Build (line, context);
+        CellVisualLine visualLine = _visualLineBuilder.Build (line, context);
+
+        if (selectedAttribute.HasValue)
+        {
+            ApplyAdditionalCaretSelections (visualLine, selectedAttribute.Value);
+        }
+
+        return visualLine;
     }
 
     private void EnsureCaretVisible ()
@@ -1065,8 +1450,6 @@ public partial class Editor : View
         }
     }
 
-    private readonly record struct DrawCacheEntry (CellVisualLine Line, Attribute Normal, Attribute Selected);
-
     /// <summary>
     ///     Computes the visual column for a character offset within a text segment without
     ///     allocating a <see cref="TextDocument" />. Walks graphemes and accumulates widths.
@@ -1076,7 +1459,7 @@ public partial class Editor : View
         var visualCol = 0;
         var logicalCol = 0;
 
-        foreach (var grapheme in Terminal.Gui.Drawing.GraphemeHelper.GetGraphemes (segmentText))
+        foreach (var grapheme in GraphemeHelper.GetGraphemes (segmentText))
         {
             if (logicalCol >= targetOffset)
             {
@@ -1109,7 +1492,7 @@ public partial class Editor : View
         var visualCol = 0;
         var logicalCol = 0;
 
-        foreach (var grapheme in Terminal.Gui.Drawing.GraphemeHelper.GetGraphemes (segmentText))
+        foreach (var grapheme in GraphemeHelper.GetGraphemes (segmentText))
         {
             int width;
 
@@ -1134,9 +1517,6 @@ public partial class Editor : View
 
         return logicalCol;
     }
-
-    /// <summary>Maps a visual row (in the wrap map) to a document line and segment within that line.</summary>
-    private readonly record struct WrapMapEntry (int LineNumber, int SegmentIndex, int SegmentStartOffset);
 
     /// <summary>
     ///     Returns the wrap map, building it lazily. Each entry corresponds to one visual row
@@ -1185,4 +1565,9 @@ public partial class Editor : View
 
         return viewport.Width > 0 ? viewport.Width : 80;
     }
+
+    private readonly record struct DrawCacheEntry (CellVisualLine Line, Attribute Normal, Attribute Selected);
+
+    /// <summary>Maps a visual row (in the wrap map) to a document line and segment within that line.</summary>
+    private readonly record struct WrapMapEntry (int LineNumber, int SegmentIndex, int SegmentStartOffset);
 }

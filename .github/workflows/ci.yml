@@ -59,7 +59,7 @@ jobs:
           dotnet jb cleanupcode Terminal.Gui.Editor.slnx \
             --profile="TG.Editor Full Cleanup" \
             --no-build \
-            --exclude="third_party/**/*" \
+            --exclude="third_party/**/*;src/Terminal.Gui.Editor/Document/**/*;src/Terminal.Gui.Editor/Utils/**/*;src/Terminal.Gui.Editor/Search/**/*" \
             || true
           if ! git diff --exit-code; then
             echo "::error::ReSharper code cleanup found style drift. Run 'dotnet jb cleanupcode Terminal.Gui.Editor.slnx --profile=\"TG.Editor Full Cleanup\"' locally and commit the result."
@@ -71,6 +71,12 @@ jobs:
 
       - name: Terminal.Gui.Editor.IntegrationTests
         run: dotnet run --project tests/Terminal.Gui.Editor.IntegrationTests --no-build
+
+      # ConfigTests is ConfigurationManager-only and fully non-parallel (own xunit.runner.json).
+      # CM is process-global with one-time [ConfigurationProperty] discovery, so it must run in
+      # its own process, isolated from the parallel suites above.
+      - name: Terminal.Gui.Editor.ConfigTests
+        run: dotnet run --project tests/Terminal.Gui.Editor.ConfigTests --no-build
 
       # NOTE: Performance smoke tests and the BenchmarkDotNet baseline compare live in a
       # dedicated workflow: .github/workflows/perf.yml (ubuntu-latest only). They were split

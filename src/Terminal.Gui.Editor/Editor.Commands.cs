@@ -1,4 +1,6 @@
+using System.Globalization;
 using Terminal.Gui.App;
+using Terminal.Gui.Configuration;
 using Terminal.Gui.Document;
 using Terminal.Gui.Document.Folding;
 using Terminal.Gui.Input;
@@ -19,6 +21,7 @@ public partial class Editor
     ///     Process-wide static. Do not mutate from parallel tests — see Terminal.Gui's same convention
     ///     on <see cref="Terminal.Gui.Views.TextField.DefaultKeyBindings" />.
     /// </remarks>
+    [ConfigurationProperty (Scope = typeof (SettingsScope))]
     public new static Dictionary<Command, PlatformKeyBinding>? DefaultKeyBindings { get; set; } = new ()
     {
         [Command.Start] = Bind.All (Key.Home.WithCtrl),
@@ -31,7 +34,27 @@ public partial class Editor
         [Command.Cut] = Bind.All (Key.X.WithCtrl),
         [Command.Copy] = Bind.All (Key.C.WithCtrl),
         [Command.Paste] = Bind.All (Key.V.WithCtrl),
-        [Command.Collapse] = Bind.All (Key.M.WithCtrl)
+        [Command.Collapse] = Bind.All (Key.M.WithCtrl),
+        [Command.InsertTab] = Bind.All (Key.Tab),
+        [Command.Unindent] = Bind.All (Key.Tab.WithShift),
+        [Command.FindNext] = Bind.All (Key.F3),
+        [Command.FindPrevious] = Bind.All (Key.F3.WithShift),
+        [Command.Find] = Bind.All (Key.F.WithCtrl),
+        [Command.Replace] = Bind.All (Key.H.WithCtrl),
+
+        // Vertical multi-caret — VS Code parity (Ctrl+Alt+Up/Down). A PlatformKeyBinding, so a
+        // user whose terminal/WM grabs the chord overrides it via View.ViewKeyBindings config;
+        // no editor-specific fallback chord. macOS uses the same chord pending real-terminal
+        // validation (specs/decisions.md DEC-006).
+        [Command.InsertCaretAbove] = Bind.All (Key.CursorUp.WithCtrl.WithAlt),
+        [Command.InsertCaretBelow] = Bind.All (Key.CursorDown.WithCtrl.WithAlt),
+        [Command.WordLeft] = Bind.All (Key.CursorLeft.WithCtrl),
+        [Command.WordRight] = Bind.All (Key.CursorRight.WithCtrl),
+        [Command.WordLeftExtend] = Bind.All (Key.CursorLeft.WithCtrl.WithShift),
+        [Command.WordRightExtend] = Bind.All (Key.CursorRight.WithCtrl.WithShift),
+        [Command.KillWordLeft] = Bind.All (Key.Backspace.WithCtrl),
+        [Command.KillWordRight] = Bind.All (Key.Delete.WithCtrl),
+        [Command.ToggleOverwrite] = Bind.All (Key.InsertChar)
     };
 
     private void CreateCommandsAndBindings ()
@@ -60,23 +83,31 @@ public partial class Editor
         // Selection-extending movement
         AddCommand (Command.LeftExtend, () => ExtendCommand (() => ExtendCaretBy (-1)));
         AddCommand (Command.RightExtend, () => ExtendCommand (() => ExtendCaretBy (1)));
-        AddCommand (Command.UpExtend, () => ExtendCommand (() => ExtendCaretVertically (-1)));
-        AddCommand (Command.DownExtend, () => ExtendCommand (() => ExtendCaretVertically (1)));
+        AddCommand (Command.UpExtend, () => Multiline ? ExtendCommand (() => ExtendCaretVertically (-1)) : true);
+        AddCommand (Command.DownExtend, () => Multiline ? ExtendCommand (() => ExtendCaretVertically (1)) : true);
         AddCommand (Command.LeftStartExtend,
-            () => ExtendCommand (() => ExtendCaretTo (_document!.GetLineByOffset (CaretOffset).Offset)));
+            () => ExtendCommand (() =>
+                ExtendCaretTo (!Multiline ? 0 : _document!.GetLineByOffset (CaretOffset).Offset)));
 
         AddCommand (Command.RightEndExtend, () => ExtendCommand (() =>
         {
-            DocumentLine line = _document!.GetLineByOffset (CaretOffset);
-            ExtendCaretTo (line.Offset + line.Length);
+            if (!Multiline)
+            {
+                ExtendCaretTo (_document!.TextLength);
+            }
+            else
+            {
+                DocumentLine line = _document!.GetLineByOffset (CaretOffset);
+                ExtendCaretTo (line.Offset + line.Length);
+            }
         }));
 
         AddCommand (Command.StartExtend, () => ExtendCommand (() => ExtendCaretTo (0)));
         AddCommand (Command.EndExtend, () => ExtendCommand (() => ExtendCaretTo (_document!.TextLength)));
         AddCommand (Command.PageUpExtend,
-            () => ExtendCommand (() => ExtendCaretVertically (-Math.Max (1, Viewport.Height))));
+            () => Multiline ? ExtendCommand (() => ExtendCaretVertically (-Math.Max (1, Viewport.Height))) : true);
         AddCommand (Command.PageDownExtend,
-            () => ExtendCommand (() => ExtendCaretVertically (Math.Max (1, Viewport.Height))));
+            () => Multiline ? ExtendCommand (() => ExtendCaretVertically (Math.Max (1, Viewport.Height))) : true);
 
         // Selection ops
         AddCommand (Command.SelectAll, () =>
@@ -91,6 +122,16 @@ public partial class Editor
         {
             if (!HasSelection)
             {
+                // No selection: copy the current line (including its delimiter) — standard
+                // "line copy" behaviour matching VS Code / Sublime / JetBrains editors.
+                if (_document is null)
+                {
+                    return true;
+                }
+
+                DocumentLine line = _document.GetLineByOffset (CaretOffset);
+                App?.Clipboard?.TrySetClipboardData (_document.GetText (line.Offset, line.TotalLength));
+
                 return true;
             }
 
@@ -134,6 +175,13 @@ public partial class Editor
                 return true;
             }
 
+            // In single-line mode, strip newlines from pasted content so the document
+            // stays on one line.
+            if (!Multiline)
+            {
+                contents = contents.ReplaceLineEndings (string.Empty);
+            }
+
             using (_document!.RunUpdate ())
             {
                 if (HasSelection)
@@ -149,10 +197,25 @@ public partial class Editor
             return true;
         });
 
-        // Editing — selection-aware (multi-caret aware)
-        AddCommand (Command.NewLine, MultiCaretNewLine);
-        AddCommand (Command.DeleteCharLeft, MultiCaretDeleteLeft);
-        AddCommand (Command.DeleteCharRight, MultiCaretDeleteRight);
+        // Kill-ring — Emacs-style line-boundary kill; unbound by default (no entry in
+        // DefaultKeyBindings). Users opt in via Editor.DefaultKeyBindings config.
+        AddCommand (Command.CutToEndOfLine, CutToEndOfLine);
+        AddCommand (Command.CutToStartOfLine, CutToStartOfLine);
+
+        // Editing — selection-aware (multi-caret aware), with completion notification.
+        AddCommand (Command.NewLine, () =>
+        {
+            DismissCompletion ();
+
+            return MultiCaretNewLine ();
+        });
+        AddCommand (Command.DeleteCharLeft, DeleteCharLeftAndRefresh);
+        AddCommand (Command.DeleteCharRight, () =>
+        {
+            DismissCompletion ();
+
+            return MultiCaretDeleteRight ();
+        });
 
         // History
         AddCommand (Command.Undo, () =>
@@ -184,12 +247,86 @@ public partial class Editor
         // Folding
         AddCommand (Command.Collapse, ToggleFoldUnderCaret);
 
+        // Indentation — InsertTab / Unindent return bool, wrapped for CommandImplementation (bool?).
+        AddCommand (Command.InsertTab, () => InsertTab ());
+        AddCommand (Command.Unindent, () => Unindent ());
+
+        // Find / Replace
+        AddCommand (Command.Find, InvokeFindRequested);
+        AddCommand (Command.Replace, InvokeReplaceRequested);
+        AddCommand (Command.FindNext, FindNextCommand);
+        AddCommand (Command.FindPrevious, FindPreviousCommand);
+
+        // Vertical multi-caret: add a caret one line above / below the block at the sticky column.
+        AddCommand (Command.InsertCaretAbove, () => AddCaretVertically (-1));
+        AddCommand (Command.InsertCaretBelow, () => AddCaretVertically (1));
+        // Word navigation and kill
+        AddCommand (Command.WordLeft, () =>
+        {
+            MoveCaretToWordBoundary (false);
+            return true;
+        });
+        AddCommand (Command.WordRight, () =>
+        {
+            MoveCaretToWordBoundary (true);
+            return true;
+        });
+        AddCommand (Command.WordLeftExtend,
+            () => ExtendCommand (() => ExtendCaretTo (GetWordBoundaryOffset (CaretOffset, false))));
+        AddCommand (Command.WordRightExtend,
+            () => ExtendCommand (() => ExtendCaretTo (GetWordBoundaryOffset (CaretOffset, true))));
+        AddCommand (Command.KillWordLeft, () =>
+        {
+            KillToWordBoundary (false);
+            return true;
+        });
+        AddCommand (Command.KillWordRight, () =>
+        {
+            KillToWordBoundary (true);
+            return true;
+        });
+
+        // Overwrite mode
+        AddCommand (Command.ToggleOverwrite, () =>
+        {
+            OverwriteMode = !OverwriteMode;
+
+            return true;
+        });
+        AddCommand (Command.EnableOverwrite, () =>
+        {
+            OverwriteMode = true;
+
+            return true;
+        });
+        AddCommand (Command.DisableOverwrite, () =>
+        {
+            OverwriteMode = false;
+
+            return true;
+        });
+
+        // Context menu — return false when suppressed so the command can bubble.
+        AddCommand (Command.Context, () =>
+        {
+            if (ContextMenu is null)
+            {
+                return false;
+            }
+
+            ShowContextMenu ();
+
+            return true;
+        });
+
         ApplyKeyBindings (View.DefaultKeyBindings, DefaultKeyBindings);
 
-        // Reclaim Tab before the framework consumes it; the editor handles Tab / Shift+Tab
-        // in OnKeyDownNotHandled so indentation still works without a command binding.
+        // Reclaim Tab / Shift+Tab from the framework's default focus-cycling bindings so our
+        // InsertTab / Unindent commands fire instead.
         KeyBindings.Remove (Key.Tab);
         KeyBindings.Remove (Key.Tab.WithShift);
+        KeyBindings.Add (Key.Tab, Command.InsertTab);
+        KeyBindings.Add (Key.Tab.WithShift, Command.Unindent);
 
         MouseBindings.Add (MouseFlags.WheeledUp, Command.ScrollUp);
         MouseBindings.Add (MouseFlags.WheeledDown, Command.ScrollDown);
@@ -216,6 +353,11 @@ public partial class Editor
 
     private bool? MoveCaretVerticallyCollapsing (int delta)
     {
+        if (!Multiline)
+        {
+            return true;
+        }
+
         MoveCaretVerticallyCollapsingSelection (delta);
 
         return true;
@@ -223,6 +365,13 @@ public partial class Editor
 
     private bool? ScrollVerticalCommand (int delta)
     {
+        // In single-line mode, vertical scroll is a no-op but must return true (handled)
+        // to prevent the event from bubbling to parent containers.
+        if (!Multiline)
+        {
+            return true;
+        }
+
         if (_document is null || ScrollVertical (delta) != true)
         {
             return false;
@@ -247,7 +396,7 @@ public partial class Editor
 
     private bool? InsertNewLineWithAutoIndent ()
     {
-        if (ReadOnly)
+        if (ReadOnly || !Multiline)
         {
             return true;
         }
@@ -288,12 +437,53 @@ public partial class Editor
         {
             ReplaceSelection (text);
         }
+        else if (OverwriteMode && _document is not null)
+        {
+            OverwriteAtCaret (text);
+        }
         else
         {
             _document!.Insert (CaretOffset, text);
         }
 
         return true;
+    }
+
+    /// <summary>
+    ///     Overwrites the grapheme at the caret with <paramref name="text" />. If the caret is at
+    ///     line-end, falls back to a plain insert so the newline is not consumed.
+    /// </summary>
+    private void OverwriteAtCaret (string text)
+    {
+        OverwriteAtOffset (CaretOffset, text);
+    }
+
+    /// <summary>
+    ///     Overwrites the grapheme at the given <paramref name="offset" /> with <paramref name="text" />.
+    ///     If the offset is at line-end, falls back to a plain insert so the newline is not consumed.
+    /// </summary>
+    private void OverwriteAtOffset (int offset, string text)
+    {
+        DocumentLine line = _document!.GetLineByOffset (offset);
+        var lineEnd = line.Offset + line.Length;
+
+        if (offset >= lineEnd)
+        {
+            // At or past end-of-line content — just insert.
+            _document.Insert (offset, text);
+
+            return;
+        }
+
+        // Determine the length of the grapheme cluster under the caret so wide runes are
+        // replaced atomically. StringInfo.GetNextTextElementLength gives cluster length in chars.
+        var remaining = _document.GetText (offset, lineEnd - offset);
+        var graphemeLength = StringInfo.GetNextTextElementLength (remaining);
+
+        // Use RemoveAndInsert so that the caret anchor (AfterInsertion) moves past the
+        // inserted text. The default same-length Replace uses CharacterReplace mode which
+        // does not move anchors at all.
+        _document.Replace (offset, graphemeLength, text, OffsetChangeMappingType.RemoveAndInsert);
     }
 
     private bool? DeleteLeft ()
@@ -347,6 +537,13 @@ public partial class Editor
 
     private bool? MoveCaretToLineStart ()
     {
+        if (!Multiline)
+        {
+            CaretOffset = 0;
+
+            return true;
+        }
+
         DocumentLine line = _document!.GetLineByOffset (CaretOffset);
         CaretOffset = line.Offset;
 
@@ -355,8 +552,182 @@ public partial class Editor
 
     private bool? MoveCaretToLineEnd ()
     {
+        if (!Multiline)
+        {
+            CaretOffset = _document!.TextLength;
+
+            return true;
+        }
+
         DocumentLine line = _document!.GetLineByOffset (CaretOffset);
         CaretOffset = line.Offset + line.Length;
+
+        return true;
+    }
+
+    /// <summary>
+    ///     Kill from caret to end of line. If the caret is already at EOL, kills the line delimiter
+    ///     (joining the next line). Places killed text on the clipboard; if the immediately preceding
+    ///     command was also a kill (consecutive kill), appends instead of replacing.
+    /// </summary>
+    private bool? CutToEndOfLine ()
+    {
+        // For keyboard dispatch, _previousCommandWasKill was set by OnKeyDown.
+        // For InvokeCommand dispatch, fall back to _lastCommandWasKill (OnKeyDown was not called).
+        var consecutiveKill = _previousCommandWasKill || _lastCommandWasKill;
+        _lastCommandWasKill = false;
+
+        if (ReadOnly || _document is null)
+        {
+            return true;
+        }
+
+        if (HasSelection)
+        {
+            ReplaceSelection (string.Empty);
+
+            return true;
+        }
+
+        DocumentLine line = _document.GetLineByOffset (CaretOffset);
+        var lineEnd = line.Offset + line.Length;
+
+        int start;
+        int length;
+
+        if (CaretOffset < lineEnd)
+        {
+            // Kill from caret to end of line text (not the delimiter).
+            start = CaretOffset;
+            length = lineEnd - CaretOffset;
+        }
+        else if (line.DelimiterLength > 0)
+        {
+            // Caret is at EOL — kill the line delimiter (join with next line).
+            start = lineEnd;
+            length = line.DelimiterLength;
+        }
+        else
+        {
+            // Last line, caret at end — nothing to kill.
+
+            return true;
+        }
+
+        var killed = _document.GetText (start, length);
+
+        if (!WriteKillToClipboard (killed, consecutiveKill, false))
+        {
+            return true;
+        }
+
+        using (_document.RunUpdate ())
+        {
+            _document.Remove (start, length);
+        }
+
+        _lastCommandWasKill = true;
+
+        return true;
+    }
+
+    /// <summary>
+    ///     Kill from line start to caret. Places killed text on the clipboard; if the immediately
+    ///     preceding command was also a kill, prepends instead of replacing (so the clipboard
+    ///     accumulates text in document order).
+    /// </summary>
+    private bool? CutToStartOfLine ()
+    {
+        // See CutToEndOfLine for rationale on the dual-path flag check.
+        var consecutiveKill = _previousCommandWasKill || _lastCommandWasKill;
+        _lastCommandWasKill = false;
+
+        if (ReadOnly || _document is null)
+        {
+            return true;
+        }
+
+        if (HasSelection)
+        {
+            ReplaceSelection (string.Empty);
+
+            return true;
+        }
+
+        DocumentLine line = _document.GetLineByOffset (CaretOffset);
+        var start = line.Offset;
+        var length = CaretOffset - start;
+
+        if (length == 0)
+        {
+            // Already at BOL — nothing to kill.
+            return true;
+        }
+
+        var killed = _document.GetText (start, length);
+
+        if (!WriteKillToClipboard (killed, false, consecutiveKill))
+        {
+            return true;
+        }
+
+        using (_document.RunUpdate ())
+        {
+            _document.Remove (start, length);
+        }
+
+        _lastCommandWasKill = true;
+
+        return true;
+    }
+
+    /// <summary>
+    ///     Writes killed text to the clipboard. When <paramref name="append" /> or
+    ///     <paramref name="prepend" /> is <see langword="true" />, reads the current clipboard
+    ///     content and concatenates rather than replacing.
+    /// </summary>
+    /// <returns><see langword="true" /> if the clipboard write succeeded; <see langword="false" /> otherwise.</returns>
+    private bool WriteKillToClipboard (string killed, bool append, bool prepend)
+    {
+        IClipboard? clipboard = App?.Clipboard;
+
+        if (clipboard is null)
+        {
+            return false;
+        }
+
+        if ((append || prepend) && clipboard.TryGetClipboardData (out var existing))
+        {
+            killed = prepend ? killed + existing : existing + killed;
+        }
+
+        return clipboard.TrySetClipboardData (killed);
+    }
+
+    private bool? InvokeFindRequested ()
+    {
+        FindRequested?.Invoke (this, EventArgs.Empty);
+
+        return true;
+    }
+
+    private bool? InvokeReplaceRequested ()
+    {
+        ReplaceRequested?.Invoke (this, EventArgs.Empty);
+
+        return true;
+    }
+
+    private bool? FindNextCommand ()
+    {
+        FindNext ();
+
+        return true;
+    }
+
+    private bool? FindPreviousCommand ()
+    {
+        FindPrevious ();
 
         return true;
     }
@@ -385,10 +756,7 @@ public partial class Editor
             }
         }
 
-        if (fold is not null)
-        {
-            fold.IsFolded = !fold.IsFolded;
-        }
+        fold?.IsFolded = !fold.IsFolded;
 
         return true;
     }

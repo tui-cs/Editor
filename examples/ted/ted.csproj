@@ -8,6 +8,16 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Remove="C:\Users\Tig\s\gui-cs\Editor-pr-155-feature-single-line-editor-input\LICENSE" />
+    <None Remove="C:\Users\Tig\s\gui-cs\Editor-pr-155-feature-single-line-editor-input\README.md" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Terminal.Gui.Editor.ConfigTests" />
+    <InternalsVisibleTo Include="Terminal.Gui.Editor.IntegrationTests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\..\src\Terminal.Gui.Editor\Terminal.Gui.Editor.csproj" />
     <PackageReference Include="Terminal.Gui" Version="$(TerminalGuiVersion)" />
     <PackageReference Include="Serilog" Version="4.3.1" />

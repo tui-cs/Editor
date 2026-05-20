@@ -2,9 +2,9 @@
 
 using System.Drawing;
 using Terminal.Gui.Document;
-using Terminal.Gui.Highlighting;
-using Terminal.Gui.Editor;
+using Terminal.Gui.Document.Folding;
 using Terminal.Gui.Editor.Rendering;
+using Terminal.Gui.Highlighting;
 using Xunit;
 
 namespace Terminal.Gui.Editor.Tests;
@@ -330,17 +330,17 @@ public class EditorLogicTests
         // When both are collapsed, only line 1 should be visible.
         var text = "a{\nb\nc\nd{\ne\nf}\ng}";
         Editor editor = new () { Document = new TextDocument (text) };
-        var fm = new Terminal.Gui.Document.Folding.FoldingManager (editor.Document!);
+        FoldingManager fm = new (editor.Document!);
         editor.GutterOptions = GutterOptions.LineNumbers | GutterOptions.Folding;
         editor.FoldingManager = fm;
 
         // Create two folded sections starting on line 1 with different end offsets.
         // Short fold: offset 0 (line 1) to offset 8 (line 4 "d{")
-        var shortFold = fm.CreateFolding (0, 8);
+        FoldingSection shortFold = fm.CreateFolding (0, 8);
         shortFold.IsFolded = true;
 
         // Long fold: offset 0 (line 1) to offset 16 (line 7 "g}")
-        var longFold = fm.CreateFolding (0, text.Length);
+        FoldingSection longFold = fm.CreateFolding (0, text.Length);
         longFold.IsFolded = true;
 
         List<int> visible = editor.GetVisibleLineNumbers ();
@@ -348,5 +348,57 @@ public class EditorLogicTests
         // Only line 1 should be visible — the long fold hides lines 2-7.
         Assert.Single (visible);
         Assert.Equal (1, visible[0]);
+    }
+
+    [Fact]
+    public void EnableForDesign_PopulatesNonEmptyDocument ()
+    {
+        Editor editor = new ();
+
+        var result = editor.EnableForDesign ();
+
+        Assert.True (result);
+        Assert.NotNull (editor.Document);
+        Assert.True (editor.Document!.TextLength > 0, "EnableForDesign must seed non-empty content.");
+        Assert.True (editor.Document.LineCount > 1, "Sample content must span more than one line.");
+        Assert.NotNull (editor.HighlightingDefinition);
+    }
+
+    [Fact]
+    public void Text_Get_Returns_DocumentText ()
+    {
+        Editor editor = new () { Document = new TextDocument ("hello\nworld") };
+
+        Assert.Equal ("hello\nworld", editor.Text);
+    }
+
+    [Fact]
+    public void Text_Set_Updates_DocumentText ()
+    {
+        Editor editor = new ();
+
+        editor.Text = "line1\nline2\nline3";
+
+        Assert.Equal ("line1\nline2\nline3", editor.Document!.Text);
+        Assert.Equal (3, editor.Document.LineCount);
+    }
+
+    [Fact]
+    public void Text_Get_Returns_Empty_When_Default ()
+    {
+        Editor editor = new ();
+
+        Assert.Equal (string.Empty, editor.Text);
+    }
+
+    [Fact]
+    public void Text_RoundTrip ()
+    {
+        Editor editor = new ();
+        const string content = "{\n  \"key\": \"value\"\n}";
+
+        editor.Text = content;
+
+        Assert.Equal (content, editor.Text);
     }
 }

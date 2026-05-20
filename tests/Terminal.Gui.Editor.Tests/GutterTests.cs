@@ -4,7 +4,6 @@ using Terminal.Gui.Document;
 using Terminal.Gui.Document.Folding;
 using Terminal.Gui.Input;
 using Terminal.Gui.ViewBase;
-using Terminal.Gui.Editor;
 using Xunit;
 
 namespace Terminal.Gui.Editor.Tests;

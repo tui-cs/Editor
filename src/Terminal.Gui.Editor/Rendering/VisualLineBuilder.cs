@@ -170,63 +170,7 @@ public sealed class VisualLineBuilder
             context.StyledSegments[Math.Min (segmentIndex, context.StyledSegments.Count - 1)].Attribute
             ?? context.NormalAttribute;
 
-        if (!context.UseThemeBackground)
-        {
-            return new Attribute (segmentAttribute.Foreground, context.NormalAttribute.Background);
-        }
-
         return segmentAttribute;
-    }
-
-    /// <summary>
-    ///     Builds multiple <see cref="CellVisualLine" />s for a single document line by applying
-    ///     word-wrap segments. Each segment produces one visual line.
-    /// </summary>
-    public IReadOnlyList<CellVisualLine> BuildWrapped (
-        DocumentLine documentLine,
-        VisualLineBuildContext context,
-        int wrapColumn)
-    {
-        var text = context.Document.GetText (documentLine);
-        IReadOnlyList<WrapSegment> segments =
-            WordWrapStrategy.ComputeSegments (text, wrapColumn, context.IndentationSize);
-
-        if (segments.Count <= 1)
-        {
-            // No wrapping needed — fall through to normal build.
-            return [Build (documentLine, context)];
-        }
-
-        List<CellVisualLine> lines = new (segments.Count);
-
-        foreach (WrapSegment segment in segments)
-        {
-            CellVisualLine visualLine = new (documentLine);
-            var segmentText = text.Substring (segment.StartOffset, segment.Length);
-
-            if (IsAsciiOnly (segmentText))
-            {
-                BuildAsciiSegment (documentLine, context, segmentText, segment.StartOffset, visualLine);
-            }
-            else
-            {
-                BuildGraphemeSegment (documentLine, context, segmentText, segment.StartOffset, visualLine);
-            }
-
-            foreach (IVisualLineTransformer transformer in context.LineTransformers)
-            {
-                transformer.Transform (visualLine);
-            }
-
-            if (context.HasSelection)
-            {
-                ApplySelection (visualLine, context);
-            }
-
-            lines.Add (visualLine);
-        }
-
-        return lines;
     }
 
     private static void BuildAsciiSegment (

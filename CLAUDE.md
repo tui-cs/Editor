@@ -53,6 +53,19 @@ dotnet run --project tests/Terminal.Gui.Editor.Tests -- -method "*MyTestName*"
 
 CI verifies formatting with `dotnet format Terminal.Gui.Editor.slnx --verify-no-changes --exclude third_party/`. Run the same locally before pushing if you've touched C# files outside `third_party/`.
 
+### Verifying the *look* (ANSI snapshots) — MANDATORY for render changes
+
+If a change affects what `Editor` **renders** (selection, multi-caret, highlighting, tabs,
+newline glyphs, scrolling, layout) you do **not** need a human to eyeball it — and you must not
+ship it unverified. Use the ANSI snapshot harness: `AnsiSnapshot.Verify (fx.Driver, name)`
+captures the screen as pure ANSI (`IDriver.ToAnsi ()`), records a `__snapshots__/*.ans`
+golden, and on mismatch prints the render inline plus a `.ans.actual` you `cat` to see the
+exact look and self-verify. Mouse gestures go through `Inject`. **Before writing any
+render/integration test, read `tests/Terminal.Gui.Editor.IntegrationTests/Testing/README.md`** —
+it has the workflow, the copy-paste template, and the rules that bite (render-before-verify
+ordering, `*.ans` must stay `binary` in `.gitattributes`, keep viewports small,
+`UPDATE_SNAPSHOTS=1` to accept an intended change).
+
 ## Architecture
 
 Two NuGet packages with a strict dependency direction:
@@ -89,7 +102,7 @@ The fork is **hard** — re-syncs are manual and deliberate, triggered only by u
 Adopts Terminal.Gui's house style. Three enforcement layers:
 
 1. **`.editorconfig` + `dotnet format`** — formatting, var, expression-bodied, collection expressions, modern syntax preferences. CI runs `dotnet format --verify-no-changes`.
-2. **`Terminal.Gui.Editor.slnx.DotSettings` + `dotnet jb cleanupcode`** — ReSharper-driven cleanup ("TG.Editor Full Cleanup" profile). Catches what `dotnet format` misses (XML doc spacing, using sorting, name qualifier removal, expression-bodied conversions). CI runs `dotnet jb cleanupcode` and fails on any diff.
+2. **`Terminal.Gui.Editor.sln.DotSettings` + `dotnet jb cleanupcode`** — ReSharper-driven cleanup ("TG.Editor Full Cleanup" profile). Catches what `dotnet format` misses (XML doc spacing, using sorting, name qualifier removal, expression-bodied conversions). CI runs `dotnet jb cleanupcode` and fails on any diff. The file is named `*.sln.DotSettings` (not `*.slnx.DotSettings`) even though the solution is `.slnx`: ReSharper/Rider/`jb` resolve the team-shared layer using the `.sln.` infix (the IDE writes its companion `.sln.DotSettings.user`). The cleanup profile **must** be stored in the modern single-string serialized-`<Profile>` format — ReSharper/`jb` 2024+ silently ignore the old per-task `…/=Name/CSReformatCode/@EntryIndexedValue` key layout, which makes the profile vanish from the IDE and unresolvable by `jb` (and CI's `|| true` then makes the cleanup gate a silent no-op). Edit the profile only via Rider → Settings | Code Cleanup → "Save to: This Solution Team-Shared".
 3. **A Stop hook in `.claude/settings.json`** that runs both tools on .cs files modified during the session before the agent reports done. Output is suppressed unless the cleanup actually changed something.
 
 **Before declaring work complete, an agent must run `dotnet tool restore && dotnet format Terminal.Gui.Editor.slnx --exclude third_party/ && dotnet jb cleanupcode Terminal.Gui.Editor.slnx --profile="TG.Editor Full Cleanup"` (the Stop hook does this automatically). If the cleanup adjusts files, those changes are part of the work — re-stage and continue.**
@@ -131,6 +144,29 @@ public int IndentationSize
 
 Do **not** introduce a separate `private int _indentationSize;` field. The initializer trails the close-brace as shown.
 
+**When an explicit backing field is unavoidable, declare it immediately above the property it backs — never in a field block at the top of the type.** The `field` keyword is the default and removes the question entirely; but some properties still need a real field (a lifted/forked file that preserves upstream style and does not use `field`; a field shared by several members; a field touched by `ref`/`out` or interlocked ops). In those cases the field/property pair stays visually together:
+
+```csharp
+private VisualRole? _role;
+
+/// <summary>...</summary>
+public VisualRole? Role
+{
+    get => _role;
+    set
+    {
+        if (IsFrozen)
+        {
+            throw new InvalidOperationException ();
+        }
+
+        _role = value;
+    }
+}
+```
+
+Fork-policy exception: do **not** reflow a lifted file's *existing* upstream field block to satisfy this — that churns the merge story (see the AvaloniaEdit fork policy). The rule binds *new* fields you add, even inside lifted files.
+
 > **ReSharper bug warning.** ReSharper / Rider's "Convert to auto-property" and "Use auto-property" inspections are unreliable around `field` and may rewrite intentional `field`-backed properties into broken auto-properties. The team-shared `.DotSettings` disables these inspections (`ConvertToAutoProperty`, `ConvertToAutoPropertyWhenPossible`, `ConvertToAutoPropertyWithPrivateSetter` set to `DO_NOT_SHOW`; `CSUseAutoProperty` cleanup step disabled). If you see the suggestion in your IDE, ignore it and check that your local Rider is using the team-shared settings. **`field` is not optional in this codebase.**
 
 For trivial getters with no setter logic, plain auto-properties are fine: `public TextDocument? Document { get; private set; }`.
@@ -163,6 +199,7 @@ private void ExtendCaretBy (int delta)
 - **No file longer than 1000 lines.** When a file approaches that, split — by partial class (`Editor.Drawing.cs`, `Editor.Mouse.cs`), by helper extraction, or by genuinely splitting the type. The cleanup hook does not enforce this; the reviewer does.
 - **C# 14 `extension` blocks**: prefer extension blocks over a static class full of `this`-prefixed extension methods when the extensions form a coherent group on a single receiver type.
 - **Namespace per folder.** `src/Terminal.Gui.Editor/Document/` ⇒ `Terminal.Gui.Document`; `src/Terminal.Gui.Editor/Rendering/` ⇒ `Terminal.Gui.Views.Rendering`. Don't put unrelated types in the same namespace just because they share a folder.
+- **No static members on `View`-derived types.** A class that derives from `Terminal.Gui.View` (e.g. `Editor`) must not declare `static` members — not fields, not properties, not events, not even "harmless" caches or lookup tables. Terminal.Gui's `Application` lifetime is per-instance (see "Testing tiers"); static state on a View is process-global, survives across `IApplication` instances, and silently couples otherwise-independent windows and parallel tests (the canonical cause of parallel-test hangs). Shared/lookup data lives in a dedicated non-View type (e.g. `XshdRoleMap`), exposed read-only (`private` + `FrozenDictionary`/`IReadOnlyXxx`), and is injected or queried — never hung off the View. `const` is the only exception (it is not state). This is a hard rule; a reviewer blocks on it.
 
 ### Testing convention
 
@@ -170,15 +207,16 @@ private void ExtendCaretBy (int delta)
 
 ## Testing tiers
 
-Four test projects, mirroring Terminal.Gui's convention. **The correctness projects all run fully in parallel** — Terminal.Gui's `Application` lifetime is per-instance (`Application.Create()` returns an `IApplication` whose `Init`/`Begin`/`End`/`Dispose` track via `ThreadLocal<>`, not process globals). Tests must never call the static `Application.Init()` shortcut, and must never enable `ConfigurationManager` (`CM.Enable(...)`) — both reach for process-global state and would force serialization.
+Five test projects, mirroring Terminal.Gui's convention. **The parallel correctness projects run fully in parallel** — Terminal.Gui's `Application` lifetime is per-instance (`Application.Create()` returns an `IApplication` whose `Init`/`Begin`/`End`/`Dispose` track via `ThreadLocal<>`, not process globals). Tests in those projects must never call the static `Application.Init()` shortcut, and must never enable `ConfigurationManager` (`CM.Enable(...)`) — both reach for process-global state and would force serialization. Anything that must enable `ConfigurationManager` goes in `ConfigTests` (below), never the parallel projects.
 
 - `Terminal.Gui.Editor.Tests` — pure, no UI, no static state. Target ≥90% coverage. Runs in `ci.yml`.
 - `Terminal.Gui.Editor.IntegrationTests` — full key-input → render scenarios via `AppFixture<T>`, which boots a per-test `IApplication` from `Application.Create()`. Parallel by default. Runs in `ci.yml`.
+- `Terminal.Gui.Editor.ConfigTests` — **ConfigurationManager only.** CM is process-global with one-time `[ConfigurationProperty]` discovery, so it cannot share a process with parallel tests (a `DisableParallelization` collection fixes concurrency but not cross-collection discovery order). This project's `xunit.runner.json` disables assembly **and** collection parallelization — the same quarantine Terminal.Gui uses for its own CM suite. Put any test that calls `ConfigurationManager.Enable/Load/Apply` (e.g. verifying ted's `AppSettingsScope` settings round-trip) here, and nothing else. Runs in `ci.yml`.
 - `Terminal.Gui.Editor.PerformanceTests` — stopwatch-based perf smoke tests. **Release only, ubuntu-latest only.** Lives in its own project and its own workflow (`.github/workflows/perf.yml`) because Windows/macOS GitHub-hosted runners are too noisy for wall-time assertions. The BenchmarkDotNet suite in `benchmarks/` runs from the same workflow.
 
 New tests default to the parallel-by-name project. Promote to `IntegrationTests` only when an `IApplication` (driver, input injection, full layout/draw) is genuinely needed. Promote to `PerformanceTests` only when you need a wall-time assertion — and remember it won't run on Windows/macOS CI, so don't put correctness checks there.
 
-**The one allowed exception:** a test that legitimately mutates a process-global (e.g. `Logging.Logger`, `Trace.EnabledCategories`, anything `static`) must opt out of cross-collection parallelism via a `[CollectionDefinition(name, DisableParallelization = true)]` + `[Collection(name)]` pair. See `tests/Terminal.Gui.Editor.IntegrationTests/HostingTests.cs` for the canonical example. Do **not** add an assembly-wide `xunit.runner.json` to make the whole project serial — that's the wrong tool for one offending class.
+**The one allowed exception:** a test that legitimately mutates a process-global (e.g. `Logging.Logger`, `Trace.EnabledCategories`, anything `static`) must opt out of cross-collection parallelism via a `[CollectionDefinition(name, DisableParallelization = true)]` + `[Collection(name)]` pair. See `tests/Terminal.Gui.Editor.IntegrationTests/HostingTests.cs` for the canonical example. Do **not** add an assembly-wide `xunit.runner.json` to make a *shared* correctness project serial — that's the wrong tool for one offending class. (The sole exception is the purpose-built `ConfigTests` project, which is CM-only and serial *by design* — that is not "serializing a shared project", it is the quarantine.)
 
 ### Performance gates
 
@@ -209,7 +247,7 @@ Don't accidentally do these — they were considered and rejected:
 - Source/API compatibility with `Terminal.Gui.TextView`. `Editor` ships beside it, not as a replacement.
 - RTL bidi or rich text shaping beyond grapheme width.
 - Pixel/proportional font fidelity.
-- Porting AvaloniaEdit's `Editing/`, `Rendering/`, or `CodeCompletion/` namespaces — those are Avalonia-UI-specific and replaced by TG-native equivalents (`Editor` partials, cell-grid `Rendering/`, `PopoverMenu` for completion).
+- Porting AvaloniaEdit's `Editing/`, `Rendering/`, or `CodeCompletion/` namespaces — those are Avalonia-UI-specific and replaced by TG-native equivalents (`Editor` partials, cell-grid `Rendering/`, `Popover<ListView>` for completion).
 
 ## Open decisions
 

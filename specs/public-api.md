@@ -1,6 +1,6 @@
 # Editor Public API Target
 
-**Updated**: 2026-05-10
+**Updated**: 2026-05-17
 
 The MLP shape, AvaloniaEdit-aligned. This is the target surface for the alpha release. Where current properties differ, the notes column says what to rename/add. New properties added to `Editor` require updating this document before merge (rule R8).
 
@@ -12,6 +12,15 @@ public class Editor : View
     // --- Document ---
     public TextDocument Document { get; set; }                    // exists
     public event EventHandler<DocumentChangeEventArgs>? DocumentChanged; // exists
+    public Task LoadAsync (
+        Stream stream,
+        Encoding? encoding = null,
+        IProgress<TextDocumentProgress>? progress = null,
+        CancellationToken cancellationToken = default);           // file-io
+    public Task SaveAsync (
+        Stream stream,
+        IProgress<TextDocumentProgress>? progress = null,
+        CancellationToken cancellationToken = default);           // file-io
 
     // --- Caret ---
     public int CaretOffset { get; set; }                          // exists; backed by TextAnchor (caret-anchors ✅)
@@ -26,11 +35,18 @@ public class Editor : View
     public bool HasMultipleCarets { get; }                        // multi-caret
     public void ToggleCaretAt (int offset);                       // multi-caret (Ctrl+Click toggle)
     public void ClearAdditionalCarets ();                         // multi-caret (Esc collapse)
+    // vertical-multi-caret adds NO new public API: Ctrl+Alt+CursorUp / Ctrl+Alt+CursorDown
+    //   create a vertically-aligned column of carets at the sticky visual column; Alt + LeftButton
+    //   drag and Ctrl+Shift+Alt+Arrow/Page create column selections. All reuse the existing
+    //   AdditionalCaretOffsets / HasMultipleCarets / ClearAdditionalCarets surface.
 
     // --- Display ---
     public bool ShowLineNumbers { get; set; }                     // exists
     public bool WordWrap { get; set; }                            // word-wrap-toggle (needs word-wrap)
     public bool ReadOnly { get; set; }                            // exists (read-only ✅)
+    public bool Multiline { get; set; } = true;                   // single-line-mode (single-line ✅)
+    public bool OverwriteMode { get; set; }                       // exists (overwrite-mode ✅)
+    public event EventHandler? OverwriteModeChanged;              // exists (overwrite-mode ✅)
 
     // --- Indentation (tab-handling ✅ + auto-indent) ---
     public int IndentationSize { get; set; } = 4;                 // exists (codex merge)
@@ -52,8 +68,12 @@ public class Editor : View
     // --- Search ---
     public ISearchStrategy? SearchStrategy { get; set; }          // find-and-replace (needs search + rendering-pipeline ✅)
 
-    // --- Completion (post-MLP) ---
-    public IEditorCompletionProvider? CompletionProvider { get; set; } // post-MLP
+    // --- Completion ---
+    public IEditorCompletionProvider? CompletionProvider { get; set; } // completion ✅
+    public bool IsCompletionActive { get; }                           // completion ✅
+
+    // --- Design-time support ---
+    public bool EnableForDesign ();                               // IDesignable (design-time ✅)
 }
 ```
 
@@ -98,6 +118,53 @@ public interface IOverlayRenderer
 }
 ```
 
+## Completion Types (completion — landed)
+
+```csharp
+namespace Terminal.Gui.Editor.Completion;
+
+public sealed class CompletionItem
+{
+    public required string Label { get; init; }
+    public string? InsertText { get; init; }
+}
+
+public interface IEditorCompletionProvider
+{
+    IReadOnlyList<CompletionItem> GetCompletions (TextDocument document, int caretOffset, string prefix);
+    bool ShouldTrigger (Key key);
+}
+```
+
+## Document File I/O (file-io)
+
+```csharp
+namespace Terminal.Gui.Document;
+
+public sealed class TextDocument
+{
+    public Encoding Encoding { get; set; }
+    public static Task<TextDocument> LoadAsync (
+        Stream stream,
+        Encoding? encoding = null,
+        IProgress<TextDocumentProgress>? progress = null,
+        CancellationToken cancellationToken = default);
+    public Task SaveAsync (
+        Stream stream,
+        IProgress<TextDocumentProgress>? progress = null,
+        CancellationToken cancellationToken = default);
+}
+
+public readonly record struct TextDocumentProgress (
+    long CharactersProcessed,
+    long? TotalCharacters = null,
+    long? BytesProcessed = null,
+    long? TotalBytes = null)
+{
+    public double? Fraction { get; }
+}
+```
+
 ## Change Log
 
 | Date | Change | Feature |
@@ -108,3 +175,9 @@ public interface IOverlayRenderer
 | 2026-05-11 | Caret and selection storage migrated to TextAnchor-backed tracking | caret-anchors |
 | 2026-05-11 | ReadOnly property landed on Editor | read-only |
 | 2026-05-12 | `ISearchStrategy?` `SearchStrategy { get; set; }` landed on Editor; string-based FindNext/FindPrevious/ReplaceNext/ReplaceAll overloads retained as convenience wrappers | find-and-replace |
+| 2026-05-16 | Vertical multi-caret keybindings (`Ctrl+Alt+CursorUp/Down`, `Alt+Drag`) added via `Editor.DefaultKeyBindings`; no new public Editor API (R8) | vertical-multi-caret |
+| 2026-05-17 | `Multiline` property added (default `true`); single-line mode suppresses newlines, constrains vertical nav/scroll, forces WordWrap off, disables multi-caret | single-line-mode |
+| 2026-05-17 | Column selection during `Alt+Drag` and `Ctrl+Shift+Alt+Arrow/Page` added without new public Editor API | vertical-multi-caret |
+| 2026-05-17 | `IEditorCompletionProvider?` `CompletionProvider` + `bool IsCompletionActive` landed; `CompletionItem` sealed class; `Popover<ListView>`-based popup; DEC-009 resolves OPEN-002 | completion |
+| 2026-05-17 | Streaming `TextDocument.LoadAsync` / `TextDocument.SaveAsync`, `TextDocumentProgress`, `TextDocument.Encoding`, and delegating `Editor.LoadAsync` / `Editor.SaveAsync` landed | file-io |
+| 2026-05-17 | `Editor` implements `IDesignable`; `EnableForDesign()` seeds C# sample code with syntax highlighting and line numbers | design-time |

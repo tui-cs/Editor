@@ -1,12 +1,13 @@
+using System.Drawing;
 using Terminal.Gui.Drawing;
+using Terminal.Gui.Drivers;
 using Terminal.Gui.Editor.IntegrationTests.Testing;
 using Terminal.Gui.Editor.Rendering;
 using Terminal.Gui.Input;
 using Terminal.Gui.Testing;
-using Terminal.Gui.Editor;
-using Terminal.Gui.ViewBase;
 using Xunit;
 using Attribute = Terminal.Gui.Drawing.Attribute;
+using Color = Terminal.Gui.Drawing.Color;
 
 namespace Terminal.Gui.Editor.IntegrationTests;
 
@@ -53,7 +54,7 @@ public class EditorWordWrapTests
         fx.Render ();
 
         // The cursor should be positioned on the second row.
-        var cursor = fx.Top.Editor.Cursor;
+        Cursor cursor = fx.Top.Editor.Cursor;
         Assert.NotNull (cursor);
     }
 
@@ -175,7 +176,7 @@ public class EditorWordWrapTests
         fx.Render ();
 
         // Add a transformer that paints everything red — simulates syntax highlighting.
-        Attribute redAttr = new (new Color (255, 0, 0), new Color (0, 0, 0));
+        Attribute redAttr = new (new Color (255, 0), new Color (0, 0));
         fx.Top.Editor.LineTransformers.Add (new OverwriteTransformer (redAttr));
 
         fx.Top.Editor.WordWrap = true;
@@ -213,7 +214,7 @@ public class EditorWordWrapTests
         fx.Render ();
 
         // Click on visual row 1 (the wrapped portion), col 2 — should land on "r" in "world".
-        InjectClick (fx, new (2, 1));
+        InjectClick (fx, new Point (2, 1));
 
         // "hello " is 6 chars, so offset of "r" = 6 + 2 = 8.
         Assert.Equal (8, fx.Top.Editor.CaretOffset);
@@ -232,7 +233,7 @@ public class EditorWordWrapTests
 
         // Click past the end of the "world" segment but within the viewport (col 5 on row 1).
         // "world" is 5 chars, so col 5 is one past the last character.
-        InjectClick (fx, new (5, 1));
+        InjectClick (fx, new Point (5, 1));
 
         // Should snap to end of "world" = offset 11.
         Assert.Equal (11, fx.Top.Editor.CaretOffset);
@@ -250,7 +251,7 @@ public class EditorWordWrapTests
         fx.Render ();
 
         // Click on visual row 0, col 3 — should land within "hello ".
-        InjectClick (fx, new (3, 0));
+        InjectClick (fx, new Point (3, 0));
 
         Assert.Equal (3, fx.Top.Editor.CaretOffset);
     }
@@ -277,7 +278,7 @@ public class EditorWordWrapTests
         fx.Render ();
 
         // Click gutter at row 1 (the wrap-continuation of line 1). Gutter occupies cols 0–1.
-        InjectClick (fx, new (0, 1));
+        InjectClick (fx, new Point (0, 1));
 
         Assert.True (fx.Top.Editor.HasSelection);
 
@@ -310,14 +311,14 @@ public class EditorWordWrapTests
 
         // Press on gutter row 0 (line 1).
         fx.Injector.InjectMouse (
-            new () { ScreenPosition = new (0, 0), Flags = MouseFlags.LeftButtonPressed, Timestamp = BaseTime },
+            new Mouse { ScreenPosition = new Point (0, 0), Flags = MouseFlags.LeftButtonPressed, Timestamp = BaseTime },
             Direct);
 
         // Drag to gutter row 2 (line 2 "bye").
         fx.Injector.InjectMouse (
-            new ()
+            new Mouse
             {
-                ScreenPosition = new (0, 2),
+                ScreenPosition = new Point (0, 2),
                 Flags = MouseFlags.LeftButtonPressed | MouseFlags.PositionReport,
                 Timestamp = BaseTime.AddMilliseconds (50)
             },
@@ -364,10 +365,10 @@ public class EditorWordWrapTests
 
     private static readonly DateTime BaseTime = new (2025, 1, 1, 12, 0, 0);
 
-    private static void InjectClick (AppFixture<EditorTestHost> fx, System.Drawing.Point pos)
+    private static void InjectClick (AppFixture<EditorTestHost> fx, Point pos)
     {
         fx.Injector.InjectMouse (
-            new () { ScreenPosition = pos, Flags = MouseFlags.LeftButtonPressed, Timestamp = BaseTime },
+            new Mouse { ScreenPosition = pos, Flags = MouseFlags.LeftButtonPressed, Timestamp = BaseTime },
             Direct);
     }
 

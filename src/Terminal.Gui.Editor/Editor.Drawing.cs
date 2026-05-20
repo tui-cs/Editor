@@ -3,11 +3,10 @@ using Terminal.Gui.Document;
 using Terminal.Gui.Document.Folding;
 using Terminal.Gui.Drawing;
 using Terminal.Gui.Drivers;
+using Terminal.Gui.Editor.Rendering;
 using Terminal.Gui.Highlighting;
 using Terminal.Gui.ViewBase;
-using Terminal.Gui.Editor.Rendering;
 using Attribute = Terminal.Gui.Drawing.Attribute;
-using Color = Terminal.Gui.Drawing.Color;
 
 namespace Terminal.Gui.Editor;
 
@@ -31,42 +30,21 @@ public partial class Editor
         // Ensure the colorizer sees the current attribute (scheme may have changed since install).
         EnsureColorizerAttribute (normal);
 
-        FillViewportBackground (viewport, normal);
         DrawVisibleLines (viewport, normal, selected);
+
+        if (_maxWidthGrewDuringDraw)
+        {
+            // A rendered line was wider than the estimate; resize content (cheap — not _maxWidthDirty)
+            // so the horizontal scrollbar reflects what's now on screen. Monotonic: once the widest
+            // visible line is measured this stops firing, so no draw/layout loop.
+            _maxWidthGrewDuringDraw = false;
+            UpdateContentSize ();
+        }
+
         SetAttribute (normal);
         UpdateCursor ();
 
         return true;
-    }
-
-    /// <summary>
-    ///     When <see cref="UseThemeBackground" /> is <see langword="true" /> and a highlighting
-    ///     definition has a default background color, fills the viewport with that background
-    ///     so empty cells match per-token backgrounds.
-    /// </summary>
-    private void FillViewportBackground (Rectangle viewport, Attribute normal)
-    {
-        if (!UseThemeBackground)
-        {
-            return;
-        }
-
-        Color? themeBg = _highlighter?.DefaultTextColor?.Background?.Color;
-
-        if (themeBg is not { } bg)
-        {
-            return;
-        }
-
-        Attribute fillAttr = new (normal.Foreground, bg);
-        SetAttribute (fillAttr);
-
-        var spaces = new string (' ', viewport.Width);
-
-        for (var row = 0; row < viewport.Height; row++)
-        {
-            AddStr (0, row, spaces);
-        }
     }
 
     private void DrawVisibleLines (Rectangle viewport, Attribute normal, Attribute selected)
@@ -76,6 +54,13 @@ public partial class Editor
         var selEnd = hasSelection ? SelectionEnd : 0;
         var visibleStart = viewport.X;
         var visibleEnd = viewport.X + viewport.Width;
+
+        if (!Multiline)
+        {
+            DrawSingleLineFlat (viewport, normal, selected, selStart, selEnd, visibleStart, visibleEnd);
+
+            return;
+        }
 
         if (WordWrap)
         {
@@ -152,6 +137,111 @@ public partial class Editor
         }
     }
 
+    /// <summary>
+    ///     Draws all document content on a single visual row with newline characters rendered as
+    ///     visible glyphs. Used when <see cref="Multiline" /> is <see langword="false" />.
+    /// </summary>
+    private void DrawSingleLineFlat (
+        Rectangle viewport,
+        Attribute normal,
+        Attribute selected,
+        int selStart,
+        int selEnd,
+        int visibleStart,
+        int visibleEnd)
+    {
+        // Build a composite visual line from visible document lines (respecting folds),
+        // inserting newline glyph elements between them. Uses the first visible line as the owner.
+        List<int> visibleLines = GetVisibleLineNumbers ();
+
+        if (visibleLines.Count == 0)
+        {
+            return;
+        }
+
+        DocumentLine firstLine = _document!.GetLineByNumber (visibleLines[0]);
+        CellVisualLine composite = new (firstLine);
+        var flatColumn = 0;
+
+        for (var idx = 0; idx < visibleLines.Count; idx++)
+        {
+            var lineNum = visibleLines[idx];
+            DocumentLine line = _document.GetLineByNumber (lineNum);
+            CellVisualLine lineVisual = GetOrBuildDrawVisualLine (line, null, normal, selected, selStart, selEnd);
+
+            foreach (CellVisualLineElement element in lineVisual.Elements)
+            {
+                CellVisualLineElement shifted = ShiftElement (element, flatColumn);
+                composite.AddElement (shifted);
+            }
+
+            flatColumn += lineVisual.VisualLength;
+
+            if (idx < visibleLines.Count - 1)
+            {
+                // The newline delimiter occupies document offsets at the end of the line.
+                var nlOffset = line.Offset + line.Length;
+                var nlLength = line.DelimiterLength;
+
+                // Determine the newline glyph attribute: use selection attribute if within selection.
+                Attribute nlAttr = selStart < selEnd && nlOffset < selEnd && nlOffset + nlLength > selStart
+                    ? selected
+                    : normal;
+
+                composite.AddElement (new NewlineGlyphElement (nlOffset, nlLength, flatColumn, nlAttr));
+                flatColumn += 1;
+            }
+        }
+
+        foreach (IBackgroundRenderer renderer in BackgroundRenderers)
+        {
+            renderer.Draw (this, composite, 0, viewport);
+        }
+
+        foreach (CellVisualLineElement element in composite.Elements)
+        {
+            if (element.VisualColumn >= visibleEnd)
+            {
+                break;
+            }
+
+            if (element.VisualEndColumn <= visibleStart)
+            {
+                continue;
+            }
+
+            element.Draw (this, 0, 0, visibleStart, visibleEnd);
+        }
+
+        foreach (IOverlayRenderer renderer in OverlayRenderers)
+        {
+            renderer.Draw (this, composite, 0, viewport);
+        }
+    }
+
+    /// <summary>
+    ///     Creates a copy of an element shifted by a flat column offset. Used to compose
+    ///     elements from multiple document lines onto a single visual row.
+    /// </summary>
+    private static CellVisualLineElement ShiftElement (CellVisualLineElement element, int columnOffset)
+    {
+        if (columnOffset == 0)
+        {
+            return element;
+        }
+
+        return element switch
+        {
+            TabElement tab => new TabElement (
+                tab.DocumentOffset, tab.VisualColumn + columnOffset, tab.VisualLength, tab.ShowTabs, tab.Attribute),
+            FoldingMarkerElement fold => new FoldingMarkerElement (
+                fold.DocumentOffset, fold.DocumentLength, fold.VisualColumn + columnOffset, fold.Attribute, fold.Title),
+            TextRunElement text => new TextRunElement (
+                text.DocumentOffset, text.DocumentLength, text.VisualColumn + columnOffset, text.Text, text.Attribute),
+            _ => element // Unknown element type — leave as-is (shouldn't happen).
+        };
+    }
+
     private CellVisualLine BuildWrappedSegmentVisualLine (
         DocumentLine documentLine,
         int segmentStartOffset,
@@ -218,6 +308,8 @@ public partial class Editor
                 }
             }
         }
+
+        ApplyAdditionalCaretSelections (visualLine, selected);
 
         return visualLine;
     }
@@ -306,7 +398,7 @@ public partial class Editor
             return;
         }
 
-        HighlightingColorizer replacement = _highlightingColorizer.WithDefaultAttribute (normal, UseThemeBackground);
+        HighlightingColorizer replacement = _highlightingColorizer.WithDefaultAttribute (normal);
 
         if (ReferenceEquals (replacement, _highlightingColorizer))
         {
@@ -342,6 +434,16 @@ public partial class Editor
         // i.e. plain-text scrolling without a highlighter. The caret-path cache is separate so the
         // two don't thrash each other's entries (they use different attribute sets).
         CellVisualLine visualLine = GetOrBuildDrawVisualLine (line, segments, normal, selected, selStart, selEnd);
+
+        // A line we actually render gives us its exact width for free. If the running max was an
+        // estimate (large document) and this visible line is wider, grow the extent — reconciled
+        // once after the draw in OnDrawingContent so the horizontal scrollbar tracks visible content.
+        if (!WordWrap && visualLine.VisualLength > _maxVisualWidth)
+        {
+            _maxVisualWidth = visualLine.VisualLength;
+            _maxWidthLineNumber = line.LineNumber;
+            _maxWidthGrewDuringDraw = true;
+        }
 
         foreach (IBackgroundRenderer renderer in BackgroundRenderers)
         {
@@ -394,6 +496,44 @@ public partial class Editor
         }
 
         Point screen = ViewportToScreen (new Point (col, row));
-        Cursor = new Cursor { Position = screen, Style = CursorStyle.BlinkingBar };
+        CursorStyle style;
+
+        if (OverwriteMode)
+        {
+            style = CursorStyle.SteadyBlock;
+        }
+        else if (Cursor.Style == CursorStyle.Hidden)
+        {
+            style = CursorStyle.Default;
+        }
+        else
+        {
+            style = Cursor.Style;
+        }
+
+        Cursor = Cursor with
+        {
+            Position = screen,
+            Style = style
+        };
+    }
+
+    private void ApplyAdditionalCaretSelections (CellVisualLine visualLine, Attribute selected)
+    {
+        if (!HasAdditionalCaretSelections ())
+        {
+            return;
+        }
+
+        foreach ((int start, int end) selection in AdditionalCaretSelectionRanges ())
+        {
+            foreach (CellVisualLineElement element in visualLine.Elements)
+            {
+                if (element.DocumentOffset < selection.end && element.DocumentEndOffset > selection.start)
+                {
+                    element.Attribute = selected;
+                }
+            }
+        }
     }
 }

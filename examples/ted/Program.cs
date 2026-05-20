@@ -1,14 +1,17 @@
-// Claude - claude-opus-4-7
-// ted — Terminal.Gui.Editor demo. Menubar + Editor + StatusBar, single-file.
-// See Issue #7 and specs/00-plan.md §12 for the planned demo surface.
+// ted — Terminal.Gui.Editor demo.
 
 using Ted;
 using Terminal.Gui.App;
 using Terminal.Gui.Configuration;
 
+// ReSharper disable AccessToDisposedClosure
+
 Hosting.ConfigureLogging ();
 Hosting.EnableTracing ();
 
+// ConfigurationManager is the single authority for reading settings: Enable (All) loads
+// ~/.tui/ted.config.json (ConfigLocations.AppHome) and applies the values to the
+// EditorSettings [ConfigurationProperty] statics before TedApp is constructed.
 ConfigurationManager.Enable (ConfigLocations.All);
 
 using IApplication app = Application.Create ();
@@ -20,41 +23,32 @@ var requestedPath = args.FirstOrDefault (static arg => arg is not ("--read-only"
 
 using TedApp ted = new (readOnly);
 
-if (!string.IsNullOrWhiteSpace (requestedPath) && File.Exists (requestedPath))
+if (!string.IsNullOrWhiteSpace (requestedPath))
 {
-    ted.SetDocument (File.ReadAllText (requestedPath), requestedPath);
-}
-else
-{
-    // If running from within the repo, open TedApp.cs as the default file.
-    var repoRoot = FindRepoRoot (AppContext.BaseDirectory);
+    // Files at or below this size load fully before the first paint so the editor opens with content
+    // already on screen. Above it, the progressive path wins (window appears immediately, content
+    // fills in top-down) and the brief empty-buffer frame is the acceptable cost of not blocking
+    // startup on a multi-megabyte read. 1 MiB matches ted's existing "large document" boundary.
+    const long synchronousLoadMaxBytes = 1024 * 1024;
 
-    if (repoRoot is not null)
+    FileInfo file = new (requestedPath);
+
+    if (!file.Exists)
     {
-        var tedAppPath = Path.Combine (repoRoot, "examples", "ted", "TedApp.cs");
-
-        if (File.Exists (tedAppPath))
-        {
-            ted.SetDocument (File.ReadAllText (tedAppPath), tedAppPath);
-        }
+        app.Invoke (() => ted.OpenMissingFile (requestedPath));
+    }
+    else if (file.Length <= synchronousLoadMaxBytes)
+    {
+        // Synchronous (non-marshalled) load completes before app.Run, so the very first paint
+        // shows the document — no blank-buffer-then-fill flash for the common small-file case.
+        ted.OpenFileAsync (requestedPath).GetAwaiter ().GetResult ();
+    }
+    else
+    {
+        // Large file: defer onto the app loop so the window renders first, then the file streams
+        // in progressively instead of blocking the UI until the whole file is read.
+        app.Invoke (() => ted.BeginOpenFile (requestedPath));
     }
 }
 
 app.Run (ted);
-
-return;
-
-static string? FindRepoRoot (string? directory)
-{
-    while (directory is not null)
-    {
-        if (File.Exists (Path.Combine (directory, "Terminal.Gui.Editor.slnx")))
-        {
-            return directory;
-        }
-
-        directory = Path.GetDirectoryName (directory);
-    }
-
-    return null;
-}

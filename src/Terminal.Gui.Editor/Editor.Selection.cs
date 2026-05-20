@@ -1,4 +1,5 @@
 using Terminal.Gui.Document;
+using Terminal.Gui.Input;
 
 namespace Terminal.Gui.Editor;
 
@@ -101,7 +102,7 @@ public partial class Editor
     /// </summary>
     private void ExtendCaretBy (int delta)
     {
-        ExtendCaretTo (CaretOffset + delta);
+        ExtendCaretTo (SnapOffsetPastDelimiter (CaretOffset + delta, delta));
     }
 
     private void ExtendCaretVertically (int delta)
@@ -168,12 +169,41 @@ public partial class Editor
         {
             var target = delta < 0 ? SelectionStart : SelectionEnd;
             ClearSelection ();
-            CaretOffset = target;
+            CaretOffset = SnapOffsetPastDelimiter (target, delta);
 
             return;
         }
 
-        CaretOffset = CaretOffset + delta;
+        CaretOffset = SnapOffsetPastDelimiter (CaretOffset + delta, delta);
+    }
+
+    /// <summary>
+    ///     In single-line flat mode, prevents the caret from landing inside a multi-char delimiter
+    ///     (e.g. CRLF). If <paramref name="offset" /> is inside a delimiter, snaps forward (to the
+    ///     next line start) when <paramref name="direction" /> is zero or positive, or backward (to
+    ///     the end of line text) when <paramref name="direction" /> is negative.
+    /// </summary>
+    private int SnapOffsetPastDelimiter (int offset, int direction)
+    {
+        if (Multiline || _document is null)
+        {
+            return offset;
+        }
+
+        offset = Math.Clamp (offset, 0, _document.TextLength);
+        DocumentLine line = _document.GetLineByOffset (offset);
+        var offsetInLine = offset - line.Offset;
+
+        // The delimiter spans offsets [line.Length .. line.TotalLength-1]. If the caret is strictly
+        // inside (past the first byte but before the next line), snap to an edge.
+        if (offsetInLine > line.Length && offsetInLine < line.TotalLength)
+        {
+            return direction >= 0
+                ? line.Offset + line.TotalLength
+                : line.Offset + line.Length;
+        }
+
+        return offset;
     }
 
     /// <summary>
@@ -278,12 +308,7 @@ public partial class Editor
                 return 1;
             }
 
-            if (visibleIndex >= map.Count)
-            {
-                return map[^1].LineNumber;
-            }
-
-            return map[visibleIndex].LineNumber;
+            return visibleIndex >= map.Count ? map[^1].LineNumber : map[visibleIndex].LineNumber;
         }
 
         List<int> visibleLines = GetVisibleLineNumbers ();
@@ -294,12 +319,7 @@ public partial class Editor
             return 1;
         }
 
-        if (idx >= visibleLines.Count)
-        {
-            return visibleLines[^1];
-        }
-
-        return visibleLines[idx];
+        return idx >= visibleLines.Count ? visibleLines[^1] : visibleLines[idx];
     }
 
     /// <summary>
@@ -338,6 +358,84 @@ public partial class Editor
         }
 
         return WordWrap ? GetWrapMap ().Count : GetVisibleLineNumbers ().Count;
+    }
+
+    /// <summary>
+    ///     Moves the caret to the previous word start (backward) or the next word start (forward),
+    ///     collapsing any existing selection. Used by <see cref="Command.WordLeft" /> and
+    ///     <see cref="Command.WordRight" />.
+    /// </summary>
+    private void MoveCaretToWordBoundary (bool forward)
+    {
+        if (_document is null)
+        {
+            return;
+        }
+
+        if (HasSelection)
+        {
+            var collapseTarget = forward ? SelectionEnd : SelectionStart;
+            ClearSelection ();
+            CaretOffset = collapseTarget;
+        }
+
+        CaretOffset = GetWordBoundaryOffset (CaretOffset, forward);
+    }
+
+    /// <summary>
+    ///     Deletes text between the nearest word boundary and the caret. On <c>forward = true</c>
+    ///     removes from the caret to the next word start; on <c>false</c> removes from the previous
+    ///     word start to the caret. Respects <see cref="ReadOnly" /> and replaces any active
+    ///     selection first (matching <see cref="DeleteLeft" /> / <see cref="DeleteRight" /> behavior).
+    /// </summary>
+    private void KillToWordBoundary (bool forward)
+    {
+        if (ReadOnly || _document is null)
+        {
+            return;
+        }
+
+        if (HasSelection)
+        {
+            ReplaceSelection (string.Empty);
+
+            return;
+        }
+
+        var boundary = GetWordBoundaryOffset (CaretOffset, forward);
+        var start = Math.Min (CaretOffset, boundary);
+        var length = Math.Abs (boundary - CaretOffset);
+
+        if (length == 0)
+        {
+            return;
+        }
+
+        using (_document.RunUpdate ())
+        {
+            _document.Remove (start, length);
+        }
+    }
+
+    /// <summary>
+    ///     Returns the offset of the nearest word boundary from <paramref name="offset" /> in the
+    ///     given direction. Uses <see cref="CaretPositioningMode.WordStartOrSymbol" /> which matches
+    ///     the Ctrl+Left / Ctrl+Right semantics in AvaloniaEdit and Terminal.Gui's own TextView:
+    ///     stops at word starts <em>and</em> between adjacent punctuation/symbol runs, giving
+    ///     intuitive jumps across operators and brackets.
+    /// </summary>
+    private int GetWordBoundaryOffset (int offset, bool forward)
+    {
+        LogicalDirection direction = forward ? LogicalDirection.Forward : LogicalDirection.Backward;
+        var next = TextUtilities.GetNextCaretPosition (_document!, offset, direction,
+            CaretPositioningMode.WordStartOrSymbol);
+
+        if (next < 0)
+        {
+            return forward ? _document!.TextLength : 0;
+        }
+
+        return next;
     }
 
     private bool IsIdentifierWordCharAt (int offset)

@@ -1,8 +1,8 @@
 # Feature Specification: Multi-Caret Editing
 
-**Status**: Ready — tracked in issue #103
+**Status**: Done — shipped in PR #105 + selection fix PR #121 (merged into `develop` 2026-05-14); issue #103 closed. Vertical extension shipped separately — see [vertical-multi-caret](../vertical-multi-caret/spec.md).
 **Created**: 2026-05-10
-**Last updated**: 2026-05-13
+**Last updated**: 2026-05-17
 **Depends on**: caret-anchors ✅
 **Blocked by**: —
 
@@ -55,7 +55,7 @@ Add multi-caret support to the Editor. Expose `IReadOnlyList<int> AdditionalCare
 
 ## Out of Scope
 
-- Column/block selection mode
+- Sticky Column Selection Mode — VS Code's modal toggle where ordinary clicks/arrows keep column-select behavior until disabled. The drag and keyboard column-selection gestures are in scope for `specs/vertical-multi-caret/spec.md`; the persistent mode with menu/status UI is a separate follow-up.
 - Multi-caret find/replace
 
 ## Notes
