@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Drawing;
 using Terminal.Gui.App;
 using Terminal.Gui.Configuration;
@@ -141,9 +142,12 @@ public partial class Editor : View
                 return;
             }
 
+            var wasModified = IsModified;
+
             if (_document is not null)
             {
                 _document.Changed -= OnDocumentChanged;
+                _document.UndoStack.PropertyChanged -= OnUndoStackPropertyChanged;
             }
 
             var caretOffset = Math.Clamp (CaretOffset, 0, value.TextLength);
@@ -152,6 +156,7 @@ public partial class Editor : View
 
             _document = value;
             _document.Changed += OnDocumentChanged;
+            _document.UndoStack.PropertyChanged += OnUndoStackPropertyChanged;
             _caretAnchor = CreateCaretAnchor (caretOffset);
             _lastKnownCaretOffset = caretOffset;
             _selectionAnchor = null;
@@ -169,6 +174,11 @@ public partial class Editor : View
             if (hadSelection)
             {
                 RaiseSelectionChangedIfMoved (beforeSelection);
+            }
+
+            if (IsModified != wasModified)
+            {
+                ModifiedChanged?.Invoke (this, EventArgs.Empty);
             }
 
             SetNeedsDraw ();
@@ -494,6 +504,18 @@ public partial class Editor : View
     /// <summary>Raised whenever <see cref="OverwriteMode" /> changes.</summary>
     public event EventHandler? OverwriteModeChanged;
 
+    /// <summary>
+    ///     Gets whether the document has unsaved modifications. <see langword="true" /> when the
+    ///     <see cref="Document" />'s <see cref="UndoStack" /> is not at the original-file mark.
+    /// </summary>
+    public bool IsModified => _document is { UndoStack.IsOriginalFile: false };
+
+    /// <summary>Raised whenever <see cref="IsModified" /> changes (dirty ↔ clean transitions).</summary>
+    public event EventHandler? ModifiedChanged;
+
+    /// <summary>Raised after each document content change (insertion, deletion, or replacement).</summary>
+    public event EventHandler<DocumentChangeEventArgs>? ContentChanged;
+
     /// <summary>Raised whenever <see cref="CaretOffset" /> changes.</summary>
     public event EventHandler? CaretChanged;
 
@@ -566,6 +588,7 @@ public partial class Editor : View
             // external code retains the TextDocument (test fixtures, future shared docs across panes,
             // etc.). The Document setter unsubscribes on swap; this covers View-teardown.
             _document.Changed -= OnDocumentChanged;
+            _document.UndoStack.PropertyChanged -= OnUndoStackPropertyChanged;
             // Dispose can run after document ownership moved; _lastKnownCaretOffset is maintained
             // during caret movement and document changes, so avoid reading CaretOffset here.
             _caretAnchor = null;
@@ -574,6 +597,14 @@ public partial class Editor : View
         }
 
         base.Dispose (disposing);
+    }
+
+    private void OnUndoStackPropertyChanged (object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == "IsOriginalFile")
+        {
+            ModifiedChanged?.Invoke (this, EventArgs.Empty);
+        }
     }
 
     private void OnDocumentChanged (object? sender, DocumentChangeEventArgs e)
@@ -608,6 +639,7 @@ public partial class Editor : View
 
         EnsureCaretVisible ();
         SetNeedsDraw ();
+        ContentChanged?.Invoke (this, e);
     }
 
     private void UpdateContentSize ()
