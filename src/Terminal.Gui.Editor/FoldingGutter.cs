@@ -35,6 +35,25 @@ internal sealed class FoldingGutter : View
             _lastMouseRow = pos.Y;
         }
 
+        // Claim press/release events to prevent them from bubbling to the editor.
+        // Without this, the editor's OnMouseEvent handles the press (grabbing the mouse
+        // and moving the caret), which corrupts focus/caret state.
+        if (mouse.Flags.HasFlag (MouseFlags.LeftButtonPressed) ||
+            mouse.Flags.HasFlag (MouseFlags.LeftButtonReleased))
+        {
+            return true;
+        }
+
+        // Handle clicked directly — when preceded by a press that this view handled,
+        // Terminal.Gui's command binding routing may not fire the Toggle binding.
+        // Invoke the toggle explicitly so the fold always responds to click gestures.
+        if (mouse.Flags.HasFlag (MouseFlags.LeftButtonClicked))
+        {
+            OnToggleFold ();
+
+            return true;
+        }
+
         return base.OnMouseEvent (mouse);
     }
 
@@ -120,6 +139,14 @@ internal sealed class FoldingGutter : View
         }
 
         fold.IsFolded = !fold.IsFolded;
+
+        // Ensure the editor retains focus after the toggle so the cursor stays visible.
+        // Clicking on the gutter (a non-focusable Padding subview) can cause transient
+        // focus loss; restoring it here guarantees UpdateCursor sees HasFocus == true.
+        if (!_editor.HasFocus)
+        {
+            _editor.SetFocus ();
+        }
 
         return true;
     }
