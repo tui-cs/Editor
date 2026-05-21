@@ -166,6 +166,7 @@ public partial class Editor : View
             _maxWidthDirty = true;
 
             InstallHighlighter ();
+            InstallAutomaticFolding ();
 
             _virtualCaretColumn = GetCaretColumn ();
             UpdateContentSize ();
@@ -422,6 +423,12 @@ public partial class Editor : View
 
             field = value;
 
+            // Clear ownership unconditionally. InstallAutomaticFolding re-sets the flag
+            // *after* this assignment, so auto-owned managers are correctly tracked.
+            // External consumer assignments remain un-owned, preventing automatic-folding
+            // teardown from wiping a consumer-provided manager.
+            _automaticFoldingOwnsFoldingManager = false;
+
             if (field is not null)
             {
                 field.FoldingChanged += OnFoldingChanged;
@@ -638,6 +645,9 @@ public partial class Editor : View
             // etc.). The Document setter unsubscribes on swap; this covers View-teardown.
             _document.Changed -= OnDocumentChanged;
             _document.UndoStack.PropertyChanged -= OnUndoStackPropertyChanged;
+            SetFoldingDocument (null);
+            FoldingManager = null;
+            _automaticFoldingOwnsFoldingManager = false;
             // Dispose can run after document ownership moved; _lastKnownCaretOffset is maintained
             // during caret movement and document changes, so avoid reading CaretOffset here.
             _caretAnchor = null;
