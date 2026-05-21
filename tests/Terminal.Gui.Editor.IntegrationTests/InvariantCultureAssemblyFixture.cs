@@ -1,7 +1,8 @@
 using System.Globalization;
+using Terminal.Gui.Editor.IntegrationTests;
 using Xunit;
 
-[assembly: AssemblyFixture (typeof (Terminal.Gui.Editor.IntegrationTests.InvariantCultureAssemblyFixture))]
+[assembly: AssemblyFixture (typeof (InvariantCultureAssemblyFixture))]
 
 namespace Terminal.Gui.Editor.IntegrationTests;
 
