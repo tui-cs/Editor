@@ -20,12 +20,6 @@ namespace Terminal.Gui.Editor.IntegrationTests;
 /// </summary>
 public class TedAppTests
 {
-    public TedAppTests ()
-    {
-        CultureInfo.DefaultThreadCurrentCulture = CultureInfo.InvariantCulture;
-        CultureInfo.DefaultThreadCurrentUICulture = CultureInfo.InvariantCulture;
-    }
-
     private static void DeleteIfExists (string filePath)
     {
         if (File.Exists (filePath))
@@ -63,6 +57,33 @@ public class TedAppTests
 
         Assert.Null (app.CurrentFilePath);
         Assert.Equal (string.Empty, app.Editor.Document!.Text);
+    }
+
+    [Fact]
+    public async Task OpenFileAsync_Formats_Loaded_Size_InPortugueseCulture ()
+    {
+        CultureInfo originalCulture = CultureInfo.CurrentCulture;
+        CultureInfo originalUiCulture = CultureInfo.CurrentUICulture;
+
+        try
+        {
+            CultureInfo.CurrentCulture = new CultureInfo ("pt-PT");
+            CultureInfo.CurrentUICulture = new CultureInfo ("pt-PT");
+
+            TedApp app = new (configPath: TedTestConfig.NewPath ());
+            app.ShowOpenDialog = () => "/tmp/ted-progress-pt.txt";
+            app.OpenRead = _ => new MemoryStream (Encoding.UTF8.GetBytes (new string ('x', 100_000)));
+
+            Assert.True (await app.OpenFileAsync (TestContext.Current.CancellationToken));
+
+            Assert.Equal ("Loaded 97,7 KiB", app.LoadSpinnerShortcut.Title);
+            Assert.Equal ("Loaded 97,7 KiB", app.LoadSpinnerShortcut.HelpText);
+        }
+        finally
+        {
+            CultureInfo.CurrentCulture = originalCulture;
+            CultureInfo.CurrentUICulture = originalUiCulture;
+        }
     }
 
     [Fact]

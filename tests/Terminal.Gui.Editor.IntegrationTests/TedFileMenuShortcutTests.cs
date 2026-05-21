@@ -19,12 +19,6 @@ public class TedFileMenuShortcutTests
 {
     private static readonly InputInjectionOptions Direct = new () { Mode = InputInjectionMode.Direct };
 
-    public TedFileMenuShortcutTests ()
-    {
-        CultureInfo.DefaultThreadCurrentCulture = CultureInfo.InvariantCulture;
-        CultureInfo.DefaultThreadCurrentUICulture = CultureInfo.InvariantCulture;
-    }
-
     [Fact]
     public async Task FileMenu_Shows_Keyboard_Shortcuts ()
     {
@@ -51,6 +45,29 @@ public class TedFileMenuShortcutTests
         fx.Render ();
 
         AnsiSnapshot.Verify (fx.Driver, nameof (FileMenu_Shortcuts_Snapshot));
+    }
+
+    [Fact]
+    public void SaveAs_Dialog_Title_Is_Save_File_As_InPortugueseCulture ()
+    {
+        CultureInfo originalCulture = CultureInfo.CurrentCulture;
+        CultureInfo originalUiCulture = CultureInfo.CurrentUICulture;
+
+        try
+        {
+            CultureInfo.CurrentCulture = new CultureInfo ("pt-PT");
+            CultureInfo.CurrentUICulture = new CultureInfo ("pt-PT");
+
+            using TedApp ted = new ();
+            using SaveDialog dialog = ted.CreateSaveDialog ();
+
+            Assert.Equal ("Save File As", dialog.Title);
+        }
+        finally
+        {
+            CultureInfo.CurrentCulture = originalCulture;
+            CultureInfo.CurrentUICulture = originalUiCulture;
+        }
     }
 
     [Fact]
