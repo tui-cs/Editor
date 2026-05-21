@@ -165,14 +165,14 @@ public partial class Editor
             return true;
         }
 
-        if (baseKey == Key.PageDown)
+        if (baseKey != Key.PageDown)
         {
-            ColumnSelectByKeyboard (pageDelta, 0);
-
-            return true;
+            return false;
         }
 
-        return false;
+        ColumnSelectByKeyboard (pageDelta, 0);
+
+        return true;
     }
 
     /// <summary>

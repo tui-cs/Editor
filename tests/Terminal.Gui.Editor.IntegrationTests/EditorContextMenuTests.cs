@@ -1,6 +1,7 @@
 // CoPilot - gpt-4.1
 
 using System.Drawing;
+using System.Globalization;
 using Terminal.Gui.Editor.IntegrationTests.Testing;
 using Terminal.Gui.Input;
 using Terminal.Gui.Testing;
@@ -193,6 +194,28 @@ public class EditorContextMenuTests
         await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("test"));
 
         Assert.NotNull (fx.Top.Editor.ContextMenu);
+    }
+
+    [Fact]
+    public async Task Default_ContextMenu_Is_Not_Null_InPortugueseCulture ()
+    {
+        CultureInfo originalCulture = CultureInfo.CurrentCulture;
+        CultureInfo originalUiCulture = CultureInfo.CurrentUICulture;
+
+        try
+        {
+            CultureInfo.CurrentCulture = new CultureInfo ("pt-PT");
+            CultureInfo.CurrentUICulture = new CultureInfo ("pt-PT");
+
+            await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("test"));
+
+            Assert.NotNull (fx.Top.Editor.ContextMenu);
+        }
+        finally
+        {
+            CultureInfo.CurrentCulture = originalCulture;
+            CultureInfo.CurrentUICulture = originalUiCulture;
+        }
     }
 
     [Fact]

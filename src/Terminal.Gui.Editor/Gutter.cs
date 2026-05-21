@@ -96,9 +96,9 @@ public sealed class Gutter : View
             _lineNumbers.X = 0;
             _lineNumbers.Width = Dim.Fill ();
         }
-        else if (_foldingGutter is not null)
+        else
         {
-            _foldingGutter.X = 0;
+            _foldingGutter?.X = 0;
         }
     }
 }

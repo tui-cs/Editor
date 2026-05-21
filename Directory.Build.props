@@ -18,7 +18,8 @@
       Release workflow overrides via -p:Version=<computed>:
         - tag push v1.2.3        → 1.2.3
         - develop branch push    → 2.1.1-develop.<github.run_number>
-        - workflow_dispatch      → input.version (verbatim)
+      Stable releases are prepared with .github/workflows/prepare-release.yml,
+      which opens a release PR. Merging that PR creates the v* tag.
     -->
     <Version>2.2.1-develop</Version>
     <PackageProjectUrl>https://github.com/gui-cs/Editor</PackageProjectUrl>
