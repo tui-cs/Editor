@@ -362,9 +362,9 @@ public partial class Editor
             return null;
         }
 
-        ISearchResult match = SearchStrategy.FindNext (_document, SelectionStart, SelectionLength);
+        ISearchResult? match = SearchStrategy.FindNext (_document, SelectionStart, SelectionLength);
 
-        if (match.Offset != SelectionStart || match.Length != SelectionLength)
+        if (match is null || match.Offset != SelectionStart || match.Length != SelectionLength)
         {
             return null;
         }

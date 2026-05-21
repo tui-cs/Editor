@@ -91,6 +91,8 @@ public class EditorStatusBar : StatusBar
         BuildShortcuts ();
         SubscribeToEditor (ActiveEditor);
         UpdateLocShortcut ();
+        UpdateOverwriteShortcut ();
+        UpdateLanguageShortcut ();
     }
 
     /// <summary>
