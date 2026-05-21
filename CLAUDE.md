@@ -51,7 +51,7 @@ Run a single test by passing xUnit.v3 filter args after `--`:
 dotnet run --project tests/Terminal.Gui.Editor.Tests -- -method "*MyTestName*"
 ```
 
-CI verifies formatting with `dotnet format Terminal.Gui.Editor.slnx --verify-no-changes --exclude third_party/`. Run the same locally before pushing if you've touched C# files outside `third_party/`.
+CI verifies formatting with `dotnet format Terminal.Gui.Editor.slnx --verify-no-changes` while excluding `third_party/` and AvaloniaEdit-lifted folders. Run `.claude/hooks/cleanup-cs.ps1` locally before pushing if you've touched C# files outside lifted code.
 
 ### Verifying the *look* (ANSI snapshots) — MANDATORY for render changes
 
@@ -112,7 +112,7 @@ Adopts Terminal.Gui's house style. Three enforcement layers:
 2. **`Terminal.Gui.Editor.sln.DotSettings` + `dotnet jb cleanupcode`** — ReSharper-driven cleanup ("TG.Editor Full Cleanup" profile). Catches what `dotnet format` misses (XML doc spacing, using sorting, name qualifier removal, expression-bodied conversions). CI runs `dotnet jb cleanupcode` and fails on any diff. The file is named `*.sln.DotSettings` (not `*.slnx.DotSettings`) even though the solution is `.slnx`: ReSharper/Rider/`jb` resolve the team-shared layer using the `.sln.` infix (the IDE writes its companion `.sln.DotSettings.user`). The cleanup profile **must** be stored in the modern single-string serialized-`<Profile>` format — ReSharper/`jb` 2024+ silently ignore the old per-task `…/=Name/CSReformatCode/@EntryIndexedValue` key layout, which makes the profile vanish from the IDE and unresolvable by `jb` (and CI's `|| true` then makes the cleanup gate a silent no-op). Edit the profile only via Rider → Settings | Code Cleanup → "Save to: This Solution Team-Shared".
 3. **A Stop hook in `.claude/settings.json`** that runs both tools on .cs files modified during the session before the agent reports done. Output is suppressed unless the cleanup actually changed something.
 
-**Before declaring work complete, an agent must run `dotnet tool restore && dotnet format Terminal.Gui.Editor.slnx --exclude third_party/ && dotnet jb cleanupcode Terminal.Gui.Editor.slnx --profile="TG.Editor Full Cleanup"` (the Stop hook does this automatically). Then inspect the diff. If cleanup adjusted lifted AvaloniaEdit files (files with the `Adapted for Terminal.Gui from AvaloniaEdit` marker), revert those formatting-only changes before reporting done. Cleanup changes in non-lifted files are part of the work — re-stage and continue.**
+**Before declaring work complete, an agent must run `.claude/hooks/cleanup-cs.ps1` (the Stop hook does this automatically). Then inspect the diff. If cleanup adjusted lifted AvaloniaEdit files (files with the `Adapted for Terminal.Gui from AvaloniaEdit` marker), revert those formatting-only changes before reporting done and fix the cleanup exclude list. Cleanup changes in non-lifted files are part of the work — re-stage and continue.**
 
 ### Formatting and spacing
 
