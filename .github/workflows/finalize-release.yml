@@ -17,10 +17,10 @@ jobs:
       contents: write
       pull-requests: write
     steps:
-      - name: Checkout main
+      - name: Checkout release merge commit
         uses: actions/checkout@v5
         with:
-          ref: main
+          ref: ${{ github.event.pull_request.merge_commit_sha }}
           fetch-depth: 0
           token: ${{ secrets.RELEASE_PAT }}
 
@@ -99,7 +99,7 @@ jobs:
         run: |
           BACKMERGE_BRANCH="backmerge/${TAG}"
 
-          git checkout -b "$BACKMERGE_BRANCH" main
+          git checkout -b "$BACKMERGE_BRANCH" "${{ github.event.pull_request.merge_commit_sha }}"
           git push origin "$BACKMERGE_BRANCH"
 
           gh pr create \
