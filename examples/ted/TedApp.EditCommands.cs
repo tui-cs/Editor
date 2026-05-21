@@ -1,3 +1,5 @@
+using Terminal.Gui.Editor;
+
 namespace Ted;
 
 public sealed partial class TedApp
