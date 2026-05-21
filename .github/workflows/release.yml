@@ -8,20 +8,14 @@ name: Release
 #   2. Push to `develop` (rolling pre-release smoke test)
 #      → Version = <Version> from Directory.Build.props + ".<github.run_number>"
 #         e.g. 2.1.1-develop.7
-#   3. workflow_dispatch (manual run with explicit version)
 #
-# Both packages share a single <Version> declared in Directory.Build.props.
+# The package version is declared in Directory.Build.props.
 # The computed value overrides that base via `-p:Version=...`.
 
 on:
   push:
     tags: ['v*']
     branches: [develop]
-  workflow_dispatch:
-    inputs:
-      version:
-        description: 'Package version (e.g. 2.1.0 or 2.1.1-develop.42). Overrides Directory.Build.props.'
-        required: true
 
 permissions:
   contents: write
@@ -42,9 +36,7 @@ jobs:
         id: v
         shell: bash
         run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            VERSION="${{ github.event.inputs.version }}"
-          elif [ "${{ github.ref_type }}" = "tag" ]; then
+          if [ "${{ github.ref_type }}" = "tag" ]; then
             # Tag form: v2.1.0 → 2.1.0
             VERSION="${GITHUB_REF_NAME#v}"
           elif [ "${{ github.ref }}" = "refs/heads/develop" ]; then
