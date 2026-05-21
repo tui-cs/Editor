@@ -116,7 +116,7 @@ public sealed partial class TedApp : Window
             CurrentLoadTask = OpenFileAsync (e.FilePath, true);
         };
         Menu.SaveRequested += (_, _) => Save ();
-        Menu.SaveAsRequested += (s, e) => { _ = SaveFileAsAsync (e.FilePath); };
+        Menu.SaveAsRequested += (_, e) => { _ = SaveFileAsAsync (e.FilePath, true); };
         Menu.QuitRequested += (_, _) => Quit ();
         Menu.ViewSettingsChanged += (_, _) => SaveViewSettings ();
 

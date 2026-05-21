@@ -271,13 +271,49 @@ public class EditorMenuBar : MenuBar
                 Action = () => ActiveEditor.InvokeCommand (Command.Replace)
             },
             new Line (),
-            new MenuItem (ActiveEditor, Command.Undo) { Key = KeyFor (Command.Undo) },
-            new MenuItem (ActiveEditor, Command.Redo) { Key = KeyFor (Command.Redo) },
+            new MenuItem
+            {
+                Title = "_Undo",
+                HelpText = "Undo",
+                Key = KeyFor (Command.Undo),
+                Action = () => ActiveEditor.InvokeCommand (Command.Undo)
+            },
+            new MenuItem
+            {
+                Title = "_Redo",
+                HelpText = "Redo",
+                Key = KeyFor (Command.Redo),
+                Action = () => ActiveEditor.InvokeCommand (Command.Redo)
+            },
             new Line (),
-            new MenuItem (ActiveEditor, Command.Cut) { Key = KeyFor (Command.Cut) },
-            new MenuItem (ActiveEditor, Command.Copy) { Key = KeyFor (Command.Copy) },
-            new MenuItem (ActiveEditor, Command.Paste) { Key = KeyFor (Command.Paste) },
-            new MenuItem (ActiveEditor, Command.SelectAll) { Key = KeyFor (Command.SelectAll) }
+            new MenuItem
+            {
+                Title = "Cu_t",
+                HelpText = "Cut",
+                Key = KeyFor (Command.Cut),
+                Action = () => ActiveEditor.InvokeCommand (Command.Cut)
+            },
+            new MenuItem
+            {
+                Title = "_Copy",
+                HelpText = "Copy",
+                Key = KeyFor (Command.Copy),
+                Action = () => ActiveEditor.InvokeCommand (Command.Copy)
+            },
+            new MenuItem
+            {
+                Title = "_Paste",
+                HelpText = "Paste",
+                Key = KeyFor (Command.Paste),
+                Action = () => ActiveEditor.InvokeCommand (Command.Paste)
+            },
+            new MenuItem
+            {
+                Title = "Select _All",
+                HelpText = "Select all",
+                Key = KeyFor (Command.SelectAll),
+                Action = () => ActiveEditor.InvokeCommand (Command.SelectAll)
+            }
         ];
     }
 
