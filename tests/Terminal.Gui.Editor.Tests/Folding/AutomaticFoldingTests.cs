@@ -201,4 +201,23 @@ public class AutomaticFoldingTests
         // Inserting braces after dispose should not throw.
         doc.Insert (0, "{\n}\n");
     }
+
+    [Fact]
+    public void External_FoldingManager_Not_Cleared_By_AutomaticFolding_Teardown ()
+    {
+        TextDocument doc = new ("{\n  content\n}\n");
+        Editor editor = new () { Document = doc };
+        editor.FoldingStrategy = new BraceFoldingStrategy ();
+
+        // Auto-folding created a FoldingManager — now consumer overrides it.
+        FoldingManager consumerFm = new (doc);
+        editor.FoldingManager = consumerFm;
+
+        // Disabling automatic folding must not clear the consumer-provided manager.
+        editor.AutomaticFolding = false;
+
+        Assert.Same (consumerFm, editor.FoldingManager);
+
+        editor.Dispose ();
+    }
 }

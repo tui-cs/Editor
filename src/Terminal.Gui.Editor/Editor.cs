@@ -423,6 +423,12 @@ public partial class Editor : View
 
             field = value;
 
+            // Clear ownership unconditionally. InstallAutomaticFolding re-sets the flag
+            // *after* this assignment, so auto-owned managers are correctly tracked.
+            // External consumer assignments remain un-owned, preventing automatic-folding
+            // teardown from wiping a consumer-provided manager.
+            _automaticFoldingOwnsFoldingManager = false;
+
             if (field is not null)
             {
                 field.FoldingChanged += OnFoldingChanged;
