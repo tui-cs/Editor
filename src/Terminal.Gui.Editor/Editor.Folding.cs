@@ -102,11 +102,13 @@ public partial class Editor
         {
             SetFoldingDocument (null);
 
-            if (_automaticFoldingOwnsFoldingManager)
+            if (!_automaticFoldingOwnsFoldingManager)
             {
-                FoldingManager = null;
-                _automaticFoldingOwnsFoldingManager = false;
+                return;
             }
+
+            FoldingManager = null;
+            _automaticFoldingOwnsFoldingManager = false;
 
             return;
         }
@@ -115,11 +117,13 @@ public partial class Editor
         {
             SetFoldingDocument (null);
 
-            if (_automaticFoldingOwnsFoldingManager)
+            if (!_automaticFoldingOwnsFoldingManager)
             {
-                FoldingManager = null;
-                _automaticFoldingOwnsFoldingManager = false;
+                return;
             }
+
+            FoldingManager = null;
+            _automaticFoldingOwnsFoldingManager = false;
 
             return;
         }
@@ -147,11 +151,13 @@ public partial class Editor
         _foldingDocument = document;
         _foldingUpdateNeeded = false;
 
-        if (_foldingDocument is not null)
+        if (_foldingDocument is null)
         {
-            _foldingDocument.Changed += OnFoldingDocumentChanged;
-            _foldingDocument.UpdateFinished += OnFoldingDocumentUpdateFinished;
+            return;
         }
+
+        _foldingDocument.Changed += OnFoldingDocumentChanged;
+        _foldingDocument.UpdateFinished += OnFoldingDocumentUpdateFinished;
     }
 
     private void OnFoldingDocumentChanged (object? sender, DocumentChangeEventArgs e)
@@ -184,11 +190,13 @@ public partial class Editor
         {
             SetFoldingDocument (null);
 
-            if (_automaticFoldingOwnsFoldingManager)
+            if (!_automaticFoldingOwnsFoldingManager)
             {
-                FoldingManager = null;
-                _automaticFoldingOwnsFoldingManager = false;
+                return;
             }
+
+            FoldingManager = null;
+            _automaticFoldingOwnsFoldingManager = false;
 
             return;
         }

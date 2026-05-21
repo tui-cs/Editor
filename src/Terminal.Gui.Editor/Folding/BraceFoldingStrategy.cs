@@ -45,7 +45,7 @@ public class BraceFoldingStrategy : IFoldingStrategy
         {
             var c = document.GetCharAt (i);
 
-            if (c == '\n' || c == '\r')
+            if (c is '\n' or '\r')
             {
                 lastNewLineOffset = i + 1;
             }
@@ -87,7 +87,7 @@ public class BraceFoldingStrategy : IFoldingStrategy
             hasInsertion |= entry.InsertionLength > 0;
             hasRemoval |= entry.RemovalLength > 0;
 
-            if (entry.InsertionLength > 0 && entry.RemovalLength > 0)
+            if (entry is { InsertionLength: > 0, RemovalLength: > 0 })
             {
                 return false;
             }

@@ -1,11 +1,14 @@
 using Terminal.Gui.Document.Search;
-using Terminal.Gui.Editor;
 using Terminal.Gui.ViewBase;
 using Terminal.Gui.Views;
 
-namespace Ted;
+namespace Terminal.Gui.Editor;
 
-internal sealed class FindReplaceDialog : Dialog
+/// <summary>
+///     A pre-wired Find/Replace dialog for <see cref="Editor" />. Provides tabbed Find and Replace panes
+///     with support for case-sensitive, whole-word, and regex search modes.
+/// </summary>
+public sealed class FindReplaceDialog : Dialog
 {
     private readonly TextField _findTextField;
     private readonly CheckBox _matchCaseCheckBox;
@@ -15,6 +18,13 @@ internal sealed class FindReplaceDialog : Dialog
     private readonly Label _statusLabel;
     private readonly CheckBox _wholeWordCheckBox;
 
+    /// <summary>
+    ///     Initializes a new instance of the <see cref="FindReplaceDialog" /> class.
+    /// </summary>
+    /// <param name="editor">The <see cref="Editor" /> instance to search within.</param>
+    /// <param name="selectReplaceTab">
+    ///     If <see langword="true" />, the Replace tab is focused on open; otherwise the Find tab is focused.
+    /// </param>
     public FindReplaceDialog (Editor editor, bool selectReplaceTab)
     {
         ArgumentNullException.ThrowIfNull (editor);
@@ -169,7 +179,7 @@ internal sealed class FindReplaceDialog : Dialog
     /// <summary>
     ///     Builds an <see cref="ISearchStrategy" /> from the dialog's checkbox state and assigns it to
     ///     <see cref="Editor.SearchStrategy" />. Returns <see langword="false" /> (and surfaces the error on the
-    ///     status label) when the search text is empty or — in regex mode — fails to compile.
+    ///     status label) when the search text is empty or -- in regex mode -- fails to compile.
     /// </summary>
     private bool TryBuildStrategy (Editor editor, string searchText)
     {

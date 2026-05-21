@@ -72,29 +72,15 @@ public partial class Editor
                 continue;
             }
 
-            switch (menuItem.Command)
+            menuItem.Enabled = menuItem.Command switch
             {
-                case Command.Undo:
-                    menuItem.Enabled = canUndo;
-
-                    break;
-                case Command.Redo:
-                    menuItem.Enabled = canRedo;
-
-                    break;
-                case Command.Cut:
-                    menuItem.Enabled = canCut;
-
-                    break;
-                case Command.Copy:
-                    menuItem.Enabled = hasSelection;
-
-                    break;
-                case Command.Paste:
-                    menuItem.Enabled = canPaste;
-
-                    break;
-            }
+                Command.Undo => canUndo,
+                Command.Redo => canRedo,
+                Command.Cut => canCut,
+                Command.Copy => hasSelection,
+                Command.Paste => canPaste,
+                _ => menuItem.Enabled
+            };
         }
     }
 
