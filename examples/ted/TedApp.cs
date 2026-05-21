@@ -121,7 +121,7 @@ public sealed partial class TedApp : Window
         Menu.ViewSettingsChanged += (_, _) => SaveViewSettings ();
 
         // Ted-specific extra menus: View extras, Options, Help, file-name shortcut
-        Menu.ViewMenu.Add (_previewMarkdownMenuItem);
+        Menu.ViewMenu.PopoverMenu!.Root!.Add (_previewMarkdownMenuItem);
         Menu.Add (new MenuBarItem ("_Options",
             [new MenuItem ("_Settings...", string.Empty, ShowSettingsDialog)]));
         Menu.Add (new MenuBarItem ("_Help",

@@ -128,12 +128,12 @@ public class EditorMenuBarTests
     {
         Editor editor = new ();
         EditorMenuBar menuBar = new (editor);
-        var initialViewCount = menuBar.ViewMenu.SubViews.Count;
+        var initialViewCount = menuBar.ViewMenu.PopoverMenu!.Root!.SubViews.Count;
 
         MenuItem extraItem = new () { Title = "_Preview Markdown" };
-        menuBar.ViewMenu.Add (extraItem);
+        menuBar.ViewMenu.PopoverMenu!.Root!.Add (extraItem);
 
-        Assert.Equal (initialViewCount + 1, menuBar.ViewMenu.SubViews.Count);
+        Assert.Equal (initialViewCount + 1, menuBar.ViewMenu.PopoverMenu!.Root!.SubViews.Count);
     }
 
     [Fact]
