@@ -957,7 +957,10 @@ public partial class Editor
     {
         foreach (CaretInfo caret in _additionalCarets)
         {
-            if (caret is { CaretAnchor: { IsDeleted: false } caretAnchor, SelectionAnchor: { IsDeleted: false } selectionAnchor }
+            if (caret is
+                {
+                    CaretAnchor: { IsDeleted: false } caretAnchor, SelectionAnchor: { IsDeleted: false } selectionAnchor
+                }
                 && caretAnchor.Offset != selectionAnchor.Offset)
             {
                 return true;

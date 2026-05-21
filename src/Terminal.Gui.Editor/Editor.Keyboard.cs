@@ -173,7 +173,6 @@ public partial class Editor
         ColumnSelectByKeyboard (pageDelta, 0);
 
         return true;
-
     }
 
     /// <summary>

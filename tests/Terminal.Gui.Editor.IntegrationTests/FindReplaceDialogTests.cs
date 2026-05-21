@@ -1,6 +1,5 @@
 // Copilot - claude-opus-4-6
 
-using Ted;
 using Terminal.Gui.App;
 using Terminal.Gui.Editor.IntegrationTests.Testing;
 using Terminal.Gui.Input;
