@@ -17,6 +17,11 @@ public partial class Editor
     private bool _automaticFolding;
     private int _maximumAutomaticFoldingDocumentLength = 1_000_000;
 
+    // Tracks whether the current FoldingManager was created by automatic folding.
+    // When true, InstallAutomaticFolding is allowed to clear it; when false, a consumer
+    // set FoldingManager directly and automatic folding must not wipe it.
+    private bool _automaticFoldingOwnsFoldingManager;
+
     /// <summary>
     ///     Gets or sets the folding strategy. When non-null and <see cref="AutomaticFolding" />
     ///     is <see langword="true" />, the editor automatically creates a <see cref="Document.Folding.FoldingManager" />,
@@ -75,6 +80,8 @@ public partial class Editor
         get => _maximumAutomaticFoldingDocumentLength;
         set
         {
+            ArgumentOutOfRangeException.ThrowIfLessThan (value, 0);
+
             if (_maximumAutomaticFoldingDocumentLength == value)
             {
                 return;
@@ -95,10 +102,10 @@ public partial class Editor
         {
             SetFoldingDocument (null);
 
-            // Clear FoldingManager only if automatic folding was previously active (strategy set).
-            if (_foldingStrategy is not null || _automaticFolding)
+            if (_automaticFoldingOwnsFoldingManager)
             {
                 FoldingManager = null;
+                _automaticFoldingOwnsFoldingManager = false;
             }
 
             return;
@@ -107,13 +114,19 @@ public partial class Editor
         if (Document.TextLength > _maximumAutomaticFoldingDocumentLength)
         {
             SetFoldingDocument (null);
-            FoldingManager = null;
+
+            if (_automaticFoldingOwnsFoldingManager)
+            {
+                FoldingManager = null;
+                _automaticFoldingOwnsFoldingManager = false;
+            }
 
             return;
         }
 
         FoldingManager fm = new (Document);
         FoldingManager = fm;
+        _automaticFoldingOwnsFoldingManager = true;
         _foldingStrategy.UpdateFoldings (fm, Document);
         SetFoldingDocument (Document);
     }
@@ -170,7 +183,12 @@ public partial class Editor
         if (Document.TextLength > _maximumAutomaticFoldingDocumentLength)
         {
             SetFoldingDocument (null);
-            FoldingManager = null;
+
+            if (_automaticFoldingOwnsFoldingManager)
+            {
+                FoldingManager = null;
+                _automaticFoldingOwnsFoldingManager = false;
+            }
 
             return;
         }

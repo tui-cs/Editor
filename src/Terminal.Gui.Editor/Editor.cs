@@ -640,6 +640,8 @@ public partial class Editor : View
             _document.Changed -= OnDocumentChanged;
             _document.UndoStack.PropertyChanged -= OnUndoStackPropertyChanged;
             SetFoldingDocument (null);
+            FoldingManager = null;
+            _automaticFoldingOwnsFoldingManager = false;
             // Dispose can run after document ownership moved; _lastKnownCaretOffset is maintained
             // during caret movement and document changes, so avoid reading CaretOffset here.
             _caretAnchor = null;

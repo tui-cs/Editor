@@ -2,7 +2,6 @@
 
 using Terminal.Gui.Document;
 using Terminal.Gui.Document.Folding;
-using Terminal.Gui.Editor;
 using Xunit;
 
 namespace Terminal.Gui.Editor.Tests.Folding;
@@ -102,9 +101,17 @@ public class AutomaticFoldingTests
     [Fact]
     public void Large_Document_Skips_Automatic_Folding ()
     {
-        // Create a document exceeding the threshold.
-        var largeText = new string ('a', 1_000_001);
-        TextDocument doc = new (largeText);
+        // Create a document exceeding the threshold using many short lines
+        // (a single mega-line would stress the visual-line builder unrelated to folding).
+        string line = new string ('a', 100) + "\n";
+        var sb = new System.Text.StringBuilder (1_100_000);
+
+        while (sb.Length < 1_000_001)
+        {
+            sb.Append (line);
+        }
+
+        TextDocument doc = new (sb.ToString ());
         Editor editor = new () { Document = doc };
 
         editor.FoldingStrategy = new BraceFoldingStrategy ();
@@ -154,16 +161,31 @@ public class AutomaticFoldingTests
     }
 
     [Fact]
-    public void ChangeMayAffectFoldings_Brace_Returns_True_For_Braces ()
+    public void ChangeMayAffectFoldings_Returns_True_For_Braces ()
     {
         BraceFoldingStrategy strategy = new ();
         TextDocument doc = new ("hello");
+        DocumentChangeEventArgs? captured = null;
 
-        // Insert a brace.
+        doc.Changed += (_, e) => captured = e;
         doc.Insert (5, "{");
 
-        // Manually create the event args to test the strategy method.
-        // We'll test via a document change that triggers the actual path instead.
+        Assert.NotNull (captured);
+        Assert.True (strategy.ChangeMayAffectFoldings (captured!));
+    }
+
+    [Fact]
+    public void ChangeMayAffectFoldings_Returns_False_For_Plain_Text ()
+    {
+        BraceFoldingStrategy strategy = new ();
+        TextDocument doc = new ("hello");
+        DocumentChangeEventArgs? captured = null;
+
+        doc.Changed += (_, e) => captured = e;
+        doc.Insert (5, "world");
+
+        Assert.NotNull (captured);
+        Assert.False (strategy.ChangeMayAffectFoldings (captured!));
     }
 
     [Fact]
