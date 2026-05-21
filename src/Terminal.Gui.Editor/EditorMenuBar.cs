@@ -188,6 +188,8 @@ public class EditorMenuBar : MenuBar
 
     private void BuildMenus ()
     {
+        RemoveAll ();
+
         MenuBarItem fileMenu = new (Strings.menuFile, CreateFileMenuItems ());
         MenuBarItem editMenu = new (Strings.menuEdit, CreateEditMenuItems ());
         MenuBarItem viewMenu = new ("_View", CreateViewMenuItems ());
@@ -252,8 +254,6 @@ public class EditorMenuBar : MenuBar
 
     private View[] CreateEditMenuItems ()
     {
-        Editor editor = ActiveEditor;
-
         return
         [
             new MenuItem
@@ -261,23 +261,23 @@ public class EditorMenuBar : MenuBar
                 Title = "_Find...",
                 HelpText = "Find text in the current document",
                 Key = KeyFor (Command.Find),
-                Action = () => editor.InvokeCommand (Command.Find)
+                Action = () => ActiveEditor.InvokeCommand (Command.Find)
             },
             new MenuItem
             {
                 Title = "_Replace...",
                 HelpText = "Find and replace text in the current document",
                 Key = KeyFor (Command.Replace),
-                Action = () => editor.InvokeCommand (Command.Replace)
+                Action = () => ActiveEditor.InvokeCommand (Command.Replace)
             },
             new Line (),
-            new MenuItem (editor, Command.Undo) { Key = KeyFor (Command.Undo) },
-            new MenuItem (editor, Command.Redo) { Key = KeyFor (Command.Redo) },
+            new MenuItem (ActiveEditor, Command.Undo) { Key = KeyFor (Command.Undo) },
+            new MenuItem (ActiveEditor, Command.Redo) { Key = KeyFor (Command.Redo) },
             new Line (),
-            new MenuItem (editor, Command.Cut) { Key = KeyFor (Command.Cut) },
-            new MenuItem (editor, Command.Copy) { Key = KeyFor (Command.Copy) },
-            new MenuItem (editor, Command.Paste) { Key = KeyFor (Command.Paste) },
-            new MenuItem (editor, Command.SelectAll) { Key = KeyFor (Command.SelectAll) }
+            new MenuItem (ActiveEditor, Command.Cut) { Key = KeyFor (Command.Cut) },
+            new MenuItem (ActiveEditor, Command.Copy) { Key = KeyFor (Command.Copy) },
+            new MenuItem (ActiveEditor, Command.Paste) { Key = KeyFor (Command.Paste) },
+            new MenuItem (ActiveEditor, Command.SelectAll) { Key = KeyFor (Command.SelectAll) }
         ];
     }
 

@@ -106,7 +106,15 @@ public sealed partial class TedApp : Window
         };
 
         Menu.NewRequested += (_, _) => New ();
-        Menu.OpenRequested += (_, e) => { CurrentLoadTask = OpenFileAsync (e.FilePath, true); };
+        Menu.OpenRequested += (_, e) =>
+        {
+            if (!ConfirmSaveChanges ())
+            {
+                return;
+            }
+
+            CurrentLoadTask = OpenFileAsync (e.FilePath, true);
+        };
         Menu.SaveRequested += (_, _) => Save ();
         Menu.SaveAsRequested += (_, e) => { _ = SaveFileAsAsync (e.FilePath); };
         Menu.QuitRequested += (_, _) => Quit ();
