@@ -144,6 +144,25 @@ public class AutomaticFoldingTests
     }
 
     [Fact]
+    public void Shrinking_Document_Below_MaxLength_Reinstalls_Automatic_Folding ()
+    {
+        string middle = new ('a', 200);
+        TextDocument doc = new ($"{{\n{middle}\n}}\n");
+        Editor editor = new () { Document = doc, MaximumAutomaticFoldingDocumentLength = 20 };
+
+        editor.FoldingStrategy = new BraceFoldingStrategy ();
+
+        Assert.Null (editor.FoldingManager);
+
+        doc.Remove (2, middle.Length);
+
+        Assert.NotNull (editor.FoldingManager);
+        Assert.True (editor.FoldingManager!.AllFoldings.Any ());
+
+        editor.Dispose ();
+    }
+
+    [Fact]
     public void Unsetting_FoldingStrategy_Tears_Down ()
     {
         TextDocument doc = new ("{\n  content\n}\n");
@@ -157,6 +176,22 @@ public class AutomaticFoldingTests
         // Strategy is null — automatic folding should be torn down.
         // FoldingManager is cleared because automatic folding owns it.
         Assert.Null (editor.FoldingManager);
+
+        editor.Dispose ();
+    }
+
+    [Fact]
+    public void External_FoldingManager_Assignment_Clears_Automatic_Ownership ()
+    {
+        TextDocument doc = new ("{\n  content\n}\n");
+        Editor editor = new () { Document = doc };
+        editor.FoldingStrategy = new BraceFoldingStrategy ();
+        FoldingManager externalManager = new (doc);
+
+        editor.FoldingManager = externalManager;
+        editor.AutomaticFolding = false;
+
+        Assert.Same (externalManager, editor.FoldingManager);
 
         editor.Dispose ();
     }

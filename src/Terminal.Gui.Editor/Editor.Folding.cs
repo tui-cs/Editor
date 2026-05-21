@@ -131,6 +131,21 @@ public partial class Editor
         SetFoldingDocument (Document);
     }
 
+    private void ReinstallAutomaticFoldingIfDocumentReturnedBelowThreshold ()
+    {
+        if (FoldingManager is not null || _foldingStrategy is null || !_automaticFolding || Document is null)
+        {
+            return;
+        }
+
+        if (Document.TextLength > _maximumAutomaticFoldingDocumentLength)
+        {
+            return;
+        }
+
+        InstallAutomaticFolding ();
+    }
+
     private void SetFoldingDocument (TextDocument? document)
     {
         if (ReferenceEquals (_foldingDocument, document))

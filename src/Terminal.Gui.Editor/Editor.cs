@@ -428,6 +428,7 @@ public partial class Editor : View
                 field.FoldingChanged += OnFoldingChanged;
             }
 
+            _automaticFoldingOwnsFoldingManager = false;
             ClearVisualLineCaches ();
             RefreshFoldingState ();
             SyncFoldingTransformer ();
@@ -674,6 +675,7 @@ public partial class Editor : View
         UpdateMaxWidthIncremental (e);
         UpdateContentSize ();
         UpdateGutterWidth ();
+        ReinstallAutomaticFoldingIfDocumentReturnedBelowThreshold ();
 
         var current = CaretOffset;
 
