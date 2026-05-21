@@ -145,7 +145,7 @@ public partial class Editor
                 return;
             }
 
-            fm = new FoldingManager (Document);
+            fm = new (Document);
             FoldingManager = fm;
             _automaticFoldingOwnsFoldingManager = true;
         }
