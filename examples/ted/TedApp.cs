@@ -1,4 +1,4 @@
-using System.Text;
+// This is a demo of ted, the Terminal.Gui.Editor example using System.Text;
 using Terminal.Gui.App;
 using Terminal.Gui.Configuration;
 using Terminal.Gui.Document;
@@ -304,7 +304,10 @@ public sealed partial class TedApp : Window
         EditorSettingsDialog dialog = new (Editor);
         App.Run (dialog);
 
-        if (dialog.WasAccepted)
+  
+  
+   
+   Saveif (dialog.WasAccepted)
         {
             dialog.ApplyTo (Editor);
             SaveViewSettings ();
