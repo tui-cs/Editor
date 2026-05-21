@@ -15,8 +15,8 @@ namespace Terminal.Gui.Editor;
 /// </summary>
 /// <remarks>
 ///     <para>
-///         Consumers can append custom indicators via <see cref="ExtraShortcuts" /> and call
-///         <see cref="RebuildShortcuts" /> to apply changes.
+///         Consumers can append custom indicators using the standard <see cref="View.Add(View[])" /> API
+///         after construction.
 ///     </para>
 ///     <para>
 ///         For multi-file scenarios (TabView, split panes) use the
@@ -95,12 +95,6 @@ public class EditorStatusBar : StatusBar
         UpdateLanguageShortcut ();
     }
 
-    /// <summary>
-    ///     Additional <see cref="Shortcut" />s appended after the built-in indicators. Add custom
-    ///     shortcuts here and call <see cref="RebuildShortcuts" /> to apply.
-    /// </summary>
-    public IList<Shortcut> ExtraShortcuts { get; } = new List<Shortcut> ();
-
     /// <summary>The status-bar shortcut that displays the current syntax-highlighting language name.</summary>
     public Shortcut LanguageShortcut { get; }
 
@@ -139,14 +133,6 @@ public class EditorStatusBar : StatusBar
         UpdateLocShortcut ();
         UpdateOverwriteShortcut ();
         UpdateLanguageShortcut ();
-    }
-
-    /// <summary>
-    ///     Rebuilds the status bar contents. Call after modifying <see cref="ExtraShortcuts" />.
-    /// </summary>
-    public void RebuildShortcuts ()
-    {
-        BuildShortcuts ();
     }
 
     /// <summary>
@@ -205,19 +191,12 @@ public class EditorStatusBar : StatusBar
 
     private void BuildShortcuts ()
     {
-        RemoveAll ();
-
-        List<Shortcut> allShortcuts =
-        [
+        Add (
             LanguageShortcut,
-            new () { Title = "Theme", CommandView = ThemeDropDown },
+            new Shortcut { Title = "Theme", CommandView = ThemeDropDown },
             LoadSpinnerShortcut,
             OverwriteShortcut,
-            LocShortcut
-        ];
-        allShortcuts.AddRange (ExtraShortcuts);
-
-        Add (allShortcuts.ToArray ());
+            LocShortcut);
     }
 
     private void SubscribeToEditor (Editor editor)

@@ -121,18 +121,17 @@ public sealed partial class TedApp : Window
         Menu.ViewSettingsChanged += (_, _) => SaveViewSettings ();
 
         // Ted-specific extra menus: View extras, Options, Help, file-name shortcut
-        Menu.ExtraViewMenuItems.Add (_previewMarkdownMenuItem);
-        Menu.ExtraMenuItems.Add (new MenuBarItem ("_Options",
+        Menu.ViewMenu.Add (_previewMarkdownMenuItem);
+        Menu.Add (new MenuBarItem ("_Options",
             [new MenuItem ("_Settings...", string.Empty, ShowSettingsDialog)]));
-        Menu.ExtraMenuItems.Add (new MenuBarItem ("_Help",
+        Menu.Add (new MenuBarItem ("_Help",
             [new MenuItem ("_About", "About ted", ShowAboutDialog)]));
         _fileNameShortcut = new Shortcut (Key.Empty, "<untitled>", Open)
         {
             MouseHighlightStates = MouseState.None,
             SchemeName = SchemeManager.SchemesToSchemeName (Schemes.Dialog)
         };
-        Menu.ExtraBarItems.Add (_fileNameShortcut);
-        Menu.RebuildMenus ();
+        Menu.Add (_fileNameShortcut);
 
         // --- EditorStatusBar: pre-wired indicators ---
         StatusBar = new EditorStatusBar (Editor);

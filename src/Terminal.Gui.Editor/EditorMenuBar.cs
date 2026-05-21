@@ -8,9 +8,9 @@ namespace Terminal.Gui.Editor;
 
 /// <summary>
 ///     A pre-wired <see cref="MenuBar" /> that provides standard File, Edit, and View menus
-///     bound to an <see cref="Editor" /> instance. Consumers can append custom menus via
-///     <see cref="ExtraMenuItems" /> and customize file-dialog behavior with
-///     <see cref="ShowOpenDialog" /> / <see cref="ShowSaveDialog" />.
+///     bound to an <see cref="Editor" /> instance. Consumers can append, insert, or reorder
+///     menus using the standard <see cref="View.Add(View[])" /> and <see cref="View.Insert(int,View)" /> APIs
+///     after construction.
 /// </summary>
 /// <remarks>
 ///     <para>
@@ -103,26 +103,9 @@ public class EditorMenuBar : MenuBar
                 ? CheckState.Checked
                 : CheckState.UnChecked
         };
+
+        BuildMenus ();
     }
-
-    /// <summary>
-    ///     Additional <see cref="MenuBarItem" />s appended after the built-in menus. Add custom menus
-    ///     here (e.g. Options, Help) and call <see cref="RebuildMenus" /> to apply.
-    /// </summary>
-    public IList<MenuBarItem> ExtraMenuItems { get; } = new List<MenuBarItem> ();
-
-    /// <summary>
-    ///     Additional <see cref="View" />s appended to the built-in View menu. Add custom menu items
-    ///     (e.g. Preview toggles) here and call <see cref="RebuildMenus" /> to apply.
-    /// </summary>
-    public IList<View> ExtraViewMenuItems { get; } = new List<View> ();
-
-    /// <summary>
-    ///     Additional <see cref="View" />s added directly to the menu bar as siblings of the
-    ///     <see cref="MenuBarItem" />s (e.g. a file-name shortcut on the right). Added after all
-    ///     menu items. Call <see cref="RebuildMenus" /> to apply.
-    /// </summary>
-    public IList<View> ExtraBarItems { get; } = new List<View> ();
 
     /// <summary>
     ///     Delegate invoked when the user selects File → Open. Should present a file-open dialog
@@ -157,14 +140,14 @@ public class EditorMenuBar : MenuBar
     /// <summary>Gets the currently active <see cref="Editor" /> from the provider delegate.</summary>
     public Editor ActiveEditor => _editorProvider ();
 
-    /// <summary>
-    ///     Builds the menu bar contents. Call once after populating <see cref="ExtraMenuItems" />,
-    ///     <see cref="ExtraViewMenuItems" />, and <see cref="ExtraBarItems" />.
-    /// </summary>
-    public void RebuildMenus ()
-    {
-        BuildMenus ();
-    }
+    /// <summary>Gets the built-in File menu.</summary>
+    public MenuBarItem FileMenu { get; private set; } = null!;
+
+    /// <summary>Gets the built-in Edit menu.</summary>
+    public MenuBarItem EditMenu { get; private set; } = null!;
+
+    /// <summary>Gets the built-in View menu.</summary>
+    public MenuBarItem ViewMenu { get; private set; } = null!;
 
     /// <summary>
     ///     Synchronizes the View-menu checkbox states with the current <see cref="ActiveEditor" /> property values.
@@ -188,25 +171,11 @@ public class EditorMenuBar : MenuBar
 
     private void BuildMenus ()
     {
-        RemoveAll ();
+        FileMenu = new MenuBarItem (Strings.menuFile, CreateFileMenuItems ());
+        EditMenu = new MenuBarItem (Strings.menuEdit, CreateEditMenuItems ());
+        ViewMenu = new MenuBarItem ("_View", CreateViewMenuItems ());
 
-        MenuBarItem fileMenu = new (Strings.menuFile, CreateFileMenuItems ());
-        MenuBarItem editMenu = new (Strings.menuEdit, CreateEditMenuItems ());
-        MenuBarItem viewMenu = new ("_View", CreateViewMenuItems ());
-
-        List<View> allItems = [fileMenu, editMenu, viewMenu];
-
-        foreach (MenuBarItem extra in ExtraMenuItems)
-        {
-            allItems.Add (extra);
-        }
-
-        foreach (View extra in ExtraBarItems)
-        {
-            allItems.Add (extra);
-        }
-
-        Add (allItems.ToArray ());
+        Add (FileMenu, EditMenu, ViewMenu);
     }
 
     private View[] CreateFileMenuItems ()
@@ -319,7 +288,7 @@ public class EditorMenuBar : MenuBar
 
     private View[] CreateViewMenuItems ()
     {
-        List<View> items =
+        return
         [
             new MenuItem
             {
@@ -347,13 +316,6 @@ public class EditorMenuBar : MenuBar
                 CommandView = _scrollbarsCheckBox
             }
         ];
-
-        foreach (View extra in ExtraViewMenuItems)
-        {
-            items.Add (extra);
-        }
-
-        return items.ToArray ();
     }
 
     private Key KeyFor (Command command)

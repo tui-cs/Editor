@@ -81,15 +81,16 @@ public class EditorStatusBarTests
     }
 
     [Fact]
-    public void ExtraShortcuts_Appends ()
+    public void Consumer_CanAddShortcut_AfterConstruction ()
     {
         Editor editor = new ();
         EditorStatusBar statusBar = new (editor);
+        var initialCount = statusBar.SubViews.Count;
 
-        statusBar.ExtraShortcuts.Add (new Shortcut { Title = "Custom" });
-        statusBar.RebuildShortcuts ();
+        Shortcut custom = new () { Title = "Custom" };
+        statusBar.Add (custom);
 
-        Assert.Single (statusBar.ExtraShortcuts);
+        Assert.Equal (initialCount + 1, statusBar.SubViews.Count);
     }
 
     [Fact]

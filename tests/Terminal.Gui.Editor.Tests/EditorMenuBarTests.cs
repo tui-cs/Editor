@@ -1,5 +1,6 @@
 // Copilot - claude-opus-4.6
 
+using Terminal.Gui.Input;
 using Terminal.Gui.ViewBase;
 using Terminal.Gui.Views;
 using Xunit;
@@ -27,32 +28,28 @@ public class EditorMenuBarTests
     }
 
     [Fact]
+    public void Constructor_CreatesFileEditViewMenus ()
+    {
+        Editor editor = new ();
+        EditorMenuBar menuBar = new (editor);
+
+        Assert.NotNull (menuBar.FileMenu);
+        Assert.NotNull (menuBar.EditMenu);
+        Assert.NotNull (menuBar.ViewMenu);
+    }
+
+    [Fact]
     public void NewRequested_RaisesOnNew ()
     {
         Editor editor = new ();
         EditorMenuBar menuBar = new (editor);
-        menuBar.RebuildMenus ();
 
         var raised = false;
         menuBar.NewRequested += (_, _) => raised = true;
 
-        // Simulate — invoke via reflection or test the event handler directly.
-        // Since the menu items aren't interactive in unit tests, we test the event wiring.
+        // Verify event hookup — not raised without trigger.
         menuBar.NewRequested += (_, _) => { };
-        Assert.False (raised); // Sanity — not raised without trigger.
-    }
-
-    [Fact]
-    public void ExtraMenuItems_AppearsAfterRebuild ()
-    {
-        Editor editor = new ();
-        EditorMenuBar menuBar = new (editor);
-
-        menuBar.ExtraMenuItems.Add (new MenuBarItem ("_Custom", []));
-        menuBar.RebuildMenus ();
-
-        // After rebuild, the menu should have subviews including our custom item.
-        Assert.True (menuBar.SubViews.Count > 0);
+        Assert.False (raised);
     }
 
     [Fact]
@@ -61,14 +58,10 @@ public class EditorMenuBarTests
         Editor editor = new ();
         editor.WordWrap = true;
         EditorMenuBar menuBar = new (editor);
-        menuBar.RebuildMenus ();
 
-        // Toggle editor state after menu creation.
         editor.WordWrap = false;
         menuBar.SyncCheckboxes ();
 
-        // The checkbox state should reflect the editor's current property.
-        // We can't directly inspect private checkbox state, but we verify no exception.
         Assert.False (editor.WordWrap);
     }
 
@@ -77,13 +70,10 @@ public class EditorMenuBarTests
     {
         Editor editor = new ();
         EditorMenuBar menuBar = new (editor);
-        menuBar.RebuildMenus ();
 
         var raised = false;
         menuBar.ViewSettingsChanged += (_, _) => raised = true;
 
-        // The toggle methods are private, but we can verify the event hookup
-        // by confirming the handler is registered.
         Assert.False (raised);
     }
 
@@ -93,35 +83,69 @@ public class EditorMenuBarTests
         Editor editor = new ();
         EditorMenuBar menuBar = new (editor);
         menuBar.ShowOpenDialog = () => null;
-        menuBar.RebuildMenus ();
 
         var raised = false;
         menuBar.OpenRequested += (_, _) => raised = true;
 
-        // Can't directly invoke OnOpen since it's private, but we verify the delegate is settable.
         Assert.NotNull (menuBar.ShowOpenDialog);
         Assert.False (raised);
     }
 
     [Fact]
-    public void ExtraViewMenuItems_IncludedInMenu ()
+    public void Consumer_CanAddMenuBarItem_AfterConstruction ()
     {
         Editor editor = new ();
         EditorMenuBar menuBar = new (editor);
-        menuBar.ExtraViewMenuItems.Add (new View { Title = "Custom Toggle" });
-        menuBar.RebuildMenus ();
+        var initialCount = menuBar.SubViews.Count;
 
-        Assert.Single (menuBar.ExtraViewMenuItems);
+        MenuBarItem customMenu = new ("_Custom", [new MenuItem ("_Foo", "", () => { })]);
+        menuBar.Add (customMenu);
+
+        Assert.Equal (initialCount + 1, menuBar.SubViews.Count);
     }
 
     [Fact]
-    public void ExtraBarItems_IncludedInMenu ()
+    public void Consumer_CanAddMenuBarItem_BetweenExisting_UsingRemoveAndAdd ()
     {
         Editor editor = new ();
         EditorMenuBar menuBar = new (editor);
-        menuBar.ExtraBarItems.Add (new View { Title = "FileName" });
-        menuBar.RebuildMenus ();
 
-        Assert.Single (menuBar.ExtraBarItems);
+        // Remove ViewMenu, add custom, re-add ViewMenu to get custom before View
+        menuBar.Remove (menuBar.ViewMenu);
+        MenuBarItem customMenu = new ("_Barf", [new MenuItem ("_Barf Item", "", () => { })]);
+        menuBar.Add (customMenu);
+        menuBar.Add (menuBar.ViewMenu);
+
+        // Custom menu should appear before View menu in SubViews order
+        List<View> subViews = menuBar.SubViews.ToList ();
+        var customIdx = subViews.IndexOf (customMenu);
+        var viewIdx = subViews.IndexOf (menuBar.ViewMenu);
+        Assert.True (customIdx < viewIdx);
+    }
+
+    [Fact]
+    public void Consumer_CanAddItemToViewMenu ()
+    {
+        Editor editor = new ();
+        EditorMenuBar menuBar = new (editor);
+        var initialViewCount = menuBar.ViewMenu.SubViews.Count;
+
+        MenuItem extraItem = new () { Title = "_Preview Markdown" };
+        menuBar.ViewMenu.Add (extraItem);
+
+        Assert.Equal (initialViewCount + 1, menuBar.ViewMenu.SubViews.Count);
+    }
+
+    [Fact]
+    public void Consumer_CanAddShortcutToMenuBar ()
+    {
+        Editor editor = new ();
+        EditorMenuBar menuBar = new (editor);
+        var initialCount = menuBar.SubViews.Count;
+
+        Shortcut fileNameShortcut = new (Key.Empty, "test.txt", null);
+        menuBar.Add (fileNameShortcut);
+
+        Assert.Equal (initialCount + 1, menuBar.SubViews.Count);
     }
 }
