@@ -1,5 +1,6 @@
 // Copilot - Claude Opus 4.6
 
+using System.Text;
 using Terminal.Gui.Document;
 using Terminal.Gui.Document.Folding;
 using Xunit;
@@ -103,8 +104,8 @@ public class AutomaticFoldingTests
     {
         // Create a document exceeding the threshold using many short lines
         // (a single mega-line would stress the visual-line builder unrelated to folding).
-        string line = new string ('a', 100) + "\n";
-        var sb = new System.Text.StringBuilder (1_100_000);
+        var line = new string ('a', 100) + "\n";
+        StringBuilder sb = new (1_100_000);
 
         while (sb.Length < 1_000_001)
         {
