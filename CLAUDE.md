@@ -12,10 +12,10 @@ Active development happens on **`develop`**. `main` is the release/stable branch
 
 - Work on `develop`. During pre-alpha, direct commits and pushes to `develop` are allowed — no PRs required for routine work.
 - Do not push directly to `main`. Promotion from `develop` to `main` is a deliberate release step.
-- Two paths trigger `.github/workflows/release.yml`, which builds + tests cross-platform, then packs and pushes both NuGet packages:
+- Two paths trigger `.github/workflows/release.yml`, which builds + tests cross-platform, then packs and pushes the NuGet package:
   - **Push a `v*` tag** (e.g. `v2.1.0`) — canonical stable release; version = tag minus leading `v`.
   - **Push to `develop`** — rolling pre-release; version = `<Version>` from `Directory.Build.props` + `.${github.run_number}`. With base `2.1.1-develop`, the first run publishes `2.1.1-develop.1`, etc.
-  - `workflow_dispatch` is also available with a verbatim version input.
+- Stable releases are created through **Prepare Release** (`.github/workflows/prepare-release.yml`), which opens a release PR from `develop` to `main`. Merging that PR triggers **Finalize Release** (`.github/workflows/finalize-release.yml`) to create the `v*` tag, GitHub Release, and back-merge PR to `develop`; the tag push triggers NuGet publishing.
 
 ## Versioning
 
