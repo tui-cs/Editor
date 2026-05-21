@@ -266,16 +266,16 @@ public class TedSettingsPersistenceTests
     }
 
     [Fact]
-    public void SettingsDialog_IndentSize_Rejects_Zero ()
+    public void EditorTabSettingsTab_IndentSize_Rejects_Zero ()
     {
         TedApp app = new ();
-        EditorSettingsDialog dialog = new (app.Editor);
+        EditorTabSettingsTab tab = new (app.Editor);
 
         // Access _indentSize via reflection (it's private)
         FieldInfo? indentSizeField =
-            typeof (EditorSettingsDialog).GetField ("_indentSize", BindingFlags.Instance | BindingFlags.NonPublic);
+            typeof (EditorTabSettingsTab).GetField ("_indentSize", BindingFlags.Instance | BindingFlags.NonPublic);
         Assert.NotNull (indentSizeField);
-        NumericUpDown<int> indentControl = (NumericUpDown<int>)indentSizeField.GetValue (dialog)!;
+        NumericUpDown<int> indentControl = (NumericUpDown<int>)indentSizeField.GetValue (tab)!;
 
         var valueBefore = indentControl.Value;
         Assert.True (valueBefore >= 1);
@@ -284,7 +284,7 @@ public class TedSettingsPersistenceTests
         indentControl.Value = 0;
         Assert.Equal (valueBefore, indentControl.Value);
 
-        dialog.ApplyTo (app.Editor);
+        tab.ApplyTo (app.Editor);
         Assert.True (app.Editor.IndentationSize >= 1);
     }
 
