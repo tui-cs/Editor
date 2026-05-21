@@ -154,7 +154,8 @@ public class AutomaticFoldingTests
 
         Assert.Null (editor.FoldingManager);
 
-        doc.Remove (2, largeContent.Length);
+        const int offsetAfterOpeningBrace = 2;
+        doc.Remove (offsetAfterOpeningBrace, largeContent.Length);
 
         Assert.NotNull (editor.FoldingManager);
         Assert.True (editor.FoldingManager!.AllFoldings.Any ());

@@ -124,32 +124,30 @@ public partial class Editor
             return;
         }
 
-        FoldingManager fm;
-
-        if (FoldingManager is { } existingManager && ReferenceEquals (existingManager.Document, Document))
+        if (FoldingManager is { } manager && ReferenceEquals (manager.Document, Document))
         {
-            fm = existingManager;
-        }
-        else
-        {
-            if (_automaticFoldingOwnsFoldingManager)
-            {
-                FoldingManager = null;
-                _automaticFoldingOwnsFoldingManager = false;
-            }
+            _foldingStrategy.UpdateFoldings (manager, Document);
+            SetFoldingDocument (Document);
 
-            if (FoldingManager is not null)
-            {
-                SetFoldingDocument (null);
-
-                return;
-            }
-
-            fm = new (Document);
-            FoldingManager = fm;
-            _automaticFoldingOwnsFoldingManager = true;
+            return;
         }
 
+        if (FoldingManager is not null && !_automaticFoldingOwnsFoldingManager)
+        {
+            SetFoldingDocument (null);
+
+            return;
+        }
+
+        if (_automaticFoldingOwnsFoldingManager)
+        {
+            FoldingManager = null;
+            _automaticFoldingOwnsFoldingManager = false;
+        }
+
+        FoldingManager fm = new (Document);
+        FoldingManager = fm;
+        _automaticFoldingOwnsFoldingManager = true;
         _foldingStrategy.UpdateFoldings (fm, Document);
         SetFoldingDocument (Document);
     }
