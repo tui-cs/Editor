@@ -102,28 +102,17 @@ internal sealed class FoldingGutter : View
             else
             {
                 // Check if line is a continuation of an expanded fold.
-                var isContinuation = false;
-
-                foreach (FoldingSection fs in fm.AllFoldings)
-                {
-                    if (fs.IsFolded)
+                var isContinuation = fm.AllFoldings
+                    .Where (fs => !fs.IsFolded)
+                    .Any (fs =>
                     {
-                        continue;
-                    }
+                        DocumentLine startLine =
+                            document.GetLineByOffset (Math.Clamp (fs.StartOffset, 0, document.TextLength));
+                        DocumentLine endLine =
+                            document.GetLineByOffset (Math.Clamp (fs.EndOffset, 0, document.TextLength));
 
-                    DocumentLine startLine =
-                        document.GetLineByOffset (Math.Clamp (fs.StartOffset, 0, document.TextLength));
-
-                    DocumentLine endLine =
-                        document.GetLineByOffset (Math.Clamp (fs.EndOffset, 0, document.TextLength));
-
-                    if (lineNumber > startLine.LineNumber && lineNumber <= endLine.LineNumber)
-                    {
-                        isContinuation = true;
-
-                        break;
-                    }
-                }
+                        return lineNumber > startLine.LineNumber && lineNumber <= endLine.LineNumber;
+                    });
 
                 indicator = isContinuation ? "│ " : "  ";
             }

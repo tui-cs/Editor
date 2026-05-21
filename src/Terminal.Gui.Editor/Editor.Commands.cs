@@ -416,11 +416,13 @@ public partial class Editor
 
             // After the newline is inserted the caret sits at the start of the new line.
             // Ask the indentation strategy to fill in leading whitespace.
-            if (IndentationStrategy is { } strategy)
+            if (IndentationStrategy is not { } strategy)
             {
-                DocumentLine newLine = _document.GetLineByOffset (CaretOffset);
-                strategy.IndentLine (_document, newLine);
+                return true;
             }
+
+            DocumentLine newLine = _document.GetLineByOffset (CaretOffset);
+            strategy.IndentLine (_document, newLine);
         }
 
         return true;
