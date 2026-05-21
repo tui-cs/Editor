@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using Terminal.Gui.App;
 using Terminal.Gui.Input;
 using Terminal.Gui.Resources;
@@ -121,6 +122,13 @@ public class EditorMenuBar : MenuBar
 
     /// <summary>Raised when the user selects File → New.</summary>
     public event EventHandler? NewRequested;
+
+    /// <summary>
+    ///     Raised when the user selects File → Open, <b>before</b> the file picker is shown.
+    ///     Set <see cref="CancelEventArgs.Cancel" /> to <see langword="true" /> to abort the open flow
+    ///     (e.g. after an unsaved-changes confirmation is declined).
+    /// </summary>
+    public event EventHandler<CancelEventArgs>? Opening;
 
     /// <summary>Raised when the user selects File → Open (after <see cref="ShowOpenDialog" /> returns a path).</summary>
     public event EventHandler<FilePathEventArgs>? OpenRequested;
@@ -333,6 +341,14 @@ public class EditorMenuBar : MenuBar
 
     private void OnOpen ()
     {
+        CancelEventArgs cancelArgs = new ();
+        Opening?.Invoke (this, cancelArgs);
+
+        if (cancelArgs.Cancel)
+        {
+            return;
+        }
+
         var path = ShowOpenDialog?.Invoke ();
 
         if (!string.IsNullOrWhiteSpace (path))
