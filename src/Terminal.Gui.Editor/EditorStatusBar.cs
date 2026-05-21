@@ -207,17 +207,13 @@ public class EditorStatusBar : StatusBar
 
         List<Shortcut> allShortcuts =
         [
-            new() { Title = "Language", CommandView = LanguageShortcut },
-            new() { Title = "Theme", CommandView = ThemeDropDown },
+            LanguageShortcut,
+            new () { Title = "Theme", CommandView = ThemeDropDown },
             LoadSpinnerShortcut,
             OverwriteShortcut,
             LocShortcut
         ];
-
-        foreach (Shortcut extra in ExtraShortcuts)
-        {
-            allShortcuts.Add (extra);
-        }
+        allShortcuts.AddRange (ExtraShortcuts);
 
         Add (allShortcuts.ToArray ());
     }
@@ -231,12 +227,14 @@ public class EditorStatusBar : StatusBar
 
     private void UnsubscribeFromEditor ()
     {
-        if (_subscribedEditor is not null)
+        if (_subscribedEditor is null)
         {
-            _subscribedEditor.CaretChanged -= OnCaretChanged;
-            _subscribedEditor.OverwriteModeChanged -= OnOverwriteModeChanged;
-            _subscribedEditor = null;
+            return;
         }
+
+        _subscribedEditor.CaretChanged -= OnCaretChanged;
+        _subscribedEditor.OverwriteModeChanged -= OnOverwriteModeChanged;
+        _subscribedEditor = null;
     }
 
     private void OnCaretChanged (object? sender, EventArgs e)

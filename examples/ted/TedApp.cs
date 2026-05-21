@@ -116,7 +116,7 @@ public sealed partial class TedApp : Window
             CurrentLoadTask = OpenFileAsync (e.FilePath, true);
         };
         Menu.SaveRequested += (_, _) => Save ();
-        Menu.SaveAsRequested += (_, e) => { _ = SaveFileAsAsync (e.FilePath); };
+        Menu.SaveAsRequested += (s, e) => { _ = SaveFileAsAsync (e.FilePath); };
         Menu.QuitRequested += (_, _) => Quit ();
         Menu.ViewSettingsChanged += (_, _) => SaveViewSettings ();
 
@@ -177,12 +177,6 @@ public sealed partial class TedApp : Window
     ///     and document edits that shift the caret).
     /// </summary>
     public Shortcut LocShortcut => StatusBar.LocShortcut;
-
-    /// <summary>
-    ///     The status-bar shortcut that shows whether the editor is in insert (INS) or overwrite (OVR)
-    ///     mode. Updated whenever <see cref="Editor.OverwriteModeChanged" /> fires.
-    /// </summary>
-    public Shortcut OverwriteShortcut => StatusBar.OverwriteShortcut;
 
     private void ShowAboutDialog ()
     {

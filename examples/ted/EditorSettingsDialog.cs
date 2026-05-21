@@ -34,7 +34,7 @@ internal sealed class EditorSettingsDialog : Dialog
         };
         _indentSize.ValueChanging += (_, e) =>
         {
-            if (e.NewValue is < 1)
+            if (e.NewValue < 1)
             {
                 e.Handled = true;
             }

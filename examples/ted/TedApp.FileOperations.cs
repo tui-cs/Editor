@@ -93,7 +93,7 @@ public sealed partial class TedApp
         }
     }
 
-    private Func<string, Stream> _createWrite = path => File.Create (path);
+    private Func<string, Stream> _createWrite = File.Create;
 
     /// <summary>File stream hook used by <see cref="SaveFile" /> and <see cref="SaveFileAs" />.</summary>
     public Func<string, Stream> CreateWrite
@@ -201,12 +201,6 @@ public sealed partial class TedApp
         var filePath = ShowSaveDialog ();
 
         return !string.IsNullOrWhiteSpace (filePath) && SaveFileAsAsync (filePath).GetAwaiter ().GetResult ();
-    }
-
-    /// <summary>Prompts for a file path, then asynchronously streams the editor text to that path.</summary>
-    public Task<bool> SaveFileAsAsync (CancellationToken cancellationToken = default)
-    {
-        return SaveFileAsAsync (false, cancellationToken);
     }
 
     private async Task<bool> SaveFileAsAsync (bool marshalToApp, CancellationToken cancellationToken = default)
@@ -341,10 +335,6 @@ public sealed partial class TedApp
         _ = SaveFileAsync (true);
     }
 
-    private void SaveAs ()
-    {
-        _ = SaveFileAsAsync (true);
-    }
 
     private void Quit ()
     {
@@ -815,17 +805,9 @@ public sealed partial class TedApp
     ///     Adapts streamed saves to the legacy <see cref="WriteAllText" /> hook by buffering bytes in memory and
     ///     writing the final UTF-8 text on disposal.
     /// </summary>
-    private sealed class WriteAllTextStream : MemoryStream
+    private sealed class WriteAllTextStream (string path, Action<string, string> writeAllText) : MemoryStream
     {
-        private readonly string _path;
-        private readonly Action<string, string> _writeAllText;
         private bool _hasWritten;
-
-        public WriteAllTextStream (string path, Action<string, string> writeAllText)
-        {
-            _path = path;
-            _writeAllText = writeAllText;
-        }
 
         protected override void Dispose (bool disposing)
         {
@@ -851,7 +833,7 @@ public sealed partial class TedApp
             }
 
             _hasWritten = true;
-            _writeAllText (_path, Encoding.UTF8.GetString (ToArray ()));
+            writeAllText (path, Encoding.UTF8.GetString (ToArray ()));
         }
     }
 }

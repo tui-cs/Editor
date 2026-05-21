@@ -4,14 +4,9 @@ namespace Ted;
 ///     Reports progress synchronously for non-hosted app scenarios where <see cref="Progress{T}" />
 ///     would queue callbacks to the thread pool instead of an application UI thread.
 /// </summary>
-internal sealed class InlineProgress<T> : IProgress<T>
+internal sealed class InlineProgress<T> (Action<T> handler) : IProgress<T>
 {
-    private readonly Action<T> _handler;
-
-    public InlineProgress (Action<T> handler)
-    {
-        _handler = handler ?? throw new ArgumentNullException (nameof (handler));
-    }
+    private readonly Action<T> _handler = handler ?? throw new ArgumentNullException (nameof (handler));
 
     public void Report (T value)
     {
