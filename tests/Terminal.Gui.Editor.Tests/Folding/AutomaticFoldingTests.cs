@@ -146,15 +146,15 @@ public class AutomaticFoldingTests
     [Fact]
     public void Shrinking_Document_Below_MaxLength_Reinstalls_Automatic_Folding ()
     {
-        string middle = new ('a', 200);
-        TextDocument doc = new ($"{{\n{middle}\n}}\n");
+        string largeContent = new ('a', 200);
+        TextDocument doc = new ($"{{\n{largeContent}\n}}\n");
         Editor editor = new () { Document = doc, MaximumAutomaticFoldingDocumentLength = 20 };
 
         editor.FoldingStrategy = new BraceFoldingStrategy ();
 
         Assert.Null (editor.FoldingManager);
 
-        doc.Remove (2, middle.Length);
+        doc.Remove (2, largeContent.Length);
 
         Assert.NotNull (editor.FoldingManager);
         Assert.True (editor.FoldingManager!.AllFoldings.Any ());
@@ -190,6 +190,7 @@ public class AutomaticFoldingTests
 
         editor.FoldingManager = externalManager;
         editor.AutomaticFolding = false;
+        editor.AutomaticFolding = true;
 
         Assert.Same (externalManager, editor.FoldingManager);
 
