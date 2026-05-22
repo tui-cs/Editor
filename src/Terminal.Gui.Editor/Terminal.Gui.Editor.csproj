@@ -3,6 +3,11 @@
   <PropertyGroup>
     <RootNamespace>Terminal.Gui.Editor</RootNamespace>
     <AssemblyName>Terminal.Gui.Editor</AssemblyName>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <!-- CS1574: XML comment has cref that could not be resolved (cross-assembly refs to Terminal.Gui internals).
+         CS1591: Missing XML comment for publicly visible type/member (lifted AvaloniaEdit code lacks full docs).
+         CS1723: XML comment has cref that refers to a type parameter (upstream doc style). -->
+    <NoWarn>$(NoWarn);CS1574;CS1591;CS1723</NoWarn>
 
     <PackageId>Terminal.Gui.Editor</PackageId>
     <Description>Full-featured text editor View for Terminal.Gui — rope-backed document model, multi-caret, folding, search, undo/redo, optional TextMate highlighting. Adapted from AvaloniaEdit.</Description>
