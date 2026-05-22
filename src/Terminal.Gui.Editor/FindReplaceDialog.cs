@@ -1,4 +1,5 @@
 using Terminal.Gui.Document.Search;
+using Terminal.Gui.Resources;
 using Terminal.Gui.ViewBase;
 using Terminal.Gui.Views;
 
@@ -64,7 +65,7 @@ public sealed class FindReplaceDialog : Dialog
         _regexCheckBox.Y = Pos.Bottom (tabs);
         _statusLabel.Y = Pos.Bottom (tabs) + 1;
 
-        AddButton (new Button { Text = "_Close" });
+        AddButton (new Button { Text = Strings.cmdClose });
         Add (tabs, _matchCaseCheckBox, _wholeWordCheckBox, _regexCheckBox, _statusLabel);
 
         if (selectReplaceTab)

@@ -192,37 +192,37 @@ public class EditorMenuBar : MenuBar
         [
             new MenuItem
             {
-                Title = "_New",
-                HelpText = "New file",
+                Title = Strings.cmdNew,
+                HelpText = Strings.cmdNew_Help,
                 Key = Key.N.WithCtrl,
                 Action = OnNew
             },
             new MenuItem
             {
-                Title = "_Open...",
-                HelpText = "Open file",
+                Title = Strings.cmdOpen,
+                HelpText = Strings.cmdOpen_Help,
                 Key = Key.O.WithCtrl,
                 Action = OnOpen
             },
             new MenuItem
             {
-                Title = "_Save",
-                HelpText = "Save file",
+                Title = Strings.cmdSave,
+                HelpText = Strings.cmdSave_Help,
                 Key = Key.S.WithCtrl,
                 Action = OnSave
             },
             new MenuItem
             {
-                Title = "Save _As...",
-                HelpText = "Save file as",
+                Title = Strings.cmdSaveAs,
+                HelpText = Strings.cmdSaveAs_Help,
                 Key = Key.S.WithCtrl.WithShift,
                 Action = OnSaveAs
             },
             new Line (),
             new MenuItem
             {
-                Title = "_Quit",
-                HelpText = "Quit",
+                Title = Strings.cmdQuit,
+                HelpText = Strings.cmdQuit_Help,
                 Key = Application.GetDefaultKey (Command.Quit),
                 Action = OnQuit
             }
@@ -235,7 +235,7 @@ public class EditorMenuBar : MenuBar
         [
             new MenuItem
             {
-                Title = "_Find...",
+                Title = Strings.cmdFind,
                 HelpText = "Find text in the current document",
                 Key = KeyFor (Command.Find),
                 Action = () => ActiveEditor.InvokeCommand (Command.Find)
@@ -250,44 +250,44 @@ public class EditorMenuBar : MenuBar
             new Line (),
             new MenuItem
             {
-                Title = "_Undo",
-                HelpText = "Undo",
+                Title = Strings.cmdUndo,
+                HelpText = Strings.cmdUndo_Help,
                 Key = KeyFor (Command.Undo),
                 Action = () => ActiveEditor.InvokeCommand (Command.Undo)
             },
             new MenuItem
             {
-                Title = "_Redo",
-                HelpText = "Redo",
+                Title = Strings.cmdRedo,
+                HelpText = Strings.cmdRedo_Help,
                 Key = KeyFor (Command.Redo),
                 Action = () => ActiveEditor.InvokeCommand (Command.Redo)
             },
             new Line (),
             new MenuItem
             {
-                Title = "Cu_t",
-                HelpText = "Cut",
+                Title = Strings.cmdCut,
+                HelpText = Strings.cmdCut_Help,
                 Key = KeyFor (Command.Cut),
                 Action = () => ActiveEditor.InvokeCommand (Command.Cut)
             },
             new MenuItem
             {
-                Title = "_Copy",
-                HelpText = "Copy",
+                Title = Strings.cmdCopy,
+                HelpText = Strings.cmdCopy_Help,
                 Key = KeyFor (Command.Copy),
                 Action = () => ActiveEditor.InvokeCommand (Command.Copy)
             },
             new MenuItem
             {
-                Title = "_Paste",
-                HelpText = "Paste",
+                Title = Strings.cmdPaste,
+                HelpText = Strings.cmdPaste_Help,
                 Key = KeyFor (Command.Paste),
                 Action = () => ActiveEditor.InvokeCommand (Command.Paste)
             },
             new MenuItem
             {
-                Title = "Select _All",
-                HelpText = "Select all",
+                Title = Strings.cmdSelectAll,
+                HelpText = Strings.cmdSelectAll_Help,
                 Key = KeyFor (Command.SelectAll),
                 Action = () => ActiveEditor.InvokeCommand (Command.SelectAll)
             }

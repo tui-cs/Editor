@@ -263,7 +263,7 @@ public sealed partial class TedApp
     /// <summary>Creates the <see cref="SaveDialog" /> used by <see cref="ShowDefaultSaveDialog" />.</summary>
     internal SaveDialog CreateSaveDialog ()
     {
-        return new SaveDialog { Title = "Save File As", AllowsMultipleSelection = false, OpenMode = OpenMode.File };
+        return new SaveDialog { Title = Strings.fdSaveAs, AllowsMultipleSelection = false, OpenMode = OpenMode.File };
     }
 
     private string? ShowDefaultSaveDialog ()
@@ -292,8 +292,8 @@ public sealed partial class TedApp
             "Save changes?",
             "The document has unsaved changes. Save before quitting?",
             Strings.btnCancel,
-            "Do_n't Save",
-            Strings.btnSave);
+            Strings.btnNo,
+            Strings.btnYes);
 
         return result switch
         {
