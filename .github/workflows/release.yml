@@ -65,7 +65,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        include:
+          - os: ubuntu-latest
+            rid: linux-x64
+          - os: macos-latest
+            rid: osx-arm64
+          - os: windows-latest
+            rid: win-x64
     runs-on: ${{ matrix.os }}
     env:
       VERSION: ${{ needs.resolve-version.outputs.version }}
@@ -92,6 +98,22 @@ jobs:
 
       - name: Terminal.Gui.Editor.IntegrationTests
         run: dotnet run --project tests/Terminal.Gui.Editor.IntegrationTests --no-build -c Release
+
+      - name: Publish ted AOT
+        run: >
+          dotnet publish examples/ted -c Release
+          -r ${{ matrix.rid }}
+          --self-contained
+          -p:PublishAot=true
+          -p:Version=${{ env.VERSION }}
+          -o publish/${{ matrix.rid }}
+
+      - name: Upload ted artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ted-${{ matrix.rid }}
+          path: publish/${{ matrix.rid }}/
+          retention-days: 30
 
   pack-and-publish:
     needs: [resolve-version, build-and-test]
@@ -123,6 +145,71 @@ jobs:
           --api-key ${{ secrets.NUGET_API_KEY }}
           --source https://api.nuget.org/v3/index.json
           --skip-duplicate
+
+  # Attach ted AOT binaries to the GitHub Release (tag pushes only).
+  # The Release is created by finalize-release.yml before the tag push triggers this workflow.
+  release-assets:
+    if: github.ref_type == 'tag'
+    needs: [resolve-version, build-and-test]
+    runs-on: ubuntu-latest
+    env:
+      VERSION: ${{ needs.resolve-version.outputs.version }}
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Download all ted artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: ted-*
+          path: artifacts/
+
+      - name: Package release archives
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+
+          package_unix() {
+            local rid="$1"
+            local src="artifacts/ted-${rid}"
+            if [ ! -d "$src" ]; then
+              echo "::warning::No artifact for ${rid}, skipping"
+              return 0
+            fi
+            chmod +x "$src/ted" 2>/dev/null || true
+            tar -czf "dist/ted-${VERSION}-${rid}.tar.gz" -C "$src" .
+            echo "Created dist/ted-${VERSION}-${rid}.tar.gz"
+          }
+
+          package_windows() {
+            local rid="$1"
+            local src="artifacts/ted-${rid}"
+            if [ ! -d "$src" ]; then
+              echo "::warning::No artifact for ${rid}, skipping"
+              return 0
+            fi
+            (cd "$src" && zip -r "../../dist/ted-${VERSION}-${rid}.zip" .)
+            echo "Created dist/ted-${VERSION}-${rid}.zip"
+          }
+
+          package_unix   osx-arm64
+          package_unix   linux-x64
+          package_windows win-x64
+
+          ls -la dist/
+
+      - name: Upload to GitHub Release
+        shell: bash
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" dist/* --clobber
+          else
+            echo "::warning::Release $TAG not found; creating one."
+            gh release create "$TAG" --title "ted $TAG" --generate-notes dist/*
+          fi
 
   # Notify downstream repos (gui-cs/clet) so they can rebuild against the new Editor version.
   # Uses a PAT stored as CLET_DISPATCH_TOKEN with `repo` scope on gui-cs/clet.
