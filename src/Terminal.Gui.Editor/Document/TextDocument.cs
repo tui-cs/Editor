@@ -366,21 +366,8 @@ namespace Terminal.Gui.Document
                 VerifyAccess();
                 if (value == null)
                     throw new ArgumentNullException(nameof(value));
-                if (IsSameText(value))
-                    return;
                 Replace(0, _rope.Length, value);
             }
-        }
-
-        private bool IsSameText(string value)
-        {
-            if (value.Length != _rope.Length)
-                return false;
-
-            if (_cachedText?.Target is string cachedText && cachedText == value)
-                return true;
-
-            return _rope.GetMemory(0, value.Length).Span.SequenceEqual(value.AsSpan());
         }
 
 #nullable enable
@@ -429,7 +416,21 @@ namespace Terminal.Gui.Document
         /// <summary>
         /// This event is called after a group of changes is completed.
         /// </summary>
-        /// <remarks><inheritdoc cref="Changing"/></remarks>
+        /// <remarks>
+        /// <para>
+        /// This is a change-completed notification. It is raised from <see cref="EndUpdate()"/>
+        /// after one or more document edits have completed, and it may represent multiple
+        /// calls to <see cref="Insert(int,string)"/>, <see cref="Remove(int,int)"/>, or
+        /// <see cref="Replace(int,int,string)"/> within the same update group.
+        /// </para>
+        /// <para>
+        /// To observe each individual edit with change details, use <see cref="Changed"/>.
+        /// Consumers working through <see cref="IDocument"/> can use
+        /// <see cref="IDocument.TextChanged"/> for per-edit notifications and
+        /// <see cref="IDocument.ChangeCompleted"/> for this completed-group notification.
+        /// </para>
+        /// <inheritdoc cref="Changing"/>
+        /// </remarks>
         public event EventHandler TextChanged;
 
         event EventHandler IDocument.ChangeCompleted
@@ -483,7 +484,7 @@ namespace Terminal.Gui.Document
         ///   </list></item>
         /// <item><description><b><see cref="EndUpdate">EndUpdate()</see></b></description>
         ///   <list type="bullet">
-        ///   <item><description><see cref="TextChanged"/> event is raised</description></item>
+        ///   <item><description>Completed-group <see cref="TextChanged"/> event is raised</description></item>
         ///   <item><description><see cref="PropertyChanged"/> event is raised (for the Text, TextLength, LineCount properties, in that order)</description></item>
         ///   <item><description>End of change group (on undo stack)</description></item>
         ///   <item><description><see cref="UpdateFinished"/> event is raised</description></item>
@@ -511,9 +512,16 @@ namespace Terminal.Gui.Document
         }
 
         /// <summary>
-        /// Is raised after the document has changed.
+        /// Is raised after an individual document edit has been applied.
         /// </summary>
-        /// <remarks><inheritdoc cref="Changing"/></remarks>
+        /// <remarks>
+        /// <para>
+        /// This event is raised once for each applied edit and carries the
+        /// <see cref="DocumentChangeEventArgs"/> for that edit. In contrast,
+        /// <see cref="TextChanged"/> is raised once after a whole update group completes.
+        /// </para>
+        /// <inheritdoc cref="Changing"/>
+        /// </remarks>
         public event EventHandler<DocumentChangeEventArgs> Changed;
 
         private event EventHandler<TextChangeEventArgs> TextChangedInternal;
