@@ -366,8 +366,21 @@ namespace Terminal.Gui.Document
                 VerifyAccess();
                 if (value == null)
                     throw new ArgumentNullException(nameof(value));
+                if (IsSameText(value))
+                    return;
                 Replace(0, _rope.Length, value);
             }
+        }
+
+        private bool IsSameText(string value)
+        {
+            if (value.Length != _rope.Length)
+                return false;
+
+            if (_cachedText?.Target is string cachedText && cachedText == value)
+                return true;
+
+            return _rope.GetMemory(0, value.Length).Span.SequenceEqual(value.AsSpan());
         }
 
 #nullable enable
