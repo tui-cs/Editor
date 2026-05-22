@@ -1,3 +1,5 @@
+// This is a demo of ted, the Terminal.Gui.Editor example.
+
 using System.Text;
 using Terminal.Gui.App;
 using Terminal.Gui.Configuration;
