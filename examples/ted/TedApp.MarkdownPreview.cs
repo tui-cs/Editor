@@ -6,7 +6,7 @@ namespace Ted;
 
 public sealed partial class TedApp
 {
-    private Markdown? _markdownPreview;
+    private MarkdownPreview? _markdownPreview;
     private bool _syncingScroll;
 
     /// <summary>Toggle state used by the View menu item that shows or hides the Markdown preview pane.</summary>
@@ -66,13 +66,14 @@ public sealed partial class TedApp
             return;
         }
 
-        _markdownPreview = new Markdown
+        _markdownPreview = new MarkdownPreview
         {
             X = Pos.Right (Editor),
             Y = Editor.Y,
             Width = Dim.Fill (),
             Height = Editor.Height,
             Text = Editor.Document?.Text ?? string.Empty,
+            TotalSourceLines = Editor.Document?.LineCount ?? 1,
             ViewportSettings = ViewportSettingsFlags.HasScrollBars,
             SyntaxHighlighter = new TextMateSyntaxHighlighter ()
         };
@@ -91,6 +92,13 @@ public sealed partial class TedApp
         {
             Editor.Document.Changed += OnDocumentChangedForPreview;
         }
+
+        // Track caret movement to highlight the corresponding line in the preview.
+        Editor.CaretChanged += OnEditorCaretChangedForPreview;
+        UpdatePreviewHighlight ();
+
+        // Click in preview navigates the editor caret.
+        _markdownPreview.SourceLineClicked += OnPreviewSourceLineClicked;
     }
 
     private void HideMarkdownPreview ()
@@ -102,6 +110,8 @@ public sealed partial class TedApp
 
         Editor.ViewportChanged -= OnEditorViewportChanged;
         _markdownPreview.ViewportChanged -= OnPreviewViewportChanged;
+        Editor.CaretChanged -= OnEditorCaretChangedForPreview;
+        _markdownPreview.SourceLineClicked -= OnPreviewSourceLineClicked;
 
         if (Editor.Document is not null)
         {
@@ -190,6 +200,35 @@ public sealed partial class TedApp
         }
 
         _markdownPreview.Text = Editor.Document?.Text ?? string.Empty;
+        _markdownPreview.TotalSourceLines = Editor.Document?.LineCount ?? 1;
+    }
+
+    private void OnEditorCaretChangedForPreview (object? sender, EventArgs e)
+    {
+        UpdatePreviewHighlight ();
+    }
+
+    private void UpdatePreviewHighlight ()
+    {
+        if (_markdownPreview is null || Editor.Document is null)
+        {
+            return;
+        }
+
+        var sourceLine = Editor.Document.GetLineByOffset (Editor.CaretOffset).LineNumber - 1;
+        _markdownPreview.HighlightSourceLine = sourceLine;
+    }
+
+    private void OnPreviewSourceLineClicked (object? sender, SourceLineClickedEventArgs e)
+    {
+        if (Editor.Document is null)
+        {
+            return;
+        }
+
+        var lineNumber = Math.Clamp (e.SourceLine + 1, 1, Editor.Document.LineCount);
+        Editor.CaretOffset = Editor.Document.GetLineByNumber (lineNumber).Offset;
+        Editor.SetFocus ();
     }
 
     /// <summary>
@@ -212,5 +251,7 @@ public sealed partial class TedApp
         }
 
         _markdownPreview.Text = Editor.Document?.Text ?? string.Empty;
+        _markdownPreview.TotalSourceLines = Editor.Document?.LineCount ?? 1;
+        UpdatePreviewHighlight ();
     }
 }
