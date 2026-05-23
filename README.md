@@ -4,7 +4,7 @@
 
 A reusable text-editing `View` for [Terminal.Gui](https://github.com/gui-cs/Terminal.Gui). Drop it into your TUI app and you get the editing experience users already expect (caret movement, selection, clipboard, undo/redo, search & replace, folding, syntax highlighting, word wrap) without writing any of it yourself.
 
-Ships as a single NuGet package: **[`Terminal.Gui.Editor`](https://www.nuget.org/packages/Terminal.Gui.Editor)**.
+Ships as a single NuGet package: **[`Terminal.Gui.Editor`](https://www.nuget.org/packages/Terminal.Gui.Editor)**. API documentation is published on the [Terminal.Gui DocFX site](https://gui-cs.github.io/Terminal.Gui/api/Terminal.Gui.Editor.html).
 
 ## What this is, and what it isn't
 

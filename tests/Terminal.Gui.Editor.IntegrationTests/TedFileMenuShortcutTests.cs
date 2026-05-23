@@ -4,6 +4,7 @@ using System.Globalization;
 using Ted;
 using Terminal.Gui.Editor.IntegrationTests.Testing;
 using Terminal.Gui.Input;
+using Terminal.Gui.Resources;
 using Terminal.Gui.Testing;
 using Terminal.Gui.Views;
 using Xunit;
@@ -48,7 +49,7 @@ public class TedFileMenuShortcutTests
     }
 
     [Fact]
-    public void SaveAs_Dialog_Title_Is_Save_File_As_InPortugueseCulture ()
+    public void SaveAs_Dialog_Title_Uses_Resource_InPortugueseCulture ()
     {
         CultureInfo originalCulture = CultureInfo.CurrentCulture;
         CultureInfo originalUiCulture = CultureInfo.CurrentUICulture;
@@ -61,7 +62,7 @@ public class TedFileMenuShortcutTests
             using TedApp ted = new ();
             using SaveDialog dialog = ted.CreateSaveDialog ();
 
-            Assert.Equal ("Save File As", dialog.Title);
+            Assert.Equal (Strings.fdSaveAs, dialog.Title);
         }
         finally
         {
@@ -71,7 +72,7 @@ public class TedFileMenuShortcutTests
     }
 
     [Fact]
-    public void SaveAs_Dialog_Title_Is_Save_File_As ()
+    public void SaveAs_Dialog_Title_Uses_Resource ()
     {
         // Verify that CreateSaveDialog (used by ShowDefaultSaveDialog) produces a dialog
         // with the expected title. This catches regressions if someone removes or changes
@@ -79,7 +80,7 @@ public class TedFileMenuShortcutTests
         using TedApp ted = new ();
         using SaveDialog dialog = ted.CreateSaveDialog ();
 
-        Assert.Equal ("Save File As", dialog.Title);
+        Assert.Equal (Strings.fdSaveAs, dialog.Title);
         Assert.False (dialog.AllowsMultipleSelection);
         Assert.Equal (OpenMode.File, dialog.OpenMode);
     }

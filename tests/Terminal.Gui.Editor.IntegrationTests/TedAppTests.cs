@@ -8,6 +8,7 @@ using Ted;
 using Terminal.Gui.Configuration;
 using Terminal.Gui.Editor.IntegrationTests.Testing;
 using Terminal.Gui.Input;
+using Terminal.Gui.Resources;
 using Terminal.Gui.Testing;
 using Terminal.Gui.Text.Indentation;
 using Xunit;
@@ -730,14 +731,14 @@ public class TedAppTests
     {
         await using AppFixture<TedApp> fx = new (() => new TedApp (configPath: TedTestConfig.NewPath ()));
 
-        DriverAssert.ContentsDoesNotContain (fx.Driver, "Find...");
+        DriverAssert.ContentsDoesNotContain (fx.Driver, Strings.cmdFind.Replace ("_", string.Empty));
         DriverAssert.ContentsDoesNotContain (fx.Driver, "Replace...");
 
         InputInjectionOptions options = new () { Mode = InputInjectionMode.Direct };
         fx.Injector.InjectKey (Key.E.WithAlt, options);
         fx.Render ();
 
-        DriverAssert.ContentsContains (fx.Driver, "Find...");
+        DriverAssert.ContentsContains (fx.Driver, Strings.cmdFind.Replace ("_", string.Empty));
         DriverAssert.ContentsContains (fx.Driver, "Replace...");
     }
 

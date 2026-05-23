@@ -44,10 +44,22 @@ jobs:
       # Style gate runs once (Linux). dotnet format catches whitespace/analyzer drift;
       # jb cleanupcode catches what dotnet format misses (var, expression-bodied members,
       # XML doc spacing, using sorting). Both must produce a clean working tree.
+      #
+      # Keep lifted AvaloniaEdit code out of broad format/cleanup passes. Those files preserve
+      # upstream formatting for manual re-syncs; formatting-only churn there is not actionable
+      # style drift. Keep this exclude list in sync with .claude/hooks/cleanup-cs.ps1.
       - name: Verify code style — dotnet format
         if: matrix.os == 'ubuntu-latest'
         run: |
-          dotnet format Terminal.Gui.Editor.slnx --no-restore --exclude third_party/ --verify-no-changes
+          dotnet format Terminal.Gui.Editor.slnx --no-restore --verify-no-changes \
+            --exclude third_party/ \
+            --exclude src/Terminal.Gui.Editor/Document/ \
+            --exclude src/Terminal.Gui.Editor/Extensions/ \
+            --exclude src/Terminal.Gui.Editor/Folding/ \
+            --exclude src/Terminal.Gui.Editor/Highlighting/ \
+            --exclude src/Terminal.Gui.Editor/Indentation/ \
+            --exclude src/Terminal.Gui.Editor/Search/ \
+            --exclude src/Terminal.Gui.Editor/Utils/
 
       - name: Verify code style — ReSharper cleanupcode
         if: matrix.os == 'ubuntu-latest'
@@ -59,10 +71,10 @@ jobs:
           dotnet jb cleanupcode Terminal.Gui.Editor.slnx \
             --profile="TG.Editor Full Cleanup" \
             --no-build \
-            --exclude="third_party/**/*;src/Terminal.Gui.Editor/Document/**/*;src/Terminal.Gui.Editor/Utils/**/*;src/Terminal.Gui.Editor/Search/**/*" \
+            --exclude="third_party/**/*;src/Terminal.Gui.Editor/Document/**/*;src/Terminal.Gui.Editor/Extensions/**/*;src/Terminal.Gui.Editor/Folding/**/*;src/Terminal.Gui.Editor/Highlighting/**/*;src/Terminal.Gui.Editor/Indentation/**/*;src/Terminal.Gui.Editor/Search/**/*;src/Terminal.Gui.Editor/Utils/**/*" \
             || true
           if ! git diff --exit-code; then
-            echo "::error::ReSharper code cleanup found style drift. Run 'dotnet jb cleanupcode Terminal.Gui.Editor.slnx --profile=\"TG.Editor Full Cleanup\" --no-build --exclude=\"third_party/**/*;src/Terminal.Gui.Editor/Document/**/*;src/Terminal.Gui.Editor/Utils/**/*;src/Terminal.Gui.Editor/Search/**/*\"' locally and commit the result."
+            echo "::error::ReSharper code cleanup found style drift outside lifted AvaloniaEdit code. Run '.claude/hooks/cleanup-cs.ps1' locally and commit the result."
             exit 1
           fi
 
@@ -81,4 +93,3 @@ jobs:
       # NOTE: Performance smoke tests and the BenchmarkDotNet baseline compare live in a
       # dedicated workflow: .github/workflows/perf.yml (ubuntu-latest only). They were split
       # out so this CI workflow stays purely correctness-focused and fast across all three OSes.
-

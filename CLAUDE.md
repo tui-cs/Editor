@@ -51,7 +51,7 @@ Run a single test by passing xUnit.v3 filter args after `--`:
 dotnet run --project tests/Terminal.Gui.Editor.Tests -- -method "*MyTestName*"
 ```
 
-CI verifies formatting with `dotnet format Terminal.Gui.Editor.slnx --verify-no-changes --exclude third_party/`. Run the same locally before pushing if you've touched C# files outside `third_party/`.
+CI verifies formatting with `dotnet format Terminal.Gui.Editor.slnx --verify-no-changes` while excluding `third_party/` and AvaloniaEdit-lifted folders. Run `.claude/hooks/cleanup-cs.ps1` locally before pushing if you've touched C# files outside lifted code.
 
 ### Verifying the *look* (ANSI snapshots) — MANDATORY for render changes
 
@@ -84,15 +84,22 @@ The boundary matters: anything that takes a dependency on `Terminal.Gui` types b
 
 See `specs/00-plan.md` §6 for the planned pipeline and full `Editor` public API sketch.
 
-## AvaloniaEdit fork policy
+## AvaloniaEdit fork policy — do not format lifted code
 
-Code is lifted from AvaloniaEdit into the relevant `src/Terminal.Gui.Editor/` subfolders (`Document/`, `Utils/` so far; `Folding/`, `Search/`, `Indentation/`, `Highlighting/` to follow). The pinned upstream commit and per-file modification log live in `third_party/AvaloniaEdit/UPSTREAM.md` (with the upstream MIT `LICENSE` alongside).
+Code is lifted from AvaloniaEdit into the relevant `src/Terminal.Gui.Editor/` subfolders (`Document/`, `Utils/`, `Folding/`, `Search/`, `Indentation/`, `Highlighting/`, and supporting lifted helpers). The pinned upstream commit and per-file modification log live in `third_party/AvaloniaEdit/UPSTREAM.md` (with the upstream MIT `LICENSE` alongside).
+
+**Do not run broad formatting or cleanup over lifted files.** Treat any file containing
+`// Adapted for Terminal.Gui from AvaloniaEdit ...` as upstream-owned formatting, even when it
+lives outside `third_party/`. `dotnet format`, ReSharper cleanup, Rider "cleanup on save", and
+"format document" can create huge no-op diffs in these files; those diffs make future upstream
+re-syncs painful and must be reverted before finishing work.
 
 For lifted files:
 
 - **Preserve original formatting and copyright headers.** House-style reformatting defeats the merge story.
 - Add the line `// Adapted for Terminal.Gui from AvaloniaEdit <commit-sha>` under the original header.
 - Targeted edits only: strip `using Avalonia.*`, remove `Dispatcher.UIThread.VerifyAccess ()` calls, replace `IBrush`/`Avalonia.Media.Color` with `Terminal.Gui.Color`, drop typeface/font-size from `HighlightingColor`.
+- If a formatter or cleanup tool touches lifted files as a side effect, immediately revert those unrelated formatting-only hunks. Keep only the narrow semantic changes required by the task.
 - Log every modification in `third_party/AvaloniaEdit/UPSTREAM.md` along with the pinned upstream commit.
 
 The fork is **hard** — re-syncs are manual and deliberate, triggered only by upstream fixes we want.
@@ -105,7 +112,7 @@ Adopts Terminal.Gui's house style. Three enforcement layers:
 2. **`Terminal.Gui.Editor.sln.DotSettings` + `dotnet jb cleanupcode`** — ReSharper-driven cleanup ("TG.Editor Full Cleanup" profile). Catches what `dotnet format` misses (XML doc spacing, using sorting, name qualifier removal, expression-bodied conversions). CI runs `dotnet jb cleanupcode` and fails on any diff. The file is named `*.sln.DotSettings` (not `*.slnx.DotSettings`) even though the solution is `.slnx`: ReSharper/Rider/`jb` resolve the team-shared layer using the `.sln.` infix (the IDE writes its companion `.sln.DotSettings.user`). The cleanup profile **must** be stored in the modern single-string serialized-`<Profile>` format — ReSharper/`jb` 2024+ silently ignore the old per-task `…/=Name/CSReformatCode/@EntryIndexedValue` key layout, which makes the profile vanish from the IDE and unresolvable by `jb` (and CI's `|| true` then makes the cleanup gate a silent no-op). Edit the profile only via Rider → Settings | Code Cleanup → "Save to: This Solution Team-Shared".
 3. **A Stop hook in `.claude/settings.json`** that runs both tools on .cs files modified during the session before the agent reports done. Output is suppressed unless the cleanup actually changed something.
 
-**Before declaring work complete, an agent must run `dotnet tool restore && dotnet format Terminal.Gui.Editor.slnx --exclude third_party/ && dotnet jb cleanupcode Terminal.Gui.Editor.slnx --profile="TG.Editor Full Cleanup"` (the Stop hook does this automatically). If the cleanup adjusts files, those changes are part of the work — re-stage and continue.**
+**Before declaring work complete, an agent must run `.claude/hooks/cleanup-cs.ps1` (the Stop hook does this automatically). Then inspect the diff. If cleanup adjusted lifted AvaloniaEdit files (files with the `Adapted for Terminal.Gui from AvaloniaEdit` marker), revert those formatting-only changes before reporting done and fix the cleanup exclude list. Cleanup changes in non-lifted files are part of the work — re-stage and continue.**
 
 ### Formatting and spacing
 

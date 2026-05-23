@@ -128,7 +128,7 @@ public sealed partial class TedApp : Window
         Menu.ViewMenu.PopoverMenu!.Root!.Add (_previewMarkdownMenuItem);
         Menu.Add (new MenuBarItem ("_Options",
             [new MenuItem ("_Settings...", string.Empty, ShowSettingsDialog)]));
-        Menu.Add (new MenuBarItem ("_Help",
+        Menu.Add (new MenuBarItem (Strings.menuHelp,
             [new MenuItem ("_About", "About ted", ShowAboutDialog)]));
         _fileNameShortcut = new Shortcut (Key.Empty, "<untitled>", Open)
         {
