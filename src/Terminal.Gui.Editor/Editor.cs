@@ -2,14 +2,14 @@ using System.ComponentModel;
 using System.Drawing;
 using Terminal.Gui.App;
 using Terminal.Gui.Configuration;
-using Terminal.Gui.Document;
-using Terminal.Gui.Document.Folding;
+using Terminal.Gui.Editor.Document;
+using Terminal.Gui.Editor.Document.Folding;
 using Terminal.Gui.Drawing;
 using Terminal.Gui.Editor.Rendering;
-using Terminal.Gui.Highlighting;
+using Terminal.Gui.Editor.Highlighting;
 using Terminal.Gui.Input;
 using Terminal.Gui.Text;
-using Terminal.Gui.Text.Indentation;
+using Terminal.Gui.Editor.Indentation;
 using Terminal.Gui.ViewBase;
 using Attribute = Terminal.Gui.Drawing.Attribute;
 

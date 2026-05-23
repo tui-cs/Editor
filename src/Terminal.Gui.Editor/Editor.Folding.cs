@@ -1,5 +1,5 @@
-using Terminal.Gui.Document;
-using Terminal.Gui.Document.Folding;
+using Terminal.Gui.Editor.Document;
+using Terminal.Gui.Editor.Document.Folding;
 
 namespace Terminal.Gui.Editor;
 

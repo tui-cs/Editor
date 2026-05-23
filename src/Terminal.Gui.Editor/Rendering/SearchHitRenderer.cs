@@ -1,6 +1,6 @@
 using System.Drawing;
-using Terminal.Gui.Document;
-using Terminal.Gui.Document.Search;
+using Terminal.Gui.Editor.Document;
+using Terminal.Gui.Editor.Document.Search;
 using Terminal.Gui.Drawing;
 using Terminal.Gui.ViewBase;
 using Attribute = Terminal.Gui.Drawing.Attribute;

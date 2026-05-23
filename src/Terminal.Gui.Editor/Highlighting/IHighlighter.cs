@@ -19,9 +19,9 @@
 // OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 // DEALINGS IN THE SOFTWARE.
 
-using Terminal.Gui.Document;
+using Terminal.Gui.Editor.Document;
 
-namespace Terminal.Gui.Highlighting;
+namespace Terminal.Gui.Editor.Highlighting;
 
 /// <summary>
 ///     Represents a highlighted document.

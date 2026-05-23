@@ -26,11 +26,11 @@ using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.IO;
 using System.Text;
-using Terminal.Gui.Document.Utils;
+using Terminal.Gui.Editor.Document.Utils;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Terminal.Gui.Document
+namespace Terminal.Gui.Editor.Document
 {
     /// <summary>
     /// This class is the main class of the text model. Basically, it is a <see cref="System.Text.StringBuilder"/> with events.

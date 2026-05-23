@@ -22,9 +22,9 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
-using Terminal.Gui.Document;
+using Terminal.Gui.Editor.Document;
 
-namespace Terminal.Gui.Document.Search
+namespace Terminal.Gui.Editor.Document.Search
 {
     internal class RegexSearchStrategy : ISearchStrategy
 	{

@@ -21,7 +21,7 @@ using System.Diagnostics.CodeAnalysis;
 // OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 // DEALINGS IN THE SOFTWARE.
 
-namespace Terminal.Gui.Highlighting.Xshd;
+namespace Terminal.Gui.Editor.Highlighting.Xshd;
 
 /// <summary>
 ///     Specifies the type of the regex.

@@ -1,5 +1,5 @@
 using BenchmarkDotNet.Attributes;
-using Terminal.Gui.Document;
+using Terminal.Gui.Editor.Document;
 using Terminal.Gui.Editor.Rendering;
 using Attribute = Terminal.Gui.Drawing.Attribute;
 

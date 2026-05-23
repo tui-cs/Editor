@@ -19,9 +19,9 @@
 // OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 // DEALINGS IN THE SOFTWARE.
 
-using Terminal.Gui.Document.Utils;
+using Terminal.Gui.Editor.Document.Utils;
 
-namespace Terminal.Gui.Highlighting.Xshd;
+namespace Terminal.Gui.Editor.Highlighting.Xshd;
 
 /// <summary>
 ///     A rule set in a XSHD file.

@@ -24,7 +24,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Xml;
 using Terminal.Gui.Drawing;
 
-namespace Terminal.Gui.Highlighting.Xshd;
+namespace Terminal.Gui.Editor.Highlighting.Xshd;
 
 /// <summary>
 ///     Loads .xshd files, version 2.0.

@@ -1,4 +1,4 @@
-namespace Terminal.Gui.Document.Folding;
+namespace Terminal.Gui.Editor.Document.Folding;
 
 /// <summary>
 ///     Detects foldable regions based on matching brace pairs (<c>{}</c>). Useful as a

@@ -22,10 +22,10 @@
 using System.Collections.ObjectModel;
 using System.Diagnostics.CodeAnalysis;
 using System.Xml;
-using Terminal.Gui.Document.Utils;
-using Terminal.Gui.Highlighting.Xshd;
+using Terminal.Gui.Editor.Document.Utils;
+using Terminal.Gui.Editor.Highlighting.Xshd;
 
-namespace Terminal.Gui.Highlighting;
+namespace Terminal.Gui.Editor.Highlighting;
 
 /// <summary>
 ///     Manages a list of syntax highlighting definitions.

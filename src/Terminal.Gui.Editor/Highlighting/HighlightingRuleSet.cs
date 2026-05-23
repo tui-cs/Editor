@@ -20,9 +20,9 @@
 // DEALINGS IN THE SOFTWARE.
 
 using System.Globalization;
-using Terminal.Gui.Document.Utils;
+using Terminal.Gui.Editor.Document.Utils;
 
-namespace Terminal.Gui.Highlighting;
+namespace Terminal.Gui.Editor.Highlighting;
 
 /// <summary>
 ///     A highlighting rule set describes a set of spans that are valid at a given code location.

@@ -22,7 +22,7 @@
 using System.Globalization;
 using System.Text.RegularExpressions;
 
-namespace Terminal.Gui.Highlighting;
+namespace Terminal.Gui.Editor.Highlighting;
 
 /// <summary>
 ///     A highlighting span is a region with start+end expression that has a different RuleSet inside

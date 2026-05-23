@@ -1,7 +1,7 @@
 // CoPilot - claude-opus-4.6
 
-using Terminal.Gui.Document;
-using Terminal.Gui.Text.Indentation;
+using Terminal.Gui.Editor.Document;
+using Terminal.Gui.Editor.Indentation;
 using Xunit;
 
 namespace Terminal.Gui.Editor.Tests.Indentation;

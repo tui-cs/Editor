@@ -15,7 +15,7 @@ using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
-namespace Terminal.Gui.Document.Utils
+namespace Terminal.Gui.Editor.Document.Utils
 {
     using System.Text;
 

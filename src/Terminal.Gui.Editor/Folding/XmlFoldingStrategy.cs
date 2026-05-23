@@ -20,7 +20,7 @@
 using System.Text;
 using System.Xml;
 
-namespace Terminal.Gui.Document.Folding;
+namespace Terminal.Gui.Editor.Document.Folding;
 
 /// <summary>
 ///     Holds information about the start of a fold in an xml string.

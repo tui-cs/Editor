@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 
-namespace Terminal.Gui.Document.Utils
+namespace Terminal.Gui.Editor.Document.Utils
 {
     /// <summary>
     /// This class is used to prevent stack overflows by representing a 'busy' flag

@@ -22,7 +22,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 
-namespace Terminal.Gui.Document.Utils
+namespace Terminal.Gui.Editor.Document.Utils
 {
     internal interface IFreezable
     {

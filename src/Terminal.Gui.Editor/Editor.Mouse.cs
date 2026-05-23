@@ -1,5 +1,5 @@
 using System.Drawing;
-using Terminal.Gui.Document;
+using Terminal.Gui.Editor.Document;
 using Terminal.Gui.Drawing;
 using Terminal.Gui.Editor.Rendering;
 using Terminal.Gui.Input;

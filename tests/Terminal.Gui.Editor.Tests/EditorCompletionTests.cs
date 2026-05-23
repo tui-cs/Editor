@@ -2,7 +2,7 @@
 
 using System.Drawing;
 using Terminal.Gui.App;
-using Terminal.Gui.Document;
+using Terminal.Gui.Editor.Document;
 using Terminal.Gui.Drivers;
 using Terminal.Gui.Editor.Completion;
 using Terminal.Gui.Input;

@@ -21,7 +21,7 @@ using System;
 using System.Diagnostics;
 using System.Globalization;
 
-namespace Terminal.Gui.Document
+namespace Terminal.Gui.Editor.Document
 {
     /// <summary>
     /// Represents a line inside a <see cref="TextDocument"/>.

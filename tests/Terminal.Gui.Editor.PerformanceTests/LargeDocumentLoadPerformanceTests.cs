@@ -1,6 +1,6 @@
 using System.Diagnostics;
 using System.Text;
-using Terminal.Gui.Highlighting;
+using Terminal.Gui.Editor.Highlighting;
 using Xunit;
 
 namespace Terminal.Gui.Editor.PerformanceTests;

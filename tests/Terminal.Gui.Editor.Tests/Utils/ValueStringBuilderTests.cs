@@ -8,7 +8,7 @@
 
 using System.Diagnostics.CodeAnalysis;
 using System.Text;
-using Terminal.Gui.Document.Utils;
+using Terminal.Gui.Editor.Document.Utils;
 using Xunit;
 
 namespace Terminal.Gui.Editor.Tests.Utils;

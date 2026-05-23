@@ -1,4 +1,4 @@
-using Terminal.Gui.Text.Indentation;
+using Terminal.Gui.Editor.Indentation;
 using Terminal.Gui.ViewBase;
 using Terminal.Gui.Views;
 

@@ -20,7 +20,7 @@
 using System;
 using System.Collections.ObjectModel;
 
-namespace Terminal.Gui.Document.Utils
+namespace Terminal.Gui.Editor.Document.Utils
 {
     /// <summary>
     /// A collection that cannot contain null values.
