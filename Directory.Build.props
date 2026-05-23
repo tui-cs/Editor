@@ -21,14 +21,14 @@
       Stable releases are prepared with .github/workflows/prepare-release.yml,
       which opens a release PR. Merging that PR creates the v* tag.
     -->
-    <Version>2.2.1-develop</Version>
+    <Version>2.4.1-develop</Version>
     <PackageProjectUrl>https://github.com/gui-cs/Editor</PackageProjectUrl>
     <RepositoryUrl>https://github.com/gui-cs/Editor</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
 
     <!-- Pinned Terminal.Gui version. CI / release workflows can override via -p:TerminalGuiVersion=<x>. -->
-    <TerminalGuiVersion Condition="'$(TerminalGuiVersion)' == ''">2.2.1</TerminalGuiVersion>
+    <TerminalGuiVersion Condition="'$(TerminalGuiVersion)' == ''">2.4.0</TerminalGuiVersion>
   </PropertyGroup>
 
   <ItemGroup>
