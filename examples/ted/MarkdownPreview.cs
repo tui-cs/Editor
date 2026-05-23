@@ -177,5 +177,3 @@ internal sealed class MarkdownPreview : Markdown
         return base.OnMouseEvent (mouse);
     }
 }
-
-

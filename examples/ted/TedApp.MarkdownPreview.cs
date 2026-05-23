@@ -215,7 +215,7 @@ public sealed partial class TedApp
             return;
         }
 
-        int sourceLine = Editor.Document.GetLineByOffset (Editor.CaretOffset).LineNumber - 1;
+        var sourceLine = Editor.Document.GetLineByOffset (Editor.CaretOffset).LineNumber - 1;
         _markdownPreview.HighlightSourceLine = sourceLine;
     }
 
@@ -226,7 +226,7 @@ public sealed partial class TedApp
             return;
         }
 
-        int lineNumber = Math.Clamp (e.SourceLine + 1, 1, Editor.Document.LineCount);
+        var lineNumber = Math.Clamp (e.SourceLine + 1, 1, Editor.Document.LineCount);
         Editor.CaretOffset = Editor.Document.GetLineByNumber (lineNumber).Offset;
         Editor.SetFocus ();
     }
