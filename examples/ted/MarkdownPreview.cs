@@ -135,7 +135,9 @@ internal sealed class MarkdownPreview : Markdown
             return;
         }
 
-        Point screenOrigin = ContentToScreen (new Point (0, renderedLine));
+        // Map the viewport-relative draw row to screen coordinates so we read the correct
+        // cells regardless of horizontal scroll position (Viewport.X).
+        Point screenOrigin = ViewportToScreen (new Point (0, drawRow));
         var screenRow = screenOrigin.Y;
         var screenStartCol = screenOrigin.X;
 
