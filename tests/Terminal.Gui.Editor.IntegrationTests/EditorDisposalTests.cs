@@ -1,8 +1,8 @@
 // Claude - claude-opus-4-6
 
 using System.Drawing;
-using Terminal.Gui.Editor.Document;
 using Terminal.Gui.Editor.Completion;
+using Terminal.Gui.Editor.Document;
 using Terminal.Gui.Editor.IntegrationTests.Testing;
 using Terminal.Gui.Input;
 using Terminal.Gui.Testing;

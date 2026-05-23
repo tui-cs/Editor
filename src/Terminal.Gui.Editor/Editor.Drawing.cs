@@ -1,10 +1,10 @@
 using System.Drawing;
-using Terminal.Gui.Editor.Document;
-using Terminal.Gui.Editor.Document.Folding;
 using Terminal.Gui.Drawing;
 using Terminal.Gui.Drivers;
-using Terminal.Gui.Editor.Rendering;
+using Terminal.Gui.Editor.Document;
+using Terminal.Gui.Editor.Document.Folding;
 using Terminal.Gui.Editor.Highlighting;
+using Terminal.Gui.Editor.Rendering;
 using Terminal.Gui.ViewBase;
 using Attribute = Terminal.Gui.Drawing.Attribute;
 

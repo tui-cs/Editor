@@ -1,9 +1,9 @@
 // Copilot - claude-sonnet-4
 
 using Terminal.Gui.Editor.Document;
+using Terminal.Gui.Editor.Indentation;
 using Terminal.Gui.Editor.Rendering;
 using Terminal.Gui.Input;
-using Terminal.Gui.Editor.Indentation;
 using Xunit;
 
 namespace Terminal.Gui.Editor.Tests;

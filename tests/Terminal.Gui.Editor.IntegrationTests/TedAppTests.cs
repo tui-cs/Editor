@@ -6,11 +6,11 @@ using System.Globalization;
 using System.Text;
 using Ted;
 using Terminal.Gui.Configuration;
+using Terminal.Gui.Editor.Indentation;
 using Terminal.Gui.Editor.IntegrationTests.Testing;
 using Terminal.Gui.Input;
 using Terminal.Gui.Resources;
 using Terminal.Gui.Testing;
-using Terminal.Gui.Editor.Indentation;
 using Xunit;
 
 namespace Terminal.Gui.Editor.IntegrationTests;

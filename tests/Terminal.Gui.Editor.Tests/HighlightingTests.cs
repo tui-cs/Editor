@@ -1,11 +1,11 @@
 // CoPilot - claude-opus-4.6
 
 using System.Xml;
-using Terminal.Gui.Editor.Document;
 using Terminal.Gui.Drawing;
-using Terminal.Gui.Editor.Rendering;
+using Terminal.Gui.Editor.Document;
 using Terminal.Gui.Editor.Highlighting;
 using Terminal.Gui.Editor.Highlighting.Xshd;
+using Terminal.Gui.Editor.Rendering;
 using Xunit;
 using Attribute = Terminal.Gui.Drawing.Attribute;
 

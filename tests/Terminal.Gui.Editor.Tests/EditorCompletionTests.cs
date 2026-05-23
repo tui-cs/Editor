@@ -2,9 +2,9 @@
 
 using System.Drawing;
 using Terminal.Gui.App;
-using Terminal.Gui.Editor.Document;
 using Terminal.Gui.Drivers;
 using Terminal.Gui.Editor.Completion;
+using Terminal.Gui.Editor.Document;
 using Terminal.Gui.Input;
 using Terminal.Gui.Testing;
 using Terminal.Gui.ViewBase;

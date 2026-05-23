@@ -3,8 +3,8 @@
 using System.Drawing;
 using Terminal.Gui.Drawing;
 using Terminal.Gui.Drivers;
-using Terminal.Gui.Editor.IntegrationTests.Testing;
 using Terminal.Gui.Editor.Highlighting;
+using Terminal.Gui.Editor.IntegrationTests.Testing;
 using Terminal.Gui.Input;
 using Terminal.Gui.Testing;
 using Terminal.Gui.Text;

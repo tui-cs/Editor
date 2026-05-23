@@ -1,8 +1,8 @@
 // Copilot - claude-sonnet-4
 
 using System.Drawing;
-using Terminal.Gui.Editor.Document.Folding;
 using Terminal.Gui.Drivers;
+using Terminal.Gui.Editor.Document.Folding;
 using Terminal.Gui.Editor.IntegrationTests.Testing;
 using Terminal.Gui.Input;
 using Terminal.Gui.Testing;
