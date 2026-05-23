@@ -20,11 +20,11 @@
 // DEALINGS IN THE SOFTWARE.
 
 using System.Diagnostics;
-using Terminal.Gui.Document;
-using Terminal.Gui.Document.Utils;
-using SpanStack = System.Collections.Immutable.ImmutableStack<Terminal.Gui.Highlighting.HighlightingSpan>;
+using Terminal.Gui.Editor.Document;
+using Terminal.Gui.Editor.Document.Utils;
+using SpanStack = System.Collections.Immutable.ImmutableStack<Terminal.Gui.Editor.Highlighting.HighlightingSpan>;
 
-namespace Terminal.Gui.Highlighting;
+namespace Terminal.Gui.Editor.Highlighting;
 
 /// <summary>
 ///     This class can syntax-highlight a document.

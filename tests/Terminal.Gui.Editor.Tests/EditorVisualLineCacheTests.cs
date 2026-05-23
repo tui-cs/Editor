@@ -1,8 +1,8 @@
 // Claude - claude-opus-4-7
 
 using System.Reflection;
-using Terminal.Gui.Document;
 using Terminal.Gui.Drawing;
+using Terminal.Gui.Editor.Document;
 using Terminal.Gui.Editor.Rendering;
 using Xunit;
 using Attribute = Terminal.Gui.Drawing.Attribute;

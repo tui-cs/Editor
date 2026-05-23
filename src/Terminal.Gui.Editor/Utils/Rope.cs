@@ -27,7 +27,7 @@ using System.Globalization;
 using System.Linq;
 using System.Text;
 
-namespace Terminal.Gui.Document.Utils
+namespace Terminal.Gui.Editor.Document.Utils
 {
     /// <summary>
     /// A kind of List&lt;T&gt;, but more efficient for random insertions/removal.

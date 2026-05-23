@@ -22,7 +22,7 @@
 using System.Reflection;
 
 // ReSharper disable once CheckNamespace
-namespace Terminal.Gui.Highlighting;
+namespace Terminal.Gui.Editor.Highlighting;
 
 internal static class Resources
 {

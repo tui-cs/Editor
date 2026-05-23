@@ -1,6 +1,6 @@
 // Copilot - claude-opus-4.6
 
-using Terminal.Gui.Document;
+using Terminal.Gui.Editor.Document;
 using Xunit;
 
 namespace Terminal.Gui.Editor.Tests;

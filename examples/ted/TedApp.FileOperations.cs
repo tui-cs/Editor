@@ -1,6 +1,6 @@
 using System.Text;
-using Terminal.Gui.Document;
-using Terminal.Gui.Highlighting;
+using Terminal.Gui.Editor.Document;
+using Terminal.Gui.Editor.Highlighting;
 using Terminal.Gui.Resources;
 using Terminal.Gui.Views;
 

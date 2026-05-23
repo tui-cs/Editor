@@ -1,6 +1,6 @@
 using System.Drawing;
-using Terminal.Gui.Document;
-using Terminal.Gui.Document.Folding;
+using Terminal.Gui.Editor.Document;
+using Terminal.Gui.Editor.Document.Folding;
 using Terminal.Gui.Input;
 using Terminal.Gui.ViewBase;
 

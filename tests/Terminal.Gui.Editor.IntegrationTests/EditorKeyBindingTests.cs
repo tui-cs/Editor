@@ -1,8 +1,8 @@
 // Copilot - gpt-4.1
 
-using Terminal.Gui.Document;
-using Terminal.Gui.Document.Search;
 using Terminal.Gui.Drawing;
+using Terminal.Gui.Editor.Document;
+using Terminal.Gui.Editor.Document.Search;
 using Terminal.Gui.Editor.IntegrationTests.Testing;
 using Terminal.Gui.Input;
 using Terminal.Gui.Testing;

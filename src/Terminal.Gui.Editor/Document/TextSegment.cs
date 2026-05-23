@@ -21,7 +21,7 @@ using System;
 using System.Diagnostics;
 using System.Globalization;
 
-namespace Terminal.Gui.Document
+namespace Terminal.Gui.Editor.Document
 {
     /// <summary>
     /// A segment that can be put into a <see cref="TextSegmentCollection{T}"/>.

@@ -1,5 +1,5 @@
 using Terminal.Gui.Drawing;
-using Terminal.Gui.Highlighting;
+using Terminal.Gui.Editor.Highlighting;
 using Attribute = Terminal.Gui.Drawing.Attribute;
 
 namespace Terminal.Gui.Editor.Rendering;

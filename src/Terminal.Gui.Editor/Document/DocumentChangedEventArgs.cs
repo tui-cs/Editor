@@ -1,6 +1,6 @@
 // Adapted for Terminal.Gui from AvaloniaEdit d7a6b63
 
-namespace Terminal.Gui.Document
+namespace Terminal.Gui.Editor.Document
 {
     public class DocumentChangedEventArgs : EventArgs
     {

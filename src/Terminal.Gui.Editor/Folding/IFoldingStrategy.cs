@@ -1,4 +1,4 @@
-namespace Terminal.Gui.Document.Folding;
+namespace Terminal.Gui.Editor.Document.Folding;
 
 /// <summary>
 ///     Strategy for computing folding regions and determining whether a document

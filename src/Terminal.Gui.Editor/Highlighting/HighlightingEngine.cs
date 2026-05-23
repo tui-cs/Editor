@@ -21,10 +21,10 @@
 
 using System.Diagnostics;
 using System.Text.RegularExpressions;
-using Terminal.Gui.Document;
-using SpanStack = System.Collections.Immutable.ImmutableStack<Terminal.Gui.Highlighting.HighlightingSpan>;
+using Terminal.Gui.Editor.Document;
+using SpanStack = System.Collections.Immutable.ImmutableStack<Terminal.Gui.Editor.Highlighting.HighlightingSpan>;
 
-namespace Terminal.Gui.Highlighting;
+namespace Terminal.Gui.Editor.Highlighting;
 
 /// <summary>
 ///     Regex-based highlighting engine.

@@ -22,7 +22,7 @@ using System.Diagnostics;
 using System.Globalization;
 using System.Text;
 
-namespace Terminal.Gui.Document.Utils
+namespace Terminal.Gui.Editor.Document.Utils
 {
     /// <summary>
     /// Class used to represent a node in the tree.

@@ -19,7 +19,7 @@
 
 using System.Diagnostics;
 
-namespace Terminal.Gui.Document.Folding;
+namespace Terminal.Gui.Editor.Document.Folding;
 
 /// <summary>
 ///     A section that can be folded.

@@ -1,4 +1,4 @@
-using Terminal.Gui.Document.Search;
+using Terminal.Gui.Editor.Document.Search;
 using Terminal.Gui.Editor.Rendering;
 
 namespace Terminal.Gui.Editor;

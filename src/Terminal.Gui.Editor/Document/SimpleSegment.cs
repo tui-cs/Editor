@@ -20,9 +20,9 @@
 using System;
 using System.Diagnostics;
 using System.Globalization;
-using Terminal.Gui.Document.Utils;
+using Terminal.Gui.Editor.Document.Utils;
 
-namespace Terminal.Gui.Document
+namespace Terminal.Gui.Editor.Document
 {
     /// <summary>
     /// Represents a simple segment (Offset,Length pair) that is not automatically updated

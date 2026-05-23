@@ -20,7 +20,7 @@
 using System;
 using System.Globalization;
 
-namespace Terminal.Gui.Document
+namespace Terminal.Gui.Editor.Document
 {
 	/// <summary>
 	/// A TextAnchorNode is placed in the TextAnchorTree.
