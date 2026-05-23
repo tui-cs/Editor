@@ -17,7 +17,10 @@ namespace Terminal.Gui.Editor.Rendering;
 ///     <para>
 ///         Pluggable extension points:
 ///         <list type="bullet">
-///             <item><see cref="IVisualLineTransformer" /> — mutates element attributes (syntax highlighting, fold markers).</item>
+///             <item>
+///                 <see cref="IVisualLineTransformer" /> — mutates element attributes (syntax highlighting, fold
+///                 markers).
+///             </item>
 ///             <item><see cref="IBackgroundRenderer" /> — paints cell rectangles (selection, current line, search hits).</item>
 ///             <item><see cref="IOverlayRenderer" /> — draws overlays above the text (multi-caret indicators).</item>
 ///         </list>
