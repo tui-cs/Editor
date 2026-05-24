@@ -106,8 +106,8 @@ public partial class Editor
             ? GetGraphemeLengthForward (CaretOffset)
             : GetGraphemeLengthBackward (CaretOffset);
 
-        // If graphemeDelta is 0, we're at a line boundary — fall back to ±1 to cross the delimiter.
-        var step = graphemeDelta > 0 ? graphemeDelta : 1;
+        // If graphemeDelta is 0, we're at a line boundary — cross the full line delimiter (CRLF counts as 2).
+        var step = graphemeDelta > 0 ? graphemeDelta : GetDelimiterStep (CaretOffset, delta);
         var newOffset = delta > 0 ? CaretOffset + step : CaretOffset - step;
         ExtendCaretTo (SnapOffsetPastDelimiter (newOffset, delta));
     }
@@ -186,10 +186,58 @@ public partial class Editor
             ? GetGraphemeLengthForward (CaretOffset)
             : GetGraphemeLengthBackward (CaretOffset);
 
-        // If graphemeDelta is 0, we're at a line boundary — fall back to ±1 to cross the delimiter.
-        var step = graphemeDelta > 0 ? graphemeDelta : 1;
+        // If graphemeDelta is 0, we're at a line boundary — cross the full line delimiter (CRLF counts as 2).
+        var step = graphemeDelta > 0 ? graphemeDelta : GetDelimiterStep (CaretOffset, delta);
         var newOffset = delta > 0 ? CaretOffset + step : CaretOffset - step;
         CaretOffset = SnapOffsetPastDelimiter (newOffset, delta);
+    }
+
+    private int GetDelimiterStep (int offset, int direction)
+    {
+        if (_document is null || direction == 0)
+        {
+            return 1;
+        }
+
+        offset = Math.Clamp (offset, 0, _document.TextLength);
+        DocumentLine line = _document.GetLineByOffset (offset);
+
+        if (direction > 0)
+        {
+            var delimiterStart = line.Offset + line.Length;
+            var delimiterLen = line.DelimiterLength;
+
+            if (delimiterLen == 0)
+            {
+                return 1;
+            }
+
+            // If already inside the delimiter (possible with older behavior), advance to the next line start.
+            if (offset > delimiterStart && offset < delimiterStart + delimiterLen)
+            {
+                return delimiterStart + delimiterLen - offset;
+            }
+
+            return delimiterLen;
+        }
+
+        // direction < 0
+        var lineStart = line.Offset;
+
+        // If already inside this line's delimiter, step back to the end-of-line text.
+        if (offset > lineStart + line.Length && offset <= lineStart + line.TotalLength)
+        {
+            return offset - (lineStart + line.Length);
+        }
+
+        DocumentLine? previous = line.PreviousLine;
+
+        if (previous is null)
+        {
+            return 1;
+        }
+
+        return Math.Max (1, previous.DelimiterLength);
     }
 
     /// <summary>

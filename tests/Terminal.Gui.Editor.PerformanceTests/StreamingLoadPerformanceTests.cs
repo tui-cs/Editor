@@ -7,7 +7,10 @@ namespace Terminal.Gui.Editor.PerformanceTests;
 
 public class StreamingLoadPerformanceTests
 {
-    private static readonly TimeSpan InitialProgressBudget = TimeSpan.FromMilliseconds (500);
+    private static TimeSpan InitialProgressBudget =>
+        // Windows runners frequently show higher variance for this test due to OS/AV/IO scheduling noise.
+        // Keep a slightly looser budget so the test stays a regression signal without being flaky.
+        OperatingSystem.IsWindows () ? TimeSpan.FromMilliseconds (800) : TimeSpan.FromMilliseconds (500);
 
     [Fact]
     public async Task StreamingLoad_10Mb_ReportsInitialProgressWithinBudget ()
