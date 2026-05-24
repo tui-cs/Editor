@@ -1,7 +1,7 @@
 using System.Collections.Immutable;
 using System.Collections.ObjectModel;
 using Terminal.Gui.Configuration;
-using Terminal.Gui.Document;
+using Terminal.Gui.Editor.Document;
 using Terminal.Gui.Input;
 using Terminal.Gui.ViewBase;
 using Terminal.Gui.Views;

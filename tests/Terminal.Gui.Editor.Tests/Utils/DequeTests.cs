@@ -19,7 +19,7 @@
 
 
 using System.Collections;
-using Terminal.Gui.Document.Utils;
+using Terminal.Gui.Editor.Document.Utils;
 using Xunit;
 
 namespace Terminal.Gui.Editor.Tests.Utils;

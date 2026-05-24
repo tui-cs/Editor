@@ -20,9 +20,9 @@
 // DEALINGS IN THE SOFTWARE.
 
 using System.Globalization;
-using Terminal.Gui.Document;
+using Terminal.Gui.Editor.Document;
 
-namespace Terminal.Gui.Highlighting;
+namespace Terminal.Gui.Editor.Highlighting;
 
 /// <summary>
 ///     A text section with syntax highlighting information.

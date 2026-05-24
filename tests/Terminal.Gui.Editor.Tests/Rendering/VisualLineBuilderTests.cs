@@ -1,6 +1,6 @@
 // Codex - GPT-5
 
-using Terminal.Gui.Document;
+using Terminal.Gui.Editor.Document;
 using Terminal.Gui.Editor.Rendering;
 using Xunit;
 using Attribute = Terminal.Gui.Drawing.Attribute;

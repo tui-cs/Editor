@@ -1,4 +1,4 @@
-namespace Terminal.Gui.Document;
+namespace Terminal.Gui.Editor.Document;
 
 /// <summary>Reports streaming document I/O progress.</summary>
 /// <param name="CharactersProcessed">The number of decoded characters loaded or saved so far.</param>

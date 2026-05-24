@@ -3,13 +3,13 @@
 using System.Text;
 using Terminal.Gui.App;
 using Terminal.Gui.Configuration;
-using Terminal.Gui.Document;
-using Terminal.Gui.Document.Folding;
 using Terminal.Gui.Drawing;
 using Terminal.Gui.Editor;
+using Terminal.Gui.Editor.Document;
+using Terminal.Gui.Editor.Document.Folding;
+using Terminal.Gui.Editor.Indentation;
 using Terminal.Gui.Input;
 using Terminal.Gui.Resources;
-using Terminal.Gui.Text.Indentation;
 using Terminal.Gui.ViewBase;
 using Terminal.Gui.Views;
 

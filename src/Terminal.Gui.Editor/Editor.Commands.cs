@@ -1,8 +1,8 @@
 using System.Globalization;
 using Terminal.Gui.App;
 using Terminal.Gui.Configuration;
-using Terminal.Gui.Document;
-using Terminal.Gui.Document.Folding;
+using Terminal.Gui.Editor.Document;
+using Terminal.Gui.Editor.Document.Folding;
 using Terminal.Gui.Input;
 using Terminal.Gui.ViewBase;
 
@@ -507,8 +507,8 @@ public partial class Editor
         {
             var graphemeLen = GetGraphemeLengthBackward (CaretOffset);
 
-            // If at start of line (graphemeLen == 0), remove 1 code unit to join with previous line.
-            var removeLen = graphemeLen > 0 ? graphemeLen : 1;
+            // If at start of line (graphemeLen == 0), remove the full delimiter to join with previous line (CRLF counts as 2).
+            var removeLen = graphemeLen > 0 ? graphemeLen : GetDelimiterLengthBackwardAt (CaretOffset);
             _document!.Remove (CaretOffset - removeLen, removeLen);
         }
 
@@ -530,12 +530,54 @@ public partial class Editor
         {
             var graphemeLen = GetGraphemeLengthForward (CaretOffset);
 
-            // If at end of line (graphemeLen == 0), remove 1 code unit to join with next line.
-            var removeLen = graphemeLen > 0 ? graphemeLen : 1;
+            // If at end of line (graphemeLen == 0), remove the full delimiter to join with next line (CRLF counts as 2).
+            var removeLen = graphemeLen > 0 ? graphemeLen : GetDelimiterLengthForwardAt (CaretOffset);
             _document!.Remove (CaretOffset, removeLen);
         }
 
         return true;
+    }
+
+    private int GetDelimiterLengthForwardAt (int offset)
+    {
+        DocumentLine line = _document!.GetLineByOffset (offset);
+        var delimiterStart = line.Offset + line.Length;
+        var delimiterLen = line.DelimiterLength;
+
+        if (delimiterLen == 0)
+        {
+            return 1;
+        }
+
+        // If already inside the delimiter (possible with older behavior), delete the remainder.
+        if (offset > delimiterStart && offset < delimiterStart + delimiterLen)
+        {
+            return delimiterStart + delimiterLen - offset;
+        }
+
+        return delimiterLen;
+    }
+
+    private int GetDelimiterLengthBackwardAt (int offset)
+    {
+        DocumentLine line = _document!.GetLineByOffset (offset);
+
+        // If already inside this line's delimiter, delete back to the end-of-line text.
+        var lineStart = line.Offset;
+
+        if (offset > lineStart + line.Length && offset <= lineStart + line.TotalLength)
+        {
+            return offset - (lineStart + line.Length);
+        }
+
+        DocumentLine? previous = line.PreviousLine;
+
+        if (previous is null)
+        {
+            return 1;
+        }
+
+        return Math.Max (1, previous.DelimiterLength);
     }
 
     private bool? SetCaretAndReturnTrue (int offset)

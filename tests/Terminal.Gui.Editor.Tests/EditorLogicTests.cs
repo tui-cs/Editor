@@ -1,10 +1,10 @@
 // Claude - claude-opus-4-7
 
 using System.Drawing;
-using Terminal.Gui.Document;
-using Terminal.Gui.Document.Folding;
+using Terminal.Gui.Editor.Document;
+using Terminal.Gui.Editor.Document.Folding;
+using Terminal.Gui.Editor.Highlighting;
 using Terminal.Gui.Editor.Rendering;
-using Terminal.Gui.Highlighting;
 using Xunit;
 
 namespace Terminal.Gui.Editor.Tests;

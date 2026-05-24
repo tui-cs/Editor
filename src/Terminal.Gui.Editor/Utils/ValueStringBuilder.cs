@@ -12,7 +12,7 @@ using System.Runtime.InteropServices;
 
 #nullable enable
 
-namespace Terminal.Gui.Document.Utils
+namespace Terminal.Gui.Editor.Document.Utils
 {
     // currently the dotnet/runtime version doesn't explicitly implement IDisposable even though it should do so
     [DebuggerDisplay("{DebuggerDisplay,nq}")]

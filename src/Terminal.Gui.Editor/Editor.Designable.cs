@@ -1,5 +1,5 @@
-using Terminal.Gui.Document;
-using Terminal.Gui.Highlighting;
+using Terminal.Gui.Editor.Document;
+using Terminal.Gui.Editor.Highlighting;
 using Terminal.Gui.ViewBase;
 
 namespace Terminal.Gui.Editor;

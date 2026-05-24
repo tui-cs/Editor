@@ -1,4 +1,4 @@
-using Terminal.Gui.Document;
+using Terminal.Gui.Editor.Document;
 using Terminal.Gui.Input;
 
 namespace Terminal.Gui.Editor.Completion;

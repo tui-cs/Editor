@@ -17,11 +17,11 @@
 // OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 // DEALINGS IN THE SOFTWARE.
 
-using Terminal.Gui.Document.Utils;
+using Terminal.Gui.Editor.Document.Utils;
 using System;
 using System.Globalization;
 
-namespace Terminal.Gui.Document
+namespace Terminal.Gui.Editor.Document
 {
 	/// <summary>
 	/// The TextAnchor class references an offset (a position between two characters).

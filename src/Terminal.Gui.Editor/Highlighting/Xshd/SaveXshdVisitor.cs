@@ -22,7 +22,7 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Xml;
 
-namespace Terminal.Gui.Highlighting.Xshd;
+namespace Terminal.Gui.Editor.Highlighting.Xshd;
 
 /// <summary>
 ///     Xshd visitor implementation that saves an .xshd file as XML.

@@ -17,7 +17,7 @@
 // OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 // DEALINGS IN THE SOFTWARE.
 
-namespace Terminal.Gui.Document.Folding;
+namespace Terminal.Gui.Editor.Document.Folding;
 
 /// <summary>
 ///     Helper class used for <see cref="FoldingManager.UpdateFoldings" />.

@@ -20,10 +20,10 @@
 // DEALINGS IN THE SOFTWARE.
 
 using System.Globalization;
-using Terminal.Gui.Document;
-using Terminal.Gui.Document.Utils;
+using Terminal.Gui.Editor.Document;
+using Terminal.Gui.Editor.Document.Utils;
 
-namespace Terminal.Gui.Highlighting;
+namespace Terminal.Gui.Editor.Highlighting;
 
 /// <summary>
 ///     Represents a highlighted document line.

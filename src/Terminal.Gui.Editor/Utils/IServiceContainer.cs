@@ -2,7 +2,7 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace Terminal.Gui.Document.Utils
+namespace Terminal.Gui.Editor.Document.Utils
 {
     public interface IServiceContainer : IServiceProvider
     {
