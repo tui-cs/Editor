@@ -8,7 +8,7 @@ namespace Terminal.Gui.Editor;
 /// <summary>
 ///     <para>
 ///         <img src="https://raw.githubusercontent.com/gui-cs/Editor/develop/Docs/images/hero.gif"
-///              alt="Terminal.Gui.Editor (ted demo app)" />
+///             alt="Terminal.Gui.Editor (ted demo app)" />
 ///     </para>
 ///     <para>
 ///         A reusable text-editing <see cref="Terminal.Gui.ViewBase.View" /> for Terminal.Gui. Drop it into your TUI app
