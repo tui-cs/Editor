@@ -1,18 +1,18 @@
 // CoPilot - claude-sonnet-4-5
 
-using Terminal.Gui.Configuration;
+using Microsoft.Extensions.Configuration;
+using Terminal.Gui.Editor.Configuration;
 using Terminal.Gui.Editor.IntegrationTests.Testing;
 using Terminal.Gui.Input;
 using Terminal.Gui.Testing;
-using Terminal.Gui.ViewBase;
 using Xunit;
+using MecEditorSettings = Terminal.Gui.Editor.Configuration.EditorSettings;
 
 namespace Terminal.Gui.Editor.IntegrationTests;
 
 /// <summary>
 ///     Serialisation guard: <see cref="EditorKeyBindingIntegrationTests" /> mutates
-///     <see cref="Editor.DefaultKeyBindings" /> and <see cref="View.ViewKeyBindings" />, both
-///     process-wide statics that Terminal.Gui reads during view construction. Using
+///     <see cref="Editor.DefaultKeyBindings" />, a process-wide static that Terminal.Gui reads during view construction. Using
 ///     <c>DisableParallelization = true</c> serialises this collection against every other collection.
 /// </summary>
 [CollectionDefinition (nameof (KeyBindingIntegrationCollection), DisableParallelization = true)]
@@ -31,8 +31,8 @@ public sealed class KeyBindingIntegrationCollection;
 ///             </item>
 ///             <item>
 ///                 <description>
-///                     Loading a JSON profile via <see cref="ConfigurationManager.RuntimeConfig" />
-///                     using the <c>"View.ViewKeyBindings"</c> key.
+///                     Loading a Microsoft.Extensions.Configuration profile using the
+///                     <c>"Editor:DefaultKeyBindings"</c> section.
 ///                 </description>
 ///             </item>
 ///         </list>
@@ -78,15 +78,15 @@ public class EditorKeyBindingIntegrationTests
     }
 
     /// <summary>
-    ///     Proves that loading a JSON profile via <see cref="ConfigurationManager.RuntimeConfig" />
-    ///     with the <c>"View.ViewKeyBindings"</c> key causes the configured custom key to trigger
+    ///     Proves that loading a Microsoft.Extensions.Configuration profile with the
+    ///     <c>"Editor:DefaultKeyBindings"</c> section causes the configured custom key to trigger
     ///     the correct command in a live <see cref="Editor" />.
     ///     <para>
     ///         The test JSON mirrors the structure from the issue:
     ///         <code>
     ///             {
-    ///               "View.ViewKeyBindings": {
-    ///                 "Editor": {
+    ///               "Editor": {
+    ///                 "DefaultKeyBindings": {
     ///                   "Undo": { "All": ["Ctrl+U"] }
     ///                 }
     ///               }
@@ -95,26 +95,20 @@ public class EditorKeyBindingIntegrationTests
     ///     </para>
     /// </summary>
     [Fact]
-    public async Task ConfigurationManager_RuntimeConfig_CustomUndoKey_ActuallyUndoes ()
+    public async Task MecConfiguration_CustomUndoKey_ActuallyUndoes ()
     {
-        Dictionary<string, Dictionary<Command, PlatformKeyBinding>>? originalViewKeyBindings = View.ViewKeyBindings;
-        var originalRuntimeConfig = ConfigurationManager.RuntimeConfig;
-        var wasEnabled = ConfigurationManager.IsEnabled;
+        MecEditorSettings original = MecEditorSettings.Defaults;
 
         try
         {
-            const string json = """
-                                {
-                                  "View.ViewKeyBindings": {
-                                    "Editor": {
-                                      "Undo": { "All": ["Ctrl+U"] }
-                                    }
-                                  }
-                                }
-                                """;
+            IConfiguration configuration = new ConfigurationBuilder ()
+                                           .AddInMemoryCollection (new Dictionary<string, string?>
+                                           {
+                                               ["Editor:DefaultKeyBindings:Undo:All:0"] = "Ctrl+U"
+                                           })
+                                           .Build ();
 
-            ConfigurationManager.RuntimeConfig = json;
-            ConfigurationManager.Enable (ConfigLocations.Runtime);
+            EditorConfiguration.Apply (configuration);
 
             await using AppFixture<EditorTestHost> fx = new (() => new EditorTestHost ("abc"));
             fx.Top.Editor.SetFocus ();
@@ -129,13 +123,7 @@ public class EditorKeyBindingIntegrationTests
         }
         finally
         {
-            View.ViewKeyBindings = originalViewKeyBindings;
-            ConfigurationManager.RuntimeConfig = originalRuntimeConfig;
-
-            if (!wasEnabled)
-            {
-                ConfigurationManager.Disable (true);
-            }
+            MecEditorSettings.Defaults = original;
         }
     }
 }

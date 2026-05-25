@@ -1,16 +1,17 @@
 // CoPilot - claude-sonnet-4-5
 
-using Terminal.Gui.Configuration;
+using Microsoft.Extensions.Configuration;
+using Terminal.Gui.Editor.Configuration;
 using Terminal.Gui.Input;
 using Terminal.Gui.ViewBase;
 using Xunit;
+using MecEditorSettings = Terminal.Gui.Editor.Configuration.EditorSettings;
 
 namespace Terminal.Gui.Editor.Tests;
 
 /// <summary>
 ///     Serialisation guard: <see cref="EditorKeyBindingConfigTests" /> mutates
-///     <see cref="Editor.DefaultKeyBindings" /> and <see cref="View.ViewKeyBindings" />, both
-///     process-wide statics that Terminal.Gui reads during view construction. Running these tests
+///     <see cref="Editor.DefaultKeyBindings" />, a process-wide static that Terminal.Gui reads during view construction. Running these tests
 ///     concurrently with other tests that create <see cref="Editor" /> instances would corrupt those
 ///     instances' <see cref="View.KeyBindings" />.
 ///     <c>DisableParallelization = true</c> serialises this collection against every other collection
@@ -33,10 +34,8 @@ public sealed class KeyBindingConfigCollection;
 ///             </item>
 ///             <item>
 ///                 <description>
-///                     <see cref="ConfigurationManager.RuntimeConfig" /> with the
-///                     <c>"View.ViewKeyBindings"</c> JSON key — the standard Terminal.Gui per-view
-///                     override mechanism that works for any view type including external-assembly
-///                     views such as <see cref="Editor" />.
+///                     Microsoft.Extensions.Configuration with the <c>"Editor"</c> section — the
+///                     MEC path for external-assembly view defaults such as <see cref="Editor" />.
 ///                 </description>
 ///             </item>
 ///         </list>
@@ -242,17 +241,15 @@ public class EditorKeyBindingConfigTests
     }
 
     /// <summary>
-    ///     Proves that loading a JSON keybinding profile via
-    ///     <see cref="ConfigurationManager.RuntimeConfig" /> using the standard Terminal.Gui
-    ///     <c>"View.ViewKeyBindings"</c> key updates the <see cref="Editor" /> instance's key
-    ///     bindings. This is the CM-native path for per-view binding configuration.
+    ///     Proves that loading a keybinding profile via Microsoft.Extensions.Configuration updates
+    ///     the <see cref="Editor" /> instance's key bindings.
     /// </summary>
     /// <remarks>
     ///     The JSON key format is:
     ///     <code>
     ///         {
-    ///           "View.ViewKeyBindings": {
-    ///             "Editor": {
+    ///           "Editor": {
+    ///             "DefaultKeyBindings": {
     ///               "Cut":  { "All": ["Ctrl+W"] },
     ///               "Copy": { "All": ["Ctrl+Shift+C"] },
     ///               "Undo": { "All": ["Ctrl+Z"] }
@@ -264,33 +261,22 @@ public class EditorKeyBindingConfigTests
     ///     config→Editor pipeline works.
     /// </remarks>
     [Fact]
-    public void ConfigurationManager_RuntimeConfig_ViewKeyBindings_UpdatesEditorBindings ()
+    public void MecConfiguration_EditorDefaultKeyBindings_UpdatesEditorBindings ()
     {
-        Dictionary<string, Dictionary<Command, PlatformKeyBinding>>? originalViewKeyBindings = View.ViewKeyBindings;
-        var originalRuntimeConfig = ConfigurationManager.RuntimeConfig;
-        var wasEnabled = ConfigurationManager.IsEnabled;
+        MecEditorSettings original = MecEditorSettings.Defaults;
 
         try
         {
-            const string json = """
-                                {
-                                  "View.ViewKeyBindings": {
-                                    "Editor": {
-                                      "Cut":  { "All": ["Ctrl+W"] },
-                                      "Copy": { "All": ["Ctrl+Shift+C"] },
-                                      "Undo": { "All": ["Ctrl+Z"] }
-                                    }
-                                  }
-                                }
-                                """;
+            IConfiguration configuration = new ConfigurationBuilder ()
+                                           .AddInMemoryCollection (new Dictionary<string, string?>
+                                           {
+                                               ["Editor:DefaultKeyBindings:Cut:All:0"] = "Ctrl+W",
+                                               ["Editor:DefaultKeyBindings:Copy:All:0"] = "Ctrl+Shift+C",
+                                               ["Editor:DefaultKeyBindings:Undo:All:0"] = "Ctrl+Z"
+                                           })
+                                           .Build ();
 
-            ConfigurationManager.RuntimeConfig = json;
-            ConfigurationManager.Enable (ConfigLocations.Runtime);
-
-            // View.ViewKeyBindings must have been populated for the "Editor" type.
-            Assert.NotNull (View.ViewKeyBindings);
-            Assert.True (View.ViewKeyBindings!.ContainsKey ("Editor"),
-                "ViewKeyBindings must contain an entry for 'Editor'");
+            EditorConfiguration.Apply (configuration);
 
             // A new Editor must include the configured bindings.
             Editor editor = new ();
@@ -301,14 +287,7 @@ public class EditorKeyBindingConfigTests
         }
         finally
         {
-            // Always restore global state, even when the test fails.
-            View.ViewKeyBindings = originalViewKeyBindings;
-            ConfigurationManager.RuntimeConfig = originalRuntimeConfig;
-
-            if (!wasEnabled)
-            {
-                ConfigurationManager.Disable (true);
-            }
+            MecEditorSettings.Defaults = original;
         }
     }
 }

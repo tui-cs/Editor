@@ -67,15 +67,7 @@ public class TedConfigurationManagerTests
             Disable (true);
 
             // Restore declared defaults so a later CM test in this assembly starts clean.
-            EditorSettings.LineNumbers = true;
-            EditorSettings.FoldIndicators = true;
-            EditorSettings.WordWrap = false;
-            EditorSettings.ShowTabs = false;
-            EditorSettings.IndentSize = 4;
-            EditorSettings.ConvertTabsToSpaces = true;
-            EditorSettings.AutoIndent = true;
-            EditorSettings.Scrollbars = true;
-            EditorSettings.AutoComplete = false;
+            EditorSettings.ResetDefaults ();
         }
     }
 }
