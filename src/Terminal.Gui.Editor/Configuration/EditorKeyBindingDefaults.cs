@@ -27,7 +27,7 @@ internal static class EditorKeyBindingDefaults
             [Command.Replace] = Bind.All (Key.H.WithCtrl),
 
             // Vertical multi-caret — VS Code parity (Ctrl+Alt+Up/Down). A PlatformKeyBinding, so a
-            // user whose terminal/WM grabs the chord overrides it via Editor.DefaultKeyBindings config;
+            // user whose terminal/WM grabs the chord overrides it via Editor:DefaultKeyBindings config;
             // no editor-specific fallback chord. macOS uses the same chord pending real-terminal
             // validation (specs/decisions.md DEC-006).
             [Command.InsertCaretAbove] = Bind.All (Key.CursorUp.WithCtrl.WithAlt),

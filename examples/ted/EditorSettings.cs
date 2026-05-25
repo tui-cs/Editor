@@ -222,7 +222,14 @@ internal static class EditorSettings
             return;
         }
 
-        apply (bool.Parse (value));
+        if (bool.TryParse (value, out var parsed))
+        {
+            apply (parsed);
+
+            return;
+        }
+
+        Logging.Error ($"EditorSettings.Load: invalid legacy {SectionName}.{propertyName} value '{value}'.");
     }
 
     private static void ApplyLegacyInt32 (IConfiguration configuration, string propertyName, Action<int> apply)
@@ -234,7 +241,14 @@ internal static class EditorSettings
             return;
         }
 
-        apply (int.Parse (value, CultureInfo.InvariantCulture));
+        if (int.TryParse (value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed))
+        {
+            apply (parsed);
+
+            return;
+        }
+
+        Logging.Error ($"EditorSettings.Load: invalid legacy {SectionName}.{propertyName} value '{value}'.");
     }
 
     private static void RemoveLegacyDottedKeys (JsonObject json)

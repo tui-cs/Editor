@@ -291,4 +291,29 @@ public class EditorKeyBindingConfigTests
             MecEditorSettings.Defaults = original;
         }
     }
+
+    [Fact]
+    public void MecConfiguration_LegacyDefaultKeyBindings_UpdatesEditorBindings ()
+    {
+        MecEditorSettings original = MecEditorSettings.Defaults;
+
+        try
+        {
+            IConfiguration configuration = new ConfigurationBuilder ()
+                .AddInMemoryCollection (new Dictionary<string, string?>
+                {
+                    ["Terminal.Gui.Editor.Editor.DefaultKeyBindings:Cut:All:0"] = "Ctrl+W"
+                })
+                .Build ();
+
+            EditorConfiguration.Apply (configuration);
+
+            Editor editor = new ();
+            Assert.Contains (Key.W.WithCtrl, editor.KeyBindings.GetAllFromCommands (Command.Cut));
+        }
+        finally
+        {
+            MecEditorSettings.Defaults = original;
+        }
+    }
 }

@@ -3,6 +3,8 @@
 using Ted;
 using Terminal.Gui.Configuration;
 using Xunit;
+
+#pragma warning disable CS0618 // This project intentionally quarantines legacy ConfigurationManager coverage.
 using static Terminal.Gui.Configuration.ConfigurationManager;
 
 namespace Terminal.Gui.Editor.ConfigTests;
@@ -70,4 +72,6 @@ public class TedConfigurationManagerTests
             EditorSettings.ResetDefaults ();
         }
     }
+
+#pragma warning restore CS0618
 }

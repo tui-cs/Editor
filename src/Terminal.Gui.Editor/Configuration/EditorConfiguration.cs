@@ -8,6 +8,8 @@ namespace Terminal.Gui.Editor.Configuration;
 /// </summary>
 public static class EditorConfiguration
 {
+    private const string LegacyDefaultKeyBindingsSectionName = "Terminal.Gui.Editor.Editor.DefaultKeyBindings";
+
     /// <summary>The default configuration section for <see cref="Editor" /> settings.</summary>
     public const string SectionName = "Editor";
 
@@ -23,6 +25,7 @@ public static class EditorConfiguration
         ArgumentException.ThrowIfNullOrWhiteSpace (sectionName);
 
         EditorSettings settings = new ();
+        ApplyDefaultKeyBindings (configuration.GetSection (LegacyDefaultKeyBindingsSectionName), settings);
         ApplyDefaultKeyBindings (
             configuration.GetSection (sectionName).GetSection (nameof (EditorSettings.DefaultKeyBindings)), settings);
         EditorSettings.Defaults = settings;

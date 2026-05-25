@@ -28,7 +28,8 @@ public class TedSettingsPersistenceTests
         InvokeSaveViewSettings (app);
 
         Assert.True (File.Exists (scope.ConfigPath));
-        Assert.Contains ("\"IndentSize\": 7", File.ReadAllText (scope.ConfigPath));
+        JsonObject editorSettings = ReadEditorSettingsSection (scope.ConfigPath);
+        Assert.Equal (7, editorSettings[nameof (EditorSettings.IndentSize)]!.GetValue<int> ());
     }
 
     [Fact]
@@ -43,9 +44,8 @@ public class TedSettingsPersistenceTests
         app.Editor.IndentationSize = 8;
         InvokeSaveViewSettings (app);
 
-        var text = File.ReadAllText (scope.ConfigPath);
-        Assert.Contains ("\"IndentSize\": 8", text);
-        Assert.DoesNotContain ("\"IndentSize\": 2", text);
+        JsonObject editorSettings = ReadEditorSettingsSection (scope.ConfigPath);
+        Assert.Equal (8, editorSettings[nameof (EditorSettings.IndentSize)]!.GetValue<int> ());
     }
 
     [Fact]
@@ -57,7 +57,8 @@ public class TedSettingsPersistenceTests
 
         InvokeSaveViewSettings (app);
         Assert.True (File.Exists (scope.ConfigPath));
-        Assert.Contains ("\"WordWrap\": true", File.ReadAllText (scope.ConfigPath));
+        JsonObject editorSettings = ReadEditorSettingsSection (scope.ConfigPath);
+        Assert.True (editorSettings[nameof (EditorSettings.WordWrap)]!.GetValue<bool> ());
     }
 
     [Fact]
@@ -116,6 +117,32 @@ public class TedSettingsPersistenceTests
         Assert.True (app.Editor.ShowTabs);
         Assert.False (app.Editor.GutterOptions.HasFlag (GutterOptions.LineNumbers));
         Assert.Equal (2, app.Editor.IndentationSize);
+    }
+
+    [Fact]
+    public void LegacyCmSettings_Ignores_Malformed_Dotted_Values ()
+    {
+        using ConfigPathScope scope = new ();
+        var configDirectory = Path.GetDirectoryName (scope.ConfigPath);
+        Assert.NotNull (configDirectory);
+        Directory.CreateDirectory (configDirectory);
+        File.WriteAllText (
+            scope.ConfigPath,
+            """
+            {
+              "AppSettings": {
+                "EditorSettings.WordWrap": "yes",
+                "EditorSettings.IndentSize": "large"
+              }
+            }
+            """);
+
+        Exception? exception = Record.Exception (() => EditorSettings.Load (scope.ConfigPath));
+
+        Assert.Null (exception);
+        TedApp app = new ();
+        Assert.False (app.Editor.WordWrap);
+        Assert.Equal (4, app.Editor.IndentationSize);
     }
 
     [Fact]
@@ -266,9 +293,9 @@ public class TedSettingsPersistenceTests
         // Assert: config file created
         Assert.True (File.Exists (scope.ConfigPath), "Config file was not created");
 
-        // Assert: config file contains the correct persisted value
-        var configContent = File.ReadAllText (scope.ConfigPath);
-        Assert.Contains ("\"WordWrap\": true", configContent);
+        // Assert: config file contains the correct persisted value in the MEC-native section.
+        JsonObject editorSettings = ReadEditorSettingsSection (scope.ConfigPath);
+        Assert.True (editorSettings[nameof (EditorSettings.WordWrap)]!.GetValue<bool> ());
     }
 
     [Fact]
@@ -377,8 +404,9 @@ public class TedSettingsPersistenceTests
         InvokeSaveViewSettings (app);
 
         var text = File.ReadAllText (scope.ConfigPath);
-        // The inserted key should be valid JSON — not inside the comment
-        Assert.Contains ("\"WordWrap\": true", text);
+        // The inserted key should be valid JSON — not inside the comment.
+        JsonObject editorSettings = ReadEditorSettingsSection (scope.ConfigPath);
+        Assert.True (editorSettings[nameof (EditorSettings.WordWrap)]!.GetValue<bool> ());
         // Config should still be parseable: the real closing brace should come after our insertion
         var wordWrapPos = text.IndexOf ("\"WordWrap\"", StringComparison.Ordinal);
         var lastRealBrace = text.LastIndexOf ('}');
@@ -402,6 +430,13 @@ public class TedSettingsPersistenceTests
             BindingFlags.Instance | BindingFlags.NonPublic);
         Assert.NotNull (saveViewSettings);
         saveViewSettings.Invoke (app, null);
+    }
+
+    private static JsonObject ReadEditorSettingsSection (string path)
+    {
+        JsonNode root = JsonNode.Parse (File.ReadAllText (path))!;
+
+        return Assert.IsType<JsonObject> (root[EditorSettings.SectionName]);
     }
 
     private sealed class ConfigPathScope : IDisposable
