@@ -11,7 +11,8 @@ namespace Terminal.Gui.Editor.Tests;
 
 /// <summary>
 ///     Serialisation guard: <see cref="EditorKeyBindingConfigTests" /> mutates
-///     <see cref="Editor.DefaultKeyBindings" />, a process-wide static that Terminal.Gui reads during view construction. Running these tests
+///     <see cref="Editor.DefaultKeyBindings" />, a process-wide static that Terminal.Gui reads during view construction.
+///     Running these tests
 ///     concurrently with other tests that create <see cref="Editor" /> instances would corrupt those
 ///     instances' <see cref="View.KeyBindings" />.
 ///     <c>DisableParallelization = true</c> serialises this collection against every other collection
@@ -268,13 +269,13 @@ public class EditorKeyBindingConfigTests
         try
         {
             IConfiguration configuration = new ConfigurationBuilder ()
-                                           .AddInMemoryCollection (new Dictionary<string, string?>
-                                           {
-                                               ["Editor:DefaultKeyBindings:Cut:All:0"] = "Ctrl+W",
-                                               ["Editor:DefaultKeyBindings:Copy:All:0"] = "Ctrl+Shift+C",
-                                               ["Editor:DefaultKeyBindings:Undo:All:0"] = "Ctrl+Z"
-                                           })
-                                           .Build ();
+                .AddInMemoryCollection (new Dictionary<string, string?>
+                {
+                    ["Editor:DefaultKeyBindings:Cut:All:0"] = "Ctrl+W",
+                    ["Editor:DefaultKeyBindings:Copy:All:0"] = "Ctrl+Shift+C",
+                    ["Editor:DefaultKeyBindings:Undo:All:0"] = "Ctrl+Z"
+                })
+                .Build ();
 
             EditorConfiguration.Apply (configuration);
 

@@ -12,7 +12,8 @@ namespace Terminal.Gui.Editor.IntegrationTests;
 
 /// <summary>
 ///     Serialisation guard: <see cref="EditorKeyBindingIntegrationTests" /> mutates
-///     <see cref="Editor.DefaultKeyBindings" />, a process-wide static that Terminal.Gui reads during view construction. Using
+///     <see cref="Editor.DefaultKeyBindings" />, a process-wide static that Terminal.Gui reads during view construction.
+///     Using
 ///     <c>DisableParallelization = true</c> serialises this collection against every other collection.
 /// </summary>
 [CollectionDefinition (nameof (KeyBindingIntegrationCollection), DisableParallelization = true)]
@@ -102,11 +103,11 @@ public class EditorKeyBindingIntegrationTests
         try
         {
             IConfiguration configuration = new ConfigurationBuilder ()
-                                           .AddInMemoryCollection (new Dictionary<string, string?>
-                                           {
-                                               ["Editor:DefaultKeyBindings:Undo:All:0"] = "Ctrl+U"
-                                           })
-                                           .Build ();
+                .AddInMemoryCollection (new Dictionary<string, string?>
+                {
+                    ["Editor:DefaultKeyBindings:Undo:All:0"] = "Ctrl+U"
+                })
+                .Build ();
 
             EditorConfiguration.Apply (configuration);
 

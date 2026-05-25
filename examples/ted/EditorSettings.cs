@@ -94,8 +94,8 @@ internal static class EditorSettings
     internal static IConfiguration BuildConfiguration (string path)
     {
         return new ConfigurationBuilder ()
-               .AddJsonFile (path, optional: true, reloadOnChange: false)
-               .Build ();
+            .AddJsonFile (path, true, false)
+            .Build ();
     }
 
     internal static void Load (string path)

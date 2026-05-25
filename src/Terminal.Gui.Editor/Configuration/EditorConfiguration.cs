@@ -23,7 +23,8 @@ public static class EditorConfiguration
         ArgumentException.ThrowIfNullOrWhiteSpace (sectionName);
 
         EditorSettings settings = new ();
-        ApplyDefaultKeyBindings (configuration.GetSection (sectionName).GetSection (nameof (EditorSettings.DefaultKeyBindings)), settings);
+        ApplyDefaultKeyBindings (
+            configuration.GetSection (sectionName).GetSection (nameof (EditorSettings.DefaultKeyBindings)), settings);
         EditorSettings.Defaults = settings;
     }
 
@@ -38,7 +39,7 @@ public static class EditorConfiguration
 
         foreach (IConfigurationSection commandSection in section.GetChildren ())
         {
-            if (!Enum.TryParse (commandSection.Key, ignoreCase: true, out Command command))
+            if (!Enum.TryParse (commandSection.Key, true, out Command command))
             {
                 throw new FormatException ($"Unknown editor command in configuration: '{commandSection.Key}'.");
             }
