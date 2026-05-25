@@ -130,6 +130,11 @@ internal static class EditorSettings
             if (root["AppSettings"] is JsonObject appSettings)
             {
                 RemoveLegacyDottedKeys (appSettings);
+
+                if (appSettings.Count == 0)
+                {
+                    root.Remove ("AppSettings");
+                }
             }
 
             root[SectionName] = new JsonObject

@@ -308,10 +308,31 @@ public class TedSettingsPersistenceTests
         // "EditorSettings" (the MEC-native shape).
         Assert.Equal ("Dark", (string?)root["Theme"]);
         Assert.Null (root["EditorSettings.WordWrap"]);
-        JsonNode appSettings = Assert.IsType<JsonObject> (root["AppSettings"]);
-        Assert.Null (appSettings["EditorSettings.ShowTabs"]);
+        Assert.Null (root["AppSettings"]);
         JsonNode editorSettings = Assert.IsType<JsonObject> (root["EditorSettings"]);
         Assert.True ((bool)editorSettings["WordWrap"]!);
+    }
+
+    [Fact]
+    public void SaveViewSettings_Preserves_NonTed_AppSettings_Keys ()
+    {
+        using ConfigPathScope scope = new ();
+        var configDirectory = Path.GetDirectoryName (scope.ConfigPath);
+        Assert.NotNull (configDirectory);
+        Directory.CreateDirectory (configDirectory);
+
+        File.WriteAllText (
+            scope.ConfigPath,
+            "{\n  \"AppSettings\": { \"OtherApp.Enabled\": true, \"EditorSettings.ShowTabs\": true }\n}\n");
+
+        TedApp app = new ();
+        InvokeSaveViewSettings (app);
+
+        JsonNode root = JsonNode.Parse (File.ReadAllText (scope.ConfigPath))!;
+        JsonNode appSettings = Assert.IsType<JsonObject> (root["AppSettings"]);
+
+        Assert.True ((bool)appSettings["OtherApp.Enabled"]!);
+        Assert.Null (appSettings["EditorSettings.ShowTabs"]);
     }
 
     [Fact]
