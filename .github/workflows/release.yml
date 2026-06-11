@@ -72,6 +72,8 @@ jobs:
             rid: osx-arm64
           - os: windows-latest
             rid: win-x64
+          - os: windows-latest
+            rid: win-arm64
     runs-on: ${{ matrix.os }}
     env:
       VERSION: ${{ needs.resolve-version.outputs.version }}
@@ -197,6 +199,7 @@ jobs:
           package_unix   osx-arm64
           package_unix   linux-x64
           package_windows win-x64
+          package_windows win-arm64
 
           ls -la dist/
 
