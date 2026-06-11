@@ -21,7 +21,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 
-namespace Terminal.Gui.Document
+namespace Terminal.Gui.Editor.Document
 {
     /// <summary>
     /// Creates/Deletes lines when text is inserted/removed.

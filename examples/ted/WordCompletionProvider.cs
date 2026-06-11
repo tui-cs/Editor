@@ -1,5 +1,5 @@
-using Terminal.Gui.Document;
 using Terminal.Gui.Editor.Completion;
+using Terminal.Gui.Editor.Document;
 using Terminal.Gui.Input;
 
 namespace Ted;

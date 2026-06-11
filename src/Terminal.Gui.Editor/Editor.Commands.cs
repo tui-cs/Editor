@@ -1,8 +1,8 @@
 using System.Globalization;
 using Terminal.Gui.App;
 using Terminal.Gui.Configuration;
-using Terminal.Gui.Document;
-using Terminal.Gui.Document.Folding;
+using Terminal.Gui.Editor.Document;
+using Terminal.Gui.Editor.Document.Folding;
 using Terminal.Gui.Input;
 using Terminal.Gui.ViewBase;
 
@@ -416,11 +416,13 @@ public partial class Editor
 
             // After the newline is inserted the caret sits at the start of the new line.
             // Ask the indentation strategy to fill in leading whitespace.
-            if (IndentationStrategy is { } strategy)
+            if (IndentationStrategy is not { } strategy)
             {
-                DocumentLine newLine = _document.GetLineByOffset (CaretOffset);
-                strategy.IndentLine (_document, newLine);
+                return true;
             }
+
+            DocumentLine newLine = _document.GetLineByOffset (CaretOffset);
+            strategy.IndentLine (_document, newLine);
         }
 
         return true;
@@ -503,7 +505,11 @@ public partial class Editor
         }
         else if (CaretOffset > 0)
         {
-            _document!.Remove (CaretOffset - 1, 1);
+            var graphemeLen = GetGraphemeLengthBackward (CaretOffset);
+
+            // If at start of line (graphemeLen == 0), remove the full delimiter to join with previous line (CRLF counts as 2).
+            var removeLen = graphemeLen > 0 ? graphemeLen : GetDelimiterLengthBackwardAt (CaretOffset);
+            _document!.Remove (CaretOffset - removeLen, removeLen);
         }
 
         return true;
@@ -522,10 +528,56 @@ public partial class Editor
         }
         else if (CaretOffset < _document!.TextLength)
         {
-            _document!.Remove (CaretOffset, 1);
+            var graphemeLen = GetGraphemeLengthForward (CaretOffset);
+
+            // If at end of line (graphemeLen == 0), remove the full delimiter to join with next line (CRLF counts as 2).
+            var removeLen = graphemeLen > 0 ? graphemeLen : GetDelimiterLengthForwardAt (CaretOffset);
+            _document!.Remove (CaretOffset, removeLen);
         }
 
         return true;
+    }
+
+    private int GetDelimiterLengthForwardAt (int offset)
+    {
+        DocumentLine line = _document!.GetLineByOffset (offset);
+        var delimiterStart = line.Offset + line.Length;
+        var delimiterLen = line.DelimiterLength;
+
+        if (delimiterLen == 0)
+        {
+            return 1;
+        }
+
+        // If already inside the delimiter (possible with older behavior), delete the remainder.
+        if (offset > delimiterStart && offset < delimiterStart + delimiterLen)
+        {
+            return delimiterStart + delimiterLen - offset;
+        }
+
+        return delimiterLen;
+    }
+
+    private int GetDelimiterLengthBackwardAt (int offset)
+    {
+        DocumentLine line = _document!.GetLineByOffset (offset);
+
+        // If already inside this line's delimiter, delete back to the end-of-line text.
+        var lineStart = line.Offset;
+
+        if (offset > lineStart + line.Length && offset <= lineStart + line.TotalLength)
+        {
+            return offset - (lineStart + line.Length);
+        }
+
+        DocumentLine? previous = line.PreviousLine;
+
+        if (previous is null)
+        {
+            return 1;
+        }
+
+        return Math.Max (1, previous.DelimiterLength);
     }
 
     private bool? SetCaretAndReturnTrue (int offset)
@@ -563,6 +615,60 @@ public partial class Editor
         CaretOffset = line.Offset + line.Length;
 
         return true;
+    }
+
+    /// <summary>
+    ///     Returns the length (in UTF-16 code units) of the grapheme cluster starting at
+    ///     <paramref name="offset" />. Returns 0 if <paramref name="offset" /> is at or beyond
+    ///     the end of the line's text content.
+    /// </summary>
+    private int GetGraphemeLengthForward (int offset)
+    {
+        DocumentLine line = _document!.GetLineByOffset (offset);
+        var lineEnd = line.Offset + line.Length;
+
+        if (offset >= lineEnd)
+        {
+            // At or past end-of-line text — the delimiter is handled separately.
+            return 0;
+        }
+
+        // GetTextAsMemory avoids a string allocation when the rope implementation supports it.
+        // We pass the full remainder so StringInfo sees the complete cluster even for
+        // pathological sequences (base + many combining marks).
+        ReadOnlyMemory<char> slice = _document.GetTextAsMemory (offset, lineEnd - offset);
+
+        return StringInfo.GetNextTextElementLength (slice.Span);
+    }
+
+    /// <summary>
+    ///     Returns the length (in UTF-16 code units) of the grapheme cluster ending at
+    ///     <paramref name="offset" /> (i.e. the cluster immediately before the offset).
+    ///     Returns 0 if <paramref name="offset" /> is at the start of the line.
+    /// </summary>
+    private int GetGraphemeLengthBackward (int offset)
+    {
+        DocumentLine line = _document!.GetLineByOffset (offset);
+        var lineStart = line.Offset;
+
+        if (offset <= lineStart)
+        {
+            // At or before the start of this line — delimiter crossing handled by caller.
+            return 0;
+        }
+
+        // Scan from line start to the caret so TextElementEnumerator sees aligned grapheme
+        // boundaries. The last enumerated element is the grapheme immediately before the caret.
+        var text = _document.GetText (lineStart, offset - lineStart);
+        TextElementEnumerator enumerator = StringInfo.GetTextElementEnumerator (text);
+        var lastLength = 0;
+
+        while (enumerator.MoveNext ())
+        {
+            lastLength = enumerator.GetTextElement ().Length;
+        }
+
+        return lastLength;
     }
 
     /// <summary>

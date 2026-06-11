@@ -1,108 +1,55 @@
 using Terminal.Gui.Editor;
-using Terminal.Gui.Text.Indentation;
+using Terminal.Gui.Resources;
 using Terminal.Gui.ViewBase;
 using Terminal.Gui.Views;
 
 namespace Ted;
 
+/// <summary>
+///     Settings dialog for the editor clet. Provides tabs for Config and Tab Settings.
+/// </summary>
 internal sealed class EditorSettingsDialog : Dialog
 {
     private readonly CheckBox _autoCompleteCheck;
-    private readonly CheckBox _autoIndentCheck;
-    private readonly CheckBox _convertTabsCheck;
-    private readonly NumericUpDown<int> _indentSize;
+    private readonly EditorTabSettingsTab _tabSettingsTab;
 
     internal EditorSettingsDialog (Editor editor)
     {
         Title = "Settings";
         Width = Dim.Percent (60);
-        Height = 18;
+        Height = 13;
 
-        View tabSettingsTab = new ()
-        {
-            Title = "_Tab Settings",
-            Width = Dim.Fill (),
-            Height = Dim.Fill ()
-        };
-
-        _indentSize = new NumericUpDown<int>
-        {
-            X = 20,
-            Y = 1,
-            Value = editor.IndentationSize,
-            Width = 8
-        };
-        _indentSize.ValueChanging += (_, e) =>
-        {
-            if (e.NewValue is < 1)
-            {
-                e.Handled = true;
-            }
-        };
-
-        _convertTabsCheck = new CheckBox
-        {
-            X = 1,
-            Y = 3,
-            Title = "Con_vert Tabs to Spaces",
-            Value = editor.ConvertTabsToSpaces ? CheckState.Checked : CheckState.UnChecked
-        };
-
-        _autoIndentCheck = new CheckBox
-        {
-            X = 1,
-            Y = 5,
-            Title = "_Auto Indent",
-            Value = editor.IndentationStrategy is not null ? CheckState.Checked : CheckState.UnChecked
-        };
-
-        tabSettingsTab.Add (
-            new Label { X = 1, Y = 1, Text = "_Indent size:" },
-            _indentSize,
-            _convertTabsCheck,
-            _autoIndentCheck);
+        // --- Tab Settings tab ---
+        _tabSettingsTab = new EditorTabSettingsTab (editor);
 
         _autoCompleteCheck = new CheckBox
         {
-            X = 1,
-            Y = 1,
-            Title = "Auto _Complete (Ctrl+Space)",
+            Title = "Auto _Complete",
             Value = editor.CompletionProvider is not null ? CheckState.Checked : CheckState.UnChecked
         };
 
+        // --- Config tab ---
         View configTab = new ()
         {
-            Title = "_Config",
-            Width = Dim.Fill (),
-            Height = Dim.Fill ()
+            Title = "_Config"
         };
 
         configTab.Add (_autoCompleteCheck);
 
-        Tabs tabs = new ()
-        {
-            X = 0,
-            Y = 0,
-            Width = Dim.Fill (),
-            Height = Dim.Fill (2)
-        };
+        // --- Tabs ---
+        Tabs tabs = new ();
 
         tabs.InsertTab (0, configTab);
-        tabs.InsertTab (1, tabSettingsTab);
+        tabs.InsertTab (1, _tabSettingsTab);
 
         Button okBtn = new ()
         {
-            Text = "OK",
-            X = Pos.Center () - 6,
-            Y = Pos.Bottom (tabs),
-            IsDefault = true
+            Text = Strings.btnOk
         };
 
         Button cancelBtn = new ()
         {
-            Text = "Cancel",
-            X = Pos.Right (okBtn) + 2,
-            Y = Pos.Bottom (tabs)
+            Text = Strings.btnCancel
         };
 
         okBtn.Accepting += (_, _) =>
@@ -112,18 +59,20 @@ internal sealed class EditorSettingsDialog : Dialog
         };
 
         cancelBtn.Accepting += (_, _) => RequestStop ();
-        Add (tabs, okBtn, cancelBtn);
+
+        AddButton (cancelBtn);
+        AddButton (okBtn);
+        Add (tabs);
     }
 
     internal bool WasAccepted { get; private set; }
 
+    /// <summary>
+    ///     Applies the accepted settings to the editor. Call only when <see cref="WasAccepted" /> is true.
+    /// </summary>
     internal void ApplyTo (Editor editor)
     {
-        editor.IndentationSize = Math.Max (1, _indentSize.Value);
-        editor.ConvertTabsToSpaces = _convertTabsCheck.Value == CheckState.Checked;
-        editor.IndentationStrategy = _autoIndentCheck.Value == CheckState.Checked
-            ? new DefaultIndentationStrategy ()
-            : null;
+        _tabSettingsTab.ApplyTo (editor);
         editor.CompletionProvider = _autoCompleteCheck.Value == CheckState.Checked
             ? new WordCompletionProvider ()
             : null;

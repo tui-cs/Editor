@@ -1,5 +1,5 @@
 using System.Text;
-using Terminal.Gui.Document;
+using Terminal.Gui.Editor.Document;
 
 namespace Terminal.Gui.Editor;
 
@@ -81,7 +81,7 @@ public partial class Editor
 
     // UI path: install an empty document immediately so the editor paints, then append decoded chunks on the UI
     // thread as they stream in. The read/decode runs on a background thread; the document is only ever touched
-    // on the UI thread (assign here, every append + the finalize marshalled).
+    // on the UI thread (assign here, every append + to finalize marshalled).
     private async Task LoadProgressiveAsync (
         Stream stream,
         Encoding? encoding,
@@ -98,7 +98,7 @@ public partial class Editor
         CaretOffset = 0;
 
         // Read-only while streaming: the background reader appends at the end; user edits at arbitrary offsets
-        // would race those appends. The buffer becomes editable the moment the load completes.
+        // would race the appends. The buffer becomes editable the moment the load completes.
         ReadOnly = true;
 
         Encoding detected = encoding ?? new UTF8Encoding (false);

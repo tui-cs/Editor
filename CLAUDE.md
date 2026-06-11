@@ -12,10 +12,10 @@ Active development happens on **`develop`**. `main` is the release/stable branch
 
 - Work on `develop`. During pre-alpha, direct commits and pushes to `develop` are allowed — no PRs required for routine work.
 - Do not push directly to `main`. Promotion from `develop` to `main` is a deliberate release step.
-- Two paths trigger `.github/workflows/release.yml`, which builds + tests cross-platform, then packs and pushes both NuGet packages:
+- Two paths trigger `.github/workflows/release.yml`, which builds + tests cross-platform, then packs and pushes the NuGet package:
   - **Push a `v*` tag** (e.g. `v2.1.0`) — canonical stable release; version = tag minus leading `v`.
   - **Push to `develop`** — rolling pre-release; version = `<Version>` from `Directory.Build.props` + `.${github.run_number}`. With base `2.1.1-develop`, the first run publishes `2.1.1-develop.1`, etc.
-  - `workflow_dispatch` is also available with a verbatim version input.
+- Stable releases are created through **Prepare Release** (`.github/workflows/prepare-release.yml`), which opens a release PR from `develop` to `main`. Merging that PR triggers **Finalize Release** (`.github/workflows/finalize-release.yml`) to create the `v*` tag, GitHub Release, and back-merge PR to `develop`; the tag push triggers NuGet publishing.
 
 ## Versioning
 
@@ -51,7 +51,7 @@ Run a single test by passing xUnit.v3 filter args after `--`:
 dotnet run --project tests/Terminal.Gui.Editor.Tests -- -method "*MyTestName*"
 ```
 
-CI verifies formatting with `dotnet format Terminal.Gui.Editor.slnx --verify-no-changes --exclude third_party/`. Run the same locally before pushing if you've touched C# files outside `third_party/`.
+CI verifies formatting with `dotnet format Terminal.Gui.Editor.slnx --verify-no-changes` while excluding `third_party/` and AvaloniaEdit-lifted folders. Run `.claude/hooks/cleanup-cs.ps1` locally before pushing if you've touched C# files outside lifted code.
 
 ### Verifying the *look* (ANSI snapshots) — MANDATORY for render changes
 
@@ -71,7 +71,7 @@ ordering, `*.ans` must stay `binary` in `.gitattributes`, keep viewports small,
 Two NuGet packages with a strict dependency direction:
 
 - **`src/Terminal.Gui.Editor`** — UI-framework-independent document model. Namespace `Terminal.Gui.Editor` and subnamespaces. **Must not reference Terminal.Gui.** Holds the rope-backed `TextDocument`, `DocumentLine`, `TextAnchor`, `UndoStack`, `ITextSource`, `TextSegment`, the `Rope`, and supporting utility types. Lifted from AvaloniaEdit (see fork policy below) — `Document/` and `Utils/` are landed; `Folding/`, `Search/`, `Indentation/`, `Highlighting/` are follow-up phases per `specs/00-plan.md`.
-- **`src/Terminal.Gui.Editor`** — the `Editor : View` and cell-grid rendering pipeline. Namespace `Terminal.Gui.Views` (matches Terminal.Gui convention, deliberately not `Terminal.Gui.Editor`). References `Terminal.Gui` (version pinned via `$(TerminalGuiVersion)` in `Directory.Build.props`) and `Terminal.Gui.Editor`. Split into partials: `Editor.cs` (core: `Document`, `CaretOffset`, edit-tracking arithmetic, content-size + scroll), `Editor.Drawing.cs` (`OnDrawingContent` + cursor positioning), `Editor.Keyboard.cs` (`OnKeyDown` switch — navigation / editing / undo+redo). No selection / folding / highlighting / multi-caret yet.
+- **`src/Terminal.Gui.Editor`** — the `Editor : View` and cell-grid rendering pipeline. Namespace `Terminal.Gui.Editor` (all public types in the assembly live under `Terminal.Gui.Editor.*`). References `Terminal.Gui` (version pinned via `$(TerminalGuiVersion)` in `Directory.Build.props`). Split into partials: `Editor.cs` (core: `Document`, `CaretOffset`, edit-tracking arithmetic, content-size + scroll), `Editor.Drawing.cs` (`OnDrawingContent` + cursor positioning), `Editor.Keyboard.cs` (`OnKeyDown` switch — navigation / editing / undo+redo). Subnamespaces: `Terminal.Gui.Editor.Document`, `Terminal.Gui.Editor.Rendering`, `Terminal.Gui.Editor.Highlighting`, `Terminal.Gui.Editor.Indentation`, `Terminal.Gui.Editor.Completion`.
 - **`examples/ted`** — standalone TG demo app exercising `Editor`. Not packed; not a NuGet artifact. Has a File menu, the `Editor` View, and a status bar; grows with the View. Run via `dotnet run --project examples/ted`.
 
 The boundary matters: anything that takes a dependency on `Terminal.Gui` types belongs in `Terminal.Gui.Editor`, never in `Terminal.Gui.Editor`.
@@ -84,15 +84,22 @@ The boundary matters: anything that takes a dependency on `Terminal.Gui` types b
 
 See `specs/00-plan.md` §6 for the planned pipeline and full `Editor` public API sketch.
 
-## AvaloniaEdit fork policy
+## AvaloniaEdit fork policy — do not format lifted code
 
-Code is lifted from AvaloniaEdit into the relevant `src/Terminal.Gui.Editor/` subfolders (`Document/`, `Utils/` so far; `Folding/`, `Search/`, `Indentation/`, `Highlighting/` to follow). The pinned upstream commit and per-file modification log live in `third_party/AvaloniaEdit/UPSTREAM.md` (with the upstream MIT `LICENSE` alongside).
+Code is lifted from AvaloniaEdit into the relevant `src/Terminal.Gui.Editor/` subfolders (`Document/`, `Utils/`, `Folding/`, `Search/`, `Indentation/`, `Highlighting/`, and supporting lifted helpers). The pinned upstream commit and per-file modification log live in `third_party/AvaloniaEdit/UPSTREAM.md` (with the upstream MIT `LICENSE` alongside).
+
+**Do not run broad formatting or cleanup over lifted files.** Treat any file containing
+`// Adapted for Terminal.Gui from AvaloniaEdit ...` as upstream-owned formatting, even when it
+lives outside `third_party/`. `dotnet format`, ReSharper cleanup, Rider "cleanup on save", and
+"format document" can create huge no-op diffs in these files; those diffs make future upstream
+re-syncs painful and must be reverted before finishing work.
 
 For lifted files:
 
 - **Preserve original formatting and copyright headers.** House-style reformatting defeats the merge story.
 - Add the line `// Adapted for Terminal.Gui from AvaloniaEdit <commit-sha>` under the original header.
 - Targeted edits only: strip `using Avalonia.*`, remove `Dispatcher.UIThread.VerifyAccess ()` calls, replace `IBrush`/`Avalonia.Media.Color` with `Terminal.Gui.Color`, drop typeface/font-size from `HighlightingColor`.
+- If a formatter or cleanup tool touches lifted files as a side effect, immediately revert those unrelated formatting-only hunks. Keep only the narrow semantic changes required by the task.
 - Log every modification in `third_party/AvaloniaEdit/UPSTREAM.md` along with the pinned upstream commit.
 
 The fork is **hard** — re-syncs are manual and deliberate, triggered only by upstream fixes we want.
@@ -105,7 +112,7 @@ Adopts Terminal.Gui's house style. Three enforcement layers:
 2. **`Terminal.Gui.Editor.sln.DotSettings` + `dotnet jb cleanupcode`** — ReSharper-driven cleanup ("TG.Editor Full Cleanup" profile). Catches what `dotnet format` misses (XML doc spacing, using sorting, name qualifier removal, expression-bodied conversions). CI runs `dotnet jb cleanupcode` and fails on any diff. The file is named `*.sln.DotSettings` (not `*.slnx.DotSettings`) even though the solution is `.slnx`: ReSharper/Rider/`jb` resolve the team-shared layer using the `.sln.` infix (the IDE writes its companion `.sln.DotSettings.user`). The cleanup profile **must** be stored in the modern single-string serialized-`<Profile>` format — ReSharper/`jb` 2024+ silently ignore the old per-task `…/=Name/CSReformatCode/@EntryIndexedValue` key layout, which makes the profile vanish from the IDE and unresolvable by `jb` (and CI's `|| true` then makes the cleanup gate a silent no-op). Edit the profile only via Rider → Settings | Code Cleanup → "Save to: This Solution Team-Shared".
 3. **A Stop hook in `.claude/settings.json`** that runs both tools on .cs files modified during the session before the agent reports done. Output is suppressed unless the cleanup actually changed something.
 
-**Before declaring work complete, an agent must run `dotnet tool restore && dotnet format Terminal.Gui.Editor.slnx --exclude third_party/ && dotnet jb cleanupcode Terminal.Gui.Editor.slnx --profile="TG.Editor Full Cleanup"` (the Stop hook does this automatically). If the cleanup adjusts files, those changes are part of the work — re-stage and continue.**
+**Before declaring work complete, an agent must run `.claude/hooks/cleanup-cs.ps1` (the Stop hook does this automatically). Then inspect the diff. If cleanup adjusted lifted AvaloniaEdit files (files with the `Adapted for Terminal.Gui from AvaloniaEdit` marker), revert those formatting-only changes before reporting done and fix the cleanup exclude list. Cleanup changes in non-lifted files are part of the work — re-stage and continue.**
 
 ### Formatting and spacing
 
@@ -198,7 +205,7 @@ private void ExtendCaretBy (int delta)
 - **One public or internal type per file.** No nested types except inside the file that owns the outer type, and only when the nested type is a private implementation detail (`DocumentLine.LineNode`-style). If a nested type grows interesting, promote it to its own file.
 - **No file longer than 1000 lines.** When a file approaches that, split — by partial class (`Editor.Drawing.cs`, `Editor.Mouse.cs`), by helper extraction, or by genuinely splitting the type. The cleanup hook does not enforce this; the reviewer does.
 - **C# 14 `extension` blocks**: prefer extension blocks over a static class full of `this`-prefixed extension methods when the extensions form a coherent group on a single receiver type.
-- **Namespace per folder.** `src/Terminal.Gui.Editor/Document/` ⇒ `Terminal.Gui.Document`; `src/Terminal.Gui.Editor/Rendering/` ⇒ `Terminal.Gui.Views.Rendering`. Don't put unrelated types in the same namespace just because they share a folder.
+- **Namespace per folder.** `src/Terminal.Gui.Editor/Document/` ⇒ `Terminal.Gui.Editor.Document`; `src/Terminal.Gui.Editor/Rendering/` ⇒ `Terminal.Gui.Editor.Rendering`. All namespaces in the Editor assembly are rooted under `Terminal.Gui.Editor`. Don't put unrelated types in the same namespace just because they share a folder.
 - **No static members on `View`-derived types.** A class that derives from `Terminal.Gui.View` (e.g. `Editor`) must not declare `static` members — not fields, not properties, not events, not even "harmless" caches or lookup tables. Terminal.Gui's `Application` lifetime is per-instance (see "Testing tiers"); static state on a View is process-global, survives across `IApplication` instances, and silently couples otherwise-independent windows and parallel tests (the canonical cause of parallel-test hangs). Shared/lookup data lives in a dedicated non-View type (e.g. `XshdRoleMap`), exposed read-only (`private` + `FrozenDictionary`/`IReadOnlyXxx`), and is injected or queried — never hung off the View. `const` is the only exception (it is not state). This is a hard rule; a reviewer blocks on it.
 
 ### Testing convention

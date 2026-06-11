@@ -5,6 +5,14 @@
     <RootNamespace>Ted</RootNamespace>
     <AssemblyName>ted</AssemblyName>
     <IsPackable>false</IsPackable>
+
+    <!-- NativeAOT publish settings (apply only to `dotnet publish`, not `dotnet build`). -->
+    <PublishAot>true</PublishAot>
+    <InvariantGlobalization>false</InvariantGlobalization>
+    <StackTraceSupport>true</StackTraceSupport>
+    <DebuggerSupport>false</DebuggerSupport>
+    <EventSourceSupport>false</EventSourceSupport>
+    <UseSystemResourceKeys>true</UseSystemResourceKeys>
   </PropertyGroup>
 
   <ItemGroup>

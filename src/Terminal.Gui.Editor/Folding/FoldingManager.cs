@@ -19,7 +19,7 @@
 
 using System.Collections.ObjectModel;
 
-namespace Terminal.Gui.Document.Folding;
+namespace Terminal.Gui.Editor.Document.Folding;
 
 /// <summary>
 ///     Stores a list of foldings for a specific TextDocument.

@@ -1,9 +1,12 @@
 // Claude - claude-opus-4-7
 
+using Terminal.Gui.Drawing;
+using Terminal.Gui.Editor.Highlighting;
 using Terminal.Gui.Editor.IntegrationTests.Testing;
 using Terminal.Gui.Input;
 using Terminal.Gui.Testing;
 using Xunit;
+using Attribute = Terminal.Gui.Drawing.Attribute;
 
 namespace Terminal.Gui.Editor.IntegrationTests;
 
@@ -64,5 +67,22 @@ public class EditorSnapshotTests
 
         // Guard: ToAnsi must be a pure function of buffer state, or goldens flake.
         Assert.Equal (first, second);
+    }
+
+    [Fact]
+    public async Task Markdown_Headings_And_Links_Use_Themed_Roles_Snapshot ()
+    {
+        await using AppFixture<EditorTestHost> fx = new (() =>
+            new EditorTestHost ("# Heading\n[link](https://example.com)"));
+        fx.Top.Editor.HighlightingDefinition = HighlightingManager.Instance.GetDefinition ("MarkDown");
+        fx.Top.Editor.SetScheme (new Scheme (new Attribute (Color.White, Color.Black))
+        {
+            CodeKeyword = new Attribute (Color.BrightRed, Color.Black),
+            CodeIdentifier = new Attribute (Color.BrightCyan, Color.Black)
+        });
+
+        fx.Render ();
+
+        AnsiSnapshot.Verify (fx.Driver, nameof (Markdown_Headings_And_Links_Use_Themed_Roles_Snapshot));
     }
 }

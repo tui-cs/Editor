@@ -126,7 +126,7 @@ internal static class EditorSettings
             return new JsonObject ();
         }
 
-        // Tolerate the JSONC TG itself accepts (// comments, trailing commas).
+        // Tolerate the JSON TG itself accepts (// comments, trailing commas).
         JsonNode? node = JsonNode.Parse (
             text,
             documentOptions: new JsonDocumentOptions

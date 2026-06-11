@@ -21,9 +21,9 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics.CodeAnalysis;
-using Terminal.Gui.Document.Utils;
+using Terminal.Gui.Editor.Document.Utils;
 
-namespace Terminal.Gui.Document
+namespace Terminal.Gui.Editor.Document
 {
     /// <summary>
     /// Contains predefined offset change mapping types.

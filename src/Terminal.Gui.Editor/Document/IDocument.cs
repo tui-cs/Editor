@@ -19,7 +19,7 @@
 
 using System;
 
-namespace Terminal.Gui.Document
+namespace Terminal.Gui.Editor.Document
 {
     /// <summary>
     /// A document representing a source code file for refactoring.
@@ -47,15 +47,28 @@ namespace Terminal.Gui.Document
         /// This event is called directly after a change is applied to the document.
         /// </summary>
         /// <remarks>
+        /// <para>
+        /// This is a per-edit notification and is raised once for each applied document
+        /// edit. Use <see cref="ChangeCompleted"/> to observe the completion of a whole
+        /// update group.
+        /// </para>
+        /// <para>
         /// It is invalid to modify the document within this event handler.
         /// Aborting the event handler (by throwing an exception) is likely to cause corruption of data structures
         /// that listen to the Changing and Changed events.
+        /// </para>
         /// </remarks>
         event EventHandler<TextChangeEventArgs> TextChanged;
 
         /// <summary>
         /// This event is called after a group of changes is completed.
         /// </summary>
+        /// <remarks>
+        /// <para>
+        /// This is raised after <see cref="EndUndoableAction"/> finishes an update group
+        /// and may represent multiple individual document edits.
+        /// </para>
+        /// </remarks>
         /// <seealso cref="EndUndoableAction"/>
         event EventHandler ChangeCompleted;
 

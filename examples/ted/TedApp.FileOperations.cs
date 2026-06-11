@@ -1,6 +1,6 @@
 using System.Text;
-using Terminal.Gui.Document;
-using Terminal.Gui.Highlighting;
+using Terminal.Gui.Editor.Document;
+using Terminal.Gui.Editor.Highlighting;
 using Terminal.Gui.Resources;
 using Terminal.Gui.Views;
 
@@ -18,6 +18,12 @@ public sealed partial class TedApp
     private long _lastStreamingStatusUnits;
     private DateTime _lastStreamingStatusUpdate = DateTime.MinValue;
     private long _streamingStatusOperationId;
+
+    /// <summary>The last-known on-disk file size in bytes (from load or save).</summary>
+    private long? _lastFileByteSize;
+
+    /// <summary>The verb last used in the completed status ("Loaded" or "Saved").</summary>
+    private string _lastStatusVerb = "Loaded";
 
     /// <summary>The path currently associated with <see cref="Editor" />, or <see langword="null" /> for an untitled buffer.</summary>
     public string? CurrentFilePath { get; private set; }
@@ -87,7 +93,7 @@ public sealed partial class TedApp
         }
     }
 
-    private Func<string, Stream> _createWrite = path => File.Create (path);
+    private Func<string, Stream> _createWrite = File.Create;
 
     /// <summary>File stream hook used by <see cref="SaveFile" /> and <see cref="SaveFileAs" />.</summary>
     public Func<string, Stream> CreateWrite
@@ -197,12 +203,6 @@ public sealed partial class TedApp
         return !string.IsNullOrWhiteSpace (filePath) && SaveFileAsAsync (filePath).GetAwaiter ().GetResult ();
     }
 
-    /// <summary>Prompts for a file path, then asynchronously streams the editor text to that path.</summary>
-    public Task<bool> SaveFileAsAsync (CancellationToken cancellationToken = default)
-    {
-        return SaveFileAsAsync (false, cancellationToken);
-    }
-
     private async Task<bool> SaveFileAsAsync (bool marshalToApp, CancellationToken cancellationToken = default)
     {
         var filePath = ShowSaveDialog ();
@@ -235,6 +235,11 @@ public sealed partial class TedApp
         Editor.CaretOffset = 0;
         CurrentFilePath = filePath;
 
+        Encoding encoding = Editor.Document?.Encoding ?? Encoding.UTF8;
+        _lastFileByteSize = text.Length == 0 ? 0 : encoding.GetByteCount (text);
+        _lastStatusVerb = "Loaded";
+        CompleteStreamingStatus (FormatCompletedProgress ("Loaded", _lastFileByteSize));
+
         ApplyFileMetadata (filePath);
     }
 
@@ -255,11 +260,15 @@ public sealed partial class TedApp
         return dialog.FilePaths.FirstOrDefault ();
     }
 
+    /// <summary>Creates the <see cref="SaveDialog" /> used by <see cref="ShowDefaultSaveDialog" />.</summary>
+    internal SaveDialog CreateSaveDialog ()
+    {
+        return new SaveDialog { Title = Strings.fdSaveAs, AllowsMultipleSelection = false, OpenMode = OpenMode.File };
+    }
+
     private string? ShowDefaultSaveDialog ()
     {
-        using SaveDialog dialog = new ();
-        dialog.AllowsMultipleSelection = false;
-        dialog.OpenMode = OpenMode.File;
+        using SaveDialog dialog = CreateSaveDialog ();
 
         if (App is null)
         {
@@ -283,8 +292,8 @@ public sealed partial class TedApp
             "Save changes?",
             "The document has unsaved changes. Save before quitting?",
             Strings.btnCancel,
-            "Do_n't Save",
-            Strings.btnSave);
+            Strings.btnNo,
+            Strings.btnYes);
 
         return result switch
         {
@@ -326,10 +335,6 @@ public sealed partial class TedApp
         _ = SaveFileAsync (true);
     }
 
-    private void SaveAs ()
-    {
-        _ = SaveFileAsAsync (true);
-    }
 
     private void Quit ()
     {
@@ -386,6 +391,8 @@ public sealed partial class TedApp
                 {
                     CurrentFilePath = filePath;
                     ApplyFileMetadata (filePath);
+                    _lastFileByteSize = fileSize;
+                    _lastStatusVerb = "Loaded";
                     CompleteStreamingStatus (
                         startedStatusOperationId,
                         FormatCompletedProgress ("Loaded", fileSize));
@@ -492,6 +499,8 @@ public sealed partial class TedApp
 
             void MarkSaved ()
             {
+                _lastFileByteSize = fileSize;
+                _lastStatusVerb = "Saved";
                 Editor.Document!.UndoStack.MarkAsOriginalFile ();
                 CompleteStreamingStatus (startedStatusOperationId, FormatCompletedProgress ("Saved", fileSize));
             }
@@ -567,7 +576,6 @@ public sealed partial class TedApp
 
         UpdateFileNameShortcut ();
         UpdatePreviewVisibility ();
-        InstallFolding ();
         Editor.SetNeedsDraw ();
     }
 
@@ -797,17 +805,9 @@ public sealed partial class TedApp
     ///     Adapts streamed saves to the legacy <see cref="WriteAllText" /> hook by buffering bytes in memory and
     ///     writing the final UTF-8 text on disposal.
     /// </summary>
-    private sealed class WriteAllTextStream : MemoryStream
+    private sealed class WriteAllTextStream (string path, Action<string, string> writeAllText) : MemoryStream
     {
-        private readonly string _path;
-        private readonly Action<string, string> _writeAllText;
         private bool _hasWritten;
-
-        public WriteAllTextStream (string path, Action<string, string> writeAllText)
-        {
-            _path = path;
-            _writeAllText = writeAllText;
-        }
 
         protected override void Dispose (bool disposing)
         {
@@ -833,7 +833,7 @@ public sealed partial class TedApp
             }
 
             _hasWritten = true;
-            _writeAllText (_path, Encoding.UTF8.GetString (ToArray ()));
+            writeAllText (path, Encoding.UTF8.GetString (ToArray ()));
         }
     }
 }

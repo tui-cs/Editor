@@ -1,11 +1,15 @@
-using Terminal.Gui.Document.Search;
-using Terminal.Gui.Editor;
+using Terminal.Gui.Editor.Document.Search;
+using Terminal.Gui.Resources;
 using Terminal.Gui.ViewBase;
 using Terminal.Gui.Views;
 
-namespace Ted;
+namespace Terminal.Gui.Editor;
 
-internal sealed class FindReplaceDialog : Dialog
+/// <summary>
+///     A pre-wired Find/Replace dialog for <see cref="Editor" />. Provides tabbed Find and Replace panes
+///     with support for case-sensitive, whole-word, and regex search modes.
+/// </summary>
+public sealed class FindReplaceDialog : Dialog
 {
     private readonly TextField _findTextField;
     private readonly CheckBox _matchCaseCheckBox;
@@ -15,13 +19,20 @@ internal sealed class FindReplaceDialog : Dialog
     private readonly Label _statusLabel;
     private readonly CheckBox _wholeWordCheckBox;
 
+    /// <summary>
+    ///     Initializes a new instance of the <see cref="FindReplaceDialog" /> class.
+    /// </summary>
+    /// <param name="editor">The <see cref="Editor" /> instance to search within.</param>
+    /// <param name="selectReplaceTab">
+    ///     If <see langword="true" />, the Replace tab is focused on open; otherwise the Find tab is focused.
+    /// </param>
     public FindReplaceDialog (Editor editor, bool selectReplaceTab)
     {
         ArgumentNullException.ThrowIfNull (editor);
 
-        Title = "_Find / Replace";
+        Title = "Find / Replace";
         Width = Dim.Percent (70);
-        Height = Dim.Percent (50);
+        Height = Dim.Auto ();
 
         var initialSearchText = string.Empty;
 
@@ -41,7 +52,7 @@ internal sealed class FindReplaceDialog : Dialog
         _regexCheckBox = new CheckBox { X = Pos.Right (_wholeWordCheckBox) + 2, Y = 0, Title = "Reg_ex" };
         _statusLabel = new Label { X = 1, Y = 1, Width = Dim.Fill (1) };
 
-        Tabs tabs = new () { X = 0, Y = 3, Width = Dim.Fill (), Height = Dim.Fill () };
+        Tabs tabs = new () { X = 0, Y = 0, Width = Dim.Fill (), Height = 11 };
         View findTab = BuildFindTab (editor);
         View replaceTab = BuildReplaceTab (editor);
 
@@ -49,8 +60,13 @@ internal sealed class FindReplaceDialog : Dialog
         tabs.Add (replaceTab);
         tabs.Value = selectReplaceTab ? replaceTab : findTab;
 
-        AddButton (new Button { Text = "_Close" });
-        Add (_matchCaseCheckBox, _wholeWordCheckBox, _regexCheckBox, _statusLabel, tabs);
+        _matchCaseCheckBox.Y = Pos.Bottom (tabs);
+        _wholeWordCheckBox.Y = Pos.Bottom (tabs);
+        _regexCheckBox.Y = Pos.Bottom (tabs);
+        _statusLabel.Y = Pos.Bottom (tabs) + 1;
+
+        AddButton (new Button { Text = Strings.cmdClose });
+        Add (tabs, _matchCaseCheckBox, _wholeWordCheckBox, _regexCheckBox, _statusLabel);
 
         if (selectReplaceTab)
         {
@@ -65,17 +81,26 @@ internal sealed class FindReplaceDialog : Dialog
     private View BuildFindTab (Editor editor)
     {
         View tab = new () { Title = "_Find" };
-        Button findNextButton = new () { X = 1, Y = 3, Text = "Find _Next" };
+        Button findNextButton = new () { X = 1, Y = 3, Text = "Find _Next", IsDefault = true };
         Button findPreviousButton = new () { X = Pos.Right (findNextButton) + 1, Y = 3, Text = "Find _Previous" };
 
         tab.Add (
-            new Label { X = 1, Y = 1, Text = "_Find:" },
+            new Label { X = 1, Y = 1, Text = "F_ind:" },
             _findTextField,
             findNextButton,
             findPreviousButton);
 
-        findNextButton.Accepted += (_, _) => RunFind (editor, _findTextField.Text, true);
-        findPreviousButton.Accepted += (_, _) => RunFind (editor, _findTextField.Text, false);
+        findNextButton.Accepting += (_, e) =>
+        {
+            RunFind (editor, _findTextField.Text, true);
+            e.Handled = true;
+        };
+
+        findPreviousButton.Accepting += (_, e) =>
+        {
+            RunFind (editor, _findTextField.Text, false);
+            e.Handled = true;
+        };
 
         return tab;
     }
@@ -85,18 +110,32 @@ internal sealed class FindReplaceDialog : Dialog
         View tab = new () { Title = "_Replace" };
 
         tab.Add (
-            new Label { X = 1, Y = 1, Text = "_Find:" },
+            new Label { X = 1, Y = 1, Text = "F_ind:" },
             _replaceFindTextField,
-            new Label { X = 1, Y = 3, Text = "_Replace:" },
+            new Label { X = 1, Y = 3, Text = "Replace:" },
             _replaceWithTextField);
 
-        Button findNextButton = new () { X = 1, Y = 5, Text = "Find _Next" };
-        Button replaceButton = new () { X = Pos.Right (findNextButton) + 1, Y = 5, Text = "_Replace" };
+        Button findNextButton = new () { X = 1, Y = 5, Text = "Find _Next", IsDefault = true };
+        Button replaceButton = new () { X = Pos.Right (findNextButton) + 1, Y = 5, Text = "R_eplace" };
         Button replaceAllButton = new () { X = Pos.Right (replaceButton) + 1, Y = 5, Text = "Replace _All" };
 
-        findNextButton.Accepted += (_, _) => RunFind (editor, _replaceFindTextField.Text, true);
-        replaceButton.Accepted += (_, _) => RunReplaceNext (editor);
-        replaceAllButton.Accepted += (_, _) => RunReplaceAll (editor);
+        findNextButton.Accepting += (_, e) =>
+        {
+            RunFind (editor, _replaceFindTextField.Text, true);
+            e.Handled = true;
+        };
+
+        replaceButton.Accepting += (_, e) =>
+        {
+            RunReplaceNext (editor);
+            e.Handled = true;
+        };
+
+        replaceAllButton.Accepting += (_, e) =>
+        {
+            RunReplaceAll (editor);
+            e.Handled = true;
+        };
 
         tab.Add (findNextButton, replaceButton, replaceAllButton);
 
@@ -141,7 +180,7 @@ internal sealed class FindReplaceDialog : Dialog
     /// <summary>
     ///     Builds an <see cref="ISearchStrategy" /> from the dialog's checkbox state and assigns it to
     ///     <see cref="Editor.SearchStrategy" />. Returns <see langword="false" /> (and surfaces the error on the
-    ///     status label) when the search text is empty or — in regex mode — fails to compile.
+    ///     status label) when the search text is empty or -- in regex mode -- fails to compile.
     /// </summary>
     private bool TryBuildStrategy (Editor editor, string searchText)
     {

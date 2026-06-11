@@ -1,6 +1,6 @@
 using System.Drawing;
-using Terminal.Gui.Document;
-using Terminal.Gui.Document.Folding;
+using Terminal.Gui.Editor.Document;
+using Terminal.Gui.Editor.Document.Folding;
 using Terminal.Gui.Input;
 using Terminal.Gui.ViewBase;
 
@@ -33,6 +33,25 @@ internal sealed class FoldingGutter : View
         if (mouse.Position is { } pos)
         {
             _lastMouseRow = pos.Y;
+        }
+
+        // Claim press/release events to prevent them from bubbling to the editor.
+        // Without this, the editor's OnMouseEvent handles the press (grabbing the mouse
+        // and moving the caret), which corrupts focus/caret state.
+        if (mouse.Flags.HasFlag (MouseFlags.LeftButtonPressed) ||
+            mouse.Flags.HasFlag (MouseFlags.LeftButtonReleased))
+        {
+            return true;
+        }
+
+        // Handle clicked directly — when preceded by a press that this view handled,
+        // Terminal.Gui's command binding routing may not fire the Toggle binding.
+        // Invoke the toggle explicitly so the fold always responds to click gestures.
+        if (mouse.Flags.HasFlag (MouseFlags.LeftButtonClicked))
+        {
+            OnToggleFold ();
+
+            return true;
         }
 
         return base.OnMouseEvent (mouse);
@@ -83,28 +102,17 @@ internal sealed class FoldingGutter : View
             else
             {
                 // Check if line is a continuation of an expanded fold.
-                var isContinuation = false;
-
-                foreach (FoldingSection fs in fm.AllFoldings)
-                {
-                    if (fs.IsFolded)
+                var isContinuation = fm.AllFoldings
+                    .Where (fs => !fs.IsFolded)
+                    .Any (fs =>
                     {
-                        continue;
-                    }
+                        DocumentLine startLine =
+                            document.GetLineByOffset (Math.Clamp (fs.StartOffset, 0, document.TextLength));
+                        DocumentLine endLine =
+                            document.GetLineByOffset (Math.Clamp (fs.EndOffset, 0, document.TextLength));
 
-                    DocumentLine startLine =
-                        document.GetLineByOffset (Math.Clamp (fs.StartOffset, 0, document.TextLength));
-
-                    DocumentLine endLine =
-                        document.GetLineByOffset (Math.Clamp (fs.EndOffset, 0, document.TextLength));
-
-                    if (lineNumber > startLine.LineNumber && lineNumber <= endLine.LineNumber)
-                    {
-                        isContinuation = true;
-
-                        break;
-                    }
-                }
+                        return lineNumber > startLine.LineNumber && lineNumber <= endLine.LineNumber;
+                    });
 
                 indicator = isContinuation ? "│ " : "  ";
             }
@@ -136,6 +144,14 @@ internal sealed class FoldingGutter : View
         }
 
         fold.IsFolded = !fold.IsFolded;
+
+        // Ensure the editor retains focus after the toggle so the cursor stays visible.
+        // Clicking on the gutter (a non-focusable Padding subview) can cause transient
+        // focus loss; restoring it here guarantees UpdateCursor sees HasFocus == true.
+        if (!_editor.HasFocus)
+        {
+            _editor.SetFocus ();
+        }
 
         return true;
     }

@@ -137,7 +137,7 @@ public partial class Editor
             // editor uses without the popup open (multi-caret / selection / overwrite
             // aware), then re-filter. The popup is focused, so these never reach
             // OnKeyDownNotHandled on their own — they must be handled here.
-            if (key is { IsCtrl: false, IsAlt: false, AsRune: { } rune } && !Rune.IsControl (rune))
+            if (key is { IsCtrl: false, IsAlt: false, AsRune: var rune } && !Rune.IsControl (rune))
             {
                 return InsertTypedText (rune.ToString ());
             }
@@ -390,7 +390,7 @@ public partial class Editor
             _completionListView.SelectedItem = CompletionSelectedIndex;
 
             Point caret = GetCaretScreenPosition ();
-            _completionPopover.MakeVisible (new Point (caret.X, caret.Y + 1));
+            _completionPopover.MakeVisible (caret with { Y = caret.Y + 1 });
 
             return;
         }
@@ -436,7 +436,7 @@ public partial class Editor
 
         // Position the popup just below the caret.
         Point caretScreen = GetCaretScreenPosition ();
-        _completionPopover.MakeVisible (new Point (caretScreen.X, caretScreen.Y + 1));
+        _completionPopover.MakeVisible (caretScreen with { Y = caretScreen.Y + 1 });
 
         // The focused ListView's Up/Down move its selection; mirror that into
         // CompletionSelectedIndex so AcceptCompletion inserts the right item.

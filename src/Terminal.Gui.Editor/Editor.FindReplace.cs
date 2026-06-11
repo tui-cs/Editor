@@ -1,4 +1,4 @@
-using Terminal.Gui.Document.Search;
+using Terminal.Gui.Editor.Document.Search;
 using Terminal.Gui.Editor.Rendering;
 
 namespace Terminal.Gui.Editor;
@@ -60,11 +60,13 @@ public partial class Editor
         }
         else
         {
-            if (_searchHitRenderer is not null)
+            if (_searchHitRenderer is null)
             {
-                BackgroundRenderers.Remove (_searchHitRenderer);
-                _searchHitRenderer = null;
+                return;
             }
+
+            BackgroundRenderers.Remove (_searchHitRenderer);
+            _searchHitRenderer = null;
         }
     }
 
@@ -316,34 +318,7 @@ public partial class Editor
 
         length = Math.Min (length, _document.TextLength - startOffset);
 
-        if (length < 0)
-        {
-            return null;
-        }
-
-        return SearchStrategy.FindNext (_document, startOffset, length);
-    }
-
-    private ISearchResult? FindBackward (int startOffset, int length)
-    {
-        if (SearchStrategy is null || _document is null)
-        {
-            return null;
-        }
-
-        if (startOffset < 0)
-        {
-            return null;
-        }
-
-        length = Math.Min (length, _document.TextLength - startOffset);
-
-        if (length < 0)
-        {
-            return null;
-        }
-
-        return SearchStrategy.FindAll (_document, startOffset, length).LastOrDefault ();
+        return length < 0 ? null : SearchStrategy.FindNext (_document, startOffset, length);
     }
 
     /// <summary>
@@ -372,7 +347,7 @@ public partial class Editor
 
             // Search a 1-char window (or 0 at end) that could contain a zero-length match at caretPos.
             var searchLen = Math.Min (1, _document.TextLength - caretPos);
-            ISearchResult? zeroMatch = SearchStrategy.FindNext (_document, caretPos, searchLen);
+            ISearchResult zeroMatch = SearchStrategy.FindNext (_document, caretPos, searchLen);
 
             if (zeroMatch is { Length: 0 } && zeroMatch.Offset == caretPos)
             {

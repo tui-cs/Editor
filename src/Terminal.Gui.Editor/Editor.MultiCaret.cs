@@ -1,6 +1,6 @@
 using System.Drawing;
 using System.Text;
-using Terminal.Gui.Document;
+using Terminal.Gui.Editor.Document;
 
 namespace Terminal.Gui.Editor;
 
@@ -30,7 +30,7 @@ public partial class Editor
     public bool HasMultipleCarets => _additionalCarets.Count > 0;
 
     /// <summary>
-    ///     Adds an additional caret at the given <paramref name="offset" />, or removes the one
+    ///     Adds another caret at the given <paramref name="offset" />, or removes the one
     ///     already there (toggle behavior for Ctrl+Click). The add path goes through
     ///     <see cref="AddAdditionalCaretAt" />; the toggle-off is an explicit, user-driven single
     ///     removal. The primary caret is never removed.
@@ -67,18 +67,7 @@ public partial class Editor
         AddAdditionalCaretAt (offset);
     }
 
-    /// <summary>
-    ///     Adds one additional caret at <paramref name="offset" />. The single add path that
-    ///     mutates <see cref="_additionalCarets" />: it never duplicates the primary and never
-    ///     stacks two additional carets on one offset, so the caret set is deduped by construction
-    ///     rather than normalized after the fact.
-    /// </summary>
-    private void AddAdditionalCaretAt (int offset)
-    {
-        AddAdditionalCaretAt (offset, null);
-    }
-
-    private void AddAdditionalCaretAt (int offset, int? selectionAnchorOffset)
+    private void AddAdditionalCaretAt (int offset, int? selectionAnchorOffset = null)
     {
         if (_document is null)
         {
@@ -150,15 +139,17 @@ public partial class Editor
             removed = true;
         }
 
-        if (removed)
+        if (!removed)
         {
-            if (_additionalCarets.Count == 0)
-            {
-                _verticalCaretKeyboardDirection = 0;
-            }
-
-            SetNeedsDraw ();
+            return;
         }
+
+        if (_additionalCarets.Count == 0)
+        {
+            _verticalCaretKeyboardDirection = 0;
+        }
+
+        SetNeedsDraw ();
     }
 
     /// <summary>
@@ -198,26 +189,23 @@ public partial class Editor
 
         // Reference = the extreme caret in the requested direction: topmost for up, bottommost
         // for down. The block grows past that edge.
-        var reference = CaretOffset;
+        var reference = AdditionalCaretOffsets.Aggregate (CaretOffset,
+            (current, offset) => delta < 0 ? Math.Min (current, offset) : Math.Max (current, offset));
 
-        foreach (var offset in AdditionalCaretOffsets)
+        if (!TryGetVerticalOffset (reference, delta, _virtualCaretColumn, out var target))
         {
-            reference = delta < 0 ? Math.Min (reference, offset) : Math.Max (reference, offset);
+            return true;
         }
 
-        if (TryGetVerticalOffset (reference, delta, _virtualCaretColumn, out var target))
-        {
-            AddAdditionalCaretAt (target);
-            _verticalCaretKeyboardDirection = delta;
-        }
+        AddAdditionalCaretAt (target);
+        _verticalCaretKeyboardDirection = delta;
 
         return true;
     }
 
     /// <summary>
     ///     Builds a column of carets from the <paramref name="anchorViewRow" /> (which hosts the
-    ///     primary) through the <paramref name="activeViewRow" />, all at
-    ///     <paramref name="viewColumn" />. Used by the <c>Shift+Alt</c> column-drag. Rebuilt from
+    ///     primary) through the <paramref name="activeViewRow" />. Used by the <c>Shift+Alt</c> column-drag. Rebuilt from
     ///     scratch on every drag event so the end state is identical to a single press at the
     ///     final position.
     /// </summary>
@@ -257,11 +245,11 @@ public partial class Editor
         SetNeedsDraw ();
     }
 
-    private bool ColumnSelectByKeyboard (int rowDelta, int columnDelta)
+    private void ColumnSelectByKeyboard (int rowDelta, int columnDelta)
     {
         if (_document is null)
         {
-            return true;
+            return;
         }
 
         if (_keyboardColumnSelectionAnchorOffset is null)
@@ -278,7 +266,7 @@ public partial class Editor
 
         if (!TryGetVerticalOffset (anchorOffset, nextRowDelta, nextActiveColumn, out _))
         {
-            return true;
+            return;
         }
 
         _keyboardColumnSelectionActiveRowDelta = nextRowDelta;
@@ -289,8 +277,6 @@ public partial class Editor
             _keyboardColumnSelectionAnchorColumn,
             _keyboardColumnSelectionActiveColumn);
         _keyboardColumnSelectionAnchorOffset = anchorOffset;
-
-        return true;
     }
 
     private void SetVerticalSelectionsFromAnchorOffset (
@@ -757,11 +743,13 @@ public partial class Editor
                         _document.Insert (CaretOffset, "\n");
                     }
 
-                    if (IndentationStrategy is { } strategy)
+                    if (IndentationStrategy is not { } strategy)
                     {
-                        DocumentLine newLine = _document.GetLineByOffset (CaretOffset);
-                        strategy.IndentLine (_document, newLine);
+                        continue;
                     }
+
+                    DocumentLine newLine = _document.GetLineByOffset (CaretOffset);
+                    strategy.IndentLine (_document, newLine);
                 }
                 else
                 {
@@ -969,8 +957,10 @@ public partial class Editor
     {
         foreach (CaretInfo caret in _additionalCarets)
         {
-            if (caret.CaretAnchor is { IsDeleted: false } caretAnchor
-                && caret.SelectionAnchor is { IsDeleted: false } selectionAnchor
+            if (caret is
+                {
+                    CaretAnchor: { IsDeleted: false } caretAnchor, SelectionAnchor: { IsDeleted: false } selectionAnchor
+                }
                 && caretAnchor.Offset != selectionAnchor.Offset)
             {
                 return true;
@@ -1015,11 +1005,13 @@ public partial class Editor
                 continue;
             }
 
-            if (isBetter (anchor.Offset, candidateOffset))
+            if (!isBetter (anchor.Offset, candidateOffset))
             {
-                candidateOffset = anchor.Offset;
-                candidateIndex = i;
+                continue;
             }
+
+            candidateOffset = anchor.Offset;
+            candidateIndex = i;
         }
 
         if (candidateIndex < 0)

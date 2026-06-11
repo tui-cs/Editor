@@ -1,7 +1,7 @@
 using System.Diagnostics;
 using System.Drawing;
 using Ted;
-using Terminal.Gui.Document;
+using Terminal.Gui.Editor.Document;
 using Terminal.Gui.Editor.Rendering;
 using Terminal.Gui.Input;
 using Xunit;

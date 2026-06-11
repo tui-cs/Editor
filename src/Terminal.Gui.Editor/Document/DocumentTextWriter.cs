@@ -21,7 +21,7 @@ using System;
 using System.IO;
 using System.Text;
 
-namespace Terminal.Gui.Document
+namespace Terminal.Gui.Editor.Document
 {
     /// <summary>
     /// A TextWriter implementation that directly inserts into a document.

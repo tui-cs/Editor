@@ -1,14 +1,15 @@
+using System.ComponentModel;
 using System.Drawing;
 using Terminal.Gui.App;
 using Terminal.Gui.Configuration;
-using Terminal.Gui.Document;
-using Terminal.Gui.Document.Folding;
 using Terminal.Gui.Drawing;
+using Terminal.Gui.Editor.Document;
+using Terminal.Gui.Editor.Document.Folding;
+using Terminal.Gui.Editor.Highlighting;
+using Terminal.Gui.Editor.Indentation;
 using Terminal.Gui.Editor.Rendering;
-using Terminal.Gui.Highlighting;
 using Terminal.Gui.Input;
 using Terminal.Gui.Text;
-using Terminal.Gui.Text.Indentation;
 using Terminal.Gui.ViewBase;
 using Attribute = Terminal.Gui.Drawing.Attribute;
 
@@ -141,9 +142,12 @@ public partial class Editor : View
                 return;
             }
 
+            var wasModified = IsModified;
+
             if (_document is not null)
             {
                 _document.Changed -= OnDocumentChanged;
+                _document.UndoStack.PropertyChanged -= OnUndoStackPropertyChanged;
             }
 
             var caretOffset = Math.Clamp (CaretOffset, 0, value.TextLength);
@@ -152,6 +156,7 @@ public partial class Editor : View
 
             _document = value;
             _document.Changed += OnDocumentChanged;
+            _document.UndoStack.PropertyChanged += OnUndoStackPropertyChanged;
             _caretAnchor = CreateCaretAnchor (caretOffset);
             _lastKnownCaretOffset = caretOffset;
             _selectionAnchor = null;
@@ -161,6 +166,7 @@ public partial class Editor : View
             _maxWidthDirty = true;
 
             InstallHighlighter ();
+            InstallAutomaticFolding ();
 
             _virtualCaretColumn = GetCaretColumn ();
             UpdateContentSize ();
@@ -169,6 +175,11 @@ public partial class Editor : View
             if (hadSelection)
             {
                 RaiseSelectionChangedIfMoved (beforeSelection);
+            }
+
+            if (IsModified != wasModified)
+            {
+                ModifiedChanged?.Invoke (this, EventArgs.Empty);
             }
 
             SetNeedsDraw ();
@@ -412,6 +423,12 @@ public partial class Editor : View
 
             field = value;
 
+            // Clear ownership unconditionally. InstallAutomaticFolding re-sets the flag
+            // *after* this assignment, so auto-owned managers are correctly tracked.
+            // External consumer assignments remain un-owned, preventing automatic-folding
+            // teardown from wiping a consumer-provided manager.
+            _automaticFoldingOwnsFoldingManager = false;
+
             if (field is not null)
             {
                 field.FoldingChanged += OnFoldingChanged;
@@ -443,6 +460,7 @@ public partial class Editor : View
         _wrapMap = null;
         _maxWidthDirty = true;
         RefreshFoldingState ();
+        MoveCaretOutOfFold ();
         SyncFoldingTransformer ();
         UpdateContentSize ();
         SetNeedsDraw ();
@@ -450,11 +468,12 @@ public partial class Editor : View
     }
 
     /// <summary>
-    ///     If the caret is inside a collapsed fold, expand it so the caret stays visible.
+    ///     If the caret is inside the hidden part of a collapsed fold (i.e. on a line after
+    ///     the fold's start line), expand the fold so the caret stays visible.
     /// </summary>
     private void EnsureCaretNotInFold ()
     {
-        if (FoldingManager is not { } fm)
+        if (FoldingManager is not { } fm || _document is null)
         {
             return;
         }
@@ -463,10 +482,59 @@ public partial class Editor : View
 
         foreach (FoldingSection fs in fm.GetFoldingsContaining (caretOffset))
         {
-            if (fs.IsFolded && fs.StartOffset < caretOffset && caretOffset < fs.EndOffset)
+            if (!fs.IsFolded)
+            {
+                continue;
+            }
+
+            // The fold's start line remains visible — only expand if caret is past that line.
+            DocumentLine startLine =
+                _document.GetLineByOffset (Math.Clamp (fs.StartOffset, 0, _document.TextLength));
+
+            if (caretOffset > startLine.EndOffset && caretOffset < fs.EndOffset)
             {
                 fs.IsFolded = false;
             }
+        }
+    }
+
+    /// <summary>
+    ///     If the caret is inside the hidden part of a collapsed fold, move it to the fold's
+    ///     start offset (the beginning of the fold line that remains visible). Unlike
+    ///     <see cref="EnsureCaretNotInFold" /> this does not expand the fold — it relocates
+    ///     the caret instead. Called from <see cref="OnFoldingChanged" /> so that folding
+    ///     via the gutter never hides the caret.
+    /// </summary>
+    private void MoveCaretOutOfFold ()
+    {
+        if (FoldingManager is not { } fm || _document is null)
+        {
+            return;
+        }
+
+        var caretOffset = CaretOffset;
+
+        foreach (FoldingSection fs in fm.GetFoldingsContaining (caretOffset))
+        {
+            if (!fs.IsFolded)
+            {
+                continue;
+            }
+
+            // The fold's start line remains visible — only relocate if caret is past that line.
+            DocumentLine startLine =
+                _document.GetLineByOffset (Math.Clamp (fs.StartOffset, 0, _document.TextLength));
+
+            if (caretOffset <= startLine.EndOffset || caretOffset >= fs.EndOffset)
+            {
+                continue;
+            }
+
+            _caretAnchor = CreateCaretAnchor (fs.StartOffset);
+            _lastKnownCaretOffset = fs.StartOffset;
+            _virtualCaretColumn = GetCaretColumn ();
+
+            break;
         }
     }
 
@@ -493,6 +561,18 @@ public partial class Editor : View
 
     /// <summary>Raised whenever <see cref="OverwriteMode" /> changes.</summary>
     public event EventHandler? OverwriteModeChanged;
+
+    /// <summary>
+    ///     Gets whether the document has unsaved modifications. <see langword="true" /> when the
+    ///     <see cref="Document" />'s <see cref="UndoStack" /> is not at the original-file mark.
+    /// </summary>
+    public bool IsModified => _document is { UndoStack.IsOriginalFile: false };
+
+    /// <summary>Raised whenever <see cref="IsModified" /> changes (dirty ↔ clean transitions).</summary>
+    public event EventHandler? ModifiedChanged;
+
+    /// <summary>Raised after each document content change (insertion, deletion, or replacement).</summary>
+    public event EventHandler<DocumentChangeEventArgs>? ContentChanged;
 
     /// <summary>Raised whenever <see cref="CaretOffset" /> changes.</summary>
     public event EventHandler? CaretChanged;
@@ -566,6 +646,10 @@ public partial class Editor : View
             // external code retains the TextDocument (test fixtures, future shared docs across panes,
             // etc.). The Document setter unsubscribes on swap; this covers View-teardown.
             _document.Changed -= OnDocumentChanged;
+            _document.UndoStack.PropertyChanged -= OnUndoStackPropertyChanged;
+            SetFoldingDocument (null);
+            FoldingManager = null;
+            _automaticFoldingOwnsFoldingManager = false;
             // Dispose can run after document ownership moved; _lastKnownCaretOffset is maintained
             // during caret movement and document changes, so avoid reading CaretOffset here.
             _caretAnchor = null;
@@ -574,6 +658,14 @@ public partial class Editor : View
         }
 
         base.Dispose (disposing);
+    }
+
+    private void OnUndoStackPropertyChanged (object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == "IsOriginalFile")
+        {
+            ModifiedChanged?.Invoke (this, EventArgs.Empty);
+        }
     }
 
     private void OnDocumentChanged (object? sender, DocumentChangeEventArgs e)
@@ -608,6 +700,7 @@ public partial class Editor : View
 
         EnsureCaretVisible ();
         SetNeedsDraw ();
+        ContentChanged?.Invoke (this, e);
     }
 
     private void UpdateContentSize ()
@@ -695,11 +788,13 @@ public partial class Editor : View
         {
             var width = MeasureLineWidth (line);
 
-            if (width > _maxVisualWidth)
+            if (width <= _maxVisualWidth)
             {
-                _maxVisualWidth = width;
-                _maxWidthLineNumber = line.LineNumber;
+                continue;
             }
+
+            _maxVisualWidth = width;
+            _maxWidthLineNumber = line.LineNumber;
         }
 
         _maxWidthDirty = false;
@@ -741,11 +836,13 @@ public partial class Editor : View
                 DocumentLine line = _document.GetLineByNumber (lineNum);
                 var width = MeasureLineWidth (line);
 
-                if (width >= newMax)
+                if (width < newMax)
                 {
-                    newMax = width;
-                    newMaxLine = lineNum;
+                    continue;
                 }
+
+                newMax = width;
+                newMaxLine = lineNum;
             }
 
             if (newMax >= _maxVisualWidth)
@@ -772,11 +869,13 @@ public partial class Editor : View
             DocumentLine line = _document.GetLineByNumber (lineNum);
             var width = MeasureLineWidth (line);
 
-            if (width > _maxVisualWidth)
+            if (width <= _maxVisualWidth)
             {
-                _maxVisualWidth = width;
-                _maxWidthLineNumber = lineNum;
+                continue;
             }
+
+            _maxVisualWidth = width;
+            _maxWidthLineNumber = lineNum;
         }
     }
 
@@ -883,9 +982,15 @@ public partial class Editor : View
                 {
                     if (lineDelta != 0)
                     {
-                        // Line numbers shifted — remove old key, re-add with shifted key.
+                        // Line numbers shifted — remove old key. Only re-add with shifted key
+                        // when the absolute document offsets haven't changed; otherwise the
+                        // cached visual line's element offsets are stale and must be rebuilt.
                         (toRemove ??= []).Add (kvp.Key);
-                        (toRekey ??= []).Add (kvp);
+
+                        if (offsetDelta == 0)
+                        {
+                            (toRekey ??= []).Add (kvp);
+                        }
                     }
                     else if (offsetDelta != 0)
                     {
@@ -1027,13 +1132,15 @@ public partial class Editor : View
         // Find which segment the caret falls in.
         for (var i = segments.Count - 1; i >= 0; i--)
         {
-            if (offsetInLine >= segments[i].StartOffset)
+            if (offsetInLine < segments[i].StartOffset)
             {
-                var localOffset = offsetInLine - segments[i].StartOffset;
-                var segText = text.Substring (segments[i].StartOffset, segments[i].Length);
-
-                return ComputeVisualColumnDirect (segText, localOffset);
+                continue;
             }
+
+            var localOffset = offsetInLine - segments[i].StartOffset;
+            var segText = text.Substring (segments[i].StartOffset, segments[i].Length);
+
+            return ComputeVisualColumnDirect (segText, localOffset);
         }
 
         return GetOrBuildDefaultVisualLine (line).GetVisualColumn (offsetInLine);
@@ -1162,6 +1269,7 @@ public partial class Editor : View
     /// <summary>
     ///     Moves the caret <paramref name="delta" /> lines, preserving the sticky virtual column when
     ///     traversing shorter lines (i.e. snap back to the original column on the next long-enough line).
+    ///     When folds are active, navigates by visible lines so folded regions are skipped.
     /// </summary>
     private void MoveCaretVertically (int delta)
     {
@@ -1172,11 +1280,40 @@ public partial class Editor : View
             return;
         }
 
+        if (HasFoldedSections ())
+        {
+            MoveCaretVerticallyFolded (delta);
+
+            return;
+        }
+
         var targetLine = Math.Clamp (GetCaretLineIndex () + delta, 0, _document!.LineCount - 1);
         DocumentLine line = _document!.GetLineByNumber (targetLine + 1);
         var targetCol = GetOrBuildDefaultVisualLine (line).GetRelativeOffset (_virtualCaretColumn);
 
         // resetVirtualColumn: false keeps the sticky column intact across vertical moves.
+        SetCaretOffset (line.Offset + targetCol, false);
+    }
+
+    /// <summary>
+    ///     Fold-aware vertical caret movement. Navigates by visible-line index so folded regions
+    ///     are treated as a single line and skipped over.
+    /// </summary>
+    private void MoveCaretVerticallyFolded (int delta)
+    {
+        List<int> visibleLines = GetVisibleLineNumbers ();
+        var currentIndex = GetCaretVisibleLineIndex ();
+        var targetIndex = Math.Clamp (currentIndex + delta, 0, visibleLines.Count - 1);
+
+        if (targetIndex == currentIndex)
+        {
+            return;
+        }
+
+        var targetLineNumber = visibleLines[targetIndex];
+        DocumentLine line = _document!.GetLineByNumber (targetLineNumber);
+        var targetCol = GetOrBuildDefaultVisualLine (line).GetRelativeOffset (_virtualCaretColumn);
+
         SetCaretOffset (line.Offset + targetCol, false);
     }
 
@@ -1244,6 +1381,30 @@ public partial class Editor : View
             return true;
         }
 
+        if (HasFoldedSections ())
+        {
+            List<int> visibleLines = GetVisibleLineNumbers ();
+            var currentLineNumber = _document.GetLineByOffset (startOffset).LineNumber;
+            var currentIndex = visibleLines.IndexOf (currentLineNumber);
+
+            if (currentIndex < 0)
+            {
+                return false;
+            }
+
+            var targetIndex = currentIndex + delta;
+
+            if (targetIndex < 0 || targetIndex >= visibleLines.Count)
+            {
+                return false;
+            }
+
+            DocumentLine line = _document.GetLineByNumber (visibleLines[targetIndex]);
+            targetOffset = line.Offset + GetOrBuildDefaultVisualLine (line).GetRelativeOffset (targetVisualColumn);
+
+            return true;
+        }
+
         var targetLineIndex = _document.GetLineByOffset (startOffset).LineNumber - 1 + delta;
 
         if (targetLineIndex < 0 || targetLineIndex > _document.LineCount - 1)
@@ -1251,8 +1412,8 @@ public partial class Editor : View
             return false;
         }
 
-        DocumentLine line = _document.GetLineByNumber (targetLineIndex + 1);
-        targetOffset = line.Offset + GetOrBuildDefaultVisualLine (line).GetRelativeOffset (targetVisualColumn);
+        DocumentLine line2 = _document.GetLineByNumber (targetLineIndex + 1);
+        targetOffset = line2.Offset + GetOrBuildDefaultVisualLine (line2).GetRelativeOffset (targetVisualColumn);
 
         return true;
     }
@@ -1282,12 +1443,14 @@ public partial class Editor : View
 
         for (var i = segments.Count - 1; i >= 0; i--)
         {
-            if (offsetInLine >= segments[i].StartOffset)
+            if (offsetInLine < segments[i].StartOffset)
             {
-                segIndex = i;
-
-                break;
+                continue;
             }
+
+            segIndex = i;
+
+            break;
         }
 
         // Find matching row in the wrap map.
@@ -1340,7 +1503,7 @@ public partial class Editor : View
     /// <summary>
     ///     Returns a cached draw-path <see cref="CellVisualLine" /> when the call is eligible
     ///     (no segments, no selection on this line, no transformers, attributes match the cached
-    ///     entry). Otherwise builds fresh and — if eligible — stores it. The draw cache only fires
+    ///     entry). Otherwise, builds fresh and — if eligible — stores it. The draw cache only fires
     ///     for consumers that don't enable syntax highlighting; once segments are present every
     ///     call falls through to a fresh build.
     /// </summary>

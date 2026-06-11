@@ -6,7 +6,7 @@ using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Threading;
 
-namespace Terminal.Gui.Document.Utils
+namespace Terminal.Gui.Editor.Document.Utils
 {
     /// <summary>
     /// WeakEventManager base class. Inspired by the WPF WeakEventManager class and the code in 

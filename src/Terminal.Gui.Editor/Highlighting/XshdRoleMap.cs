@@ -1,7 +1,7 @@
 using System.Collections.Frozen;
 using Terminal.Gui.Drawing;
 
-namespace Terminal.Gui.Highlighting;
+namespace Terminal.Gui.Editor.Highlighting;
 
 /// <summary>
 ///     Bridges xshd <c>&lt;Color name="..."&gt;</c> names to Terminal.Gui code-token

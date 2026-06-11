@@ -1,0 +1,184 @@
+name: Prepare Release
+
+# Creates a release PR from develop -> main.
+# Maintainers trigger this from Actions -> Prepare Release -> Run workflow.
+# After reviewing, merge the PR; the Finalize Release workflow creates the tag,
+# GitHub Release, and back-merge PR.
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_type:
+        description: 'Release type'
+        required: true
+        type: choice
+        options:
+          - beta
+          - rc
+          - stable
+        default: stable
+      version_override:
+        description: 'Version override (optional, e.g., 2.2.4). Defaults to Directory.Build.props without -develop.'
+        required: false
+        type: string
+
+concurrency:
+  group: prepare-release
+  cancel-in-progress: false
+
+jobs:
+  prepare-release:
+    name: Create Release PR
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Checkout develop
+        uses: actions/checkout@v5
+        with:
+          ref: develop
+          fetch-depth: 0
+          token: ${{ secrets.RELEASE_PAT }}
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Compute release version
+        id: version
+        shell: bash
+        run: |
+          if [ -n "${{ github.event.inputs.version_override }}" ]; then
+            VERSION="${{ github.event.inputs.version_override }}"
+          else
+            VERSION=$(sed -n 's|.*<Version>\(.*\)</Version>.*|\1|p' Directory.Build.props | head -1)
+            VERSION="${VERSION%%-*}"
+          fi
+
+          RELEASE_TYPE="${{ github.event.inputs.release_type }}"
+
+          if [ -z "$VERSION" ]; then
+            echo "::error::Could not resolve release version."
+            exit 1
+          fi
+
+          if ! echo "$VERSION" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "::error::Release version must be a stable SemVer core like 2.2.4; got '$VERSION'."
+            exit 1
+          fi
+
+          if [ "$RELEASE_TYPE" = "stable" ]; then
+            SEMVER="$VERSION"
+            TAG="v${VERSION}"
+          else
+            LATEST_TAG=$(git tag -l "v${VERSION}-${RELEASE_TYPE}.*" --sort=-v:refname | head -1)
+            if [ -z "$LATEST_TAG" ]; then
+              NEXT_NUM=1
+            else
+              CURRENT_NUM="${LATEST_TAG##*.}"
+              NEXT_NUM=$((CURRENT_NUM + 1))
+            fi
+
+            SEMVER="${VERSION}-${RELEASE_TYPE}.${NEXT_NUM}"
+            TAG="v${SEMVER}"
+          fi
+
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "semver=${SEMVER}" >> "$GITHUB_OUTPUT"
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+          echo "release_type=${RELEASE_TYPE}" >> "$GITHUB_OUTPUT"
+          echo "::notice::Computed version: ${SEMVER} (tag: ${TAG})"
+
+      - name: Check for conflicts
+        shell: bash
+        run: |
+          TAG="${{ steps.version.outputs.tag }}"
+          BRANCH="release/${TAG}"
+
+          if git rev-parse "${TAG}" >/dev/null 2>&1; then
+            echo "::error::Tag ${TAG} already exists."
+            exit 1
+          fi
+
+          if git ls-remote --heads origin "${BRANCH}" | grep -q .; then
+            echo "::error::Branch ${BRANCH} already exists on the remote."
+            exit 1
+          fi
+
+          if curl -fsS https://api.nuget.org/v3-flatcontainer/terminal.gui.editor/index.json \
+            | jq -r '.versions[]' | grep -Fxq "${{ steps.version.outputs.semver }}"; then
+            echo "::error::Terminal.Gui.Editor ${{ steps.version.outputs.semver }} already exists on NuGet.org."
+            echo "::error::Choose a new version_override."
+            exit 1
+          fi
+
+          if gh pr list --state open --base main --head "${BRANCH}" --json number --jq 'length' | grep -vq '^0$'; then
+            echo "::error::An open release PR already exists for ${BRANCH}."
+            exit 1
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_PAT }}
+
+      - name: Create release branch
+        shell: bash
+        run: |
+          BRANCH="release/${{ steps.version.outputs.tag }}"
+          git checkout -b "$BRANCH"
+          git push origin "$BRANCH"
+
+      - name: Create Pull Request
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_PAT }}
+          SEMVER: ${{ steps.version.outputs.semver }}
+          TAG: ${{ steps.version.outputs.tag }}
+          RELEASE_TYPE: ${{ steps.version.outputs.release_type }}
+        shell: bash
+        run: |
+          BRANCH="release/${TAG}"
+
+          if [ "$RELEASE_TYPE" = "stable" ]; then
+            PRERELEASE_NOTE=""
+          else
+            PRERELEASE_NOTE="This is a **${RELEASE_TYPE}** pre-release."
+          fi
+
+          cat > /tmp/pr_body.md << EOF
+          ## Release ${TAG}
+
+          ${PRERELEASE_NOTE}
+
+          **Version:** \`${SEMVER}\`
+          **NuGet Package:** \`Terminal.Gui.Editor ${SEMVER}\`
+
+          ### What happens when this PR is merged
+
+          1. The **Finalize Release** workflow creates tag \`${TAG}\`
+          2. The **Release** workflow builds and pushes \`Terminal.Gui.Editor ${SEMVER}\` to NuGet.org
+          3. A **GitHub Release** is created with auto-generated notes
+          4. A **back-merge PR** from \`main\` -> \`develop\` is opened
+
+          ### Checklist
+
+          - [ ] CI passes on this PR
+          - [ ] Version looks correct: \`${SEMVER}\`
+          - [ ] Release notes reviewed
+          EOF
+
+          gh pr create \
+            --base main \
+            --head "$BRANCH" \
+            --title "Release ${TAG}" \
+            --body-file /tmp/pr_body.md
+
+      - name: Summary
+        run: |
+          echo "## Release PR Created" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Version:** ${{ steps.version.outputs.semver }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Tag:** ${{ steps.version.outputs.tag }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Type:** ${{ steps.version.outputs.release_type }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Branch:** release/${{ steps.version.outputs.tag }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "Review and merge the PR to trigger the release." >> "$GITHUB_STEP_SUMMARY"

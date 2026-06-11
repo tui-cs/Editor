@@ -23,7 +23,7 @@ using System.Diagnostics;
 using System.Text;
 using System.Text.RegularExpressions;
 
-namespace Terminal.Gui.Highlighting.Xshd;
+namespace Terminal.Gui.Editor.Highlighting.Xshd;
 
 internal sealed class XmlHighlightingDefinition : IHighlightingDefinition
 {

@@ -17,9 +17,9 @@
 // OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 // DEALINGS IN THE SOFTWARE.
 
-using Terminal.Gui.Document;
+using Terminal.Gui.Editor.Document;
 
-namespace Terminal.Gui.Text.Indentation;
+namespace Terminal.Gui.Editor.Indentation;
 
 /// <summary>
 ///     Handles indentation by copying the indentation from the previous line.

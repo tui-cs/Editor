@@ -1,11 +1,11 @@
 // CoPilot - claude-opus-4.6
 
 using System.Xml;
-using Terminal.Gui.Document;
 using Terminal.Gui.Drawing;
+using Terminal.Gui.Editor.Document;
+using Terminal.Gui.Editor.Highlighting;
+using Terminal.Gui.Editor.Highlighting.Xshd;
 using Terminal.Gui.Editor.Rendering;
-using Terminal.Gui.Highlighting;
-using Terminal.Gui.Highlighting.Xshd;
 using Xunit;
 using Attribute = Terminal.Gui.Drawing.Attribute;
 
@@ -302,6 +302,17 @@ public class HighlightingTests
         Assert.Equal (VisualRole.CodeString, XshdRoleMap.ResolveRole ("StringInterpolation", null));
         Assert.Equal (VisualRole.CodeComment, XshdRoleMap.ResolveRole ("Comment", "not-a-role"));
         Assert.Null (XshdRoleMap.ResolveRole (null, "not-a-role"));
+    }
+
+    [Fact]
+    public void Markdown_Definition_Uses_Theme_Roles_For_Hard_To_Read_Default_Colors ()
+    {
+        IHighlightingDefinition markdown = HighlightingManager.Instance.GetDefinition ("MarkDown")!;
+
+        Assert.Equal (VisualRole.CodeKeyword, markdown.GetNamedColor ("Heading").Role);
+        Assert.Equal (VisualRole.CodeComment, markdown.GetNamedColor ("BlockQuote").Role);
+        Assert.Equal (VisualRole.CodeIdentifier, markdown.GetNamedColor ("Link").Role);
+        Assert.Equal (VisualRole.CodeType, markdown.GetNamedColor ("Image").Role);
     }
 
     [Fact]

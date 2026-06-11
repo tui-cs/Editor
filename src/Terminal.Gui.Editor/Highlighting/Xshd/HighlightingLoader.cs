@@ -21,7 +21,7 @@
 
 using System.Xml;
 
-namespace Terminal.Gui.Highlighting.Xshd;
+namespace Terminal.Gui.Editor.Highlighting.Xshd;
 
 /// <summary>
 ///     Static class with helper methods to load XSHD highlighting files.

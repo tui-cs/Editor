@@ -21,7 +21,7 @@
 
 using Terminal.Gui.Drawing;
 
-namespace Terminal.Gui.Highlighting;
+namespace Terminal.Gui.Editor.Highlighting;
 
 /// <summary>
 ///     A brush used for syntax highlighting. In Terminal.Gui, this wraps a simple <see cref="Color" />.

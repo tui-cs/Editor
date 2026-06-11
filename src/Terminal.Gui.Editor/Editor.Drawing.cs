@@ -1,10 +1,10 @@
 using System.Drawing;
-using Terminal.Gui.Document;
-using Terminal.Gui.Document.Folding;
 using Terminal.Gui.Drawing;
 using Terminal.Gui.Drivers;
+using Terminal.Gui.Editor.Document;
+using Terminal.Gui.Editor.Document.Folding;
+using Terminal.Gui.Editor.Highlighting;
 using Terminal.Gui.Editor.Rendering;
-using Terminal.Gui.Highlighting;
 using Terminal.Gui.ViewBase;
 using Attribute = Terminal.Gui.Drawing.Attribute;
 
@@ -177,20 +177,22 @@ public partial class Editor
 
             flatColumn += lineVisual.VisualLength;
 
-            if (idx < visibleLines.Count - 1)
+            if (idx >= visibleLines.Count - 1)
             {
-                // The newline delimiter occupies document offsets at the end of the line.
-                var nlOffset = line.Offset + line.Length;
-                var nlLength = line.DelimiterLength;
-
-                // Determine the newline glyph attribute: use selection attribute if within selection.
-                Attribute nlAttr = selStart < selEnd && nlOffset < selEnd && nlOffset + nlLength > selStart
-                    ? selected
-                    : normal;
-
-                composite.AddElement (new NewlineGlyphElement (nlOffset, nlLength, flatColumn, nlAttr));
-                flatColumn += 1;
+                continue;
             }
+
+            // The newline delimiter occupies document offsets at the end of the line.
+            var nlOffset = line.Offset + line.Length;
+            var nlLength = line.DelimiterLength;
+
+            // Determine the newline glyph attribute: use selection attribute if within selection.
+            Attribute nlAttr = selStart < selEnd && nlOffset < selEnd && nlOffset + nlLength > selStart
+                ? selected
+                : normal;
+
+            composite.AddElement (new NewlineGlyphElement (nlOffset, nlLength, flatColumn, nlAttr));
+            flatColumn += 1;
         }
 
         foreach (IBackgroundRenderer renderer in BackgroundRenderers)
@@ -273,7 +275,7 @@ public partial class Editor
             }
             else
             {
-                // Handle multi-byte graphemes — fall through to grapheme path for remainder.
+                // Handle multibyte graphemes — fall through to grapheme path for remainder.
                 var remaining = segmentText[i..];
 
                 foreach (var grapheme in GraphemeHelper.GetGraphemes (remaining))

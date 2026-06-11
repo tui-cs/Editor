@@ -22,7 +22,7 @@
 using System.Reflection;
 
 // ReSharper disable once CheckNamespace
-namespace Terminal.Gui.Highlighting;
+namespace Terminal.Gui.Editor.Highlighting;
 
 internal static class Resources
 {
@@ -49,6 +49,7 @@ internal static class Resources
 
         hlm.RegisterHighlighting ("CSS", new[] { ".css" }, "CSS-Mode.xshd");
         hlm.RegisterHighlighting ("C++", new[] { ".c", ".h", ".cc", ".cpp", ".hpp" }, "CPP-Mode.xshd");
+        hlm.RegisterHighlighting ("Go", new[] { ".go" }, "Go-Mode.xshd");
         hlm.RegisterHighlighting ("Java", new[] { ".java" }, "Java-Mode.xshd");
         hlm.RegisterHighlighting ("PowerShell", new[] { ".ps1", ".psm1", ".psd1" }, "PowerShell.xshd");
         hlm.RegisterHighlighting ("Python", new[] { ".py", ".pyw" }, "Python-Mode.xshd");

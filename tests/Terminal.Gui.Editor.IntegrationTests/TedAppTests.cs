@@ -2,13 +2,15 @@
 
 using System.Collections.Immutable;
 using System.Drawing;
+using System.Globalization;
 using System.Text;
 using Ted;
 using Terminal.Gui.Configuration;
+using Terminal.Gui.Editor.Indentation;
 using Terminal.Gui.Editor.IntegrationTests.Testing;
 using Terminal.Gui.Input;
+using Terminal.Gui.Resources;
 using Terminal.Gui.Testing;
-using Terminal.Gui.Text.Indentation;
 using Xunit;
 
 namespace Terminal.Gui.Editor.IntegrationTests;
@@ -56,6 +58,33 @@ public class TedAppTests
 
         Assert.Null (app.CurrentFilePath);
         Assert.Equal (string.Empty, app.Editor.Document!.Text);
+    }
+
+    [Fact]
+    public async Task OpenFileAsync_Formats_Loaded_Size_InPortugueseCulture ()
+    {
+        CultureInfo originalCulture = CultureInfo.CurrentCulture;
+        CultureInfo originalUiCulture = CultureInfo.CurrentUICulture;
+
+        try
+        {
+            CultureInfo.CurrentCulture = new CultureInfo ("pt-PT");
+            CultureInfo.CurrentUICulture = new CultureInfo ("pt-PT");
+
+            TedApp app = new (configPath: TedTestConfig.NewPath ());
+            app.ShowOpenDialog = () => "/tmp/ted-progress-pt.txt";
+            app.OpenRead = _ => new MemoryStream (Encoding.UTF8.GetBytes (new string ('x', 100_000)));
+
+            Assert.True (await app.OpenFileAsync (TestContext.Current.CancellationToken));
+
+            Assert.Equal ("Loaded 97,7 KiB", app.LoadSpinnerShortcut.Title);
+            Assert.Equal ("Loaded 97,7 KiB", app.LoadSpinnerShortcut.HelpText);
+        }
+        finally
+        {
+            CultureInfo.CurrentCulture = originalCulture;
+            CultureInfo.CurrentUICulture = originalUiCulture;
+        }
     }
 
     [Fact]
@@ -702,14 +731,14 @@ public class TedAppTests
     {
         await using AppFixture<TedApp> fx = new (() => new TedApp (configPath: TedTestConfig.NewPath ()));
 
-        DriverAssert.ContentsDoesNotContain (fx.Driver, "Find...");
+        DriverAssert.ContentsDoesNotContain (fx.Driver, Strings.cmdFind.Replace ("_", string.Empty));
         DriverAssert.ContentsDoesNotContain (fx.Driver, "Replace...");
 
         InputInjectionOptions options = new () { Mode = InputInjectionMode.Direct };
         fx.Injector.InjectKey (Key.E.WithAlt, options);
         fx.Render ();
 
-        DriverAssert.ContentsContains (fx.Driver, "Find...");
+        DriverAssert.ContentsContains (fx.Driver, Strings.cmdFind.Replace ("_", string.Empty));
         DriverAssert.ContentsContains (fx.Driver, "Replace...");
     }
 
@@ -779,6 +808,52 @@ public class TedAppTests
         fx.Top.ThemeDropDown.Text = target;
 
         Assert.Equal (target, ThemeManager.Theme);
+    }
+
+    [Fact]
+    public void NewFile_Shows_Loaded_Zero_Bytes ()
+    {
+        TedApp app = new (configPath: TedTestConfig.NewPath ());
+        app.ShowOpenDialog = () => "/tmp/ted-new.txt";
+        app.OpenRead = _ => new MemoryStream (Encoding.UTF8.GetBytes ("hello"));
+
+        Assert.True (app.OpenFile ());
+        Assert.Equal ("Loaded 5 B", app.LoadSpinnerShortcut.Title);
+
+        app.NewFile ();
+
+        Assert.Equal ("Loaded 0 B", app.LoadSpinnerShortcut.Title);
+    }
+
+    [Fact]
+    public async Task Edit_After_Load_Shows_Modified_Status ()
+    {
+        TedApp app = new (configPath: TedTestConfig.NewPath ());
+        app.OpenRead = _ => new MemoryStream (Encoding.UTF8.GetBytes ("hello world"));
+
+        Assert.True (await app.OpenFileAsync ("/tmp/ted-mod.txt", TestContext.Current.CancellationToken));
+        Assert.Equal ("Loaded 11 B", app.LoadSpinnerShortcut.Title);
+
+        // Simulate an edit — size should update to reflect new content
+        app.Editor.Document!.Insert (0, "x");
+
+        Assert.Equal ("Modified 12 B", app.LoadSpinnerShortcut.Title);
+    }
+
+    [Fact]
+    public async Task Undo_To_Clean_Reverts_Modified_Status ()
+    {
+        TedApp app = new (configPath: TedTestConfig.NewPath ());
+        app.OpenRead = _ => new MemoryStream (Encoding.UTF8.GetBytes ("abc"));
+
+        Assert.True (await app.OpenFileAsync ("/tmp/ted-undo.txt", TestContext.Current.CancellationToken));
+        Assert.Equal ("Loaded 3 B", app.LoadSpinnerShortcut.Title);
+
+        app.Editor.Document!.Insert (0, "z");
+        Assert.Equal ("Modified 4 B", app.LoadSpinnerShortcut.Title);
+
+        app.Editor.Document.UndoStack.Undo ();
+        Assert.Equal ("Loaded 3 B", app.LoadSpinnerShortcut.Title);
     }
 
     private sealed class CapturingWriteStream : MemoryStream
