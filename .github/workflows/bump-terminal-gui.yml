@@ -113,6 +113,25 @@ jobs:
             echo "Bumping TerminalGuiVersion: ${CURRENT} → ${TARGET}"
           fi
 
+      - name: Wait for NuGet flat-container to index the target
+        if: steps.resolve.outputs.changed == 'true'
+        shell: bash
+        run: |
+          TARGET="${{ steps.resolve.outputs.target }}"
+          # A dispatch from TG's publish workflow can arrive before NuGet has
+          # indexed the version; restore would fail and mis-report breakage.
+          for i in $(seq 1 60); do
+            if curl -fsS https://api.nuget.org/v3-flatcontainer/terminal.gui/index.json \
+              | jq -r '.versions[]' | grep -qx "$TARGET"; then
+              echo "Indexed on flat-container: $TARGET"
+              exit 0
+            fi
+            echo "Waiting for Terminal.Gui $TARGET on NuGet flat-container ($i/60, 10s each)..."
+            sleep 10
+          done
+          echo "::error::Timed out waiting for Terminal.Gui $TARGET on flat-container."
+          exit 1
+
       - name: Apply pin
         if: steps.resolve.outputs.changed == 'true'
         shell: bash
