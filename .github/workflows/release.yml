@@ -3,14 +3,14 @@ name: Release
 # Publishes Terminal.Gui.Editor to NuGet.
 #
 # Triggers:
-#   1. Push of a `v*` tag (canonical release path, e.g. v2.1.0)
+#   1. Push of a `v*` tag (canonical release path, e.g. v2.5.3)
 #      → Version = tag with leading `v` stripped.
-#   2. Push to `develop` (rolling pre-release smoke test)
-#      → Version = <Version> from Directory.Build.props + ".<github.run_number>"
-#         e.g. 2.1.1-develop.7
+#   2. Push to `develop` (rolling pre-release)
+#      → Version computed by GitVersion from git history + GitVersion.yml,
+#        e.g. 2.5.3-develop.7 (latest reachable tag + Patch, develop label).
 #
-# The package version is declared in Directory.Build.props.
-# The computed value overrides that base via `-p:Version=...`.
+# No version is stored in the repo; tags are the source of truth.
+# The computed value is injected into builds via `-p:Version=...`.
 
 on:
   push:
@@ -31,22 +31,33 @@ jobs:
       version: ${{ steps.v.outputs.version }}
     steps:
       - uses: actions/checkout@v5
+        with:
+          # GitVersion needs full history + tags.
+          fetch-depth: 0
+
+      - name: Install GitVersion
+        if: github.ref_type != 'tag'
+        uses: gittools/actions/gitversion/setup@v4.5.0
+        with:
+          versionSpec: '6.x'
+
+      - name: Run GitVersion
+        if: github.ref_type != 'tag'
+        id: gitversion
+        uses: gittools/actions/gitversion/execute@v4.5.0
+        with:
+          useConfigFile: true
 
       - name: Compute version
         id: v
         shell: bash
         run: |
           if [ "${{ github.ref_type }}" = "tag" ]; then
-            # Tag form: v2.1.0 → 2.1.0
+            # Tag form: v2.5.3 → 2.5.3 (the tag is canonical; no GitVersion needed)
             VERSION="${GITHUB_REF_NAME#v}"
           elif [ "${{ github.ref }}" = "refs/heads/develop" ]; then
-            # Read base from Directory.Build.props (e.g. "2.1.1-develop"), append run number.
-            BASE=$(sed -n 's|.*<Version>\(.*\)</Version>.*|\1|p' Directory.Build.props | head -1)
-            if [ -z "$BASE" ]; then
-              echo "::error::Could not read <Version> from Directory.Build.props."
-              exit 1
-            fi
-            VERSION="${BASE}.${GITHUB_RUN_NUMBER}"
+            # GitVersion: latest reachable tag + Patch, develop label, commit count.
+            VERSION="${{ steps.gitversion.outputs.SemVer }}"
           else
             echo "::error::Unsupported trigger: event=${{ github.event_name }} ref=${{ github.ref }}"
             exit 1

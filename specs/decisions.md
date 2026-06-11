@@ -92,6 +92,18 @@ need to know the document construction details.
 
 ---
 
+### DEC-010: Versioning decoupled from Terminal.Gui; TG pin automated
+
+**Decision**: Editor's package version is **independent** of Terminal.Gui's version stream and is computed from git tags by GitVersion 6 (same `GitVersion.yml` GitFlow model TG itself uses): `v*` tags on `main` are stable releases; `develop` builds are `<latest-tag+patch>-develop.<commits>`. No version is stored in the repo. Which TG a build supports is expressed **only** by `$(TerminalGuiVersion)` in `Directory.Build.props` — the NuGet dependency floor — never by mirroring TG's version number. On `develop` that pin tracks TG's develop pre-releases and is bumped automatically by `.github/workflows/bump-terminal-gui.yml` (validates with full build + test suites; green → direct commit to develop, red → PR from `bump/terminal-gui-<version>`). A stable Editor release requires a stable pin (gated in `prepare-release.yml`; NuGet rejects stable→prerelease dependencies, NU5104). For the inner dev loop, `-p:UseLocalTerminalGui=true` swaps the PackageReference for a ProjectReference into the sibling `../Terminal.Gui` enlistment (blocked in CI and for pack; see `Directory.Build.targets`).
+
+**Rationale**: The original "track TG's stream" rule conflated package identity with dependency compatibility and was hand-maintained, and it broke in practice: Editor shipped stables 2.4.1→2.5.2 via `version_override` while the props base stayed `2.4.1-develop`, so develop pre-releases (`2.4.1-develop.N`) sorted *below* the published 2.5.2 stable, and "Editor 2.5.x" implied a TG 2.5 that doesn't exist (TG stable was 2.4.5). NuGet immutability forecloses re-coupling (Editor can never rewind behind TG's stream). Tag-derived versions cannot go stale, need no back-merge bookkeeping, and match the machinery TG already operates. Tracking TG develop pre-releases makes Editor a continuous canary for TG API churn while both projects are pre-alpha; the first automated-bump dry run immediately caught a real change (TG's checked-menu glyph `☒`→`☑`).
+
+The TG→Editor reverse dependency stays rational because it is **package-acyclic**: only TG's non-packaged assets consume Editor (`Examples/UICatalog` and `Tests/NativeAotSmoke` via a CPM pin in `Directory.Packages.props`, `docfx/EditorRef` via a floating `*`); the Terminal.Gui package itself never depends on Editor. Both directions resolve through *published* NuGet versions, so there is no build-graph cycle. Caution for any future TG-side auto-bump of its Editor pin: such commits must not trigger TG's publish workflow, or the two repos' bump-publish automations would ping-pong indefinitely.
+
+**Date**: 2026-06-11
+
+---
+
 ## Open
 
 ### OPEN-001: Independent `Terminal.Gui.Editor` NuGet from day one

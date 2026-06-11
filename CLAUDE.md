@@ -13,15 +13,18 @@ Active development happens on **`develop`**. `main` is the release/stable branch
 - Work on `develop`. During pre-alpha, direct commits and pushes to `develop` are allowed — no PRs required for routine work.
 - Do not push directly to `main`. Promotion from `develop` to `main` is a deliberate release step.
 - Two paths trigger `.github/workflows/release.yml`, which builds + tests cross-platform, then packs and pushes the NuGet package:
-  - **Push a `v*` tag** (e.g. `v2.1.0`) — canonical stable release; version = tag minus leading `v`.
-  - **Push to `develop`** — rolling pre-release; version = `<Version>` from `Directory.Build.props` + `.${github.run_number}`. With base `2.1.1-develop`, the first run publishes `2.1.1-develop.1`, etc.
+  - **Push a `v*` tag** (e.g. `v2.5.3`) — canonical stable release; version = tag minus leading `v`.
+  - **Push to `develop`** — rolling pre-release; version computed by GitVersion (e.g. `2.5.3-develop.7`).
 - Stable releases are created through **Prepare Release** (`.github/workflows/prepare-release.yml`), which opens a release PR from `develop` to `main`. Merging that PR triggers **Finalize Release** (`.github/workflows/finalize-release.yml`) to create the `v*` tag, GitHub Release, and back-merge PR to `develop`; the tag push triggers NuGet publishing.
 
 ## Versioning
 
-`Directory.Build.props` holds a single `<Version>` shared by both packages. Track Terminal.Gui's version stream — when the latest stable Terminal.Gui is `X.Y.Z`, our develop base is the next-patch pre-release (e.g. TG 2.1.0 → our base `2.1.1-develop`). Bump the base when TG ships a new stable, not on every commit. The `.${run_number}` suffix is the per-build counter, applied automatically by the workflow.
+See `specs/decisions.md` DEC-010. Two independent axes, never conflated:
 
-`<TerminalGuiVersion>` (also in `Directory.Build.props`) pins the Terminal.Gui dependency. Bump it when the project is ready to consume a new TG release; CI/release workflows can override via `-p:TerminalGuiVersion=<x>` if needed.
+- **Editor's own version** — computed from git tags by **GitVersion 6** (`GitVersion.yml`, the same GitFlow model Terminal.Gui uses). No version lives in the repo; do not add one. Stable releases are `v*` tags on `main`; develop builds are `<latest-tag+patch>-develop.<commits-since-tag>` (always sorts above the latest stable). Local builds without `-p:Version` get the `0.0.0-local` placeholder. Editor's version is **not** coupled to Terminal.Gui's — do not "track TG's stream".
+- **`<TerminalGuiVersion>`** (`Directory.Build.props`) — the minimum supported Terminal.Gui, i.e. the NuGet dependency floor. On `develop` it tracks TG's develop pre-releases and is bumped automatically by `.github/workflows/bump-terminal-gui.yml` (triggered by TG's publish dispatch, a fallback schedule, or manually): the bump is validated with a full build + all test suites, then committed directly to `develop` on green or opened as a PR from `bump/terminal-gui-<version>` on red. A **stable** Editor release requires a **stable** TG pin — `prepare-release.yml` gates on this (run the bump workflow with `channel=stable` first). Override per-build via `-p:TerminalGuiVersion=<x>`.
+
+For the inner dev loop against a local TG enlistment, `dotnet build -p:UseLocalTerminalGui=true` swaps the Terminal.Gui PackageReference for a ProjectReference into the sibling `../Terminal.Gui` clone (see `Directory.Build.targets`). It is blocked in CI and for `pack`, and restore assets are mode-specific — re-restore after toggling.
 
 ## Build and test
 
@@ -258,4 +261,4 @@ Don't accidentally do these — they were considered and rejected:
 
 ## Open decisions
 
-`specs/00-plan.md` §10 lists open design questions (line-ending policy, xshd vs TextMate for first highlighter, async I/O placement, read-only ranges, completion item shape). Resolutions go in `specs/05-decisions.md` (not yet created). If a task touches one of these, surface the decision rather than picking unilaterally.
+`specs/00-plan.md` §10 lists open design questions (line-ending policy, xshd vs TextMate for first highlighter, async I/O placement, read-only ranges, completion item shape). Resolutions go in `specs/decisions.md`. If a task touches one of these, surface the decision rather than picking unilaterally.

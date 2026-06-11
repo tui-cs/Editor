@@ -13,22 +13,30 @@
     <Copyright>Copyright (c) gui-cs and contributors</Copyright>
 
     <!--
-      Base version for both NuGet packages. Tracks Terminal.Gui's stream:
-      when latest TG stable is X.Y.Z, our develop base is X.(Y+1).0-develop or X.Y.(Z+1)-develop.
-      Release workflow overrides via -p:Version=<computed>:
-        - tag push v1.2.3        → 1.2.3
-        - develop branch push    → 2.1.1-develop.<github.run_number>
-      Stable releases are prepared with .github/workflows/prepare-release.yml,
-      which opens a release PR. Merging that PR creates the v* tag.
+      No version lives in the repo. Versions are computed from git tags by
+      GitVersion (see GitVersion.yml) and injected by CI via -p:Version=<computed>:
+        - tag push v2.5.3     → 2.5.3
+        - develop branch push → 2.5.3-develop.<commits-since-tag>
+      Editor's version is independent of Terminal.Gui's; TG compatibility is
+      expressed only by <TerminalGuiVersion> below. Local builds that don't pass
+      -p:Version get an obviously-non-releasable placeholder.
     -->
-    <Version>2.4.1-develop</Version>
+    <Version Condition="'$(Version)' == ''">0.0.0-local</Version>
     <PackageProjectUrl>https://github.com/gui-cs/Editor</PackageProjectUrl>
     <RepositoryUrl>https://github.com/gui-cs/Editor</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
 
-    <!-- Pinned Terminal.Gui version. CI / release workflows can override via -p:TerminalGuiVersion=<x>. -->
-    <TerminalGuiVersion Condition="'$(TerminalGuiVersion)' == ''">2.4.0</TerminalGuiVersion>
+    <!--
+      Minimum supported Terminal.Gui (the NuGet dependency floor). On develop this
+      tracks TG's develop pre-releases and is bumped automatically by
+      .github/workflows/bump-terminal-gui.yml when TG publishes; a stable Editor
+      release requires a stable value here (prepare-release.yml gates on it,
+      and NuGet forbids stable→prerelease dependencies anyway).
+      Override per-build via -p:TerminalGuiVersion=<x>; use -p:UseLocalTerminalGui=true
+      to build against the ../Terminal.Gui enlistment instead (see Directory.Build.targets).
+    -->
+    <TerminalGuiVersion Condition="'$(TerminalGuiVersion)' == ''">2.4.6-develop.9</TerminalGuiVersion>
   </PropertyGroup>
 
   <ItemGroup>
