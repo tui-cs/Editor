@@ -6,6 +6,7 @@ using System.Globalization;
 using System.Text;
 using Ted;
 using Terminal.Gui.Configuration;
+using Terminal.Gui.Drawing;
 using Terminal.Gui.Editor.Indentation;
 using Terminal.Gui.Editor.IntegrationTests.Testing;
 using Terminal.Gui.Input;
@@ -682,7 +683,7 @@ public class TedAppTests
         fx.Render ();
 
         DriverAssert.ContentsContains (fx.Driver, "Line Numbers");
-        DriverAssert.ContentsContains (fx.Driver, "☒ Line Numbers");
+        DriverAssert.ContentsContains (fx.Driver, $"{Glyphs.CheckStateChecked} Line Numbers");
         DriverAssert.ContentsContains (fx.Driver, "Show Tabs");
 
         fx.Injector.InjectKey (Key.Enter, options);
@@ -693,7 +694,7 @@ public class TedAppTests
         fx.Injector.InjectKey (Key.V.WithAlt, options);
         fx.Render ();
 
-        DriverAssert.ContentsContains (fx.Driver, "☐ Line Numbers");
+        DriverAssert.ContentsContains (fx.Driver, $"{Glyphs.CheckStateUnChecked} Line Numbers");
 
         fx.Injector.InjectKey (Key.Enter, options);
         fx.Render ();

@@ -1,0 +1,42 @@
+<Project>
+
+  <!--
+    Local Terminal.Gui enlistment switch (dev loop only).
+
+      dotnet build Terminal.Gui.Editor.slnx -p:UseLocalTerminalGui=true
+
+    swaps the Terminal.Gui PackageReference in every project for a
+    ProjectReference into the sibling ../Terminal.Gui enlistment, so TG API
+    changes can be iterated on without waiting for a TG NuGet publish.
+    Published packages always depend on the NuGet pin ($(TerminalGuiVersion)
+    in Directory.Build.props): the switch is blocked in CI and for pack.
+
+    NOTE: restore assets are mode-specific. After toggling the switch, run a
+    restore in the new mode (any `dotnet build` without the no-restore flag
+    does this); a stale obj/project.assets.json from the other mode breaks the build.
+  -->
+  <PropertyGroup>
+    <LocalTerminalGuiProject>$(MSBuildThisFileDirectory)..\Terminal.Gui\Terminal.Gui\Terminal.Gui.csproj</LocalTerminalGuiProject>
+  </PropertyGroup>
+
+  <ItemGroup Condition="'$(UseLocalTerminalGui)' == 'true'">
+    <PackageReference Remove="Terminal.Gui" />
+    <ProjectReference Include="$(LocalTerminalGuiProject)" />
+  </ItemGroup>
+
+  <Target Name="_VerifyLocalTerminalGui"
+          BeforeTargets="Restore;CollectPackageReferences;PrepareForBuild"
+          Condition="'$(UseLocalTerminalGui)' == 'true'">
+    <Error Condition="'$(CI)' == 'true'"
+           Text="UseLocalTerminalGui is a local dev-loop switch and must not be used in CI; builds there depend on Terminal.Gui $(TerminalGuiVersion) from NuGet." />
+    <Error Condition="!Exists('$(LocalTerminalGuiProject)')"
+           Text="UseLocalTerminalGui=true but '$(LocalTerminalGuiProject)' does not exist. Clone gui-cs/Terminal.Gui next to this repo." />
+  </Target>
+
+  <Target Name="_BlockLocalTerminalGuiPack"
+          BeforeTargets="GenerateNuspec"
+          Condition="'$(UseLocalTerminalGui)' == 'true'">
+    <Error Text="Cannot pack with UseLocalTerminalGui=true: the package must depend on a published Terminal.Gui ($(TerminalGuiVersion)), not the local enlistment." />
+  </Target>
+
+</Project>

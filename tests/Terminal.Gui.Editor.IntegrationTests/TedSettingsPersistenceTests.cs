@@ -4,6 +4,7 @@ using System.Drawing;
 using System.Reflection;
 using System.Text.Json.Nodes;
 using Ted;
+using Terminal.Gui.Drawing;
 using Terminal.Gui.Editor.IntegrationTests.Testing;
 using Terminal.Gui.Input;
 using Terminal.Gui.Testing;
@@ -101,7 +102,7 @@ public class TedSettingsPersistenceTests
         Assert.True (y >= 0);
         var x = -1;
         // Prefer label text as the click target; glyph fallbacks handle renderer differences.
-        string[] targets = ["Word Wrap", "☐", "☑"];
+        string[] targets = ["Word Wrap", Glyphs.CheckStateUnChecked.ToString (), Glyphs.CheckStateChecked.ToString ()];
         foreach (var target in targets)
         {
             x = menuLines[y].IndexOf (target, StringComparison.Ordinal);

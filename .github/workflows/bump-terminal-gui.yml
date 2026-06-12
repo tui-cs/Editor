@@ -1,0 +1,203 @@
+name: Bump Terminal.Gui
+
+# Keeps <TerminalGuiVersion> in Directory.Build.props tracking Terminal.Gui's
+# NuGet publishes. Policy: develop tracks TG's develop pre-releases (Editor is
+# a continuous canary for TG API churn); a stable Editor release requires a
+# stable pin (enforced by prepare-release.yml).
+#
+# Flow:
+#   - Resolve the newest TG version on NuGet for the requested channel
+#     (default: prerelease = newest overall; stable = newest without a `-`).
+#   - If it differs from the current pin: bump, build, run the test suites.
+#   - Green → commit directly to develop (push uses RELEASE_PAT so the push
+#     triggers release.yml, publishing a new Editor pre-release and dispatching
+#     downstream to clet).
+#   - Red → push a `bump/terminal-gui-<version>` branch, open a PR so the
+#     breakage is visible, and fail this run.
+#
+# Triggers:
+#   - repository_dispatch `terminal-gui-published` (sent by gui-cs/Terminal.Gui's
+#     publish workflow; payload: { "version": "2.4.6-develop.10" })
+#   - schedule: fallback poll, in case the dispatch is missing/not configured
+#   - workflow_dispatch: manual, with channel selection (use channel=stable to
+#     pin a stable TG ahead of an Editor stable release)
+
+on:
+  repository_dispatch:
+    types: [terminal-gui-published]
+  schedule:
+    - cron: '23 */6 * * *'
+  workflow_dispatch:
+    inputs:
+      channel:
+        description: 'Which TG stream to pin'
+        required: true
+        type: choice
+        options:
+          - prerelease
+          - stable
+        default: prerelease
+      version:
+        description: 'Explicit Terminal.Gui version (optional; overrides channel)'
+        required: false
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: bump-terminal-gui
+  cancel-in-progress: false
+
+jobs:
+  bump:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.RELEASE_PAT }}
+      # Terminal.Gui drivers skip real-terminal probing/IO on TTY-less runners.
+      DisableRealDriverIO: "1"
+    steps:
+      - name: Checkout develop
+        uses: actions/checkout@v5
+        with:
+          ref: develop
+          token: ${{ secrets.RELEASE_PAT }}
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Resolve target Terminal.Gui version
+        id: resolve
+        shell: bash
+        run: |
+          CURRENT=$(sed -n 's|.*<TerminalGuiVersion[^>]*>\(.*\)</TerminalGuiVersion>.*|\1|p' Directory.Build.props | head -1)
+          if [ -z "$CURRENT" ]; then
+            echo "::error::Could not read <TerminalGuiVersion> from Directory.Build.props."
+            exit 1
+          fi
+
+          EXPLICIT="${{ github.event.inputs.version || github.event.client_payload.version }}"
+          CHANNEL="${{ github.event.inputs.channel || 'prerelease' }}"
+
+          if [ -n "$EXPLICIT" ]; then
+            TARGET="$EXPLICIT"
+          else
+            # Flat-container index is sorted ascending by NuGet semver.
+            INDEX=$(curl -fsS https://api.nuget.org/v3-flatcontainer/terminal.gui/index.json)
+            if [ "$CHANNEL" = "stable" ]; then
+              TARGET=$(echo "$INDEX" | jq -r '[.versions[] | select(contains("-") | not)] | last')
+            else
+              TARGET=$(echo "$INDEX" | jq -r '.versions | last')
+            fi
+          fi
+
+          if [ -z "$TARGET" ] || [ "$TARGET" = "null" ]; then
+            echo "::error::Could not resolve a target Terminal.Gui version."
+            exit 1
+          fi
+
+          echo "current=$CURRENT" >> "$GITHUB_OUTPUT"
+          echo "target=$TARGET"   >> "$GITHUB_OUTPUT"
+
+          if [ "$TARGET" = "$CURRENT" ]; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "Pin already at ${CURRENT}; nothing to do."
+          elif git ls-remote --heads origin "bump/terminal-gui-${TARGET}" | grep -q .; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::bump/terminal-gui-${TARGET} already exists (a previous bump to ${TARGET} failed CI). Skipping."
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            echo "Bumping TerminalGuiVersion: ${CURRENT} → ${TARGET}"
+          fi
+
+      - name: Wait for NuGet flat-container to index the target
+        if: steps.resolve.outputs.changed == 'true'
+        shell: bash
+        run: |
+          TARGET="${{ steps.resolve.outputs.target }}"
+          # A dispatch from TG's publish workflow can arrive before NuGet has
+          # indexed the version; restore would fail and mis-report breakage.
+          for i in $(seq 1 60); do
+            if curl -fsS https://api.nuget.org/v3-flatcontainer/terminal.gui/index.json \
+              | jq -r '.versions[]' | grep -qx "$TARGET"; then
+              echo "Indexed on flat-container: $TARGET"
+              exit 0
+            fi
+            echo "Waiting for Terminal.Gui $TARGET on NuGet flat-container ($i/60, 10s each)..."
+            sleep 10
+          done
+          echo "::error::Timed out waiting for Terminal.Gui $TARGET on flat-container."
+          exit 1
+
+      - name: Apply pin
+        if: steps.resolve.outputs.changed == 'true'
+        shell: bash
+        run: |
+          TARGET="${{ steps.resolve.outputs.target }}"
+          sed -i "s|\(<TerminalGuiVersion[^>]*>\)[^<]*\(</TerminalGuiVersion>\)|\1${TARGET}\2|" Directory.Build.props
+          grep TerminalGuiVersion Directory.Build.props
+
+      - name: Setup .NET
+        if: steps.resolve.outputs.changed == 'true'
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '10.0.x'
+          dotnet-quality: 'preview'
+
+      - name: Validate (restore, build, test)
+        if: steps.resolve.outputs.changed == 'true'
+        id: validate
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          dotnet restore Terminal.Gui.Editor.slnx
+          dotnet build   Terminal.Gui.Editor.slnx --no-restore -c Release
+          dotnet run --project tests/Terminal.Gui.Editor.Tests            --no-build -c Release
+          dotnet run --project tests/Terminal.Gui.Editor.IntegrationTests --no-build -c Release
+          dotnet run --project tests/Terminal.Gui.Editor.ConfigTests      --no-build -c Release
+
+      - name: Commit to develop (green)
+        if: steps.resolve.outputs.changed == 'true' && steps.validate.outcome == 'success'
+        shell: bash
+        run: |
+          TARGET="${{ steps.resolve.outputs.target }}"
+          git add Directory.Build.props
+          git commit -m "Bump TerminalGuiVersion to ${TARGET}"
+          # develop may have moved while tests ran; replay the bump on top.
+          git pull --rebase origin develop
+          git push origin develop
+          echo "## Bumped TerminalGuiVersion" >> "$GITHUB_STEP_SUMMARY"
+          echo "- ${{ steps.resolve.outputs.current }} → ${TARGET} (pushed to develop)" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Open PR (red)
+        if: steps.resolve.outputs.changed == 'true' && steps.validate.outcome != 'success'
+        shell: bash
+        run: |
+          TARGET="${{ steps.resolve.outputs.target }}"
+          CURRENT="${{ steps.resolve.outputs.current }}"
+          BRANCH="bump/terminal-gui-${TARGET}"
+
+          git checkout -b "$BRANCH"
+          git add Directory.Build.props
+          git commit -m "Bump TerminalGuiVersion to ${TARGET}"
+          git push origin "$BRANCH"
+
+          cat > /tmp/pr_body.md << EOF
+          Automated bump of \`TerminalGuiVersion\` from \`${CURRENT}\` to \`${TARGET}\` **failed validation** (build or tests).
+
+          Editor needs source changes to absorb this Terminal.Gui update. See the
+          [failed workflow run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}).
+          EOF
+
+          gh pr create \
+            --base develop \
+            --head "$BRANCH" \
+            --title "Bump TerminalGuiVersion to ${TARGET} (needs fixes)" \
+            --body-file /tmp/pr_body.md
+
+          echo "::error::TG ${TARGET} broke the build/tests; opened PR from ${BRANCH}."
+          exit 1

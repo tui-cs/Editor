@@ -18,7 +18,7 @@ on:
           - stable
         default: stable
       version_override:
-        description: 'Version override (optional, e.g., 2.2.4). Defaults to Directory.Build.props without -develop.'
+        description: 'Version override (optional, e.g., 2.6.0). Defaults to GitVersion''s next patch (latest tag + 1).'
         required: false
         type: string
 
@@ -46,6 +46,32 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
+      - name: Install GitVersion
+        uses: gittools/actions/gitversion/setup@v4.5.0
+        with:
+          versionSpec: '6.x'
+
+      - name: Run GitVersion
+        id: gitversion
+        uses: gittools/actions/gitversion/execute@v4.5.0
+        with:
+          useConfigFile: true
+
+      - name: Require a stable Terminal.Gui pin for stable releases
+        if: github.event.inputs.release_type == 'stable'
+        shell: bash
+        run: |
+          TG_PIN=$(sed -n 's|.*<TerminalGuiVersion[^>]*>\(.*\)</TerminalGuiVersion>.*|\1|p' Directory.Build.props | head -1)
+          if [ -z "$TG_PIN" ]; then
+            echo "::error::Could not read <TerminalGuiVersion> from Directory.Build.props."
+            exit 1
+          fi
+          if echo "$TG_PIN" | grep -q -- '-'; then
+            echo "::error::TerminalGuiVersion is '${TG_PIN}', a pre-release. A stable Editor release must depend on a stable Terminal.Gui (NuGet rejects stable→prerelease dependencies, NU5104). Pin a stable TG on develop first (e.g. via the Bump Terminal.Gui workflow with channel=stable)."
+            exit 1
+          fi
+          echo "TerminalGuiVersion pin is stable: ${TG_PIN}"
+
       - name: Compute release version
         id: version
         shell: bash
@@ -53,8 +79,8 @@ jobs:
           if [ -n "${{ github.event.inputs.version_override }}" ]; then
             VERSION="${{ github.event.inputs.version_override }}"
           else
-            VERSION=$(sed -n 's|.*<Version>\(.*\)</Version>.*|\1|p' Directory.Build.props | head -1)
-            VERSION="${VERSION%%-*}"
+            # Next patch over the latest tag reachable from develop (GitVersion.yml: increment Patch).
+            VERSION="${{ steps.gitversion.outputs.MajorMinorPatch }}"
           fi
 
           RELEASE_TYPE="${{ github.event.inputs.release_type }}"

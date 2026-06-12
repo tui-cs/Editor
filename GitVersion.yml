@@ -1,0 +1,68 @@
+# GitVersion 6.x configuration for gui-cs/Editor.
+#
+# Same GitFlow model as gui-cs/Terminal.Gui (see its GitVersion.yml):
+#
+# - `main` is the release branch; every stable release is a `v*` tag on main.
+# - `develop` always carries the `-develop` pre-release label. The version is
+#   computed from the latest tag reachable from develop, incremented by Patch:
+#   after v2.5.2 is back-merged, develop builds are 2.5.3-develop.N.
+# - Editor's version is INDEPENDENT of Terminal.Gui's version. Which TG a build
+#   supports is expressed solely by <TerminalGuiVersion> in Directory.Build.props
+#   (the package dependency), never by mirroring TG's version number.
+#
+# Nothing in the repo holds a version number; tags are the single source of
+# truth. The release workflow runs the GitVersion CLI to compute the version
+# and passes it to builds via -p:Version.
+#
+mode: ContinuousDelivery
+
+# Tags are prefixed with 'v' or 'V' (e.g., v2.5.2).
+tag-prefix: '[vV]'
+
+branches:
+
+  # Release branch: stable versions come from v* tags on main.
+  main:
+    regex: ^main$
+    label: ''
+    increment: Patch
+    source-branches: ['develop']
+
+  # Development branch: rolling pre-releases (e.g., 2.5.3-develop.7).
+  develop:
+    regex: ^develop$
+    label: develop
+    increment: Patch
+    source-branches: []
+    tracks-release-branches: true
+
+  # Release PR branches created by prepare-release.yml (release/v2.5.3).
+  # Version label irrelevant: the version is finalized by the v* tag that
+  # finalize-release.yml creates after the PR merges.
+  release:
+    regex: ^release[/-]
+    label: rc
+    increment: None
+    source-branches: ['develop']
+
+  # Pull request branches (e.g., 2.5.3-PullRequest245.1).
+  pull-request:
+    regex: "^(pull|pull\\-requests|pr)[\\/-](?<Number>\\d+)"
+    label: "PullRequest{Number}"
+    increment: Inherit
+    source-branches:
+      - develop
+      - main
+      - feature
+    pre-release-weight: 30000
+
+  # Feature / fix / topic branches: inherit from develop, label = branch name.
+  feature:
+    regex: "^(feature|fix|issue|dependabot|copilot|backmerge|bump)[\\/-](?<BranchName>.+)"
+    label: "{BranchName}"
+    increment: Inherit
+    source-branches:
+      - develop
+
+ignore:
+  sha: []
