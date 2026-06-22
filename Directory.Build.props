@@ -36,7 +36,7 @@
       Override per-build via -p:TerminalGuiVersion=<x>; use -p:UseLocalTerminalGui=true
       to build against the ../Terminal.Gui enlistment instead (see Directory.Build.targets).
     -->
-    <TerminalGuiVersion Condition="'$(TerminalGuiVersion)' == ''">2.4.8</TerminalGuiVersion>
+    <TerminalGuiVersion Condition="'$(TerminalGuiVersion)' == ''">2.4.9-develop.1</TerminalGuiVersion>
   </PropertyGroup>
 
   <ItemGroup>
