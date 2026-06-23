@@ -4,7 +4,6 @@ using Terminal.Gui.Drivers;
 using Terminal.Gui.Editor.Highlighting;
 using Terminal.Gui.Editor.IntegrationTests.Testing;
 using Terminal.Gui.Input;
-using Terminal.Gui.ViewBase;
 using Xunit;
 
 namespace Terminal.Gui.Editor.IntegrationTests;
@@ -43,9 +42,9 @@ public class ConfigEditorBackspaceTests
     // word-kill removes a large span. The char at Config[MidKeyCaret - 1] is the one Backspace deletes.
     private const int MidKeyCaret = 22;
 
-    private static readonly string ESC = ((char) 0x1b).ToString ();
-    private const char DEL = (char) 0x7F; // modern Backspace
-    private const char BS = (char) 0x08;  // legacy Backspace / Ctrl+H
+    private static readonly string ESC = ((char)0x1b).ToString ();
+    private const char DEL = (char)0x7F; // modern Backspace
+    private const char BS = (char)0x08; // legacy Backspace / Ctrl+H
 
     private static AppFixture<EditorTestHost> NewConfigEditor ()
     {
@@ -63,11 +62,11 @@ public class ConfigEditorBackspaceTests
     // decoded Key — the path real terminal bytes take, unlike Injector.InjectKey which starts from a Key.
     private static Key? InjectRaw (AppFixture<EditorTestHost> fx, string raw)
     {
-        var processor = (InputProcessorImpl<char>) fx.Driver.GetInputProcessor ();
+        InputProcessorImpl<char> processor = (InputProcessorImpl<char>)fx.Driver.GetInputProcessor ();
         Key? lastKey = null;
         processor.KeyDown += (_, k) => lastKey = k;
 
-        foreach (char ch in raw)
+        foreach (var ch in raw)
         {
             processor.InputQueue.Enqueue (ch);
         }
@@ -151,7 +150,7 @@ public class ConfigEditorBackspaceTests
         Assert.False (fx.Top.Editor.HasSelection);
 
         await using AppFixture<EditorTestHost> fx2 = NewConfigEditor ();
-        Key? parsed = InjectRaw (fx2, ((char) 0x01).ToString ()); // Ctrl+A
+        Key? parsed = InjectRaw (fx2, ((char)0x01).ToString ()); // Ctrl+A
         Assert.Equal (Key.A.WithCtrl, parsed);
         Assert.True (fx2.Top.Editor.HasSelection);
         Assert.Equal (fx2.Top.Editor.Document!.Text.Length, fx2.Top.Editor.SelectedText?.Length);
