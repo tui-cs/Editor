@@ -3,7 +3,7 @@
 **Source**: [Amazon Principal Engineering Community Tenets](https://www.amazon.jobs/content/en/teams/principal-engineering/tenets)
 **Captured**: 2026-05-10
 
-This document records the Amazon PE Community Tenets as a project reference for `gui-cs/Editor`. The tenet names are canonical; the notes below are an operational summary for this repository. Use the source link for Amazon's exact wording.
+This document records the Amazon PE Community Tenets as a project reference for `tui-cs/Editor`. The tenet names are canonical; the notes below are an operational summary for this repository. Use the source link for Amazon's exact wording.
 
 ## Exemplary Practitioner
 

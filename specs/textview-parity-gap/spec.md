@@ -3,7 +3,7 @@
 **Status**: Tracked — every gap below has a filed Editor issue (#145–#151); implementation is post-beta
 **Created**: 2026-05-17
 **Last updated**: 2026-05-17
-**Source**: `gui-cs/Terminal.Gui` `develop` (TextView split across `Terminal.Gui/Views/TextInput/TextView/TextView.*.cs`), compared against `Editor` at `develop` post-beta-feature-merge.
+**Source**: `tui-cs/Terminal.Gui` `develop` (TextView split across `Terminal.Gui/Views/TextInput/TextView/TextView.*.cs`), compared against `Editor` at `develop` post-beta-feature-merge.
 
 ## Purpose
 
@@ -38,7 +38,7 @@ scrolling, and (beyond `TextView`) folding, multi-caret, and vertical multi-care
 
 Ordered roughly by product value. Every gap is a tracked Editor issue.
 
-### 1. In-editor completion / autocomplete popup → [#145](https://github.com/gui-cs/Editor/issues/145)
+### 1. In-editor completion / autocomplete popup → [#145](https://github.com/tui-cs/Editor/issues/145)
 
 **TextView**: `Autocomplete` (`IAutocomplete` / `PopupAutocomplete`, `TextViewAutocomplete`) —
 a suggestion dropdown anchored at the caret, with insert/delete-back/set-cursor hooks and
@@ -56,7 +56,7 @@ exposed today.
 `PopoverMenu` (already used elsewhere in the codebase) rather than lifting AvaloniaEdit's
 `CodeCompletion/` (an explicit non-goal). Becomes `specs/completion/spec.md`.
 
-### 2. Overwrite / insert-replace mode → [#146](https://github.com/gui-cs/Editor/issues/146)
+### 2. Overwrite / insert-replace mode → [#146](https://github.com/tui-cs/Editor/issues/146)
 
 **TextView**: overwrite-mode state + `Command.ToggleOverwrite` (Insert key), `Command.EnableOverwrite`,
 `Command.DisableOverwrite`; a distinct caret rendering for overwrite; typing replaces the rune
@@ -73,7 +73,7 @@ defines these `Command` members), Insert-key default binding via the existing
 `[ConfigurationProperty] Editor.DefaultKeyBindings`, a block/underline caret variant, and ted
 status-bar indicator. Becomes `specs/overwrite-mode/spec.md`.
 
-### 3. Single-line / embeddable-input mode → [#147](https://github.com/gui-cs/Editor/issues/147)
+### 3. Single-line / embeddable-input mode → [#147](https://github.com/tui-cs/Editor/issues/147)
 
 **TextView**: `Multiline` (false ⇒ single-line field; disables word-wrap, constrains
 navigation), `EnterKeyAddsLine` (false ⇒ Enter raises `Accepting` instead of inserting a
@@ -94,7 +94,7 @@ scope, **not** ceded to `TextView`. `decisions.md` **DEC-008** (resolving former
 Add `Multiline` / `EnterKeyAddsLine` (raises `Accepting`) / `TabKeyAddsTab`; defaults preserve
 today's multi-line behavior exactly. Becomes `specs/single-line-mode/spec.md`.
 
-### 4. Emacs kill-ring (kill-to-EOL / kill-to-BOL with append) → [#148](https://github.com/gui-cs/Editor/issues/148)
+### 4. Emacs kill-ring (kill-to-EOL / kill-to-BOL with append) → [#148](https://github.com/tui-cs/Editor/issues/148)
 
 **TextView**: `Command.CutToEndOfLine` (Ctrl+K), `Command.CutToStartOfLine`; consecutive kills
 **append** to the clipboard (kill-ring semantics), and the Emacs nav defaults (Ctrl+B/F/N/P)
@@ -112,7 +112,7 @@ append-on-repeat) is **not** replicable: it needs new commands and consecutive-c
 collides with nothing today, but keep the no-surprise default and let users bind via config).
 Becomes `specs/kill-ring/spec.md`. Lower priority — power-user feature.
 
-### 5. Built-in editing context menu → [#149](https://github.com/gui-cs/Editor/issues/149)
+### 5. Built-in editing context menu → [#149](https://github.com/tui-cs/Editor/issues/149)
 
 **TextView**: `ContextMenu` (a `PopoverMenu`) on right-click / `Command.Context`, exposing the
 standard Cut/Copy/Paste/Select-All/Undo set.
@@ -129,7 +129,7 @@ read-only / selection / undo state is more than a one-liner.
 items, opt-out via a property. Could be one section of `specs/overwrite-mode/spec.md` or its own
 `specs/context-menu/spec.md`.
 
-### 6. Large-file streaming load/save → [#150](https://github.com/gui-cs/Editor/issues/150)
+### 6. Large-file streaming load/save → [#150](https://github.com/tui-cs/Editor/issues/150)
 
 **TextView**: `Load(string path)`, `Load(Stream)`, `Load(List<Cell>…)`, `CloseFile()` — the
 control owns file/stream loading (the `Stream` overload matters for large files).
@@ -146,7 +146,7 @@ already requires large-file responsiveness (10 MB < 200 ms initial render).
 (rope-backed `TextDocument` / `RopeTextSource` is the natural seam); DEC-001 line-ending
 preservation across the round trip. Becomes `specs/file-io/spec.md`.
 
-### 7. Design-time support (`EnableForDesign` / `IDesignable`) → [#151](https://github.com/gui-cs/Editor/issues/151)
+### 7. Design-time support (`EnableForDesign` / `IDesignable`) → [#151](https://github.com/tui-cs/Editor/issues/151)
 
 **TextView**: implements TG's `IDesignable` — `EnableForDesign()` seeds representative sample
 content so the control previews meaningfully in the designer / UI Catalog.
@@ -191,13 +191,13 @@ off-View. Folds into a small spec or rides along with another small item.
 
 | Gap | Issue | Disposition | New artifact |
 |-----|-------|-------------|--------------|
-| 1. Autocomplete | [#145](https://github.com/gui-cs/Editor/issues/145) | Post-beta; resolve OPEN-002 first | `specs/completion/spec.md` |
-| 2. Overwrite mode | [#146](https://github.com/gui-cs/Editor/issues/146) | Beta-adjacent, small | `specs/overwrite-mode/spec.md` |
-| 3. Single-line/input mode | [#147](https://github.com/gui-cs/Editor/issues/147) | Target — DEC-008 decided "yes" (former OPEN-006) | `specs/single-line-mode/spec.md` |
-| 4. Kill-ring | [#148](https://github.com/gui-cs/Editor/issues/148) | Post-beta, optional | `specs/kill-ring/spec.md` |
-| 5. Context menu | [#149](https://github.com/gui-cs/Editor/issues/149) | Small; standalone or folded into #2 | `specs/context-menu/spec.md` (or §) |
-| 6. Large-file streaming | [#150](https://github.com/gui-cs/Editor/issues/150) | Resolve OPEN-003, then spec | `specs/file-io/spec.md` |
-| 7. Design-time (`IDesignable`) | [#151](https://github.com/gui-cs/Editor/issues/151) | Small | small spec / ride-along |
+| 1. Autocomplete | [#145](https://github.com/tui-cs/Editor/issues/145) | Post-beta; resolve OPEN-002 first | `specs/completion/spec.md` |
+| 2. Overwrite mode | [#146](https://github.com/tui-cs/Editor/issues/146) | Beta-adjacent, small | `specs/overwrite-mode/spec.md` |
+| 3. Single-line/input mode | [#147](https://github.com/tui-cs/Editor/issues/147) | Target — DEC-008 decided "yes" (former OPEN-006) | `specs/single-line-mode/spec.md` |
+| 4. Kill-ring | [#148](https://github.com/tui-cs/Editor/issues/148) | Post-beta, optional | `specs/kill-ring/spec.md` |
+| 5. Context menu | [#149](https://github.com/tui-cs/Editor/issues/149) | Small; standalone or folded into #2 | `specs/context-menu/spec.md` (or §) |
+| 6. Large-file streaming | [#150](https://github.com/tui-cs/Editor/issues/150) | Resolve OPEN-003, then spec | `specs/file-io/spec.md` |
+| 7. Design-time (`IDesignable`) | [#151](https://github.com/tui-cs/Editor/issues/151) | Small | small spec / ride-along |
 
 None of these are beta blockers (all four beta features merged — see `specs/plan.md`). They are
 post-beta work toward `Editor` fully replacing `TextView` functionally. The plan's "Open

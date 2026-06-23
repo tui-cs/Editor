@@ -60,7 +60,7 @@ This page lists all default keyboard shortcuts. All shortcuts are `Command`-boun
 that grab `Ctrl+Alt+arrow`. The column-drag uses `Alt`+drag (not VS Code's `Shift+Alt`): inside
 a terminal, `Shift`+drag is the terminal's own forced text-selection and `Alt` makes it a
 rectangular block, so `Shift+Alt`+drag would never reach the editor. The mouse modifier is not
-yet user-configurable — tracked by [gui-cs/Terminal.Gui#4888](https://github.com/gui-cs/Terminal.Gui/issues/4888).
+yet user-configurable — tracked by [tui-cs/Terminal.Gui#4888](https://github.com/tui-cs/Terminal.Gui/issues/4888).
 
 ## Clipboard
 
@@ -108,7 +108,7 @@ To change a shortcut, add the new binding to your `config.json`:
 
 ```json
 {
-  "$schema": "https://gui-cs.github.io/Terminal.Gui/schemas/tui-config-schema.json",
+  "$schema": "https://tui-cs.github.io/Terminal.Gui/schemas/tui-config-schema.json",
   "Terminal.Gui.Editor.Editor.DefaultKeyBindings": {
     "Cut":  { "All": ["Ctrl+W"] },
     "Redo": { "All": ["Ctrl+Y"], "Macos": ["Cmd+Shift+Z"] }

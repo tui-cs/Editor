@@ -8,9 +8,9 @@
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
 
-    <Authors>gui-cs</Authors>
-    <Company>gui-cs</Company>
-    <Copyright>Copyright (c) gui-cs and contributors</Copyright>
+    <Authors>tui-cs</Authors>
+    <Company>tui-cs</Company>
+    <Copyright>Copyright (c) tui-cs and contributors</Copyright>
 
     <!--
       No version lives in the repo. Versions are computed from git tags by
@@ -22,8 +22,8 @@
       -p:Version get an obviously-non-releasable placeholder.
     -->
     <Version Condition="'$(Version)' == ''">0.0.0-local</Version>
-    <PackageProjectUrl>https://github.com/gui-cs/Editor</PackageProjectUrl>
-    <RepositoryUrl>https://github.com/gui-cs/Editor</RepositoryUrl>
+    <PackageProjectUrl>https://github.com/tui-cs/Editor</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/tui-cs/Editor</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
 

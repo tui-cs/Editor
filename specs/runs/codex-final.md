@@ -9,9 +9,9 @@
 
 | PR | Branch | Status | Summary |
 |----|--------|--------|---------|
-| [#67](https://github.com/gui-cs/Text/pull/67) | `experiment/codex/drawing-overhaul-complete` | Merged into `experiment/codex/develop` | Removed the stale `DrawLineContent` helper name, added an architecture guard, aligned drawing-overhaul docs with `Gutter : View`, and marked drawing-overhaul complete. |
-| [#68](https://github.com/gui-cs/Text/pull/68) | `experiment/codex/caret-anchors` | Merged into `experiment/codex/develop` | Backed `CaretOffset` with `TextAnchor` using `AnchorMovementType.AfterInsertion`, moved selection storage to anchors, removed manual document-change caret arithmetic, and unblocked `multi-caret`. |
-| [#69](https://github.com/gui-cs/Text/pull/69) | `experiment/codex/read-only` | Merged into `experiment/codex/develop` | Added `Editor.ReadOnly`, guarded editor and ted edit paths, added read-only integration tests, and marked read-only complete. |
+| [#67](https://github.com/tui-cs/Text/pull/67) | `experiment/codex/drawing-overhaul-complete` | Merged into `experiment/codex/develop` | Removed the stale `DrawLineContent` helper name, added an architecture guard, aligned drawing-overhaul docs with `Gutter : View`, and marked drawing-overhaul complete. |
+| [#68](https://github.com/tui-cs/Text/pull/68) | `experiment/codex/caret-anchors` | Merged into `experiment/codex/develop` | Backed `CaretOffset` with `TextAnchor` using `AnchorMovementType.AfterInsertion`, moved selection storage to anchors, removed manual document-change caret arithmetic, and unblocked `multi-caret`. |
+| [#69](https://github.com/tui-cs/Text/pull/69) | `experiment/codex/read-only` | Merged into `experiment/codex/develop` | Added `Editor.ReadOnly`, guarded editor and ted edit paths, added read-only integration tests, and marked read-only complete. |
 
 ## Features Completed
 

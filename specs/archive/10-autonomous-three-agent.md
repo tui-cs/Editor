@@ -55,7 +55,7 @@ The rest of this spec is written for the **full run**. The test run uses the sam
                               │  pushes to
                               ▼
                  ┌──────────────────────────────────────────┐
-                 │            github.com/gui-cs/Text         │
+                 │            github.com/tui-cs/Text         │
                  │                                          │
                  │  experiment/claude/*   ── PRs to develop  │
                  │  experiment/codex/*    ── PRs to develop  │
@@ -82,7 +82,7 @@ gh extension install github/gh-copilot  # only if you also want a local Copilot 
 # Repo bootstrap (one-time)
 mkdir -p /work && cd $HOME/s/Terminal.Gui.Editor
 for who in claude codex copilot; do
-  gh repo clone gui-cs/Text $who
+  gh repo clone tui-cs/Text $who
   (cd $who && git checkout develop && dotnet tool restore)
 done
 ```
@@ -278,14 +278,14 @@ Create exactly **three issues**, not the A1..E1 set:
 
 ### 12.2 Terminal.Gui bugs — high bar, failing-test required
 
-The Mac mini has the Terminal.Gui repo enlisted at `../Terminal.Gui` (`develop` branch). Agents will inevitably hit behavior they suspect is a TG bug — that's expected. What's not expected is a flood of speculative issues on `gui-cs/Terminal.Gui`.
+The Mac mini has the Terminal.Gui repo enlisted at `../Terminal.Gui` (`develop` branch). Agents will inevitably hit behavior they suspect is a TG bug — that's expected. What's not expected is a flood of speculative issues on `tui-cs/Terminal.Gui`.
 
 The rule, in every agent's kick-off prompt and in every issue body:
 
 > When you encounter behavior you suspect is a Terminal.Gui bug:
 > 1. **Reproduce it in a unit test that fails.** No failing test, no issue. The test lives in your PR's test project (or a new one), not in TG's tree.
 > 2. **Verify the test fails for the right reason** — not because of your code.
-> 3. **Only then** open an issue on `gui-cs/Terminal.Gui` with the failing test code, the pinned TG version (`Directory.Build.props`), the exact symptom, and a minimal repro.
+> 3. **Only then** open an issue on `tui-cs/Terminal.Gui` with the failing test code, the pinned TG version (`Directory.Build.props`), the exact symptom, and a minimal repro.
 >
 > If you cannot write a failing test, the bug isn't filed. Work around it locally, note the workaround in your final report, and move on.
 

@@ -1,4 +1,4 @@
-# gui-cs/Editor — Beta Plan
+# tui-cs/Editor — Beta Plan
 
 **Updated**: 2026-05-17 | **Target**: Beta | **Bar**: full MLP feature set + Terminal.Gui's `TextView` marked `[Obsolete]`
 
@@ -10,12 +10,12 @@
 
 ## Beta Definition
 
-The beta of `gui-cs/Editor` ships when:
+The beta of `tui-cs/Editor` ships when:
 
 - **Full MLP feature set is in place and works.** Typing, selection, multi-caret, find/replace (with hit-highlight + standard keybindings), syntax highlighting, folding, soft wrap, line numbers, indentation, clipboard, mouse, undo with sane granularity, large-file responsiveness.
 - **`examples/ted` is a TUI editor someone would actually want to use.** Open, edit, save, close. Find. Replace. Toggle wrap. Pick a theme. Multi-caret. Cut/copy/paste from any consumer (not just ted).
-- **`gui-cs/clet edit` ships against the beta package and is not embarrassing.** Concrete external-consumer test.
-- **Terminal.Gui marks `TextView` as `[Obsolete]`** pointing at `gui-cs/Editor`. Tracked in [gui-cs/Terminal.Gui#5303](https://github.com/gui-cs/Terminal.Gui/issues/5303). The deprecation lands in the TG release that coincides with our beta — the warning needs a real artifact to point at.
+- **`tui-cs/clet edit` ships against the beta package and is not embarrassing.** Concrete external-consumer test.
+- **Terminal.Gui marks `TextView` as `[Obsolete]`** pointing at `tui-cs/Editor`. Tracked in [tui-cs/Terminal.Gui#5303](https://github.com/tui-cs/Terminal.Gui/issues/5303). The deprecation lands in the TG release that coincides with our beta — the warning needs a real artifact to point at.
 
 The `textmate-grammars` feature ships in the release **after** beta.
 
@@ -63,8 +63,8 @@ No feature work is left. The remaining beta gate is external coordination, decis
 
 | Item | Status | Tracking | Notes |
 |------|--------|----------|-------|
-| Terminal.Gui `[Obsolete]` TextView |  ✅ Done | | [Terminal.Gui#5303](https://github.com/gui-cs/Terminal.Gui/issues/5303) | TG-side. Lands in the TG release alongside our beta; don't block our cut on theirs. |
-| `gui-cs/clet edit` ships against beta |  ✅ Done | | — | External-consumer smoke test (Beta DoD). |
+| Terminal.Gui `[Obsolete]` TextView |  ✅ Done | | [Terminal.Gui#5303](https://github.com/tui-cs/Terminal.Gui/issues/5303) | TG-side. Lands in the TG release alongside our beta; don't block our cut on theirs. |
+| `tui-cs/clet edit` ships against beta |  ✅ Done | | — | External-consumer smoke test (Beta DoD). |
 | Open decisions OPEN-001…005 |  ✅ Done | | `decisions.md` | OPEN-005 (`HighlightingColor` mapping) settled by syntax-theme  |
 | Verification pass | Pending | Beta DoD | Cross-platform build, all test projects green, `Editor.Tests` ≥90%, perf gate within 3× baseline. |
 | `develop` → `main` + `v*` tag cut |  ✅ Done | | release.yml | The merge-to-main + tag is the beta. |
@@ -122,7 +122,7 @@ third_party/AvaloniaEdit/
 
 ## Dependencies
 
-All beta feature work is merged; the dependency graph below is historical (every `gui-cs/Editor` edge resolved). Only the external edge remains.
+All beta feature work is merged; the dependency graph below is historical (every `tui-cs/Editor` edge resolved). Only the external edge remains.
 
 ```
    find-and-replace tail (#100)  ✅ merged (PR #104)
@@ -147,8 +147,8 @@ Each criterion is testable. This is the merge-to-`main` + `v*` tag gate.
 - [ ] ted exercises: typing, selection, multi-caret, undo/redo, find/replace (with highlights + keybindings), folding, word wrap, line numbers, mouse, clipboard, large-file (10 MB < 200 ms initial render). *(all wired; needs an explicit end-to-end pass)*
 - [ ] `specs/public-api.md` and `specs/decisions.md` populated; every open decision resolved. **Partial**: DEC-005 (#101 no-selection Cut/Copy) ✅ and DEC-005 word-wrap (#102 continuation-line indent) ✅ logged; DEC-006/007 logged. Still open: OPEN-001…005 (OPEN-005 effectively settled by syntax-theme — confirm + move to Resolved).
 - [ ] README documents MIT licensing, AvaloniaEdit attribution, targets, install, and a usage example. *(README rewritten PR #110 — confirm licensing/attribution section present)*
-- [ ] `gui-cs/clet edit` builds and ships against the beta package.
-- [ ] Terminal.Gui#5303 lands or is committed for the next TG release with the warning message pointing at `gui-cs/Editor`.
+- [ ] `tui-cs/clet edit` builds and ships against the beta package.
+- [ ] Terminal.Gui#5303 lands or is committed for the next TG release with the warning message pointing at `tui-cs/Editor`.
 
 ## Risks
 

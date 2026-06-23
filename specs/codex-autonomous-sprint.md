@@ -1,6 +1,6 @@
 # Codex Autonomous Sprint
 
-This is the current autonomous-execution plan for `gui-cs/Editor`: one OpenAI Codex CLI session works the MLP roadmap in `specs/plan.md`.
+This is the current autonomous-execution plan for `tui-cs/Editor`: one OpenAI Codex CLI session works the MLP roadmap in `specs/plan.md`.
 
 This replaces the old three-agent comparison harness for active development. The comparison plan remains archived at `specs/archive/10-autonomous-three-agent.md`; it is historical evidence, not the current runbook.
 
@@ -37,7 +37,7 @@ Codex should:
                          pushes branches
                               |
                               v
-                 github.com/gui-cs/Editor
+                 github.com/tui-cs/Editor
 
       experiment/codex/develop    # Codex shadow develop, final-check branch
       experiment/codex/<feature>  # feature branches, integrated into shadow develop
@@ -68,7 +68,7 @@ gh auth login
 ./scripts/setup-agent-clone.sh codex
 ```
 
-`gh auth status` in the Codex clone must show an identity that can push branches and open PRs on `gui-cs/Editor`.
+`gh auth status` in the Codex clone must show an identity that can push branches and open PRs on `tui-cs/Editor`.
 
 ## 6. Kickoff
 
@@ -145,7 +145,7 @@ When Codex suspects a Terminal.Gui bug:
 
 1. Reproduce it with a failing unit test in this repo.
 2. Verify the failure is not caused by the local implementation.
-3. Only then open an issue on `gui-cs/Terminal.Gui` with the failing test, pinned TG version, exact symptom, and minimal repro.
+3. Only then open an issue on `tui-cs/Terminal.Gui` with the failing test, pinned TG version, exact symptom, and minimal repro.
 
 If Codex cannot write the failing test, it should work around the issue locally, document the workaround in its final report, and move on.
 
