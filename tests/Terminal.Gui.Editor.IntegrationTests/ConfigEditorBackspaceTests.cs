@@ -1,3 +1,5 @@
+// Claude - claude-opus-4-8
+
 using Terminal.Gui.Drivers;
 using Terminal.Gui.Editor.Highlighting;
 using Terminal.Gui.Editor.IntegrationTests.Testing;
@@ -18,14 +20,14 @@ namespace Terminal.Gui.Editor.IntegrationTests;
 ///     </para>
 ///     <list type="bullet">
 ///         <item>
-///             The "select all" itself was the <c>Command</c> enum ordinal mismatch (gui-cs/Editor#241):
+///             The "select all" itself was the <c>Command</c> enum ordinal mismatch (tui-cs/Editor#241):
 ///             an Editor package built against different Terminal.Gui ordinals re-mapped Backspace's bound
 ///             command to <c>SelectAll</c>. Fixed by freezing the enum + realigning the package.
 ///         </item>
 ///         <item>
 ///             A terminal that sends the C0 byte <c>0x08</c> (BS / Ctrl+H) word-deletes on Backspace. That
 ///             is <b>by design</b>: Terminal.Gui decodes <c>0x08</c> as <b>Ctrl+Backspace</b> to provide
-///             delete-previous-word in the legacy/ANSI drivers (gui-cs/Terminal.Gui#4099, fixing #4096 /
+///             delete-previous-word in the legacy/ANSI drivers (tui-cs/Terminal.Gui#4099, fixing #4096 /
 ///             #1211). The kitty keyboard protocol disambiguates plain vs Ctrl Backspace, so it is not an
 ///             issue on a kitty-capable terminal.
 ///         </item>
@@ -37,7 +39,8 @@ public class ConfigEditorBackspaceTests
     private const string Config =
         "{\n  \"DefaultContentType\": \"text/plain\",\n  \"Landscape\": false\n}";
 
-    // Caret inside the "DefaultContentType" key, where a word-kill removes a large span.
+    // Caret inside the "DefaultContentType" key, where Backspace removes the char to its LEFT and a
+    // word-kill removes a large span. The char at Config[MidKeyCaret - 1] is the one Backspace deletes.
     private const int MidKeyCaret = 22;
 
     private static readonly string ESC = ((char) 0x1b).ToString ();
@@ -56,11 +59,13 @@ public class ConfigEditorBackspaceTests
         return fx;
     }
 
-    // Feeds raw characters into the driver's input queue and drains the parse pipeline — the path real
-    // terminal bytes take, unlike Injector.InjectKey which starts from an already-decoded Key.
-    private static void InjectRaw (AppFixture<EditorTestHost> fx, string raw)
+    // Feeds raw characters into the driver's input queue, drains the parse pipeline, and returns the last
+    // decoded Key — the path real terminal bytes take, unlike Injector.InjectKey which starts from a Key.
+    private static Key? InjectRaw (AppFixture<EditorTestHost> fx, string raw)
     {
         var processor = (InputProcessorImpl<char>) fx.Driver.GetInputProcessor ();
+        Key? lastKey = null;
+        processor.KeyDown += (_, k) => lastKey = k;
 
         foreach (char ch in raw)
         {
@@ -68,17 +73,26 @@ public class ConfigEditorBackspaceTests
         }
 
         processor.ProcessQueue ();
+
+        return lastKey;
     }
+
+    // Text after deleting the single grapheme immediately LEFT of the caret (what Backspace must do;
+    // Delete/DeleteCharRight would remove the char to the RIGHT instead, so this distinguishes them).
+    private static string ConfigWithCharLeftOfCaretRemoved => Config.Remove (MidKeyCaret - 1, 1);
 
     [Fact]
     public async Task Del_0x7F_DeletesSingleChar ()
     {
-        // Modern Backspace encoding (DEL). Deletes one grapheme.
+        // Modern Backspace encoding (DEL). Must decode as Backspace (not Delete) and remove the char to
+        // the LEFT of the caret, leaving the caret one column back.
         await using AppFixture<EditorTestHost> fx = NewConfigEditor ();
 
-        InjectRaw (fx, DEL.ToString ());
+        Key? parsed = InjectRaw (fx, DEL.ToString ());
 
-        Assert.Equal (Config.Length - 1, fx.Top.Editor.Document!.Text.Length);
+        Assert.Equal (Key.Backspace, parsed);
+        Assert.Equal (ConfigWithCharLeftOfCaretRemoved, fx.Top.Editor.Document!.Text);
+        Assert.Equal (MidKeyCaret - 1, fx.Top.Editor.CaretOffset);
         Assert.False (fx.Top.Editor.HasSelection);
     }
 
@@ -86,12 +100,14 @@ public class ConfigEditorBackspaceTests
     public async Task KittyBackspace_DeletesSingleChar ()
     {
         // The kitty keyboard protocol reports plain Backspace as CSI 127 u — the path winprint uses on
-        // macOS under Ghostty / kitty. Deletes one char (unambiguous, unaffected by the 0x08 design).
+        // macOS under Ghostty / kitty. Same contract: decodes as Backspace, deletes the char to the left.
         await using AppFixture<EditorTestHost> fx = NewConfigEditor ();
 
-        InjectRaw (fx, $"{ESC}[127u");
+        Key? parsed = InjectRaw (fx, $"{ESC}[127u");
 
-        Assert.Equal (Config.Length - 1, fx.Top.Editor.Document!.Text.Length);
+        Assert.Equal (Key.Backspace, parsed);
+        Assert.Equal (ConfigWithCharLeftOfCaretRemoved, fx.Top.Editor.Document!.Text);
+        Assert.Equal (MidKeyCaret - 1, fx.Top.Editor.CaretOffset);
         Assert.False (fx.Top.Editor.HasSelection);
     }
 
@@ -99,11 +115,12 @@ public class ConfigEditorBackspaceTests
     public async Task KittyCtrlBackspace_DeletesWord ()
     {
         // kitty reports Ctrl+Backspace as CSI 127;5 u — the unambiguous form of the delete-word gesture
-        // (gui-cs/Terminal.Gui#4099). Removes more than one character; no selection.
+        // (tui-cs/Terminal.Gui#4099). Decodes as Ctrl+Backspace and removes more than one character.
         await using AppFixture<EditorTestHost> fx = NewConfigEditor ();
 
-        InjectRaw (fx, $"{ESC}[127;5u");
+        Key? parsed = InjectRaw (fx, $"{ESC}[127;5u");
 
+        Assert.Equal (Key.Backspace.WithCtrl, parsed);
         Assert.True (fx.Top.Editor.Document!.Text.Length < Config.Length - 1);
         Assert.False (fx.Top.Editor.HasSelection);
     }
@@ -111,21 +128,14 @@ public class ConfigEditorBackspaceTests
     [Fact]
     public async Task LegacyBs_0x08_DecodesAsCtrlBackspace_ByDesign ()
     {
-        // By design (gui-cs/Terminal.Gui#4099): the legacy BS byte 0x08 is decoded as Ctrl+Backspace so
+        // By design (tui-cs/Terminal.Gui#4099): the legacy BS byte 0x08 is decoded as Ctrl+Backspace so
         // delete-word works in the ANSI/legacy drivers. This documents that intent — NOT a bug. Terminals
         // that emit 0x08 for the plain Backspace key therefore word-delete; kitty avoids the ambiguity.
         await using AppFixture<EditorTestHost> fx = NewConfigEditor ();
 
-        var processor = (InputProcessorImpl<char>) fx.Driver.GetInputProcessor ();
-        Key? parsed = null;
-        processor.KeyDown += (_, k) => parsed = k;
+        Key? parsed = InjectRaw (fx, BS.ToString ());
 
-        processor.InputQueue.Enqueue (BS);
-        processor.ProcessQueue ();
-
-        Assert.NotNull (parsed);
-        Assert.True (parsed!.IsCtrl);
-        Assert.Equal (Key.Backspace, parsed.NoCtrl);
+        Assert.Equal (Key.Backspace.WithCtrl, parsed);
         Assert.True (fx.Top.Editor.Document!.Text.Length < Config.Length - 1); // word removed, not one char
         Assert.False (fx.Top.Editor.HasSelection);
     }
@@ -141,7 +151,8 @@ public class ConfigEditorBackspaceTests
         Assert.False (fx.Top.Editor.HasSelection);
 
         await using AppFixture<EditorTestHost> fx2 = NewConfigEditor ();
-        InjectRaw (fx2, ((char) 0x01).ToString ()); // Ctrl+A
+        Key? parsed = InjectRaw (fx2, ((char) 0x01).ToString ()); // Ctrl+A
+        Assert.Equal (Key.A.WithCtrl, parsed);
         Assert.True (fx2.Top.Editor.HasSelection);
         Assert.Equal (fx2.Top.Editor.Document!.Text.Length, fx2.Top.Editor.SelectedText?.Length);
     }
