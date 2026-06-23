@@ -322,7 +322,7 @@ public partial class Editor
         ///     Alt drag: build a vertical column of carets from press row to drag row. Alt (not
         ///     VS Code's Shift+Alt) because Windows Terminal reserves Shift+drag for its own
         ///     forced/block text selection while an app has mouse mode on — see
-        ///     specs/decisions.md DEC-006 and gui-cs/Terminal.Gui#4888.
+        ///     specs/decisions.md DEC-006 and tui-cs/Terminal.Gui#4888.
         /// </summary>
         ColumnCarets
     }

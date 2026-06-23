@@ -16,7 +16,7 @@ name: Bump Terminal.Gui
 #     breakage is visible, and fail this run.
 #
 # Triggers:
-#   - repository_dispatch `terminal-gui-published` (sent by gui-cs/Terminal.Gui's
+#   - repository_dispatch `terminal-gui-published` (sent by tui-cs/Terminal.Gui's
 #     publish workflow; payload: { "version": "2.4.6-develop.10" })
 #   - schedule: fallback poll, in case the dispatch is missing/not configured
 #   - workflow_dispatch: manual, with channel selection (use channel=stable to

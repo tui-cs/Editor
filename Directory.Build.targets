@@ -30,7 +30,7 @@
     <Error Condition="'$(CI)' == 'true'"
            Text="UseLocalTerminalGui is a local dev-loop switch and must not be used in CI; builds there depend on Terminal.Gui $(TerminalGuiVersion) from NuGet." />
     <Error Condition="!Exists('$(LocalTerminalGuiProject)')"
-           Text="UseLocalTerminalGui=true but '$(LocalTerminalGuiProject)' does not exist. Clone gui-cs/Terminal.Gui next to this repo." />
+           Text="UseLocalTerminalGui=true but '$(LocalTerminalGuiProject)' does not exist. Clone tui-cs/Terminal.Gui next to this repo." />
   </Target>
 
   <Target Name="_BlockLocalTerminalGuiPack"

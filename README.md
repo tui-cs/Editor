@@ -2,9 +2,9 @@
 
 ![Terminal.Gui.Editor (ted demo app)](docs/images/hero.gif)
 
-A reusable text-editing `View` for [Terminal.Gui](https://github.com/gui-cs/Terminal.Gui). Drop it into your TUI app and you get the editing experience users already expect (caret movement, selection, clipboard, undo/redo, search & replace, folding, syntax highlighting, word wrap) without writing any of it yourself.
+A reusable text-editing `View` for [Terminal.Gui](https://github.com/tui-cs/Terminal.Gui). Drop it into your TUI app and you get the editing experience users already expect (caret movement, selection, clipboard, undo/redo, search & replace, folding, syntax highlighting, word wrap) without writing any of it yourself.
 
-Ships as a single NuGet package: **[`Terminal.Gui.Editor`](https://www.nuget.org/packages/Terminal.Gui.Editor)**. API documentation is published on the [Terminal.Gui DocFX site](https://gui-cs.github.io/Terminal.Gui/api/Terminal.Gui.Editor.html).
+Ships as a single NuGet package: **[`Terminal.Gui.Editor`](https://www.nuget.org/packages/Terminal.Gui.Editor)**. API documentation is published on the [Terminal.Gui DocFX site](https://tui-cs.github.io/Terminal.Gui/api/Terminal.Gui.Editor.html).
 
 ## What this is, and what it isn't
 
@@ -12,7 +12,7 @@ Ships as a single NuGet package: **[`Terminal.Gui.Editor`](https://www.nuget.org
 
 Think of `Editor` the way you'd think of a rich-text control in a desktop framework: a building block for the editing surface inside your app. A script box in an IDE-like tool, a config pane in a TUI dashboard, a chat composer, a notes view, the body of a code-review widget, the input area of an LLM agent's terminal front-end. Whatever it is you're building, `Editor` is the part that handles "user types and edits text."
 
-**This is not a standalone editor and not trying to be one.** It is not a competitor to vim, Emacs, Helix, micro, nano, or any other terminal editor; those are products with their own ecosystems, configs, and communities, and the world doesn't need another one. The `ted` app in this repo is a demo of the View, not a product. A real end-user editor built on top of this library, [clet](https://github.com/gui-cs/clet), lives in its own repo.
+**This is not a standalone editor and not trying to be one.** It is not a competitor to vim, Emacs, Helix, micro, nano, or any other terminal editor; those are products with their own ecosystems, configs, and communities, and the world doesn't need another one. The `ted` app in this repo is a demo of the View, not a product. A real end-user editor built on top of this library, [clet](https://github.com/tui-cs/clet), lives in its own repo.
 
 ## What's in the box
 
@@ -28,7 +28,7 @@ dotnet run --project examples/ted - path/to/file.cs
 dotnet run -project examples/ted -- -read-only path/to/file.cs
 ``
 
-For a user-facing editor built on this library, se [clet](https:/github.com/gui-cs/clet).
+For a user-facing editor built on this library, se [clet](https:/github.com/tui-cs/clet).
 
 # Status
 

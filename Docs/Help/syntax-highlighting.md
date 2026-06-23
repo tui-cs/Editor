@@ -36,7 +36,7 @@ Set the `"Theme"` key in `config.json`:
 
 ```json
 {
-  "$schema": "https://gui-cs.github.io/Terminal.Gui/schemas/tui-config-schema.json",
+  "$schema": "https://tui-cs.github.io/Terminal.Gui/schemas/tui-config-schema.json",
   "Theme": "Default"
 }
 ```
@@ -47,7 +47,7 @@ To change how highlighted text looks, override the colour scheme values for the 
 
 ```json
 {
-  "$schema": "https://gui-cs.github.io/Terminal.Gui/schemas/tui-config-schema.json",
+  "$schema": "https://tui-cs.github.io/Terminal.Gui/schemas/tui-config-schema.json",
   "Theme": "Default",
   "Themes": {
     "Default": {

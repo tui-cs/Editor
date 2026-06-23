@@ -4,7 +4,7 @@ Produces `docs/images/hero.gif` — a high-quality animated GIF demonstrating te
 
 ## Prerequisites
 
-- [tuirec](https://github.com/gui-cs/tuirec) v0.3.4+ on PATH (`go install github.com/gui-cs/tuirec/cmd/tuirec@latest`)
+- [tuirec](https://github.com/tui-cs/tuirec) v0.3.4+ on PATH (`go install github.com/tui-cs/tuirec/cmd/tuirec@latest`)
 - .NET 10 SDK (for building ted)
 - `agg` is auto-downloaded by tuirec on first use
 
@@ -17,7 +17,7 @@ dotnet build examples/ted -c Debug --nologo
 ## Record
 
 ```powershell
-$binary = "C:/Users/Tig/s/gui-cs/Editor/examples/ted/bin/Debug/net10.0/ted.exe"
+$binary = "C:/Users/Tig/s/tui-cs/Editor/examples/ted/bin/Debug/net10.0/ted.exe"
 $file = "./examples/ted/TedApp.cs"
 
 # Keystroke script — demonstrates typing, scrolling, folding, search, selection+indent,
