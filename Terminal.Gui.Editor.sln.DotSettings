@@ -1,6 +1,6 @@
 ﻿<wpf:ResourceDictionary xml:space="preserve" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:s="clr-namespace:System;assembly=mscorlib" xmlns:ss="urn:shemas-jetbrains-com:settings-storage-xaml" xmlns:wpf="http://schemas.microsoft.com/winfx/2006/xaml/presentation">
   <!--
-    Team-shared ReSharper / Rider settings for gui-cs/Editor.
+    Team-shared ReSharper / Rider settings for tui-cs/Editor.
     Committed alongside .editorconfig. Edit in Rider via "Settings | Editor | Code Style"
     and "Settings | Editor | Code Cleanup", then "Save to: This Solution Team-Shared".
 

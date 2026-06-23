@@ -62,7 +62,7 @@ Wall-clock time was approximately equal for all three (≈30 minutes).
 
 ## 7. TG bugs filed
 
-No agent filed an issue on `gui-cs/Terminal.Gui`. None encountered a Terminal.Gui bug that required an upstream report with a failing test (per spec §12.2).
+No agent filed an issue on `tui-cs/Terminal.Gui`. None encountered a Terminal.Gui bug that required an upstream report with a failing test (per spec §12.2).
 
 ## 8. Bugs found by code review
 

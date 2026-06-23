@@ -1,7 +1,7 @@
 # Single-Line / Embeddable-Input Mode
 
 **Status**: Implemented  
-**Issue**: [#147](https://github.com/gui-cs/Editor/issues/147)  
+**Issue**: [#147](https://github.com/tui-cs/Editor/issues/147)  
 **Decision**: [DEC-008](../decisions.md#dec-008-single-line--embeddable-input-mode-resolves-former-open-006)
 
 ## Summary
@@ -46,4 +46,4 @@ Setting `Multiline` to `false`:
 
 - `EnterKeyAddsLine` — when `false`, Enter raises `Accepting` instead of `Command.NewLine`.
 - `TabKeyAddsTab` — when `false`, Tab falls through to focus traversal.
-- These are tracked in [#147](https://github.com/gui-cs/Editor/issues/147) as follow-up work.
+- These are tracked in [#147](https://github.com/tui-cs/Editor/issues/147) as follow-up work.
