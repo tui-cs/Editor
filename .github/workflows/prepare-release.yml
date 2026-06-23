@@ -53,9 +53,8 @@ jobs:
 
       - name: Run GitVersion
         id: gitversion
+        # GitVersion.yml at the repo root is picked up automatically.
         uses: gittools/actions/gitversion/execute@v4.5.0
-        with:
-          useConfigFile: true
 
       - name: Require a stable Terminal.Gui pin for stable releases
         if: github.event.inputs.release_type == 'stable'

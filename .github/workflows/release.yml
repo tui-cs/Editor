@@ -44,9 +44,8 @@ jobs:
       - name: Run GitVersion
         if: github.ref_type != 'tag'
         id: gitversion
+        # GitVersion.yml at the repo root is picked up automatically.
         uses: gittools/actions/gitversion/execute@v4.5.0
-        with:
-          useConfigFile: true
 
       - name: Compute version
         id: v
