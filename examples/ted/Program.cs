@@ -2,17 +2,16 @@
 
 using Ted;
 using Terminal.Gui.App;
-using Terminal.Gui.Configuration;
 
 // ReSharper disable AccessToDisposedClosure
 
 Hosting.ConfigureLogging ();
 Hosting.EnableTracing ();
 
-// ConfigurationManager is the single authority for reading settings: Enable (All) loads
-// ~/.tui/ted.config.json (ConfigLocations.AppHome) and applies the values to the
-// EditorSettings [ConfigurationProperty] statics before TedApp is constructed.
-ConfigurationManager.Enable (ConfigLocations.All);
+// Load settings through Terminal.Gui's Microsoft.Extensions.Configuration builder
+// (TuiConfigurationBuilder), applied before TedApp is constructed. Requires Terminal.Gui
+// >= 2.4.15 (the TerminalGuiVersion pin); there is no ConfigurationManager fallback.
+TerminalGuiConfigurationBootstrap.Apply ();
 
 using IApplication app = Application.Create ();
 

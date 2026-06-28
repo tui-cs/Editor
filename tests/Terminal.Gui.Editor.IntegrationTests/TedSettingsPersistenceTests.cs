@@ -29,7 +29,8 @@ public class TedSettingsPersistenceTests
         InvokeSaveViewSettings (app);
 
         Assert.True (File.Exists (scope.ConfigPath));
-        Assert.Contains ("\"EditorSettings.IndentSize\": 7", File.ReadAllText (scope.ConfigPath));
+        JsonObject editorSettings = ReadEditorSettingsSection (scope.ConfigPath);
+        Assert.Equal (7, editorSettings[nameof (EditorSettings.IndentSize)]!.GetValue<int> ());
     }
 
     [Fact]
@@ -44,9 +45,8 @@ public class TedSettingsPersistenceTests
         app.Editor.IndentationSize = 8;
         InvokeSaveViewSettings (app);
 
-        var text = File.ReadAllText (scope.ConfigPath);
-        Assert.Contains ("\"EditorSettings.IndentSize\": 8", text);
-        Assert.DoesNotContain ("\"EditorSettings.IndentSize\": 2", text);
+        JsonObject editorSettings = ReadEditorSettingsSection (scope.ConfigPath);
+        Assert.Equal (8, editorSettings[nameof (EditorSettings.IndentSize)]!.GetValue<int> ());
     }
 
     [Fact]
@@ -58,19 +58,93 @@ public class TedSettingsPersistenceTests
 
         InvokeSaveViewSettings (app);
         Assert.True (File.Exists (scope.ConfigPath));
-        Assert.Contains ("\"EditorSettings.WordWrap\": true", File.ReadAllText (scope.ConfigPath));
+        JsonObject editorSettings = ReadEditorSettingsSection (scope.ConfigPath);
+        Assert.True (editorSettings[nameof (EditorSettings.WordWrap)]!.GetValue<bool> ());
     }
 
-    // NOTE: There is deliberately no "ConfigurationManager applies ted.config.json to the Editor"
-    // end-to-end test here. That exercises Terminal.Gui's ConfigurationManager (CM) — not ted code
-    // — and CM's [ConfigurationProperty] discovery + load/apply is process-global. In this shared
-    // multi-test host the discovery runs (triggered by some earlier test's Application) before the
-    // `ted` assembly's EditorSettings type is registered, so a CM round-trip here is inherently
-    // order-dependent/flaky (CLAUDE.md: "don't test the framework"; isolate global state). ted's
-    // own contract — that Save() writes the exact shape CM requires (nested under "AppSettings",
-    // AppSettingsScope) — is covered deterministically by
-    // SaveViewSettings_Preserves_Other_TopLevel_Keys_And_Nests_Under_AppSettings. CM's load/apply
-    // of AppSettingsScope is covered by Terminal.Gui's own ConfigurationManager tests.
+    [Fact]
+    public void MecSettings_Applies_To_TedApp ()
+    {
+        using ConfigPathScope scope = new ();
+        var configDirectory = Path.GetDirectoryName (scope.ConfigPath);
+        Assert.NotNull (configDirectory);
+        Directory.CreateDirectory (configDirectory);
+        File.WriteAllText (
+            scope.ConfigPath,
+            """
+            {
+              "EditorSettings": {
+                "WordWrap": true,
+                "ShowTabs": true,
+                "LineNumbers": false,
+                "IndentSize": 2
+              }
+            }
+            """);
+
+        EditorSettings.Load (scope.ConfigPath);
+        TedApp app = new ();
+
+        Assert.True (app.Editor.WordWrap);
+        Assert.True (app.Editor.ShowTabs);
+        Assert.False (app.Editor.GutterOptions.HasFlag (GutterOptions.LineNumbers));
+        Assert.Equal (2, app.Editor.IndentationSize);
+    }
+
+    [Fact]
+    public void LegacyCmSettings_Applies_To_TedApp ()
+    {
+        using ConfigPathScope scope = new ();
+        var configDirectory = Path.GetDirectoryName (scope.ConfigPath);
+        Assert.NotNull (configDirectory);
+        Directory.CreateDirectory (configDirectory);
+        File.WriteAllText (
+            scope.ConfigPath,
+            """
+            {
+              "AppSettings": {
+                "EditorSettings.WordWrap": true,
+                "EditorSettings.ShowTabs": true,
+                "EditorSettings.LineNumbers": false,
+                "EditorSettings.IndentSize": 2
+              }
+            }
+            """);
+
+        EditorSettings.Load (scope.ConfigPath);
+        TedApp app = new ();
+
+        Assert.True (app.Editor.WordWrap);
+        Assert.True (app.Editor.ShowTabs);
+        Assert.False (app.Editor.GutterOptions.HasFlag (GutterOptions.LineNumbers));
+        Assert.Equal (2, app.Editor.IndentationSize);
+    }
+
+    [Fact]
+    public void LegacyCmSettings_Ignores_Malformed_Dotted_Values ()
+    {
+        using ConfigPathScope scope = new ();
+        var configDirectory = Path.GetDirectoryName (scope.ConfigPath);
+        Assert.NotNull (configDirectory);
+        Directory.CreateDirectory (configDirectory);
+        File.WriteAllText (
+            scope.ConfigPath,
+            """
+            {
+              "AppSettings": {
+                "EditorSettings.WordWrap": "yes",
+                "EditorSettings.IndentSize": "large"
+              }
+            }
+            """);
+
+        Exception? exception = Record.Exception (() => EditorSettings.Load (scope.ConfigPath));
+
+        Assert.Null (exception);
+        TedApp app = new ();
+        Assert.False (app.Editor.WordWrap);
+        Assert.Equal (4, app.Editor.IndentationSize);
+    }
 
     [Fact]
     public async Task ViewMenu_WordWrap_Toggle_Creates_ConfigFile ()
@@ -173,7 +247,7 @@ public class TedSettingsPersistenceTests
     public async Task ViewMenu_WordWrap_Toggle_Persists_True ()
     {
         // Reproduces the user-reported bug: toggling Word Wrap via the View menu
-        // should create ted.config.json AND persist "EditorSettings.WordWrap": true.
+        // should create ted.config.json AND persist "WordWrap": true in the MEC settings section.
         // Before the fix, a conflicting ValueChanged handler caused a double-toggle
         // that reverted WordWrap to false immediately.
         using ConfigPathScope scope = new ();
@@ -220,9 +294,9 @@ public class TedSettingsPersistenceTests
         // Assert: config file created
         Assert.True (File.Exists (scope.ConfigPath), "Config file was not created");
 
-        // Assert: config file contains the correct persisted value
-        var configContent = File.ReadAllText (scope.ConfigPath);
-        Assert.Contains ("\"EditorSettings.WordWrap\": true", configContent);
+        // Assert: config file contains the correct persisted value in the MEC-native section.
+        JsonObject editorSettings = ReadEditorSettingsSection (scope.ConfigPath);
+        Assert.True (editorSettings[nameof (EditorSettings.WordWrap)]!.GetValue<bool> ());
     }
 
     [Fact]
@@ -238,7 +312,7 @@ public class TedSettingsPersistenceTests
     }
 
     [Fact]
-    public void SaveViewSettings_Preserves_Other_TopLevel_Keys_And_Nests_Under_AppSettings ()
+    public void SaveViewSettings_Preserves_Other_TopLevel_Keys_And_Nests_Under_EditorSettings ()
     {
         using ConfigPathScope scope = new ();
         var configDirectory = Path.GetDirectoryName (scope.ConfigPath);
@@ -248,7 +322,7 @@ public class TedSettingsPersistenceTests
         // Unrelated top-level data + a legacy flat key (pre-CM format) that must be migrated away.
         File.WriteAllText (
             scope.ConfigPath,
-            "{\n  \"Theme\": \"Dark\",\n  \"EditorSettings.WordWrap\": false\n}\n");
+            "{\n  \"Theme\": \"Dark\",\n  \"EditorSettings.WordWrap\": false,\n  \"AppSettings\": { \"EditorSettings.ShowTabs\": true }\n}\n");
 
         TedApp app = new ();
         app.Editor.WordWrap = true;
@@ -258,12 +332,35 @@ public class TedSettingsPersistenceTests
         var text = File.ReadAllText (scope.ConfigPath);
         JsonNode root = JsonNode.Parse (text)!;
 
-        // Unrelated key preserved; legacy flat key migrated away; ted settings nested under
-        // "AppSettings" (the shape ConfigurationManager reads for AppSettingsScope).
+        // Unrelated key preserved; legacy keys migrated away; ted settings nested under
+        // "EditorSettings" (the MEC-native shape).
         Assert.Equal ("Dark", (string?)root["Theme"]);
         Assert.Null (root["EditorSettings.WordWrap"]);
+        Assert.Null (root["AppSettings"]);
+        JsonNode editorSettings = Assert.IsType<JsonObject> (root["EditorSettings"]);
+        Assert.True ((bool)editorSettings["WordWrap"]!);
+    }
+
+    [Fact]
+    public void SaveViewSettings_Preserves_NonTed_AppSettings_Keys ()
+    {
+        using ConfigPathScope scope = new ();
+        var configDirectory = Path.GetDirectoryName (scope.ConfigPath);
+        Assert.NotNull (configDirectory);
+        Directory.CreateDirectory (configDirectory);
+
+        File.WriteAllText (
+            scope.ConfigPath,
+            "{\n  \"AppSettings\": { \"OtherApp.Enabled\": true, \"EditorSettings.ShowTabs\": true }\n}\n");
+
+        TedApp app = new ();
+        InvokeSaveViewSettings (app);
+
+        JsonNode root = JsonNode.Parse (File.ReadAllText (scope.ConfigPath))!;
         JsonNode appSettings = Assert.IsType<JsonObject> (root["AppSettings"]);
-        Assert.True ((bool)appSettings["EditorSettings.WordWrap"]!);
+
+        Assert.True ((bool)appSettings["OtherApp.Enabled"]!);
+        Assert.Null (appSettings["EditorSettings.ShowTabs"]);
     }
 
     [Fact]
@@ -308,10 +405,11 @@ public class TedSettingsPersistenceTests
         InvokeSaveViewSettings (app);
 
         var text = File.ReadAllText (scope.ConfigPath);
-        // The inserted key should be valid JSON — not inside the comment
-        Assert.Contains ("\"EditorSettings.WordWrap\": true", text);
+        // The inserted key should be valid JSON — not inside the comment.
+        JsonObject editorSettings = ReadEditorSettingsSection (scope.ConfigPath);
+        Assert.True (editorSettings[nameof (EditorSettings.WordWrap)]!.GetValue<bool> ());
         // Config should still be parseable: the real closing brace should come after our insertion
-        var wordWrapPos = text.IndexOf ("\"EditorSettings.WordWrap\"", StringComparison.Ordinal);
+        var wordWrapPos = text.IndexOf ("\"WordWrap\"", StringComparison.Ordinal);
         var lastRealBrace = text.LastIndexOf ('}');
         // The comment line's } may still exist, but our key must be before the real object close
         Assert.True (wordWrapPos < lastRealBrace, "WordWrap key should appear before the root closing brace");
@@ -333,6 +431,13 @@ public class TedSettingsPersistenceTests
             BindingFlags.Instance | BindingFlags.NonPublic);
         Assert.NotNull (saveViewSettings);
         saveViewSettings.Invoke (app, null);
+    }
+
+    private static JsonObject ReadEditorSettingsSection (string path)
+    {
+        JsonNode root = JsonNode.Parse (File.ReadAllText (path))!;
+
+        return Assert.IsType<JsonObject> (root[EditorSettings.SectionName]);
     }
 
     private sealed class ConfigPathScope : IDisposable
@@ -364,18 +469,7 @@ public class TedSettingsPersistenceTests
 
         public void Dispose ()
         {
-            // Explicitly restore the EditorSettings statics to their declared defaults. CM is the
-            // read authority and may have mutated them at app startup elsewhere; reset so this
-            // serialized collection stays deterministic regardless of CM internals.
-            EditorSettings.LineNumbers = true;
-            EditorSettings.FoldIndicators = true;
-            EditorSettings.WordWrap = false;
-            EditorSettings.ShowTabs = false;
-            EditorSettings.IndentSize = 4;
-            EditorSettings.ConvertTabsToSpaces = true;
-            EditorSettings.AutoIndent = true;
-            EditorSettings.Scrollbars = true;
-            EditorSettings.AutoComplete = false;
+            EditorSettings.ResetDefaults ();
 
             if (_hadExistingConfig)
             {
