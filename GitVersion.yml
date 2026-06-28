@@ -1,6 +1,6 @@
-# GitVersion 6.x configuration for gui-cs/Editor.
+# GitVersion 6.x configuration for tui-cs/Editor.
 #
-# Same GitFlow model as gui-cs/Terminal.Gui (see its GitVersion.yml):
+# Same GitFlow model as tui-cs/Terminal.Gui (see its GitVersion.yml):
 #
 # - `main` is the release branch; every stable release is a `v*` tag on main.
 # - `develop` always carries the `-develop` pre-release label. The version is

@@ -456,7 +456,7 @@ public class EditorMouseTests
     // Vertical multi-caret mouse gestures (specs/vertical-multi-caret/spec.md). Ported from PR #125.
     // Alt + LeftButton drag builds a column of carets — Alt, not VS Code's Shift+Alt, because
     // Windows Terminal reserves Shift+drag for its own forced/block text selection while an app
-    // has mouse mode on (DEC-006; configurable Shift+Alt parity tracked by gui-cs/Terminal.Gui#4888).
+    // has mouse mode on (DEC-006; configurable Shift+Alt parity tracked by tui-cs/Terminal.Gui#4888).
     // ---------------------------------------------------------------------------------------------
 
     [Fact]

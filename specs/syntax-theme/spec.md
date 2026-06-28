@@ -1,15 +1,15 @@
 # Feature Specification: Syntax-Highlighting Theme/Palette Layer
 
-**Status**: Phase 2 (Editor) done — shipped in PR #134 (merged into `develop` 2026-05-17); issues #99/#128/#132 closed. Phases 0–1 are Terminal.Gui-repo work tracked separately in [gui-cs/Terminal.Gui#5310](https://github.com/gui-cs/Terminal.Gui/issues/5310) / [#5311](https://github.com/gui-cs/Terminal.Gui/issues/5311); the Editor consumes them via the `<TerminalGuiVersion>` pin.
+**Status**: Phase 2 (Editor) done — shipped in PR #134 (merged into `develop` 2026-05-17); issues #99/#128/#132 closed. Phases 0–1 are Terminal.Gui-repo work tracked separately in [tui-cs/Terminal.Gui#5310](https://github.com/tui-cs/Terminal.Gui/issues/5310) / [#5311](https://github.com/tui-cs/Terminal.Gui/issues/5311); the Editor consumes them via the `<TerminalGuiVersion>` pin.
 **Created**: 2026-05-15
 **Last updated**: 2026-05-17
-**Depends on**: syntax-highlighting ✅, syntax-colorizer ✅, [gui-cs/Terminal.Gui#5310](https://github.com/gui-cs/Terminal.Gui/issues/5310) (config benchmarks, Phase 0), [gui-cs/Terminal.Gui#5311](https://github.com/gui-cs/Terminal.Gui/issues/5311) (code-token VisualRoles + Code view + markdown unification, Phase 1)
-**Blocked by**: TG #5310 must land first (establishes baseline). TG #5311 lands second and must not regress the baseline. The Editor PR (this repo, Phase 2, tracked in [#132](https://github.com/gui-cs/Editor/issues/132)) bumps `<TerminalGuiVersion>` once #5311 ships.
+**Depends on**: syntax-highlighting ✅, syntax-colorizer ✅, [tui-cs/Terminal.Gui#5310](https://github.com/tui-cs/Terminal.Gui/issues/5310) (config benchmarks, Phase 0), [tui-cs/Terminal.Gui#5311](https://github.com/tui-cs/Terminal.Gui/issues/5311) (code-token VisualRoles + Code view + markdown unification, Phase 1)
+**Blocked by**: TG #5310 must land first (establishes baseline). TG #5311 lands second and must not regress the baseline. The Editor PR (this repo, Phase 2, tracked in [#132](https://github.com/tui-cs/Editor/issues/132)) bumps `<TerminalGuiVersion>` once #5311 ships.
 
 **Tracking issues**:
-- TG Phase 0: [gui-cs/Terminal.Gui#5310](https://github.com/gui-cs/Terminal.Gui/issues/5310) — ConfigurationManager / Scheme / Theme benchmark baseline
-- TG Phase 1: [gui-cs/Terminal.Gui#5311](https://github.com/gui-cs/Terminal.Gui/issues/5311) — code-token VisualRoles + Code view + markdown unification
-- Editor Phase 2: [gui-cs/Editor#132](https://github.com/gui-cs/Editor/issues/132) — xshd colorizer through TG Scheme
+- TG Phase 0: [tui-cs/Terminal.Gui#5310](https://github.com/tui-cs/Terminal.Gui/issues/5310) — ConfigurationManager / Scheme / Theme benchmark baseline
+- TG Phase 1: [tui-cs/Terminal.Gui#5311](https://github.com/tui-cs/Terminal.Gui/issues/5311) — code-token VisualRoles + Code view + markdown unification
+- Editor Phase 2: [tui-cs/Editor#132](https://github.com/tui-cs/Editor/issues/132) — xshd colorizer through TG Scheme
 
 **Closes** (on completion of Phase 2): #99, #128
 
@@ -383,8 +383,8 @@ on grammar.
 
 - **Auto dark/light terminal-bg theme selection.** TG already detects terminal bg via OSC 10/11.
   Whether the *default* theme auto-flips on dark terminals is a separate TG design conversation
-  tied to discussion [#4056](https://github.com/gui-cs/Terminal.Gui/discussions/4056) and issue
-  [#457](https://github.com/gui-cs/Terminal.Gui/issues/457). This spec ensures the Dark theme has
+  tied to discussion [#4056](https://github.com/tui-cs/Terminal.Gui/discussions/4056) and issue
+  [#457](https://github.com/tui-cs/Terminal.Gui/issues/457). This spec ensures the Dark theme has
   legible code colors; once TG auto-selects Dark on dark terminals, #128 is closed at the TG
   level. Until then, the user picks the theme.
 - **Editing the 14 xshd resource files.** The role table covers them. Per-language `category=`

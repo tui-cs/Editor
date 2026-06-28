@@ -54,7 +54,7 @@ Column selection matches VS Code behavior: typing over a ranged column replaces 
 
 Intentional deviations:
 
-- **D1 — mouse modifier**: VS Code starts column selection with `Shift+Alt`+drag; this editor uses **`Alt`+drag** because Windows Terminal and xterm-family terminals reserve `Shift`+drag for terminal-side forced/block selection while an app has mouse mode enabled. Configurable mouse modifiers are tracked by [gui-cs/Terminal.Gui#4888](https://github.com/gui-cs/Terminal.Gui/issues/4888).
+- **D1 — mouse modifier**: VS Code starts column selection with `Shift+Alt`+drag; this editor uses **`Alt`+drag** because Windows Terminal and xterm-family terminals reserve `Shift`+drag for terminal-side forced/block selection while an app has mouse mode enabled. Configurable mouse modifiers are tracked by [tui-cs/Terminal.Gui#4888](https://github.com/tui-cs/Terminal.Gui/issues/4888).
 - **D2 — add caret at click**: VS Code uses `Alt`+Click; this editor keeps the existing **`Ctrl`+Click** binding. `Alt` is the column-drag modifier, so an `Alt`+Click alias would need drag-threshold disambiguation.
 - **D3 — keyboard column-select**: not a deviation. `Ctrl+Shift+Alt+Arrow` and `Ctrl+Shift+Alt+PgUp/PgDn` match VS Code behavior when the terminal delivers the chord (TG's Kitty keyboard protocol support makes this available on capable terminals).
 - **D4 — sticky Column Selection Mode**: VS Code's modal toggle is out of scope; this editor implements the drag and keyboard gestures, not a persistent mode with menu/status UI.

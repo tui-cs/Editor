@@ -187,7 +187,7 @@ public class SearchStrategyTests
     [Fact]
     public void FindNext_AtNonZeroOffset_ReturnsFirstMatchAtOrAfterOffset ()
     {
-        // Pins gui-cs/Editor#82 — FindAll now drives the regex via Regex.Match(text, startat)
+        // Pins tui-cs/Editor#82 — FindAll now drives the regex via Regex.Match(text, startat)
         // instead of Matches(text) over the whole document with post-filtering. The observable
         // surface should be identical to the upstream behavior (same match offsets and order);
         // the benchmark catches the perf win separately.

@@ -5,7 +5,7 @@
 **Last updated**: 2026-05-17
 **Depends on**: multi-caret ✅, word-wrap ✅, caret-anchors ✅
 **Blocked by**: —
-**Reference (do not merge)**: [PR #125](https://github.com/gui-cs/Editor/pull/125) — copilot-authored prototype. The functionality is right in the simplest case; the implementation is hacky and the maintainer has documented multiple regressions on it (see § Reference behavior from PR #125 below). Use the test cases from that PR as the executable contract; re-implement the editor changes against this spec. **Note**: PR #125 used `Alt+Up/Down` and `Alt+drag`; this spec adopts the VS Code chords (`Ctrl+Alt+Up/Down`, `Shift+Alt+drag`). The tests must be ported with the new key combinations.
+**Reference (do not merge)**: [PR #125](https://github.com/tui-cs/Editor/pull/125) — copilot-authored prototype. The functionality is right in the simplest case; the implementation is hacky and the maintainer has documented multiple regressions on it (see § Reference behavior from PR #125 below). Use the test cases from that PR as the executable contract; re-implement the editor changes against this spec. **Note**: PR #125 used `Alt+Up/Down` and `Alt+drag`; this spec adopts the VS Code chords (`Ctrl+Alt+Up/Down`, `Shift+Alt+drag`). The tests must be ported with the new key combinations.
 
 > **Amendment 2026-05-16 (authoritative — supersedes the body below where they differ).** The
 > column-drag mouse modifier shipped as **`Alt` + LeftButton drag**, *not* VS Code's
@@ -17,7 +17,7 @@
 > *this editor's* gesture, read `Alt`/`Alt+drag`; references describing *VS Code's own*
 > behavior are left as-is and remain factually correct. Restoring user-configurable parity
 > (so a user could opt back into `Shift+Alt`, or any modifier) is tracked upstream by
-> [gui-cs/Terminal.Gui#4888](https://github.com/gui-cs/Terminal.Gui/issues/4888) — *"Extend
+> [tui-cs/Terminal.Gui#4888](https://github.com/tui-cs/Terminal.Gui/issues/4888) — *"Extend
 > the configurable `KeyBindings` to `MouseBindings` (and combos)"*. See `specs/decisions.md`
 > DEC-006.
 
@@ -210,7 +210,7 @@ Cross-walk of every user-facing behavior against the two reference editors. Wher
 
 | # | Behavior | VS Code | This editor | Why | Category |
 |---|---|---|---|---|---|
-| **D1** | Start column/box select (mouse) | `Shift+Alt`+drag | **`Alt`+drag** | Windows Terminal / xterm-family terminals reserve `Shift`+drag for terminal-side forced/block selection while an app has mouse mode on, so `Shift+Alt`+drag never reaches the editor; `Alt`+drag is forwarded. | Terminal incompatibility — DEC-006; configurable parity tracked by gui-cs/Terminal.Gui#4888 |
+| **D1** | Start column/box select (mouse) | `Shift+Alt`+drag | **`Alt`+drag** | Windows Terminal / xterm-family terminals reserve `Shift`+drag for terminal-side forced/block selection while an app has mouse mode on, so `Shift+Alt`+drag never reaches the editor; `Alt`+drag is forwarded. | Terminal incompatibility — DEC-006; configurable parity tracked by tui-cs/Terminal.Gui#4888 |
 | **D2** | Add caret at click | `Alt`+Click | **`Ctrl`+Click** (existing) | Pre-existing Editor binding; `Alt` is now the column-drag modifier, so a future `Alt`+Click alias needs drag-threshold disambiguation. | Terminal incompatibility knock-on + binding history |
 | ~~**D3**~~ | Keyboard column-select (`Ctrl+Shift+Alt+Arrow` / `PgUp`/`PgDn`) | Supported | **WITHDRAWN — not a deviation; in scope, matches VS Code** | TG's Kitty keyboard protocol support can deliver the four-modifier chord. Legacy terminals that do not negotiate it share the same environmental limitation as other advanced chords. | Not a deviation |
 | **D4** | Column Selection Mode (sticky toggle, menu/status UI) | Supported | **Out of scope** | A persistent modal input state is larger than the drag/keyboard gestures and not required for column-edit parity. | Scope |
@@ -238,7 +238,7 @@ Cross-walk of every user-facing behavior against the two reference editors. Wher
 
 These were open in earlier drafts of this spec and are now resolved.
 
-- **Keybinding choice for the new chords.** Resolved 2026-05-15: match VS Code for the keyboard — `Ctrl+Alt+Up`/`Down` for add-caret-above/below. **Amended 2026-05-16**: the column-drag mouse modifier is `Alt` (not VS Code's `Shift+Alt`) because Windows Terminal consumes `Shift`+drag for its own forced/block selection while an app has mouse mode on (see the Amendment near the top). Configurable modifier parity is tracked by [gui-cs/Terminal.Gui#4888](https://github.com/gui-cs/Terminal.Gui/issues/4888). Recorded in `specs/decisions.md` DEC-006.
+- **Keybinding choice for the new chords.** Resolved 2026-05-15: match VS Code for the keyboard — `Ctrl+Alt+Up`/`Down` for add-caret-above/below. **Amended 2026-05-16**: the column-drag mouse modifier is `Alt` (not VS Code's `Shift+Alt`) because Windows Terminal consumes `Shift`+drag for its own forced/block selection while an app has mouse mode on (see the Amendment near the top). Configurable modifier parity is tracked by [tui-cs/Terminal.Gui#4888](https://github.com/tui-cs/Terminal.Gui/issues/4888). Recorded in `specs/decisions.md` DEC-006.
 - **Tab / Shift+Tab when a multi-line selection coexists with extra carets.** Resolved 2026-05-17 (after Codex review P1 on `Editor.Indentation.cs`, PR #133): a selection spanning multiple lines is **block-indented / block-unindented** (every line it touches), never replaced by a single tab — matching the single-caret path and every mainstream editor. Single-line selections are type-over-replaced; point carets get a tab / line-unindent. Every caret's effect applies in one `RunUpdate` scope = one undo step. The earlier requirement wording ("replacement, if a per-caret selection is active") was under-specified and, as implemented, silently destroyed a selected multi-line block — the data-loss regression this resolves. See the *Tab with a multi-line selection plus an extra caret* scenario.
 - **No editor-specific fallback chord.** Resolved 2026-05-15: do **not** ship a second built-in chord for environments that grab `Ctrl+Alt+arrow`. Keys are fully adjustable through TG keybindings; instead pre-ship per-platform defaults via a `[ConfigurationProperty]` `DefaultKeyBindings` + `PlatformKeyBinding` (the TG-standard mechanism, per `docfx/docs/keyboard.md`). Users in hostile terminal/WM environments override through `View.ViewKeyBindings` config like any other binding.
 

@@ -1,6 +1,6 @@
-# gui-cs/Text — Implementation Plan
+# tui-cs/Text — Implementation Plan
 
-This file is the source of truth for the work remaining on `gui-cs/Text`. It is written to be **handed to a dispatching agent** that farms work-items out to sub-agents in parallel. Each work-item below is self-contained: a brief, the files in scope, acceptance criteria, and explicit dependencies.
+This file is the source of truth for the work remaining on `tui-cs/Text`. It is written to be **handed to a dispatching agent** that farms work-items out to sub-agents in parallel. Each work-item below is self-contained: a brief, the files in scope, acceptance criteria, and explicit dependencies.
 
 This is a **revision** of the original plan. Pre-alpha is well underway: the document layer is lifted from AvaloniaEdit, an `Editor : View` exists with caret, selection, undo/redo, mouse, line numbers, and ad-hoc tab expansion. The work has proven that the architecture is right. It has *not* followed the rendering-pipeline architecture in §6 of the original plan — every feature so far has been welded onto a char-by-char draw loop in `Editor.Drawing.cs`. That has to be unwound before more features land. The order below reflects that.
 
@@ -8,11 +8,11 @@ This is a **revision** of the original plan. Pre-alpha is well underway: the doc
 
 ## 0. Target: MLP (Minimum Lovable Product) — the alpha release
 
-**The alpha release of `gui-cs/Text` ships when `Editor` reaches MLP.** "Minimum Lovable Product" — *not* "Minimum Viable Product." Viable would be a `View` you can type into. Lovable is the bar:
+**The alpha release of `tui-cs/Text` ships when `Editor` reaches MLP.** "Minimum Lovable Product" — *not* "Minimum Viable Product." Viable would be a `View` you can type into. Lovable is the bar:
 
 - **Most of what people expect from a TUI code editor is in place and works.** Typing, selection, multi-caret, find/replace, syntax highlighting, folding, soft wrap, line numbers, indentation, clipboard, mouse, undo with sane granularity, large-file responsiveness. Nothing on that list is a stub.
 - **`examples/ted` is a TUI editor someone would actually want to use.** Open a file, edit it, save it, close it. Find. Replace. Toggle wrap. Pick a theme. It feels finished, not like a demo. Day-to-day editing of `.cs` / `.md` / `.json` files in ted is genuinely pleasant.
-- **`gui-cs/clet` can ship a `clet edit` subcommand on top of `Editor` and not be embarrassed.** That is the single concrete external-consumer test for MLP. If a contributor asks "is feature X needed for MLP?" — the answer is yes iff `clet edit` would feel broken without it.
+- **`tui-cs/clet` can ship a `clet edit` subcommand on top of `Editor` and not be embarrassed.** That is the single concrete external-consumer test for MLP. If a contributor asks "is feature X needed for MLP?" — the answer is yes iff `clet edit` would feel broken without it.
 
 The track-by-track work in §7 and the per-item briefs in §8 are the path to MLP. The Definition of Done in §9 is the gate. Tracks F (TextMate) and any "post-alpha" annotations below ship in **the next release after alpha**, not in the alpha itself.
 
@@ -73,7 +73,7 @@ These are the rules new work must meet. A reviewer (or a dispatching agent) shou
 - **R6. Lifted upstream files keep upstream formatting + copyright headers.** Add `// Adapted for Terminal.Gui from AvaloniaEdit <sha>`. Log every modification in `third_party/AvaloniaEdit/UPSTREAM.md`. House-style only applies to non-`/third_party/`-derived files.
 - **R7. New tests default to the parallel project.** Promote to `Editor.IntegrationTests` only if `Application.Init`-style state is genuinely required.
 - **R8. Public API additions on `Editor` come with a brief in `specs/03-public-api.md`** before merge. Stopgaps (like the current Markdown `ISyntaxHighlighter`) are explicitly marked `[Obsolete]` at introduction, not retro-fitted.
-- **R10. Subscribe to `-ed` events, not `-ing`, unless you actually cancel.** Terminal.Gui exposes paired events (`Accepting`/`Accepted`, `Selecting`/`Selected`, `Activating`/`Activated`, etc.). The `-ing` event runs in the cancellable dispatch path and is meant for handlers that read or set `e.Cancel` / `e.Handled`. If your handler is fire-and-forget, use the `-ed` variant. Tracked upstream as gui-cs/Terminal.Gui#5286.
+- **R10. Subscribe to `-ed` events, not `-ing`, unless you actually cancel.** Terminal.Gui exposes paired events (`Accepting`/`Accepted`, `Selecting`/`Selected`, `Activating`/`Activated`, etc.). The `-ing` event runs in the cancellable dispatch path and is meant for handlers that read or set `e.Cancel` / `e.Handled`. If your handler is fire-and-forget, use the `-ed` variant. Tracked upstream as tui-cs/Terminal.Gui#5286.
 - **R9. No unused public/internal APIs in `src/`.** If a public or internal member exists, something in `src/` or `examples/` must call it. Tests don't count as a consumer. Concretely: an agent that adds a method, property, command, or event must wire the corresponding UI / keybinding / call site in the same PR, **or** delete the API. If the API is genuinely a future-MLP affordance, leave it out until the consumer is ready. The first concrete enforcement is the `Editor.FindPrevious` ↔ `FindReplaceDialog` "Find Previous" button pair (PR adding `FindPrevious` shipped without a caller; the gap was filled separately, demonstrating the rule). Roslyn's `IDE0051` (private-only) doesn't catch this; reviewers must.
 
 ## 5. Repository layout (as-is)

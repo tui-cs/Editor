@@ -23,7 +23,7 @@ Each editor action is identified by a `Command` name. To override a binding, set
 
 ```json
 {
-  "$schema": "https://gui-cs.github.io/Terminal.Gui/schemas/tui-config-schema.json",
+  "$schema": "https://tui-cs.github.io/Terminal.Gui/schemas/tui-config-schema.json",
   "Terminal.Gui.Editor.Editor.DefaultKeyBindings": {
     "Cut":  { "All": ["Ctrl+W"] },
     "Copy": { "All": ["Ctrl+Shift+C"] },
@@ -68,7 +68,7 @@ Terminal.Gui ships with one built-in theme: **`Default`**. Set the `"Theme"` key
 
 ```json
 {
-  "$schema": "https://gui-cs.github.io/Terminal.Gui/schemas/tui-config-schema.json",
+  "$schema": "https://tui-cs.github.io/Terminal.Gui/schemas/tui-config-schema.json",
   "Theme": "Default"
 }
 ```
@@ -83,7 +83,7 @@ The following example overrides the `Base` colour scheme in the `Default` theme 
 
 ```json
 {
-  "$schema": "https://gui-cs.github.io/Terminal.Gui/schemas/tui-config-schema.json",
+  "$schema": "https://tui-cs.github.io/Terminal.Gui/schemas/tui-config-schema.json",
   "Theme": "Default",
   "Themes": {
     "Default": {
@@ -113,5 +113,5 @@ Terminal.Gui supports over 160 named colours — the full W3C/CSS colour set plu
 
 ## Further reading
 
-- [Terminal.Gui Configuration documentation](https://gui-cs.github.io/Terminal.Gui/docs/config)
+- [Terminal.Gui Configuration documentation](https://tui-cs.github.io/Terminal.Gui/docs/config)
 - [Keyboard Reference](keyboard-reference.md) — full list of default shortcuts
