@@ -1,10 +1,9 @@
 // Claude - claude-opus-4-7
 
+#pragma warning disable CS0618 // This project intentionally quarantines legacy ConfigurationManager coverage.
 using Ted;
 using Terminal.Gui.Configuration;
 using Xunit;
-
-#pragma warning disable CS0618 // This project intentionally quarantines legacy ConfigurationManager coverage.
 using static Terminal.Gui.Configuration.ConfigurationManager;
 
 namespace Terminal.Gui.Editor.ConfigTests;

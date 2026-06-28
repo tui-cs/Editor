@@ -8,7 +8,9 @@ using Terminal.Gui.App;
 Hosting.ConfigureLogging ();
 Hosting.EnableTracing ();
 
-// Prefer Terminal.Gui's MEC builder when present; fall back to CM for released Terminal.Gui.
+// Load settings through Terminal.Gui's Microsoft.Extensions.Configuration builder
+// (TuiConfigurationBuilder), applied before TedApp is constructed. Requires Terminal.Gui
+// >= 2.4.15 (the TerminalGuiVersion pin); there is no ConfigurationManager fallback.
 TerminalGuiConfigurationBootstrap.Apply ();
 
 using IApplication app = Application.Create ();
